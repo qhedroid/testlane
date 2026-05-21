@@ -9,12 +9,11 @@
  *
  * Only createRun() is fully implemented in this phase.
  *
- * Dependencies (resolved via DI or singleton imports):
- *   db             — Drizzle client (src/lib/db/index.ts)
- *   opensearch     — OpenSearch client (src/lib/opensearch/client.ts)
- *   createId       — ULID factory (src/lib/utils/id.ts)
- *   logger         — Structured logger (src/lib/logger.ts)
- *   assertAccess   — RBAC helper (src/lib/auth/rbac.ts)
+ * Dependencies (monorepo @relay/db package):
+ *   db             — packages/db/src/index.ts
+ *   opensearch     — packages/db/src/opensearch/client.ts (stub locally)
+ *   createId       — packages/db/src/utils/id.ts
+ *   logger         — packages/db/src/logger.ts
  */
 
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
@@ -36,11 +35,11 @@ import {
   type NewRunAssignee,
   type NewRunCaseStepSnapshot,
   type NewTestRunCase,
-} from '../db/schema'
-import { db } from '../db'
-import { opensearchClient } from '../opensearch/client'
-import { createId } from '../utils/id'
-import { logger } from '../logger'
+} from '../schema'
+import { db } from '../src/index'
+import { logger } from '../src/logger'
+import { opensearchClient } from '../src/opensearch/client'
+import { createId } from '../src/utils/id'
 
 // ---------------------------------------------------------------------------
 // Types

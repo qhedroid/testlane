@@ -10,6 +10,7 @@
     "db:migrate": "pnpm db:wait && pnpm --filter @relay/db migrate",
     "db:studio": "pnpm --filter @relay/db studio",
     "db:seed": "pnpm db:wait && pnpm --filter @relay/db seed",
+    "db:validate-create-run": "pnpm db:wait && pnpm --filter @relay/db validate:create-run",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

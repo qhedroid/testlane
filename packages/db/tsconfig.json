@@ -4,5 +4,10 @@
     "moduleResolution": "node",
     "noEmit": true
   },
-  "include": ["schema.ts", "src/**/*.ts", "drizzle.config.ts"]
+  "include": [
+    "schema.ts",
+    "src/**/*.ts",
+    "services/**/*.ts",
+    "drizzle.config.ts"
+  ]
 }

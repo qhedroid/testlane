@@ -6,13 +6,15 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./schema.ts",
-    "./seed": "./src/seed/index.ts"
+    "./seed": "./src/seed/index.ts",
+    "./services/test-run": "./services/TestRunService.ts"
   },
   "scripts": {
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
-    "seed": "tsx src/seed/index.ts"
+    "seed": "tsx src/seed/index.ts",
+    "validate:create-run": "tsx src/scripts/validate-create-run.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.30.10",
