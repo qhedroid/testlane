@@ -6,8 +6,10 @@
     "build": "pnpm --filter @relay/web build",
     "start": "pnpm --filter @relay/web start",
     "db:generate": "pnpm --filter @relay/db generate",
-    "db:migrate": "pnpm --filter @relay/db migrate",
+    "db:wait": "bash scripts/wait-for-mysql.sh",
+    "db:migrate": "pnpm db:wait && pnpm --filter @relay/db migrate",
     "db:studio": "pnpm --filter @relay/db studio",
+    "db:seed": "pnpm db:wait && pnpm --filter @relay/db seed",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

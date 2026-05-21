@@ -103,8 +103,7 @@ export const users = mysqlTable(
     globalRole: mysqlEnum('global_role', [
       'super_admin',
       'admin',
-      'qa_lead',
-      'qa_engineer',
+      'contributor',
       'viewer',
     ])
       .notNull()
@@ -158,7 +157,8 @@ export const projects = mysqlTable(
 // 4. project_roles
 //    Project-level role overrides. A user's effective role within a project
 //    is MAX(users.global_role, project_roles.role) in the role hierarchy:
-//      super_admin > admin > qa_lead > qa_engineer > viewer
+//      super_admin > admin > contributor > viewer
+//    Job titles (e.g. QA Lead) are profile metadata — not RBAC enums.
 //    Evaluated at request time by the RBAC middleware.
 // ---------------------------------------------------------------------------
 
@@ -172,12 +172,7 @@ export const projectRoles = mysqlTable(
     userId: varchar('user_id', { length: 26 })
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    role: mysqlEnum('role', [
-      'admin',
-      'qa_lead',
-      'qa_engineer',
-      'viewer',
-    ]).notNull(),
+    role: mysqlEnum('role', ['admin', 'contributor', 'viewer']).notNull(),
     grantedBy: varchar('granted_by', { length: 26 }).references(() => users.id, {
       onDelete: 'set null',
     }),
@@ -468,7 +463,7 @@ export const testRuns = mysqlTable(
     environment: varchar('environment', { length: 100 }),
     dueDate: date('due_date'),
     /**
-     * Stalled is a manually-toggled flag (QA Lead / Admin).
+     * Stalled is a manually-toggled flag (Admin or above).
      * Auto-detection based on inactivity is Phase 2.
      * status remains 'active' when is_stalled = true to avoid
      * conflating stalled with the sealed/archived lifecycle states.

@@ -5,12 +5,14 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./schema.ts"
+    "./schema": "./schema.ts",
+    "./seed": "./src/seed/index.ts"
   },
   "scripts": {
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
-    "studio": "drizzle-kit studio"
+    "studio": "drizzle-kit studio",
+    "seed": "tsx src/seed/index.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.30.10",
@@ -20,6 +22,7 @@
   "devDependencies": {
     "dotenv": "^16.4.7",
     "drizzle-kit": "^0.21.4",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }
 }

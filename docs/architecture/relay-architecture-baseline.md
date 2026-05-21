@@ -27,7 +27,7 @@ All five source files were read in full:
 
 **Defects sidebar item.** Appears in the sidebar at reduced opacity. This is not a fully scoped MVP feature. **Resolution: sidebar item exists for wayfinding continuity, but the Defects view is deferred to Phase 2.** Defect *linking* within run execution is in scope at MVP (the D shortcut and Link defect button in the exec detail panel).
 
-**"Stalled" run status.** Present in the prototype as a run state. Not explicitly defined. **Resolution: stalled is a manually-togglable flag applied by a QA Lead or Admin. Auto-detection based on inactivity is Phase 2.**
+**"Stalled" run status.** Present in the prototype as a run state. Not explicitly defined. **Resolution: stalled is a manually-togglable flag applied by an Admin or Super Admin. Auto-detection based on inactivity is Phase 2.**
 
 **Project vs Module terminology.** The project switcher uses "project," the sidebar uses "Pinned Modules," suite trees use module-like names. **Resolution: "project" is the canonical data model and API term. The UI may use "module" contextually (suite tree labels, pinned shortcuts) but entity names in code are always `project`.**
 
@@ -44,11 +44,11 @@ Relay v1 MVP covers exactly the following. Nothing else.
 | **Projects** | First-class workspace scoping entity. CRUD, member management, project switcher. |
 | **Test Cases** | Folders/suites (tree), case CRUD, steps, preconditions, tags, priority, type, assignment, bulk actions (archive, move, clone, add to run, assign). Six-tab detail panel. Quick Create. |
 | **Test Plans** | Plan CRUD, case selection (individual cases), environment, assignees, spawning runs. Four-tab detail (Overview / Test Cases / Runs / Metrics). Draft and Active states. |
-| **Test Runs** | Create from plan (snapshot), run selector dropdown, case list with filters and priority ordering, execution detail panel (six tabs), step-level result recording, case-level result recording, defect linking, comments within execution, run sealing (QA Lead and above), admin reopen. |
+| **Test Runs** | Create from plan (snapshot), run selector dropdown, case list with filters and priority ordering, execution detail panel (six tabs), step-level result recording, case-level result recording, defect linking, comments within execution, run sealing (Admin and above), Super Admin reopen. |
 | **Dashboard** | Five metric cards, active run cards (donut chart, expand/collapse, three tabs), Needs Attention widget (unlinked failures), module coverage row. |
 | **Global Search** | Cmd K palette, fan-out across cases/runs/plans via OpenSearch, grouped results with highlighted matches, recent views (from MySQL, shown on palette open). |
 | **Audit Log** | Append-only, automatic, all mutations across all entities. View in sidebar. Filterable by entity type, actor, date range. |
-| **RBAC** | Five roles (Super Admin / Admin / QA Lead / QA Engineer / Viewer), project-level role overrides, enforced at API and service layers. |
+| **RBAC** | Four platform capability roles (Super Admin / Admin / Contributor / Viewer). Job titles are profile metadata only. Project-level role overrides, enforced at API and service layers. |
 | **Auth** | In-house credentials-based session auth via NextAuth.js with MySQL session store. |
 
 ### Explicitly Out of Scope at MVP
@@ -185,7 +185,7 @@ All tables include `created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP` and 
 id                  BIGINT UNSIGNED PK
 email               VARCHAR(255) UNIQUE NOT NULL
 name                VARCHAR(255) NOT NULL
-global_role         ENUM('super_admin','admin','qa_lead','qa_engineer','viewer') NOT NULL
+global_role         ENUM('super_admin','admin','contributor','viewer') NOT NULL
 password_hash       VARCHAR(255) NOT NULL
 is_active           BOOLEAN NOT NULL DEFAULT TRUE
 last_login_at       DATETIME
@@ -222,7 +222,7 @@ updated_at          DATETIME
 id                  BIGINT UNSIGNED PK
 project_id          BIGINT UNSIGNED FK → projects
 user_id             BIGINT UNSIGNED FK → users
-project_role        ENUM('admin','qa_lead','qa_engineer','viewer') NOT NULL
+project_role        ENUM('admin','contributor','viewer') NOT NULL
 added_by            BIGINT UNSIGNED FK → users
 added_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 UNIQUE (project_id, user_id)
@@ -632,38 +632,43 @@ Use `relay_standard` at index time, `relay_search` at query time (no stop word r
 
 ## 8. RBAC Structure
 
-### Global Roles
+Relay uses **platform-level capability roles only**. Business or job titles (e.g. QA Lead, QA Manager, Automation Engineer) must not appear as RBAC enums. Those belong in user profile metadata, organisational hierarchy, or team structures.
+
+### Approved System Roles
 
 | Role | Description |
 |---|---|
-| `super_admin` | Full platform access. User management, project creation, system settings, reopen sealed runs. |
-| `admin` | Full project access, can create projects. Cannot manage system settings. Can reopen sealed runs within their projects. |
-| `qa_lead` | Full test management within assigned projects — create/edit/archive cases, plans, runs, assign cases, seal runs. Cannot manage users. |
-| `qa_engineer` | Execute runs (mark results, step results, comments, defect links), create and edit test cases. Cannot create plans, cannot seal runs. |
-| `viewer` | Read-only. No mutations. |
+| `super_admin` | Internal platform-level authority. Cross-project/platform management, user provisioning, global settings and access. |
+| `admin` | Project-level management. Manage suites, folders, plans, runs, assignments. Seal and reopen runs. Manage project-level workflows. |
+| `contributor` | Operational participation. Execute tests, update statuses and results, add comments, link defects. |
+| `viewer` | Read-only visibility. Audit and review access. Temporary or stakeholder access. |
+
+### Invalid as RBAC Enums (Profile / Org Metadata Only)
+
+`qa_lead`, `qa_manager`, `automation_engineer`, `validation_specialist`, `tester`, and similar job titles.
 
 ### Project-Level Role Override
 
-A user can have a different (higher or equal) role within a specific project via `project_members.project_role`. The effective role is always the higher of `users.global_role` and the `project_members.project_role` for that project, evaluated against the hierarchy: `super_admin > admin > qa_lead > qa_engineer > viewer`.
+A user can have a different (higher or equal) role within a specific project via `project_roles.role`. The effective role is always the higher of `users.global_role` and `project_roles.role` for that project, evaluated against the hierarchy: `super_admin > admin > contributor > viewer`.
 
-Example: a user with `global_role = viewer` but `project_role = qa_engineer` in CTMS project can execute runs in CTMS but only view everything else.
+Example: a user with `global_role = viewer` but `project_role = contributor` in the CTMS project can execute runs in CTMS but only view everything else.
 
 ### Permission Matrix (Key Actions)
 
-| Action | super_admin | admin | qa_lead | qa_engineer | viewer |
-|---|---|---|---|---|---|
-| Create project | ✓ | ✓ | — | — | — |
-| Manage users | ✓ | — | — | — | — |
-| Create / edit test cases | ✓ | ✓ | ✓ | ✓ | — |
-| Archive test cases | ✓ | ✓ | ✓ | — | — |
-| Create / edit test plans | ✓ | ✓ | ✓ | — | — |
-| Spawn runs from plans | ✓ | ✓ | ✓ | — | — |
-| Execute runs (mark results) | ✓ | ✓ | ✓ | ✓ | — |
-| Link defects | ✓ | ✓ | ✓ | ✓ | — |
-| Add execution comments | ✓ | ✓ | ✓ | ✓ | — |
-| Seal runs | ✓ | ✓ | ✓ | — | — |
-| Reopen sealed runs | ✓ | ✓ | — | — | — |
-| View audit log | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Action | super_admin | admin | contributor | viewer |
+|---|---|---|---|---|
+| Create project | ✓ | ✓ | — | — |
+| Manage users / global settings | ✓ | — | — | — |
+| Create / edit test cases | ✓ | ✓ | ✓ | — |
+| Archive test cases | ✓ | ✓ | — | — |
+| Create / edit test plans | ✓ | ✓ | — | — |
+| Spawn runs from plans | ✓ | ✓ | — | — |
+| Execute runs (mark results) | ✓ | ✓ | ✓ | — |
+| Link defects | ✓ | ✓ | ✓ | — |
+| Add execution comments | ✓ | ✓ | ✓ | — |
+| Seal runs | ✓ | ✓ | — | — |
+| Reopen sealed runs | ✓ | ✓ | — | — |
+| View audit log | ✓ | ✓ | ✓ | ✓ |
 
 ### Enforcement Pattern
 
@@ -954,7 +959,7 @@ relay/
 | Audit log | Append-only, no exceptions, no deletions |
 | Test Cases detail panel | Six tabs (matches exec panel) |
 | "Defects" sidebar | Present but non-functional at MVP |
-| "Stalled" run status | Manually toggled by QA Lead or Admin |
+| "Stalled" run status | Manually toggled by Admin or Super Admin |
 | Project terminology | "project" in data model and API; "module" acceptable in UI labels |
 | Plan case selection | Individual case IDs (not suite-level inclusion) |
 | Case ordering in runs | Sort by priority (CRIT→LOW) then status (Fail→Blocked→Not run→Pass) at query time |

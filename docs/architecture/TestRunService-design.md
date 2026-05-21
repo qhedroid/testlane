@@ -60,7 +60,7 @@ All validation failures throw `RunCreationError(message, code)` before any DB wr
 
 | Code | Meaning |
 |---|---|
-| `INSUFFICIENT_PERMISSIONS` | Actor lacks qa_lead or above in this project |
+| `INSUFFICIENT_PERMISSIONS` | Actor lacks admin or above in this project |
 | `PLAN_NOT_FOUND` | No active plan found with that ID in this project |
 | `PLAN_ARCHIVED` | Plan status is 'archived'; cannot spawn runs |
 | `PLAN_EMPTY` | Plan has no cases linked |
@@ -105,11 +105,13 @@ All reads in Phase 1 execute outside a transaction. This minimises the time the 
 
 ### 1a. RBAC Check
 
-The acting user must have an effective role of `qa_lead`, `admin`, or `super_admin` within the project. Effective role = max(global_role, project_role) in the role hierarchy.
+The acting user must have an effective role of `admin` or `super_admin` within the project. Effective role = max(global_role, project_role) in the role hierarchy.
 
 ```
-super_admin(5) > admin(4) > qa_lead(3) > qa_engineer(2) > viewer(1)
+super_admin(4) > admin(3) > contributor(2) > viewer(1)
 ```
+
+Job titles (e.g. QA Lead) are not RBAC roles — they belong in profile metadata only.
 
 Query 1 (users table):
 ```sql

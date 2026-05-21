@@ -110,17 +110,16 @@ export type RunCreationErrorCode =
 // ---------------------------------------------------------------------------
 
 const ROLE_LEVEL = {
-  super_admin: 5,
-  admin: 4,
-  qa_lead: 3,
-  qa_engineer: 2,
+  super_admin: 4,
+  admin: 3,
+  contributor: 2,
   viewer: 1,
 } as const
 
 type AnyRole = keyof typeof ROLE_LEVEL
 
-// Minimum role level required to spawn a run.
-const SPAWN_REQUIRED_LEVEL = ROLE_LEVEL['qa_lead']
+// Minimum role level required to spawn a run (project admin or platform super_admin).
+const SPAWN_REQUIRED_LEVEL = ROLE_LEVEL['admin']
 
 // ---------------------------------------------------------------------------
 // Utilities
@@ -152,7 +151,7 @@ function formatRunDate(d: Date): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Assert that the user has an effective role of qa_lead or above in the project.
+ * Assert that the user has an effective role of admin or above in the project.
  * Effective role = max(global_role, project_role) in the role hierarchy.
  *
  * Throws RunCreationError('INSUFFICIENT_PERMISSIONS') if the check fails.
@@ -199,7 +198,7 @@ async function assertSpawnAccess(
 
   if (effectiveLevel < SPAWN_REQUIRED_LEVEL) {
     throw new RunCreationError(
-      'Insufficient permissions: qa_lead or above required to spawn runs.',
+      'Insufficient permissions: admin or above required to spawn runs.',
       'INSUFFICIENT_PERMISSIONS',
     )
   }

@@ -113,6 +113,8 @@ Browser → Next.js (App Router, full-stack)
 
 Prerequisites: Node.js 20+, pnpm 9+, Docker.
 
+### First-time setup
+
 ```bash
 # 1. Install dependencies
 pnpm install
@@ -123,26 +125,70 @@ cp .env.example .env
 # 3. Start MySQL and OpenSearch
 pnpm docker:up
 
-# 4. Run the Next.js app
+# 4. Apply schema migrations (db:migrate waits for MySQL automatically)
+pnpm db:migrate
+
+# 5. Load development seed data
+pnpm db:seed
+
+# 6. Run the Next.js app
 pnpm dev
 ```
 
-Verify connectivity:
+### Verify
 
 ```bash
 curl http://localhost:3000/api/health
 ```
 
-A healthy response includes `"status":"ok"` and `"mysql":"ok"`. Migrations are not required for the health check (`SELECT 1` only).
+A healthy response includes `"status":"ok"` and `"mysql":"ok"`.
 
-Optional — generate and apply Drizzle migrations (reads `DATABASE_URL` from the repo root `.env`):
+Check seed data in MySQL:
 
 ```bash
-pnpm db:generate
-pnpm db:migrate
+docker compose exec mysql mysql -u relay -prelay relay -e \
+  "SELECT slug, name FROM projects; SELECT plan_ref, title, status FROM test_plans;"
 ```
 
-Ensure Docker MySQL is running before `db:migrate`.
+### Reset local database
+
+Wipes Docker volumes and rebuilds from scratch:
+
+```bash
+docker compose down -v
+docker compose up -d
+pnpm db:migrate    # waits for MySQL, then applies migrations
+pnpm db:seed       # waits for MySQL, then loads relay-dev data
+```
+
+After `docker compose up -d`, MySQL needs 30–60 seconds on first start. `pnpm db:migrate` and `pnpm db:seed` wait automatically; or run `pnpm db:wait` on its own.
+
+`pnpm db:seed` is idempotent: it clears the `relay-dev` organisation and reinserts all seed rows. Safe to re-run locally.
+
+### Seed data overview
+
+| Entity | Details |
+|---|---|
+| Organisation | `relay-dev` — Relay Development Organisation |
+| Users | Noel Quadri (super_admin), Shaun Sevume (admin), Priya Nair (contributor), Marcus Webb (admin), James O'Sullivan (contributor) |
+| Projects | CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway |
+| Test plan | CTMS `PLAN-001` — active, UAT, 4 cases (for `TestRunService.create()` testing) |
+| ref_counters | Per-project case/run/plan counters (helper table) |
+
+Stable IDs for `TestRunService.create()` are printed when seed completes. See `packages/db/src/seed/ids.ts`.
+
+### RBAC roles (canonical)
+
+Platform capability roles only: `super_admin`, `admin`, `contributor`, `viewer`. Job titles are not RBAC enums.
+
+Existing local databases: run `pnpm db:migrate` to apply migration `0001_capability_rbac_roles` (maps legacy `qa_lead` / `qa_engineer` values).
+
+### Other commands
+
+```bash
+pnpm db:generate   # generate new migration after schema changes
+pnpm db:studio     # Drizzle Studio
+```
 
 ---
 
