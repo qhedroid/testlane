@@ -1028,7 +1028,7 @@ export const attachmentsMetadata = mysqlTable(
      * mode: 'number' returns a JS number from the driver.
      * Safe for file sizes up to Number.MAX_SAFE_INTEGER (~8 PB).
      */
-    sizeBytes: bigint('size_bytes', { mode: 'number' }).unsigned().notNull(),
+    sizeBytes: bigint('size_bytes', { mode: 'number', unsigned: true }).notNull(),
     s3Bucket: varchar('s3_bucket', { length: 255 }).notNull(),
     s3Key: varchar('s3_key', { length: 1000 }).notNull(),
     uploadedBy: varchar('uploaded_by', { length: 26 }).references(() => users.id, {
@@ -1044,8 +1044,8 @@ export const attachmentsMetadata = mysqlTable(
   (t) => ({
     entityIdx: index('am_entity_idx').on(t.entityType, t.entityId),
     projectIdx: index('am_project_idx').on(t.projectId),
-    /** Unique key enforces one S3 object per row. */
-    s3KeyIdx: index('am_s3_key_idx').on(t.s3Bucket, t.s3Key),
+    /** Lookup by bucket; s3_key is too long for a composite utf8mb4 index in MySQL. */
+    s3KeyIdx: index('am_s3_key_idx').on(t.s3Bucket),
     activeAttachmentsIdx: index('am_active_attachments_idx').on(
       t.entityType,
       t.entityId,

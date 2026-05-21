@@ -109,6 +109,43 @@ Browser → Next.js (App Router, full-stack)
 
 ---
 
+## Local development
+
+Prerequisites: Node.js 20+, pnpm 9+, Docker.
+
+```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Environment
+cp .env.example .env
+
+# 3. Start MySQL and OpenSearch
+pnpm docker:up
+
+# 4. Run the Next.js app
+pnpm dev
+```
+
+Verify connectivity:
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+A healthy response includes `"status":"ok"` and `"mysql":"ok"`. Migrations are not required for the health check (`SELECT 1` only).
+
+Optional — generate and apply Drizzle migrations (reads `DATABASE_URL` from the repo root `.env`):
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+```
+
+Ensure Docker MySQL is running before `db:migrate`.
+
+---
+
 ## Licence
 
 MIT

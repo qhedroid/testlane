@@ -1,0 +1,44 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: relay-mysql
+    restart: unless-stopped
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: relay_root
+      MYSQL_DATABASE: relay
+      MYSQL_USER: relay
+      MYSQL_PASSWORD: relay
+    volumes:
+      - relay_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-u', 'relay', '-prelay']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    container_name: relay-opensearch
+    restart: unless-stopped
+    ports:
+      - '9200:9200'
+      - '9600:9600'
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: 'true'
+      OPENSEARCH_JAVA_OPTS: '-Xms512m -Xmx512m'
+    volumes:
+      - relay_opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:9200/_cluster/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+volumes:
+  relay_mysql_data:
+  relay_opensearch_data:

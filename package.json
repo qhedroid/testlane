@@ -1,0 +1,24 @@
+{
+  "name": "relay",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @relay/web dev",
+    "build": "pnpm --filter @relay/web build",
+    "start": "pnpm --filter @relay/web start",
+    "db:generate": "pnpm --filter @relay/db generate",
+    "db:migrate": "pnpm --filter @relay/db migrate",
+    "db:studio": "pnpm --filter @relay/db studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "overrides": {
+      "drizzle-orm": "^0.30.10"
+    }
+  }
+}
