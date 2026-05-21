@@ -1,0 +1,175 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body,div,span{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+.sheet{padding:28px 0 40px}
+.row{margin-bottom:28px}
+.label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--color-text-tertiary);margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.swatch{border-radius:12px;display:flex;align-items:center;justify-content:center;padding:44px 32px}
+.swatch.lt{background:#F4F7FB;border:0.5px solid #D3DCE8}
+.swatch.dk{background:#042C53}
+.swatch.mark-lt{background:#F4F7FB;border:0.5px solid #D3DCE8;padding:28px 20px;border-radius:10px;flex-direction:column;gap:12px}
+.swatch.mark-dk{background:#042C53;padding:28px 20px;border-radius:10px;flex-direction:column;gap:12px}
+.sz-box{border-radius:8px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.sz-lbl{font-size:11px;color:var(--color-text-tertiary);font-variant-numeric:tabular-nums}
+.col-chip{border-radius:8px;overflow:hidden;border:0.5px solid var(--color-border-tertiary)}
+.col-swatch{height:56px}
+.col-meta{padding:10px 12px;background:var(--color-background-primary)}
+.col-name{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.col-hex{font-size:11px;color:var(--color-text-tertiary);font-family:ui-monospace,'Cascadia Code',monospace}
+.nav-frame{border-radius:10px;overflow:hidden;border:0.5px solid var(--color-border-tertiary)}
+.nav-bar{height:44px;background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;padding:0 16px;gap:8px}
+.nav-links{display:flex;align-items:center;margin-left:auto;gap:2px}
+.nl{font-size:12px;color:var(--color-text-secondary);padding:4px 9px;border-radius:5px}
+.nl.on{color:var(--color-text-primary);font-weight:500}
+.cta{font-size:12px;font-weight:500;padding:5px 12px;border-radius:6px;background:#185FA5;color:#fff;border:none;margin-left:6px}
+.nav-body{height:64px;background:var(--color-background-secondary);display:flex;align-items:center;padding:0 16px}
+.nav-body span{font-size:12px;color:var(--color-text-tertiary)}
+.divider{height:0.5px;background:var(--color-border-tertiary);margin:28px 0}
+</style>
+
+<div class="sheet">
+
+<div class="row">
+  <div class="label">Wordmark</div>
+  <div class="grid2">
+
+    <div class="swatch lt">
+      <svg height="52" viewBox="0 0 198 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- mark: two chevrons + baton, anchored at left, 44px tall centred in 52px -->
+        <polyline points="4,8 18,26 4,44" stroke="#85B7EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="14,8 28,26 14,44" stroke="#042C53" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="39" cy="26" r="5.5" fill="#185FA5"/>
+        <!-- wordmark -->
+        <text x="54" y="36" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif" font-size="30" font-weight="600" letter-spacing="-0.8" fill="#042C53">relay</text>
+      </svg>
+    </div>
+
+    <div class="swatch dk">
+      <svg height="52" viewBox="0 0 198 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="4,8 18,26 4,44" stroke="#6AADE8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+        <polyline points="14,8 28,26 14,44" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="39" cy="26" r="5.5" fill="#6AADE8"/>
+        <text x="54" y="36" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif" font-size="30" font-weight="600" letter-spacing="-0.8" fill="#ffffff">relay</text>
+      </svg>
+    </div>
+
+  </div>
+</div>
+
+<div class="row">
+  <div class="label">Mark only — scale tests</div>
+  <div class="grid4">
+
+    <div class="sz-box">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <polyline points="4,7 17,24 4,41" stroke="#85B7EB" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="13,7 26,24 13,41" stroke="#042C53" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="37" cy="24" r="5" fill="#185FA5"/>
+      </svg>
+      <span class="sz-lbl">48 px — app icon</span>
+    </div>
+
+    <div class="sz-box">
+      <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+        <polyline points="4,7 17,24 4,41" stroke="#85B7EB" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="13,7 26,24 13,41" stroke="#042C53" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="37" cy="24" r="5" fill="#185FA5"/>
+      </svg>
+      <span class="sz-lbl">32 px — sidebar</span>
+    </div>
+
+    <div class="sz-box">
+      <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+        <polyline points="4,7 17,24 4,41" stroke="#85B7EB" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="13,7 26,24 13,41" stroke="#042C53" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="37" cy="24" r="5" fill="#185FA5"/>
+      </svg>
+      <span class="sz-lbl">20 px — topbar</span>
+    </div>
+
+    <div class="sz-box">
+      <svg width="16" height="16" viewBox="0 0 48 48" fill="none">
+        <!-- simplified: single chevron + dot at 16px -->
+        <polyline points="10,7 26,24 10,41" stroke="#042C53" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="39" cy="24" r="6" fill="#185FA5"/>
+      </svg>
+      <span class="sz-lbl">16 px — favicon</span>
+    </div>
+
+  </div>
+</div>
+
+<div class="row">
+  <div class="label">Color tokens</div>
+  <div class="grid4">
+    <div class="col-chip">
+      <div class="col-swatch" style="background:#042C53"></div>
+      <div class="col-meta"><div class="col-name">Navy</div><div class="col-hex">#042C53</div></div>
+    </div>
+    <div class="col-chip">
+      <div class="col-swatch" style="background:#185FA5"></div>
+      <div class="col-meta"><div class="col-name">Accent blue</div><div class="col-hex">#185FA5</div></div>
+    </div>
+    <div class="col-chip">
+      <div class="col-swatch" style="background:#6AADE8"></div>
+      <div class="col-meta"><div class="col-name">Dark mode accent</div><div class="col-hex">#6AADE8</div></div>
+    </div>
+    <div class="col-chip">
+      <div class="col-swatch" style="background:#E6F1FB;border-bottom:0.5px solid #D3DCE8"></div>
+      <div class="col-meta"><div class="col-name">Light tint</div><div class="col-hex">#E6F1FB</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="row" style="margin-bottom:12px">
+  <div class="label">In-app — light mode nav</div>
+  <div class="nav-frame">
+    <div class="nav-bar">
+      <svg height="26" viewBox="0 0 100 26" fill="none">
+        <polyline points="2,3 9,13 2,23" stroke="#85B7EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="7,3 14,13 7,23" stroke="#042C53" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="13" r="3" fill="#185FA5"/>
+        <text x="27" y="18" font-family="-apple-system,system-ui,sans-serif" font-size="15" font-weight="600" letter-spacing="-0.4" fill="#042C53">relay</text>
+      </svg>
+      <div style="width:1px;height:14px;background:var(--color-border-tertiary);margin:0 4px"></div>
+      <div class="nav-links">
+        <div class="nl on">Dashboard</div>
+        <div class="nl">Test Cases</div>
+        <div class="nl">Test Runs</div>
+        <div class="nl">Plans</div>
+        <button class="cta">+ New run</button>
+      </div>
+    </div>
+    <div class="nav-body"><span>relay QA · TI-Core Platform · Sprint 44</span></div>
+  </div>
+</div>
+
+<div class="row" style="margin-bottom:0">
+  <div class="label">In-app — dark mode nav</div>
+  <div class="nav-frame" style="border-color:#0C447C">
+    <div class="nav-bar" style="background:#042C53;border-bottom-color:#0C447C">
+      <svg height="26" viewBox="0 0 100 26" fill="none">
+        <polyline points="2,3 9,13 2,23" stroke="#6AADE8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+        <polyline points="7,3 14,13 7,23" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="13" r="3" fill="#6AADE8"/>
+        <text x="27" y="18" font-family="-apple-system,system-ui,sans-serif" font-size="15" font-weight="600" letter-spacing="-0.4" fill="#ffffff">relay</text>
+      </svg>
+      <div style="width:1px;height:14px;background:rgba(255,255,255,0.12);margin:0 4px"></div>
+      <div class="nav-links">
+        <div class="nl" style="color:#A8C4E0">Dashboard</div>
+        <div class="nl" style="color:#A8C4E0">Test Cases</div>
+        <div class="nl" style="color:#A8C4E0">Test Runs</div>
+        <div class="nl" style="color:#A8C4E0">Plans</div>
+        <button class="cta">+ New run</button>
+      </div>
+    </div>
+    <div class="nav-body" style="background:#061E38"><span style="color:#506880">relay QA · TI-Core Platform · Sprint 44</span></div>
+  </div>
+</div>
+
+</div>
