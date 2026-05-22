@@ -53,3 +53,16 @@ export type CaseResultStatusInput =
   | 'blocked'
   | 'skipped'
   | 'skip'
+
+export interface CreateRunResult {
+  id: string
+  runRef: string
+  title: string
+  status: 'active'
+  caseCount: number
+  stepCount: number
+  environment: string | null
+  createdAt: string
+  testPlanId: string
+  projectId: string
+}

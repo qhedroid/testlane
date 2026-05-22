@@ -2,12 +2,18 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
+  createRun,
   fetchRunDetail,
   fetchRunList,
   RelayApiError,
   updateCaseResult,
 } from '@/lib/relay/api-client'
-import { RELAY_DEV_ACTOR_ID, RELAY_PROJECT_ID } from '@/lib/relay/config'
+import {
+  RELAY_CREATE_ACTOR_ID,
+  RELAY_DEV_ACTOR_ID,
+  RELAY_PROJECT_ID,
+  RELAY_TEST_PLAN_ID,
+} from '@/lib/relay/config'
 import type {
   CaseResultStatusInput,
   RunDetail,
@@ -50,6 +56,10 @@ export function RunsScreen() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [updatingCaseId, setUpdatingCaseId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createEnvironment, setCreateEnvironment] = useState('')
+  const [creating, setCreating] = useState(false)
 
   const loadDetail = useCallback(async (runId: string) => {
     setDetailLoading(true)
@@ -95,6 +105,32 @@ export function RunsScreen() {
     }
   }, [selectedRunId, loadDetail])
 
+  async function handleCreateRun(e: React.FormEvent) {
+    e.preventDefault()
+    setCreating(true)
+    setError(null)
+    try {
+      const created = await createRun({
+        name: createName,
+        environment: createEnvironment,
+      })
+      const refreshed = await fetchRunList()
+      setRuns(refreshed)
+      setSelectedRunId(created.id)
+      setShowCreateForm(false)
+      setCreateName('')
+      setCreateEnvironment('')
+    } catch (err) {
+      const message =
+        err instanceof RelayApiError
+          ? `${err.code}: ${err.message}`
+          : 'Failed to create run'
+      setError(message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
   async function handleStatusUpdate(
     testRunCaseId: string,
     status: CaseResultStatusInput,
@@ -134,12 +170,76 @@ export function RunsScreen() {
 
       <div className="runs-layout">
         <aside className="runs-list-panel">
+          <div className="runs-list-toolbar">
+            {!showCreateForm ? (
+              <button
+                type="button"
+                className="runs-create-btn"
+                disabled={listLoading || creating}
+                onClick={() => {
+                  setShowCreateForm(true)
+                  setError(null)
+                }}
+              >
+                Create run
+              </button>
+            ) : null}
+          </div>
+
+          {showCreateForm ? (
+            <form className="runs-create-form" onSubmit={(e) => void handleCreateRun(e)}>
+              <label>
+                Run name (optional)
+                <input
+                  type="text"
+                  value={createName}
+                  onChange={(ev) => setCreateName(ev.target.value)}
+                  placeholder="Defaults to plan title + date"
+                  maxLength={500}
+                  disabled={creating}
+                />
+              </label>
+              <label>
+                Environment (optional)
+                <input
+                  type="text"
+                  value={createEnvironment}
+                  onChange={(ev) => setCreateEnvironment(ev.target.value)}
+                  placeholder="e.g. staging"
+                  maxLength={100}
+                  disabled={creating}
+                />
+              </label>
+              <p className="runs-create-hint">
+                Spawns from PLAN-001 ({RELAY_TEST_PLAN_ID.slice(-6)}) as admin actor (
+                {RELAY_CREATE_ACTOR_ID.slice(-6)}).
+              </p>
+              <div className="runs-create-actions">
+                <button
+                  type="button"
+                  className="runs-create-cancel"
+                  disabled={creating}
+                  onClick={() => {
+                    setShowCreateForm(false)
+                    setCreateName('')
+                    setCreateEnvironment('')
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="runs-create-submit" disabled={creating}>
+                  {creating ? 'Creating…' : 'Create'}
+                </button>
+              </div>
+            </form>
+          ) : null}
+
           <h2>Runs</h2>
           {listLoading ? (
             <p style={{ padding: '0 14px', color: 'var(--relay-muted)' }}>Loading…</p>
           ) : runs.length === 0 ? (
             <p style={{ padding: '0 14px', color: 'var(--relay-muted)' }}>
-              No runs yet. Create one via API or seed validation.
+              No runs yet. Use Create run above.
             </p>
           ) : (
             <ul className="runs-list">

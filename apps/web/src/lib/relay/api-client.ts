@@ -1,10 +1,17 @@
 import {
+  RELAY_CREATE_ACTOR_ID,
   RELAY_DEV_ACTOR_ID,
   RELAY_PROJECT_ID,
+  RELAY_TEST_PLAN_ID,
   RELAY_USER_HEADER,
 } from './config'
 import type { ApiErrorBody, ApiSuccessBody } from '@/lib/api/types'
-import type { CaseResultStatusInput, RunDetail, RunListItem } from './types'
+import type {
+  CaseResultStatusInput,
+  CreateRunResult,
+  RunDetail,
+  RunListItem,
+} from './types'
 
 export class RelayApiError extends Error {
   constructor(
@@ -25,10 +32,39 @@ async function parseResponse<T>(res: Response): Promise<T> {
   return (json as ApiSuccessBody<T>).data
 }
 
-function actorHeaders(): HeadersInit {
+function actorHeaders(actorId = RELAY_DEV_ACTOR_ID): HeadersInit {
   return {
-    [RELAY_USER_HEADER]: RELAY_DEV_ACTOR_ID,
+    [RELAY_USER_HEADER]: actorId,
   }
+}
+
+export interface CreateRunOptions {
+  name?: string
+  environment?: string
+}
+
+export async function createRun(
+  options: CreateRunOptions = {},
+): Promise<CreateRunResult> {
+  const body: Record<string, string> = {
+    projectId: RELAY_PROJECT_ID,
+    testPlanId: RELAY_TEST_PLAN_ID,
+  }
+  const name = options.name?.trim()
+  const environment = options.environment?.trim()
+  if (name) body.name = name
+  if (environment) body.environment = environment
+
+  return parseResponse<CreateRunResult>(
+    await fetch('/api/runs', {
+      method: 'POST',
+      headers: {
+        ...actorHeaders(RELAY_CREATE_ACTOR_ID),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }),
+  )
 }
 
 export async function fetchRunList(

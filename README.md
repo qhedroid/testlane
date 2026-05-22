@@ -214,7 +214,7 @@ curl -s http://localhost:3000/api/health | jq
 
 # Test Runs screen (browser)
 pnpm dev
-# Open http://localhost:3000/runs — uses CTMS project + Priya (contributor)
+# Open http://localhost:3000/runs — CTMS project; Priya (results), Shaun (create run)
 
 # List runs (viewer+ — Alex Viewer)
 curl -s "http://localhost:3000/api/runs?projectId=01SEED00000000000000000010" \
