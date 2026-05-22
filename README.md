@@ -212,6 +212,10 @@ Then use seeded user IDs via `x-relay-user-id`:
 # Health
 curl -s http://localhost:3000/api/health | jq
 
+# Test Runs screen (browser)
+pnpm dev
+# Open http://localhost:3000/runs — uses CTMS project + Priya (contributor)
+
 # List runs (viewer+ — Alex Viewer)
 curl -s "http://localhost:3000/api/runs?projectId=01SEED00000000000000000010" \
   -H "x-relay-user-id: 01SEED00000000000000000007" | jq

@@ -1,0 +1,42 @@
+:root {
+  --relay-navy: #042c53;
+  --relay-accent: #185fa5;
+  --relay-tint: #e6f1fb;
+  --relay-bg: #f5f8fb;
+  --relay-surface: #ffffff;
+  --relay-border: #d4e3f0;
+  --relay-text: #042c53;
+  --relay-muted: #7a92ab;
+
+  --relay-pass-text: #2e7d32;
+  --relay-pass-bg: #e8f5e9;
+  --relay-fail-text: #c62828;
+  --relay-fail-bg: #ffebee;
+  --relay-blocked-text: #e65100;
+  --relay-blocked-bg: #fff3e0;
+  --relay-skip-text: #4527a0;
+  --relay-skip-bg: #ede7f6;
+  --relay-not-run-text: #7a92ab;
+  --relay-not-run-bg: #f5f8fb;
+  --relay-active-text: #185fa5;
+  --relay-active-bg: #e6f1fb;
+
+  --relay-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --relay-mono: ui-monospace, 'Cascadia Code', 'SF Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--relay-font);
+  font-size: 13px;
+  color: var(--relay-text);
+  background: var(--relay-bg);
+}
+
+a {
+  color: var(--relay-accent);
+}

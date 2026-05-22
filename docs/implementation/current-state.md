@@ -17,7 +17,7 @@
 | Area | Status |
 |------|--------|
 | Monorepo bootstrap | pnpm workspaces, `@relay/web`, `@relay/db` |
-| Next.js app shell | App Router, `/api/health`, dev placeholder page |
+| Next.js app shell | App Router, `/api/health`, `/runs` integration screen |
 | Drizzle schema | 20-table MySQL model in `packages/db/schema.ts` |
 | Migrations | `0000` initial schema, `0001` capability RBAC roles |
 | Docker local stack | MySQL 8.0 + OpenSearch 2.18 |
@@ -31,7 +31,7 @@
 
 ### Intentionally deferred
 
-- Product UI screens (Dashboard, Cases, Plans, Runs, Cmd K, etc.)
+- Product UI screens beyond `/runs` integration (Dashboard, Cases, Plans, Cmd K, etc.)
 - Real authentication (NextAuth / SSO) — dev uses `x-relay-user-id` header only
 - Auth / session (NextAuth, credentials, SSO)
 - OpenSearch indexing and `SearchService`
