@@ -191,7 +191,11 @@ pnpm db:validate-create-run
 pnpm db:validate-update-case-result
 ```
 
-### Internal API (dev auth header)
+### Internal API
+
+**Contract (endpoints, RBAC, errors, seed IDs):** [`docs/implementation/api-contracts.md`](docs/implementation/api-contracts.md)
+
+Mutating routes use temporary dev auth: send the acting user’s ULID in the **`x-relay-user-id`** header (no login/session yet). See the contract doc for seeded users and response shapes.
 
 **Two terminals:** (1) `pnpm dev` — leave running; (2) curls or `pnpm api:validate`.
 
@@ -227,7 +231,7 @@ curl -s -X POST "http://localhost:3000/api/runs/RUN_ID/cases/CASE_ID/result" \
 pnpm api:validate
 ```
 
-Error responses use `{ "error": { "code", "message", "details?" } }`.
+Full error catalogue: [`docs/implementation/api-contracts.md`](docs/implementation/api-contracts.md).
 
 ### Other commands
 
