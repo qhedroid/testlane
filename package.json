@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter @relay/web dev",
+    "dev:reset": "bash scripts/reset-web-dev.sh",
     "build": "pnpm --filter @relay/web build",
     "start": "pnpm --filter @relay/web start",
     "db:generate": "pnpm --filter @relay/db generate",
@@ -12,6 +13,7 @@
     "db:seed": "pnpm db:wait && pnpm --filter @relay/db seed",
     "db:validate-create-run": "pnpm db:wait && pnpm --filter @relay/db validate:create-run",
     "db:validate-update-case-result": "pnpm db:wait && pnpm --filter @relay/db validate:update-case-result",
+    "api:validate": "pnpm db:seed && pnpm --filter @relay/web validate:api",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

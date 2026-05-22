@@ -26,12 +26,13 @@
 | RBAC model | Platform roles: `super_admin`, `admin`, `contributor`, `viewer` |
 | TestRunService.create() | Wired to `@relay/db` runtime; validated via `pnpm db:validate-create-run` |
 | ExecutionService.updateCaseResult() | Wired; validated via `pnpm db:validate-update-case-result` |
+| Internal HTTP API | `POST /api/runs`, `POST /api/runs/:runId/cases/:runCaseId/result`; `pnpm api:validate` |
 | Interactive prototype | `mockup/Relay_Prototype_v1.2.html` (unchanged, no build step) |
 
 ### Intentionally deferred
 
 - Product UI screens (Dashboard, Cases, Plans, Runs, Cmd K, etc.)
-- `TestRunService` HTTP API routes (service callable from scripts; no REST route yet)
+- Real authentication (NextAuth / SSO) — dev uses `x-relay-user-id` header only
 - Auth / session (NextAuth, credentials, SSO)
 - OpenSearch indexing and `SearchService`
 - Remaining service layer (`ExecutionService` step results, `AuditService` wiring, etc.)
@@ -231,7 +232,10 @@ pnpm db:seed
 pnpm db:validate-create-run
 pnpm db:validate-update-case-result
 
-# 5. App health (requires pnpm dev in another terminal)
+# 5. HTTP API (requires pnpm dev in another terminal)
+pnpm api:validate
+
+# 6. App health
 curl http://localhost:3000/api/health
 
 # 6. Working tree
@@ -255,19 +259,17 @@ docker compose exec mysql mysql -u relay -prelay relay -e \
 
 ### Next implementation phase
 
-**Run sealing (`TestRunService.seal`)** or HTTP API routes for create/update — step-level results remain deferred.
+**Run sealing (`TestRunService.seal`)** and step-level results — UI still deferred.
 
 ```bash
-pnpm db:seed
-pnpm db:validate-create-run
-pnpm db:validate-update-case-result
+pnpm dev
+pnpm api:validate
 ```
 
 ### Completed in this phase
 
-- `ExecutionService.updateCaseResult()` — result fields only, audit in transaction
-- RBAC execute gate: `contributor`, `admin`, or `super_admin`
-- Active-run-only enforcement; sealed/archived runs rejected
+- Thin Next.js routes with Zod validation and standard JSON errors
+- Temporary dev auth via `x-relay-user-id` header
 
 ### Explicitly deferred
 

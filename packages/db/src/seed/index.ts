@@ -24,6 +24,8 @@ function assertLocalDatabase(): void {
   }
 }
 
+export { ids, seedRefs, SEED_ORG_SLUG } from './ids'
+
 export async function runSeed(): Promise<void> {
   assertLocalDatabase()
   const db = getDb()

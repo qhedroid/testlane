@@ -191,6 +191,44 @@ pnpm db:validate-create-run
 pnpm db:validate-update-case-result
 ```
 
+### Internal API (dev auth header)
+
+**Two terminals:** (1) `pnpm dev` — leave running; (2) curls or `pnpm api:validate`.
+
+If health returns HTML or `jq` fails with “Invalid numeric literal”, the dev server cache is usually stale:
+
+```bash
+pnpm dev:reset   # stop :3000 and remove apps/web/.next
+pnpm dev         # start fresh in terminal 1
+```
+
+Then use seeded user IDs via `x-relay-user-id`:
+
+```bash
+# Health
+curl -s http://localhost:3000/api/health | jq
+
+# Create run (requires admin or super_admin — Shaun)
+curl -s -X POST http://localhost:3000/api/runs \
+  -H "Content-Type: application/json" \
+  -H "x-relay-user-id: 01SEED00000000000000000003" \
+  -d '{
+    "projectId": "01SEED00000000000000000010",
+    "testPlanId": "01SEED00000000000000000400"
+  }' | jq
+
+# Update case result (contributor — Priya). Replace RUN_ID and CASE_ID from create response / DB.
+curl -s -X POST "http://localhost:3000/api/runs/RUN_ID/cases/CASE_ID/result" \
+  -H "Content-Type: application/json" \
+  -H "x-relay-user-id: 01SEED00000000000000000004" \
+  -d '{"status": "pass"}' | jq
+
+# HTTP validation (app must be running on :3000)
+pnpm api:validate
+```
+
+Error responses use `{ "error": { "code", "message", "details?" } }`.
+
 ### Other commands
 
 ```bash

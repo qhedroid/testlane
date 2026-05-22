@@ -244,7 +244,7 @@ async function generateRunRef(
     FOR UPDATE
   `)
 
-  const rows = counterResult[0] as Array<{ next_value: number }>
+  const rows = counterResult[0] as unknown as Array<{ next_value: number }>
   const counterRow = rows[0]
 
   if (!counterRow) {
@@ -799,8 +799,8 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
       }
 
       // Build the testCaseId → testRunCaseId map for step snapshot inserts.
-      const runCaseIdMap = new Map(
-        runCaseRows.map((r) => [r.testCaseId as string, r.id]),
+      const runCaseIdMap = new Map<string, string>(
+        runCaseRows.map((r) => [r.testCaseId as string, r.id as string]),
       )
 
       // ── 2d. Insert run_case_step_snapshots ──────────────────────────────
