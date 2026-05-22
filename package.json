@@ -11,6 +11,7 @@
     "db:studio": "pnpm --filter @relay/db studio",
     "db:seed": "pnpm db:wait && pnpm --filter @relay/db seed",
     "db:validate-create-run": "pnpm db:wait && pnpm --filter @relay/db validate:create-run",
+    "db:validate-update-case-result": "pnpm db:wait && pnpm --filter @relay/db validate:update-case-result",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

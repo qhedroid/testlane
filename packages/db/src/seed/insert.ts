@@ -65,6 +65,14 @@ export async function insertSeedData(
       globalRole: 'contributor',
       isActive: true,
     },
+    {
+      id: ids.users.viewer,
+      orgId: ids.org,
+      email: 'viewer@relay-dev.local',
+      name: 'Alex Viewer',
+      globalRole: 'viewer',
+      isActive: true,
+    },
   ])
 
   await db.insert(projects).values([

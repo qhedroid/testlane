@@ -183,11 +183,12 @@ Platform capability roles only: `super_admin`, `admin`, `contributor`, `viewer`.
 
 Existing local databases: run `pnpm db:migrate` to apply migration `0001_capability_rbac_roles` (maps legacy `qa_lead` / `qa_engineer` values).
 
-### Validate TestRunService.create()
+### Validate services
 
 ```bash
 pnpm db:seed
 pnpm db:validate-create-run
+pnpm db:validate-update-case-result
 ```
 
 ### Other commands

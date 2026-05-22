@@ -7,14 +7,16 @@
     ".": "./src/index.ts",
     "./schema": "./schema.ts",
     "./seed": "./src/seed/index.ts",
-    "./services/test-run": "./services/TestRunService.ts"
+    "./services/test-run": "./services/TestRunService.ts",
+    "./services/execution": "./services/ExecutionService.ts"
   },
   "scripts": {
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
     "seed": "tsx src/seed/index.ts",
-    "validate:create-run": "tsx src/scripts/validate-create-run.ts"
+    "validate:create-run": "tsx src/scripts/validate-create-run.ts",
+    "validate:update-case-result": "tsx src/scripts/validate-update-case-result.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.30.10",

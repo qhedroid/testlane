@@ -25,6 +25,7 @@
 | Idempotent dev seed | `relay-dev` org, 6 module projects, users, cases, plans, `ref_counters` |
 | RBAC model | Platform roles: `super_admin`, `admin`, `contributor`, `viewer` |
 | TestRunService.create() | Wired to `@relay/db` runtime; validated via `pnpm db:validate-create-run` |
+| ExecutionService.updateCaseResult() | Wired; validated via `pnpm db:validate-update-case-result` |
 | Interactive prototype | `mockup/Relay_Prototype_v1.2.html` (unchanged, no build step) |
 
 ### Intentionally deferred
@@ -33,7 +34,7 @@
 - `TestRunService` HTTP API routes (service callable from scripts; no REST route yet)
 - Auth / session (NextAuth, credentials, SSO)
 - OpenSearch indexing and `SearchService`
-- Remaining service layer (`ExecutionService`, `AuditService` wiring, etc.)
+- Remaining service layer (`ExecutionService` step results, `AuditService` wiring, etc.)
 - AWS deployment (ECS, ALB, Aurora, Secrets Manager)
 - Background workers / job queues
 - S3 attachments, email, CI/CD integration
@@ -226,8 +227,9 @@ docker compose ps
 pnpm db:migrate
 pnpm db:seed
 
-# 4. TestRunService.create() against seed data
+# 4. Service validation
 pnpm db:validate-create-run
+pnpm db:validate-update-case-result
 
 # 5. App health (requires pnpm dev in another terminal)
 curl http://localhost:3000/api/health
@@ -253,20 +255,19 @@ docker compose exec mysql mysql -u relay -prelay relay -e \
 
 ### Next implementation phase
 
-**ExecutionService and run lifecycle APIs** (record results, seal run) — or expose `createRun` via a Next.js API route.
-
-`TestRunService.create()` is wired and validated locally:
+**Run sealing (`TestRunService.seal`)** or HTTP API routes for create/update — step-level results remain deferred.
 
 ```bash
 pnpm db:seed
 pnpm db:validate-create-run
+pnpm db:validate-update-case-result
 ```
 
 ### Completed in this phase
 
-- Monorepo imports for `db`, `createId`, `logger`, OpenSearch stub
-- RBAC spawn gate: `admin` or `super_admin` only
-- End-to-end spawn from seeded CTMS plan (4 cases, 6 step snapshots, audit row, no `run_step_results`)
+- `ExecutionService.updateCaseResult()` — result fields only, audit in transaction
+- RBAC execute gate: `contributor`, `admin`, or `super_admin`
+- Active-run-only enforcement; sealed/archived runs rejected
 
 ### Explicitly deferred
 
