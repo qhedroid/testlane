@@ -17,7 +17,7 @@
 | Area | Status |
 |------|--------|
 | Monorepo bootstrap | pnpm workspaces, `@relay/web`, `@relay/db` |
-| Next.js app shell | App Router, `/api/health`, `/runs` integration screen |
+| Next.js app shell | App Router, `/api/health`, `/runs` with Relay-style shell + data integration |
 | Drizzle schema | 20-table MySQL model in `packages/db/schema.ts` |
 | Migrations | `0000` initial schema, `0001` capability RBAC roles |
 | Docker local stack | MySQL 8.0 + OpenSearch 2.18 |

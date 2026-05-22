@@ -10,23 +10,27 @@ import {
 } from '@/lib/relay/api-client'
 import {
   RELAY_CREATE_ACTOR_ID,
-  RELAY_DEV_ACTOR_ID,
-  RELAY_PROJECT_ID,
   RELAY_TEST_PLAN_ID,
 } from '@/lib/relay/config'
 import type {
+  CaseCounts,
   CaseResultStatusInput,
   RunDetail,
   RunDetailCase,
   RunListItem,
 } from '@/lib/relay/types'
+import { RunsAppShell } from './RunsAppShell'
 
-const STATUS_OPTIONS: { value: CaseResultStatusInput; label: string }[] = [
-  { value: 'pass', label: 'Pass' },
-  { value: 'fail', label: 'Fail' },
-  { value: 'blocked', label: 'Blocked' },
-  { value: 'skipped', label: 'Skipped' },
-  { value: 'not_run', label: 'Not run' },
+const STATUS_OPTIONS: {
+  value: CaseResultStatusInput
+  label: string
+  srb: string
+}[] = [
+  { value: 'pass', label: 'Pass', srb: 'srb-p' },
+  { value: 'fail', label: 'Fail', srb: 'srb-f' },
+  { value: 'blocked', label: 'Blocked', srb: 'srb-b' },
+  { value: 'skipped', label: 'Skip', srb: 'srb-s' },
+  { value: 'not_run', label: 'Not run', srb: 'srb-n' },
 ]
 
 function statusPillClass(status: RunDetailCase['status']): string {
@@ -40,12 +44,86 @@ function statusLabel(status: RunDetailCase['status']): string {
   return status.charAt(0).toUpperCase() + status.slice(1)
 }
 
+function runStatusPill(status: RunListItem['status']): string {
+  if (status === 'active') return 'pill p-active'
+  if (status === 'sealed' || status === 'archived') return 'pill p-sealed'
+  return 'pill p-not_run'
+}
+
+function priorityClass(
+  priority: RunDetailCase['priority'],
+): string {
+  const map = {
+    critical: 'pri pr-crit',
+    high: 'pri pr-high',
+    medium: 'pri pr-med',
+    low: 'pri pr-low',
+  } as const
+  return map[priority] ?? 'pri pr-low'
+}
+
 function isActiveStatus(
   current: RunDetailCase['status'],
   target: CaseResultStatusInput,
 ): boolean {
   if (target === 'skipped') return current === 'skip'
   return current === target
+}
+
+function progressSegments(counts: CaseCounts, total: number) {
+  if (total === 0) return { pass: 0, fail: 0, blocked: 0, skip: 0 }
+  return {
+    pass: (counts.passed / total) * 100,
+    fail: (counts.failed / total) * 100,
+    blocked: (counts.blocked / total) * 100,
+    skip: (counts.skipped / total) * 100,
+  }
+}
+
+function CountCards({ counts }: { counts: CaseCounts }) {
+  const cards = [
+    { key: 'total', label: 'Total', value: counts.total, cls: '' },
+    { key: 'pass', label: 'Pass', value: counts.passed, cls: 'mc-pass' },
+    { key: 'fail', label: 'Fail', value: counts.failed, cls: 'mc-fail' },
+    { key: 'blocked', label: 'Blocked', value: counts.blocked, cls: 'mc-blocked' },
+    { key: 'skip', label: 'Skipped', value: counts.skipped, cls: 'mc-skip' },
+    { key: 'notRun', label: 'Not run', value: counts.notRun, cls: 'mc-notrun' },
+  ] as const
+
+  return (
+    <div className="met-row">
+      {cards.map((c) => (
+        <div key={c.key} className={`mc ${c.cls}`}>
+          <div className="mv">{c.value}</div>
+          <div className="ml">{c.label}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ProgressBar({ counts }: { counts: CaseCounts }) {
+  const total = counts.total || 1
+  const seg = progressSegments(counts, counts.total)
+  const done = counts.passed + counts.failed + counts.blocked + counts.skipped
+  const pct = counts.total ? Math.round((done / counts.total) * 100) : 0
+
+  return (
+    <div className="tr-run-progress">
+      <span className="rl-pt">
+        {done} / {counts.total}
+      </span>
+      <div className="prog">
+        {seg.pass > 0 ? <div className="pg-p" style={{ width: `${seg.pass}%` }} /> : null}
+        {seg.fail > 0 ? <div className="pg-f" style={{ width: `${seg.fail}%` }} /> : null}
+        {seg.blocked > 0 ? (
+          <div className="pg-b" style={{ width: `${seg.blocked}%` }} />
+        ) : null}
+        {seg.skip > 0 ? <div className="pg-s" style={{ width: `${seg.skip}%` }} /> : null}
+      </div>
+      <span className="rl-pt">{pct}%</span>
+    </div>
+  )
 }
 
 export function RunsScreen() {
@@ -152,49 +230,39 @@ export function RunsScreen() {
     }
   }
 
-  const selectedRun = runs.find((r) => r.id === selectedRunId)
+  const topbarActions = (
+    <>
+      {!showCreateForm ? (
+        <button
+          type="button"
+          className="relay-btn relay-btn-primary"
+          disabled={listLoading || creating}
+          onClick={() => {
+            setShowCreateForm(true)
+            setError(null)
+          }}
+        >
+          + New run
+        </button>
+      ) : null}
+    </>
+  )
 
   return (
-    <div className="runs-page">
-      <header className="runs-header">
-        <div>
-          <h1>Test Runs</h1>
-          <div className="runs-header-meta">CTMS · integration screen</div>
-        </div>
-        <div className="runs-header-meta">
-          project {RELAY_PROJECT_ID.slice(-6)} · actor {RELAY_DEV_ACTOR_ID.slice(-6)}
-        </div>
-      </header>
-
+    <RunsAppShell topbarActions={topbarActions}>
       {error ? <div className="runs-banner error">{error}</div> : null}
 
-      <div className="runs-layout">
-        <aside className="runs-list-panel">
-          <div className="runs-list-toolbar">
-            {!showCreateForm ? (
-              <button
-                type="button"
-                className="runs-create-btn"
-                disabled={listLoading || creating}
-                onClick={() => {
-                  setShowCreateForm(true)
-                  setError(null)
-                }}
-              >
-                Create run
-              </button>
-            ) : null}
-          </div>
-
+      <div className="tr-lay">
+        <aside className="rl-pane">
           {showCreateForm ? (
-            <form className="runs-create-form" onSubmit={(e) => void handleCreateRun(e)}>
+            <form className="rl-create-form" onSubmit={(e) => void handleCreateRun(e)}>
               <label>
                 Run name (optional)
                 <input
                   type="text"
                   value={createName}
                   onChange={(ev) => setCreateName(ev.target.value)}
-                  placeholder="Defaults to plan title + date"
+                  placeholder="Plan title + date"
                   maxLength={500}
                   disabled={creating}
                 />
@@ -205,19 +273,18 @@ export function RunsScreen() {
                   type="text"
                   value={createEnvironment}
                   onChange={(ev) => setCreateEnvironment(ev.target.value)}
-                  placeholder="e.g. staging"
+                  placeholder="e.g. UAT"
                   maxLength={100}
                   disabled={creating}
                 />
               </label>
-              <p className="runs-create-hint">
-                Spawns from PLAN-001 ({RELAY_TEST_PLAN_ID.slice(-6)}) as admin actor (
-                {RELAY_CREATE_ACTOR_ID.slice(-6)}).
+              <p className="rl-create-hint">
+                PLAN-001 · spawn as admin ({RELAY_CREATE_ACTOR_ID.slice(-6)})
               </p>
-              <div className="runs-create-actions">
+              <div className="rl-create-actions">
                 <button
                   type="button"
-                  className="runs-create-cancel"
+                  className="relay-btn"
                   disabled={creating}
                   onClick={() => {
                     setShowCreateForm(false)
@@ -227,169 +294,185 @@ export function RunsScreen() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="runs-create-submit" disabled={creating}>
+                <button
+                  type="submit"
+                  className="relay-btn relay-btn-primary"
+                  disabled={creating}
+                >
                   {creating ? 'Creating…' : 'Create'}
                 </button>
               </div>
             </form>
-          ) : null}
-
-          <h2>Runs</h2>
-          {listLoading ? (
-            <p style={{ padding: '0 14px', color: 'var(--relay-muted)' }}>Loading…</p>
-          ) : runs.length === 0 ? (
-            <p style={{ padding: '0 14px', color: 'var(--relay-muted)' }}>
-              No runs yet. Use Create run above.
-            </p>
           ) : (
-            <ul className="runs-list">
-              {runs.map((run) => (
-                <li key={run.id}>
+            <div className="rl-create-wrap">
+              <button
+                type="button"
+                className="relay-btn relay-btn-primary"
+                style={{ width: '100%', justifyContent: 'center' }}
+                disabled={listLoading || creating}
+                onClick={() => {
+                  setShowCreateForm(true)
+                  setError(null)
+                }}
+              >
+                + Create run
+              </button>
+            </div>
+          )}
+
+          <div className="rl-hd">
+            <span className="rl-hd-title">Runs</span>
+            <span className="rl-hd-count">{runs.length}</span>
+          </div>
+
+          <div className="rl-body">
+            {listLoading ? (
+              <p className="tr-empty">Loading…</p>
+            ) : runs.length === 0 ? (
+              <p className="tr-empty">No runs yet.</p>
+            ) : (
+              runs.map((run) => {
+                const seg = progressSegments(run.caseCounts, run.caseCounts.total)
+                return (
                   <button
+                    key={run.id}
                     type="button"
-                    className={`runs-list-item${selectedRunId === run.id ? ' selected' : ''}`}
+                    className={`rl-item${selectedRunId === run.id ? ' on' : ''}`}
                     onClick={() => setSelectedRunId(run.id)}
-                    style={{
-                      width: '100%',
-                      border: 'none',
-                      background: 'transparent',
-                      textAlign: 'left',
-                      font: 'inherit',
-                    }}
                   >
-                    <div className="runs-list-ref">{run.runRef}</div>
-                    <div className="runs-list-title">{run.title}</div>
-                    <div style={{ marginTop: 6 }}>
-                      <span className={`pill p-${run.status === 'active' ? 'active' : 'not_run'}`}>
+                    <div className="rl-ref">{run.runRef}</div>
+                    <div className="rl-nm">{run.title}</div>
+                    <div className="rl-mt">
+                      <span className={runStatusPill(run.status)}>
+                        <span className="pill-dot" />
                         {run.status}
                       </span>
-                      <span
-                        style={{
-                          marginLeft: 8,
-                          fontSize: 10.5,
-                          color: 'var(--relay-muted)',
-                        }}
-                      >
-                        {run.caseCounts.passed}/{run.caseCounts.total} pass
+                    </div>
+                    <div className="rl-pg">
+                      <div className="prog">
+                        {seg.pass > 0 ? (
+                          <div className="pg-p" style={{ width: `${seg.pass}%` }} />
+                        ) : null}
+                        {seg.fail > 0 ? (
+                          <div className="pg-f" style={{ width: `${seg.fail}%` }} />
+                        ) : null}
+                      </div>
+                      <span className="rl-pt">
+                        {run.caseCounts.passed}/{run.caseCounts.total}
                       </span>
                     </div>
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                )
+              })
+            )}
+          </div>
         </aside>
 
-        <main className="runs-detail-panel">
+        <section className="tr-detail">
           {!selectedRunId ? (
-            <p className="runs-detail-empty">Select a run from the list.</p>
+            <p className="tr-empty">Select a run from the list.</p>
           ) : detailLoading && !detail ? (
-            <p className="runs-detail-empty">Loading run…</p>
+            <p className="tr-empty">Loading run…</p>
           ) : detail ? (
-            <>
-              <h2 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 600 }}>
-                {detail.runRef}
-              </h2>
-              <p style={{ margin: '0 0 16px', color: 'var(--relay-muted)' }}>
-                {detail.title}
-              </p>
-
-              <div className="runs-meta-grid">
-                <div>
-                  <div className="runs-meta-label">Status</div>
-                  <div className="runs-meta-value">
-                    <span className="pill p-active">{detail.status}</span>
-                    {detail.isStalled ? ' (stalled)' : ''}
-                  </div>
+            <div className="tr-detail-scroll">
+              <div className="tr-run-hd">
+                <div className="tmono" style={{ marginBottom: 4 }}>
+                  {detail.runRef}
                 </div>
-                <div>
-                  <div className="runs-meta-label">Environment</div>
-                  <div className="runs-meta-value">
-                    {detail.environment ?? '—'}
-                  </div>
+                <h2 className="tr-run-title">{detail.title}</h2>
+                <div className="tr-run-meta">
+                  <span className={runStatusPill(detail.status)}>
+                    <span className="pill-dot" />
+                    {detail.status}
+                  </span>
+                  {detail.isStalled ? <span>Stalled</span> : null}
+                  <span>
+                    Env: {detail.environment ?? '—'}
+                  </span>
+                  <span>
+                    Created: {new Date(detail.createdAt).toLocaleString()}
+                  </span>
                 </div>
-                <div>
-                  <div className="runs-meta-label">Created</div>
-                  <div className="runs-meta-value" style={{ fontFamily: 'var(--relay-mono)' }}>
-                    {new Date(detail.createdAt).toLocaleString()}
-                  </div>
+                <ProgressBar counts={detail.caseCounts} />
+                <div className="tr-run-stats">
+                  <span className="rst-p">✓ {detail.caseCounts.passed}</span>
+                  <span className="rst-f">✗ {detail.caseCounts.failed}</span>
+                  <span className="rst-b">⊘ {detail.caseCounts.blocked}</span>
+                  <span className="rst-s">⊘ {detail.caseCounts.skipped}</span>
+                  <span className="rst-n">○ {detail.caseCounts.notRun} not run</span>
                 </div>
               </div>
 
-              <div className="runs-meta-label" style={{ marginBottom: 8 }}>
-                Case counts
-              </div>
-              <div className="runs-counts">
-                <span className="runs-count-chip">total {detail.caseCounts.total}</span>
-                <span className="runs-count-chip">pass {detail.caseCounts.passed}</span>
-                <span className="runs-count-chip">fail {detail.caseCounts.failed}</span>
-                <span className="runs-count-chip">blocked {detail.caseCounts.blocked}</span>
-                <span className="runs-count-chip">skip {detail.caseCounts.skipped}</span>
-                <span className="runs-count-chip">not run {detail.caseCounts.notRun}</span>
-              </div>
+              <CountCards counts={detail.caseCounts} />
 
               {detail.status !== 'active' ? (
-                <div className="runs-banner info" style={{ margin: '0 0 16px' }}>
-                  Run is {detail.status} — result updates may be rejected by the API.
+                <div className="runs-banner info" style={{ margin: '0 0 12px' }}>
+                  Run is {detail.status} — result updates may be rejected.
                 </div>
               ) : null}
 
-              <div className="runs-meta-label" style={{ marginBottom: 8 }}>
-                Test run cases
-              </div>
-              <table className="runs-cases-table">
-                <thead>
-                  <tr>
-                    <th>Ref</th>
-                    <th>Title</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                    <th>Set result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.testRunCases.map((c) => (
-                    <tr key={c.testRunCaseId}>
-                      <td className="runs-case-ref">{c.caseRef}</td>
-                      <td>{c.title}</td>
-                      <td>{c.priority}</td>
-                      <td>
-                        <span className={statusPillClass(c.status)}>
-                          {statusLabel(c.status)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="runs-status-actions">
-                          {STATUS_OPTIONS.map((opt) => (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              className={`runs-status-btn${isActiveStatus(c.status, opt.value) ? ' active' : ''}`}
-                              disabled={
-                                updatingCaseId === c.testRunCaseId ||
-                                detail.status !== 'active'
-                              }
-                              onClick={() =>
-                                void handleStatusUpdate(c.testRunCaseId, opt.value)
-                              }
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      </td>
+              <div className="panel">
+                <div className="pnl-hd">
+                  <span className="pnl-ttl">Test run cases</span>
+                  <span className="pnl-ct">{detail.testRunCases.length}</span>
+                </div>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Ref</th>
+                      <th>Title</th>
+                      <th>Priority</th>
+                      <th>Status</th>
+                      <th>Result</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          ) : selectedRun ? (
-            <p className="runs-detail-empty">
-              {selectedRun.runRef} — could not load detail.
-            </p>
-          ) : null}
-        </main>
+                  </thead>
+                  <tbody>
+                    {detail.testRunCases.map((c) => (
+                      <tr key={c.testRunCaseId}>
+                        <td className="tmono">{c.caseRef}</td>
+                        <td>{c.title}</td>
+                        <td>
+                          <span className={priorityClass(c.priority)}>
+                            {c.priority}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={statusPillClass(c.status)}>
+                            <span className="pill-dot" />
+                            {statusLabel(c.status)}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="srb-row">
+                            {STATUS_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                className={`srb ${opt.srb}${isActiveStatus(c.status, opt.value) ? ' on' : ''}`}
+                                disabled={
+                                  updatingCaseId === c.testRunCaseId ||
+                                  detail.status !== 'active'
+                                }
+                                onClick={() =>
+                                  void handleStatusUpdate(c.testRunCaseId, opt.value)
+                                }
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <p className="tr-empty">Could not load run detail.</p>
+          )}
+        </section>
       </div>
-    </div>
+    </RunsAppShell>
   )
 }
