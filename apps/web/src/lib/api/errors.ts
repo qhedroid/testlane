@@ -7,6 +7,7 @@ import {
   UpdateCaseResultError,
   type UpdateCaseResultErrorCode,
 } from '@relay/db/services/execution'
+import { RunReadError, type RunReadErrorCode } from '@relay/db/services/run-read'
 import { jsonError } from './response'
 
 const RUN_CREATION_STATUS: Record<RunCreationErrorCode, number> = {
@@ -22,6 +23,11 @@ const RUN_CREATION_STATUS: Record<RunCreationErrorCode, number> = {
   TRANSACTION_FAILED: 500,
 }
 
+const RUN_READ_STATUS: Record<RunReadErrorCode, number> = {
+  INSUFFICIENT_PERMISSIONS: 403,
+  RUN_NOT_FOUND: 404,
+}
+
 const UPDATE_RESULT_STATUS: Record<UpdateCaseResultErrorCode, number> = {
   INSUFFICIENT_PERMISSIONS: 403,
   RUN_NOT_FOUND: 404,
@@ -34,6 +40,11 @@ const UPDATE_RESULT_STATUS: Record<UpdateCaseResultErrorCode, number> = {
 export function handleRouteError(err: unknown) {
   if (err instanceof ZodError) {
     return jsonError('VALIDATION_ERROR', 'Request validation failed', 400, err.flatten())
+  }
+
+  if (err instanceof RunReadError) {
+    const status = RUN_READ_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
   }
 
   if (err instanceof RunCreationError) {

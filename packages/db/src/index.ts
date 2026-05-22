@@ -44,6 +44,14 @@ export async function pingDatabase(): Promise<void> {
 /** Close the shared pool (for graceful shutdown in tests or scripts). */
 export { resolveUserById } from './auth/resolve-user'
 export { getRunProjectId } from './runs/lookup'
+export {
+  getRunDetail,
+  listProjectRuns,
+  RunReadError,
+  type CaseCountSummary,
+  type RunDetail,
+  type RunListItem,
+} from './runs/read'
 
 export async function closeDb(): Promise<void> {
   if (pool) {

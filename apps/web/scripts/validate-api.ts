@@ -5,9 +5,9 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { config as loadEnv } from 'dotenv'
-import { asc, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getDb, closeDb } from '@relay/db'
-import { testRunCases, testRuns } from '@relay/db/schema'
+import { testRuns } from '@relay/db/schema'
 import { ids, runSeed, seedRefs } from '@relay/db/seed'
 
 const monorepoRoot = path.resolve(process.cwd(), '../..')
@@ -26,6 +26,7 @@ async function request(
   options: {
     userId?: string
     body?: unknown
+    query?: Record<string, string>
   } = {},
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const headers: Record<string, string> = {
@@ -35,7 +36,12 @@ async function request(
     headers['x-relay-user-id'] = options.userId
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  let url = `${BASE_URL}${path}`
+  if (options.query) {
+    url += `?${new URLSearchParams(options.query).toString()}`
+  }
+
+  const res = await fetch(url, {
     method,
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
@@ -116,18 +122,60 @@ async function main(): Promise<void> {
   const run = (create.json.data as { id: string; runRef: string }) ?? {}
   assert(!!run.id, 'missing run id in response')
 
-  const db = getDb()
-  const cases = await db
-    .select({ id: testRunCases.id })
-    .from(testRunCases)
-    .where(eq(testRunCases.testRunId, run.id))
-    .orderBy(asc(testRunCases.position))
+  console.log('[api] GET /api/runs — missing projectId…')
+  const listNoProject = await request('GET', '/api/runs', {
+    userId: ids.users.viewer,
+  })
+  assert(listNoProject.status === 400, `expected 400, got ${listNoProject.status}`)
+
+  console.log('[api] GET /api/runs — viewer can list…')
+  const listRes = await request('GET', '/api/runs', {
+    userId: ids.users.viewer,
+    query: { projectId: seedRefs.projectId },
+  })
+  assert(listRes.status === 200, `expected 200, got ${listRes.status}`)
+  const runs = (listRes.json.data as { runs?: Array<{ id: string }> })?.runs ?? []
+  assert(
+    runs.some((r) => r.id === run.id),
+    'created run should appear in project run list',
+  )
+
+  console.log('[api] GET /api/runs/:runId — cross-project blocked…')
+  const wrongProject = await request('GET', `/api/runs/${run.id}`, {
+    userId: ids.users.viewer,
+    query: { projectId: ids.projects.etmf },
+  })
+  assert(wrongProject.status === 404, `expected 404, got ${wrongProject.status}`)
+  assert(
+    (wrongProject.json.error as { code?: string })?.code === 'RUN_NOT_FOUND',
+    'expected RUN_NOT_FOUND',
+  )
+
+  console.log('[api] GET /api/runs/:runId — viewer can read detail…')
+  const detailRes = await request('GET', `/api/runs/${run.id}`, {
+    userId: ids.users.viewer,
+    query: { projectId: seedRefs.projectId },
+  })
+  assert(detailRes.status === 200, `expected 200, got ${detailRes.status}`)
+  const detail = detailRes.json.data as {
+    testRunCases?: Array<{ testRunCaseId: string }>
+    caseCounts?: { total: number }
+  }
+  assert(
+    (detail.testRunCases?.length ?? 0) >= 2,
+    'detail should include test run cases',
+  )
+  assert(!!detail.testRunCases?.[0]?.testRunCaseId, 'testRunCaseId required for result API')
+  assert((detail.caseCounts?.total ?? 0) >= 2, 'caseCounts.total should match cases')
+
+  const cases = detail.testRunCases!
+  const runCaseIdFromDetail = cases[0].testRunCaseId
   assert(cases.length >= 2, 'expected at least 2 run cases')
 
   console.log('[api] POST result — update to pass…')
   const passRes = await request(
     'POST',
-    `/api/runs/${run.id}/cases/${cases[0].id}/result`,
+    `/api/runs/${run.id}/cases/${runCaseIdFromDetail}/result`,
     {
       userId: ids.users.priya,
       body: { status: 'pass' },
@@ -142,7 +190,7 @@ async function main(): Promise<void> {
   console.log('[api] POST result — update to fail with comment…')
   const failRes = await request(
     'POST',
-    `/api/runs/${run.id}/cases/${cases[1].id}/result`,
+    `/api/runs/${run.id}/cases/${cases[1].testRunCaseId}/result`,
     {
       userId: ids.users.priya,
       body: {
@@ -156,7 +204,7 @@ async function main(): Promise<void> {
   console.log('[api] POST result — viewer blocked…')
   const viewerUpdate = await request(
     'POST',
-    `/api/runs/${run.id}/cases/${cases[0].id}/result`,
+    `/api/runs/${run.id}/cases/${runCaseIdFromDetail}/result`,
     {
       userId: ids.users.viewer,
       body: { status: 'blocked' },
@@ -167,7 +215,7 @@ async function main(): Promise<void> {
   console.log('[api] POST result — invalid payload…')
   const invalidUpdate = await request(
     'POST',
-    `/api/runs/${run.id}/cases/${cases[0].id}/result`,
+    `/api/runs/${run.id}/cases/${runCaseIdFromDetail}/result`,
     {
       userId: ids.users.priya,
       body: { status: 'invalid_status' },
@@ -176,6 +224,7 @@ async function main(): Promise<void> {
   assert(invalidUpdate.status === 400, `expected 400, got ${invalidUpdate.status}`)
 
   console.log('[api] POST result — sealed run blocked…')
+  const db = getDb()
   await db
     .update(testRuns)
     .set({
@@ -187,7 +236,7 @@ async function main(): Promise<void> {
 
   const sealedRes = await request(
     'POST',
-    `/api/runs/${run.id}/cases/${cases[0].id}/result`,
+    `/api/runs/${run.id}/cases/${runCaseIdFromDetail}/result`,
     {
       userId: ids.users.priya,
       body: { status: 'blocked' },

@@ -26,7 +26,7 @@
 | RBAC model | Platform roles: `super_admin`, `admin`, `contributor`, `viewer` |
 | TestRunService.create() | Wired to `@relay/db` runtime; validated via `pnpm db:validate-create-run` |
 | ExecutionService.updateCaseResult() | Wired; validated via `pnpm db:validate-update-case-result` |
-| Internal HTTP API | `GET /api/health`, `POST /api/runs`, `POST /api/runs/:runId/cases/:runCaseId/result`; contract in `api-contracts.md`; `pnpm api:validate` |
+| Internal HTTP API | Health, `GET/POST /api/runs`, `GET /api/runs/:runId`, case result POST; contract in `api-contracts.md`; `pnpm api:validate` |
 | Interactive prototype | `mockup/Relay_Prototype_v1.2.html` (unchanged, no build step) |
 
 ### Intentionally deferred
@@ -259,7 +259,7 @@ docker compose exec mysql mysql -u relay -prelay relay -e \
 
 ### Next implementation phase
 
-**Read APIs for frontend** (run list/detail) and/or **run sealing HTTP** — UI screens still deferred. API contract: `docs/implementation/api-contracts.md`.
+**Run sealing HTTP** and plans/case library reads — UI screens still deferred. API contract: `docs/implementation/api-contracts.md`.
 
 ```bash
 pnpm dev
@@ -269,6 +269,7 @@ pnpm api:validate
 ### Completed in this phase
 
 - API contract documentation (`docs/implementation/api-contracts.md`)
+- Read APIs: `GET /api/runs`, `GET /api/runs/:runId`
 - Thin Next.js routes with Zod validation and standard JSON errors
 - Temporary dev auth via `x-relay-user-id` header
 

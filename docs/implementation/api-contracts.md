@@ -1,8 +1,8 @@
 # Relay — Internal API Contracts (Phase 1)
 
-**Status:** Minimal write API + health check. No product UI, no session auth, no read/list endpoints yet.
+**Status:** Health, run read/list, run spawn, and case result update. No product UI, no session auth, no plans/cases library reads yet.
 
-This document is the contract for frontend and integration work. Route handlers in `apps/web/src/app/api/` are thin wrappers; business rules live in `packages/db/services/`.
+This document is the contract for frontend and integration work. Route handlers in `apps/web/src/app/api/` are thin wrappers; business rules live in `packages/db/services/` and `packages/db/src/runs/`.
 
 *Last updated: May 2026*
 
@@ -59,17 +59,17 @@ Service types use `Date`; JSON responses serialize them as **ISO 8601 strings**.
 
 ## Temporary authentication (local dev)
 
-There is **no login, cookie, or bearer token** yet. Mutating routes resolve the actor from a development header:
+There is **no login, cookie, or bearer token** yet. All `/api/runs` routes (except health) resolve the actor from a development header:
 
 | Header | Required | Description |
 |--------|----------|-------------|
-| `x-relay-user-id` | Yes (mutating routes) | ULID of an active seeded `users` row |
+| `x-relay-user-id` | Yes (`/api/runs` routes) | ULID of an active seeded `users` row |
 
 | HTTP | `code` | When |
 |------|--------|------|
 | 401 | `UNAUTHORIZED` | Header missing, empty, or ULID not found / inactive |
 
-**Frontend implication:** Until NextAuth/SSO exists, the app shell should attach this header on every mutating `fetch` (e.g. from a dev user picker or env default). Do not treat this as a production security model.
+**Frontend implication:** Until NextAuth/SSO exists, attach this header on every `/api/runs` `fetch` (e.g. from a dev user picker or env default). Do not treat this as a production security model.
 
 `GET /api/health` does **not** require the header.
 
@@ -83,6 +83,8 @@ Roles (highest wins): `super_admin` > `admin` > `contributor` > `viewer`.
 
 | Endpoint | Minimum effective role |
 |----------|------------------------|
+| `GET /api/runs` | **viewer** |
+| `GET /api/runs/:runId` | **viewer** |
 | `POST /api/runs` | **admin** (global or project) |
 | `POST /api/runs/.../result` | **contributor** |
 
@@ -158,6 +160,156 @@ curl -s http://localhost:3000/api/health
 
 ---
 
+## GET /api/runs
+
+Project-scoped run list with per-run case count summary. Implemented by `listProjectRuns()` in `packages/db/src/runs/read.ts`.
+
+### Request
+
+| | |
+|--|--|
+| Method | `GET` |
+| Path | `/api/runs` |
+| Headers | `x-relay-user-id` |
+
+#### Query parameters
+
+| Param | Required | Default | Notes |
+|-------|----------|---------|-------|
+| `projectId` | Yes | — | 26-char ULID |
+| `status` | No | — | `active`, `stalled`, `sealed`, or `archived` |
+| `limit` | No | `20` | Integer 1–100 |
+
+Results are ordered by `createdAt` descending (newest first).
+
+#### Example
+
+```bash
+curl -s "http://localhost:3000/api/runs?projectId=01SEED00000000000000000010&limit=20" \
+  -H "x-relay-user-id: 01SEED00000000000000000007"
+```
+
+### Success — 200
+
+```json
+{
+  "data": {
+    "runs": [
+      {
+        "id": "01KS82675M2CCD156MGZP87E1Z",
+        "runRef": "RUN-0001",
+        "title": "PLAN-001 — 22 May 2026",
+        "status": "active",
+        "environment": null,
+        "createdAt": "2026-05-22T13:01:35.123Z",
+        "caseCounts": {
+          "total": 4,
+          "passed": 1,
+          "failed": 0,
+          "blocked": 0,
+          "skipped": 0,
+          "notRun": 3
+        }
+      }
+    ]
+  }
+}
+```
+
+`caseCounts.skipped` aggregates DB status `skip`.
+
+### Errors
+
+| HTTP | `code` | Typical cause |
+|------|--------|----------------|
+| 400 | `VALIDATION_ERROR` | Missing/invalid `projectId`, `status`, or `limit` |
+| 401 | `UNAUTHORIZED` | Missing or invalid header |
+| 403 | `INSUFFICIENT_PERMISSIONS` | Effective role below viewer for project |
+| 500 | `INTERNAL_ERROR` | Unhandled exception |
+
+---
+
+## GET /api/runs/[runId]
+
+Run metadata, case result summary, and execution case list (includes `testRunCaseId` for result updates). Implemented by `getRunDetail()`.
+
+### Request
+
+| | |
+|--|--|
+| Method | `GET` |
+| Path | `/api/runs/{runId}` |
+| Headers | `x-relay-user-id` |
+
+#### Query parameters
+
+| Param | Required | Notes |
+|-------|----------|-------|
+| `projectId` | Yes | Must match the run’s project; wrong project → **404** (no cross-project leakage) |
+
+#### Example
+
+```bash
+curl -s "http://localhost:3000/api/runs/RUN_ULID?projectId=01SEED00000000000000000010" \
+  -H "x-relay-user-id: 01SEED00000000000000000007"
+```
+
+### Success — 200
+
+```json
+{
+  "data": {
+    "id": "01KS82675M2CCD156MGZP87E1Z",
+    "runRef": "RUN-0001",
+    "title": "PLAN-001 — 22 May 2026",
+    "status": "active",
+    "environment": null,
+    "createdAt": "2026-05-22T13:01:35.123Z",
+    "testPlanId": "01SEED00000000000000000400",
+    "projectId": "01SEED00000000000000000010",
+    "isStalled": false,
+    "caseCounts": {
+      "total": 4,
+      "passed": 0,
+      "failed": 0,
+      "blocked": 0,
+      "skipped": 0,
+      "notRun": 4
+    },
+    "testRunCases": [
+      {
+        "testRunCaseId": "01KS82675M794XJ0A1JDMH7M4N2C",
+        "originalTestCaseId": "01SEED00000000000000000200",
+        "caseRef": "TC-1001",
+        "title": "Create study",
+        "priority": "critical",
+        "type": "functional",
+        "assignedTo": null,
+        "status": "not_run",
+        "comment": null,
+        "executedBy": null,
+        "executedAt": null,
+        "position": 0
+      }
+    ]
+  }
+}
+```
+
+Cases are ordered by `position` ascending.
+
+### Errors
+
+| HTTP | `code` | Typical cause |
+|------|--------|----------------|
+| 400 | `VALIDATION_ERROR` | Missing/invalid `projectId` |
+| 401 | `UNAUTHORIZED` | Missing or invalid header |
+| 403 | `INSUFFICIENT_PERMISSIONS` | Below viewer for project |
+| 404 | `RUN_NOT_FOUND` | Run missing or `projectId` does not match run |
+| 500 | `INTERNAL_ERROR` | Unhandled exception |
+
+---
+
 ## POST /api/runs
 
 Spawn a test run from a plan (atomic snapshot transaction). Implemented by `TestRunService.create()`.
@@ -212,7 +364,7 @@ curl -s -X POST http://localhost:3000/api/runs \
 }
 ```
 
-Use `data.id` as `runId` and query `test_run_cases` (or a future GET endpoint) for `runCaseId` values when updating results.
+Use `data.id` as `runId`. Call `GET /api/runs/:runId?projectId=...` for `testRunCases[].testRunCaseId` when updating results.
 
 ### Errors
 
@@ -345,26 +497,23 @@ With comment:
 
 ---
 
-## Frontend integration (read path — next)
+## Frontend integration
 
-The current API is **write-oriented**. There are no list/detail GET routes for runs, plans, or cases yet.
+Recommended first steps (no full screens required):
 
-Recommended first frontend steps (no full screens required):
-
-1. **Shared client helper** — `fetch` wrapper that sets `Content-Type` and `x-relay-user-id` from dev config.
+1. **Shared client helper** — `fetch` wrapper that sets `Content-Type` and `x-relay-user-id` on all `/api/runs` calls.
 2. **Error parser** — map `{ error.code, error.message, error.details }` to user-visible messages.
-3. **Health gate** — call `GET /api/health` before mutations; surface `degraded` when MySQL is down.
-4. **Create → execute flow** — `POST /api/runs` then `POST .../result` using IDs from the create response (until GET run detail exists).
+3. **Health gate** — `GET /api/health` before app mutations; surface `degraded` when MySQL is down.
+4. **Run discovery flow** — `GET /api/runs?projectId=...` → pick run → `GET /api/runs/:runId?projectId=...` → `POST .../result` with `testRunCaseId`.
+5. **Create flow** — `POST /api/runs` → `GET /api/runs/:runId` (or list refresh) for case IDs.
 
-Planned read endpoints (not implemented; names indicative):
+Still deferred for HTTP (use server components or a later phase):
 
-| Need | Suggested route |
-|------|-----------------|
-| Run list | `GET /api/projects/:projectId/runs` |
-| Run detail + cases | `GET /api/runs/:runId` |
-| Plans / cases (library) | TBD — align with prototype IA |
-
-Until those exist, read-only UI can use server components querying `@relay/db` directly, or temporary internal routes added in a dedicated phase.
+| Need | Status |
+|------|--------|
+| Test plans / case library reads | Not implemented |
+| Step-level execution | Not implemented |
+| Run seal / archive mutations | Not implemented |
 
 ---
 
@@ -380,7 +529,7 @@ pnpm build
 pnpm api:validate
 ```
 
-Automated coverage: `apps/web/scripts/validate-api.ts` (viewer blocked, invalid payload, create run, pass/fail result, sealed run).
+Automated coverage: `apps/web/scripts/validate-api.ts` (read list/detail, viewer access, cross-project blocked, create run, pass/fail result, sealed run).
 
 ---
 

@@ -26,3 +26,19 @@ export const updateCaseResultBodySchema = z.object({
 })
 
 export type UpdateCaseResultBody = z.infer<typeof updateCaseResultBodySchema>
+
+const runStatus = z.enum(['active', 'stalled', 'sealed', 'archived'])
+
+export const listRunsQuerySchema = z.object({
+  projectId: ulid,
+  status: runStatus.optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+})
+
+export type ListRunsQuery = z.infer<typeof listRunsQuerySchema>
+
+export const getRunDetailQuerySchema = z.object({
+  projectId: ulid,
+})
+
+export type GetRunDetailQuery = z.infer<typeof getRunDetailQuerySchema>

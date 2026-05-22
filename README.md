@@ -212,6 +212,14 @@ Then use seeded user IDs via `x-relay-user-id`:
 # Health
 curl -s http://localhost:3000/api/health | jq
 
+# List runs (viewer+ — Alex Viewer)
+curl -s "http://localhost:3000/api/runs?projectId=01SEED00000000000000000010" \
+  -H "x-relay-user-id: 01SEED00000000000000000007" | jq
+
+# Run detail (replace RUN_ID)
+curl -s "http://localhost:3000/api/runs/RUN_ID?projectId=01SEED00000000000000000010" \
+  -H "x-relay-user-id: 01SEED00000000000000000007" | jq
+
 # Create run (requires admin or super_admin — Shaun)
 curl -s -X POST http://localhost:3000/api/runs \
   -H "Content-Type: application/json" \
