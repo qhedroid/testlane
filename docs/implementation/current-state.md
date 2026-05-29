@@ -257,7 +257,17 @@ docker compose exec mysql mysql -u relay -prelay relay -e \
 
 ## 9. Next Immediate Task
 
-### Current milestone
+### Collaboration status
+
+**Execution Experience** milestone is committed and pushed to GitHub.
+
+- Commit: `8f84e3a` — *Complete execution experience workspace*
+- Remote: https://github.com/qhedroid/Relay.git
+- Repo is ready for collaborator onboarding once GitHub access is granted (see `docs/collaboration/`).
+
+**Next immediate focus:** collaboration setup, ticket-led delivery, and **v0.1 Execution Readiness** (UX polish, loading/empty states, RBAC clarity—not new product surfaces).
+
+### Current milestone (shipped)
 
 **Execution Experience** — slices 1–4 complete on `/runs`:
 
@@ -285,6 +295,10 @@ Dashboard, global search, auth providers, OpenSearch, Test Plans/Cases library U
 
 | Document | Use when |
 |----------|----------|
+| `docs/collaboration/getting-started.md` | New collaborator: clone, run, troubleshoot |
+| `docs/collaboration/working-agreement.md` | Branches, commits, PR expectations |
+| `docs/collaboration/github-setup.md` | GitHub project, labels, first issues |
+| `docs/collaboration/friend-handover.md` | Short handover for a technical friend |
 | `docs/architecture/relay-architecture-baseline.md` | Full architecture, schema domains, permission matrix |
 | `docs/architecture/TestRunService-design.md` | Run spawn flow, errors, transaction phases |
 | `docs/database/schema-rationale.md` | ULID, refs, snapshot design rationale |
