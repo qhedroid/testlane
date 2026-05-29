@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   createRun,
   fetchRunDetail,
@@ -10,65 +10,22 @@ import {
 } from '@/lib/relay/api-client'
 import {
   RELAY_CREATE_ACTOR_ID,
-  RELAY_TEST_PLAN_ID,
+  RELAY_DEV_ACTOR_ID,
+  relayCanMutate,
 } from '@/lib/relay/config'
 import type {
   CaseCounts,
   CaseResultStatusInput,
   RunDetail,
-  RunDetailCase,
   RunListItem,
 } from '@/lib/relay/types'
 import { RunsAppShell } from './RunsAppShell'
-
-const STATUS_OPTIONS: {
-  value: CaseResultStatusInput
-  label: string
-  srb: string
-}[] = [
-  { value: 'pass', label: 'Pass', srb: 'srb-p' },
-  { value: 'fail', label: 'Fail', srb: 'srb-f' },
-  { value: 'blocked', label: 'Blocked', srb: 'srb-b' },
-  { value: 'skipped', label: 'Skip', srb: 'srb-s' },
-  { value: 'not_run', label: 'Not run', srb: 'srb-n' },
-]
-
-function statusPillClass(status: RunDetailCase['status']): string {
-  if (status === 'skip') return 'pill p-skip'
-  return `pill p-${status}`
-}
-
-function statusLabel(status: RunDetailCase['status']): string {
-  if (status === 'skip') return 'Skipped'
-  if (status === 'not_run') return 'Not run'
-  return status.charAt(0).toUpperCase() + status.slice(1)
-}
-
-function runStatusPill(status: RunListItem['status']): string {
-  if (status === 'active') return 'pill p-active'
-  if (status === 'sealed' || status === 'archived') return 'pill p-sealed'
-  return 'pill p-not_run'
-}
-
-function priorityClass(
-  priority: RunDetailCase['priority'],
-): string {
-  const map = {
-    critical: 'pri pr-crit',
-    high: 'pri pr-high',
-    medium: 'pri pr-med',
-    low: 'pri pr-low',
-  } as const
-  return map[priority] ?? 'pri pr-low'
-}
-
-function isActiveStatus(
-  current: RunDetailCase['status'],
-  target: CaseResultStatusInput,
-): boolean {
-  if (target === 'skipped') return current === 'skip'
-  return current === target
-}
+import { CaseDetailPanel, apiStatusForCase } from './CaseDetailPanel'
+import { CaseListPane } from './CaseListPane'
+import {
+  filterCases,
+  type CaseStatusFilter,
+} from './run-case-utils'
 
 function progressSegments(counts: CaseCounts, total: number) {
   if (total === 0) return { pass: 0, fail: 0, blocked: 0, skip: 0 }
@@ -80,64 +37,47 @@ function progressSegments(counts: CaseCounts, total: number) {
   }
 }
 
-function CountCards({ counts }: { counts: CaseCounts }) {
-  const cards = [
-    { key: 'total', label: 'Total', value: counts.total, cls: '' },
-    { key: 'pass', label: 'Pass', value: counts.passed, cls: 'mc-pass' },
-    { key: 'fail', label: 'Fail', value: counts.failed, cls: 'mc-fail' },
-    { key: 'blocked', label: 'Blocked', value: counts.blocked, cls: 'mc-blocked' },
-    { key: 'skip', label: 'Skipped', value: counts.skipped, cls: 'mc-skip' },
-    { key: 'notRun', label: 'Not run', value: counts.notRun, cls: 'mc-notrun' },
-  ] as const
-
-  return (
-    <div className="met-row">
-      {cards.map((c) => (
-        <div key={c.key} className={`mc ${c.cls}`}>
-          <div className="mv">{c.value}</div>
-          <div className="ml">{c.label}</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ProgressBar({ counts }: { counts: CaseCounts }) {
-  const total = counts.total || 1
-  const seg = progressSegments(counts, counts.total)
-  const done = counts.passed + counts.failed + counts.blocked + counts.skipped
-  const pct = counts.total ? Math.round((done / counts.total) * 100) : 0
-
-  return (
-    <div className="tr-run-progress">
-      <span className="rl-pt">
-        {done} / {counts.total}
-      </span>
-      <div className="prog">
-        {seg.pass > 0 ? <div className="pg-p" style={{ width: `${seg.pass}%` }} /> : null}
-        {seg.fail > 0 ? <div className="pg-f" style={{ width: `${seg.fail}%` }} /> : null}
-        {seg.blocked > 0 ? (
-          <div className="pg-b" style={{ width: `${seg.blocked}%` }} />
-        ) : null}
-        {seg.skip > 0 ? <div className="pg-s" style={{ width: `${seg.skip}%` }} /> : null}
-      </div>
-      <span className="rl-pt">{pct}%</span>
-    </div>
-  )
+function runStatusPill(status: RunListItem['status']): string {
+  if (status === 'active') return 'pill p-active'
+  if (status === 'sealed' || status === 'archived') return 'pill p-sealed'
+  return 'pill p-not_run'
 }
 
 export function RunsScreen() {
   const [runs, setRuns] = useState<RunListItem[]>([])
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
   const [detail, setDetail] = useState<RunDetail | null>(null)
+  const [statusFilter, setStatusFilter] = useState<CaseStatusFilter>('all')
+  const [caseSearchQuery, setCaseSearchQuery] = useState('')
+  const [commentDraft, setCommentDraft] = useState('')
   const [listLoading, setListLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
-  const [updatingCaseId, setUpdatingCaseId] = useState<string | null>(null)
+  const [savingCase, setSavingCase] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createName, setCreateName] = useState('')
   const [createEnvironment, setCreateEnvironment] = useState('')
   const [creating, setCreating] = useState(false)
+
+  const filteredCases = useMemo(() => {
+    if (!detail) return []
+    return filterCases(detail.testRunCases, statusFilter, caseSearchQuery)
+  }, [detail, statusFilter, caseSearchQuery])
+
+  const selectedCase = useMemo(() => {
+    if (!detail || !selectedCaseId) return null
+    return (
+      detail.testRunCases.find((c) => c.testRunCaseId === selectedCaseId) ??
+      null
+    )
+  }, [detail, selectedCaseId])
+
+  const selectedIndex = selectedCase
+    ? filteredCases.findIndex((c) => c.testRunCaseId === selectedCase.testRunCaseId)
+    : -1
+
+  const canMutate = relayCanMutate(RELAY_DEV_ACTOR_ID)
 
   const loadDetail = useCallback(async (runId: string) => {
     setDetailLoading(true)
@@ -179,9 +119,31 @@ export function RunsScreen() {
 
   useEffect(() => {
     if (selectedRunId) {
+      setSelectedCaseId(null)
+      setStatusFilter('all')
+      setCaseSearchQuery('')
+      setCommentDraft('')
       void loadDetail(selectedRunId)
     }
   }, [selectedRunId, loadDetail])
+
+  useEffect(() => {
+    if (selectedCase) {
+      setCommentDraft(selectedCase.comment ?? '')
+    } else {
+      setCommentDraft('')
+    }
+  }, [selectedCase?.testRunCaseId, selectedCase?.comment])
+
+  useEffect(() => {
+    if (!selectedCaseId || !detail) return
+    const stillVisible = filteredCases.some(
+      (c) => c.testRunCaseId === selectedCaseId,
+    )
+    if (!stillVisible) {
+      setSelectedCaseId(null)
+    }
+  }, [filteredCases, selectedCaseId, detail])
 
   async function handleCreateRun(e: React.FormEvent) {
     e.preventDefault()
@@ -209,25 +171,45 @@ export function RunsScreen() {
     }
   }
 
-  async function handleStatusUpdate(
+  async function refreshAfterCaseUpdate(runId: string) {
+    await loadDetail(runId)
+    const refreshed = await fetchRunList()
+    setRuns(refreshed)
+  }
+
+  async function handleCaseUpdate(
     testRunCaseId: string,
     status: CaseResultStatusInput,
+    comment?: string | null,
   ) {
     if (!selectedRunId) return
-    setUpdatingCaseId(testRunCaseId)
+    setSavingCase(true)
     setError(null)
     try {
-      await updateCaseResult(selectedRunId, testRunCaseId, status)
-      await loadDetail(selectedRunId)
-      const refreshed = await fetchRunList()
-      setRuns(refreshed)
+      await updateCaseResult(selectedRunId, testRunCaseId, status, { comment })
+      await refreshAfterCaseUpdate(selectedRunId)
     } catch (err) {
       setError(
         err instanceof RelayApiError ? err.message : 'Failed to update case result',
       )
     } finally {
-      setUpdatingCaseId(null)
+      setSavingCase(false)
     }
+  }
+
+  function handleSaveComment() {
+    if (!selectedCase || !selectedRunId) return
+    const trimmed = commentDraft.trim()
+    void handleCaseUpdate(
+      selectedCase.testRunCaseId,
+      apiStatusForCase(selectedCase),
+      trimmed || null,
+    )
+  }
+
+  function selectRun(runId: string) {
+    if (runId === selectedRunId) return
+    setSelectedRunId(runId)
   }
 
   const topbarActions = (
@@ -251,6 +233,13 @@ export function RunsScreen() {
   return (
     <RunsAppShell topbarActions={topbarActions}>
       {error ? <div className="runs-banner error">{error}</div> : null}
+      {!canMutate ? (
+        <div className="runs-banner info">
+          Viewing as reader — execution updates are disabled. Set{' '}
+          <code>NEXT_PUBLIC_RELAY_USER_ID</code> to a contributor/admin seed user
+          to execute.
+        </div>
+      ) : null}
 
       <div className="tr-lay">
         <aside className="rl-pane">
@@ -338,7 +327,7 @@ export function RunsScreen() {
                     key={run.id}
                     type="button"
                     className={`rl-item${selectedRunId === run.id ? ' on' : ''}`}
-                    onClick={() => setSelectedRunId(run.id)}
+                    onClick={() => selectRun(run.id)}
                   >
                     <div className="rl-ref">{run.runRef}</div>
                     <div className="rl-nm">{run.title}</div>
@@ -368,110 +357,64 @@ export function RunsScreen() {
           </div>
         </aside>
 
-        <section className="tr-detail">
-          {!selectedRunId ? (
-            <p className="tr-empty">Select a run from the list.</p>
-          ) : detailLoading && !detail ? (
-            <p className="tr-empty">Loading run…</p>
-          ) : detail ? (
-            <div className="tr-detail-scroll">
-              <div className="tr-run-hd">
-                <div className="tmono" style={{ marginBottom: 4 }}>
-                  {detail.runRef}
-                </div>
-                <h2 className="tr-run-title">{detail.title}</h2>
-                <div className="tr-run-meta">
-                  <span className={runStatusPill(detail.status)}>
-                    <span className="pill-dot" />
-                    {detail.status}
-                  </span>
-                  {detail.isStalled ? <span>Stalled</span> : null}
-                  <span>
-                    Env: {detail.environment ?? '—'}
-                  </span>
-                  <span>
-                    Created: {new Date(detail.createdAt).toLocaleString()}
-                  </span>
-                </div>
-                <ProgressBar counts={detail.caseCounts} />
-                <div className="tr-run-stats">
-                  <span className="rst-p">✓ {detail.caseCounts.passed}</span>
-                  <span className="rst-f">✗ {detail.caseCounts.failed}</span>
-                  <span className="rst-b">⊘ {detail.caseCounts.blocked}</span>
-                  <span className="rst-s">⊘ {detail.caseCounts.skipped}</span>
-                  <span className="rst-n">○ {detail.caseCounts.notRun} not run</span>
-                </div>
+        {!selectedRunId ? (
+          <p className="tr-empty tr-empty-grow">Select a run from the list.</p>
+        ) : detailLoading && !detail ? (
+          <p className="tr-empty tr-empty-grow">Loading run…</p>
+        ) : detail ? (
+          <>
+            <CaseListPane
+              detail={detail}
+              statusFilter={statusFilter}
+              searchQuery={caseSearchQuery}
+              selectedCaseId={selectedCaseId}
+              onStatusFilterChange={setStatusFilter}
+              onSearchQueryChange={setCaseSearchQuery}
+              onSelectCase={setSelectedCaseId}
+            />
+            {selectedCase ? (
+              <CaseDetailPanel
+                detail={detail}
+                selectedCase={selectedCase}
+                canMutate={canMutate}
+                commentDraft={commentDraft}
+                saving={savingCase}
+                onCommentDraftChange={setCommentDraft}
+                onStatusUpdate={(status, comment) =>
+                  void handleCaseUpdate(selectedCase.testRunCaseId, status, comment)
+                }
+                onSaveComment={handleSaveComment}
+                onPrevCase={() => {
+                  if (selectedIndex > 0) {
+                    setSelectedCaseId(
+                      filteredCases[selectedIndex - 1].testRunCaseId,
+                    )
+                  }
+                }}
+                onNextCase={() => {
+                  if (
+                    selectedIndex >= 0 &&
+                    selectedIndex < filteredCases.length - 1
+                  ) {
+                    setSelectedCaseId(
+                      filteredCases[selectedIndex + 1].testRunCaseId,
+                    )
+                  }
+                }}
+                hasPrev={selectedIndex > 0}
+                hasNext={
+                  selectedIndex >= 0 && selectedIndex < filteredCases.length - 1
+                }
+              />
+            ) : (
+              <div className="ed-pane ed-pane-empty">
+                <p className="tr-empty">Select a case to view execution detail.</p>
               </div>
-
-              <CountCards counts={detail.caseCounts} />
-
-              {detail.status !== 'active' ? (
-                <div className="runs-banner info" style={{ margin: '0 0 12px' }}>
-                  Run is {detail.status} — result updates may be rejected.
-                </div>
-              ) : null}
-
-              <div className="panel">
-                <div className="pnl-hd">
-                  <span className="pnl-ttl">Test run cases</span>
-                  <span className="pnl-ct">{detail.testRunCases.length}</span>
-                </div>
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th>Ref</th>
-                      <th>Title</th>
-                      <th>Priority</th>
-                      <th>Status</th>
-                      <th>Result</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detail.testRunCases.map((c) => (
-                      <tr key={c.testRunCaseId}>
-                        <td className="tmono">{c.caseRef}</td>
-                        <td>{c.title}</td>
-                        <td>
-                          <span className={priorityClass(c.priority)}>
-                            {c.priority}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={statusPillClass(c.status)}>
-                            <span className="pill-dot" />
-                            {statusLabel(c.status)}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="srb-row">
-                            {STATUS_OPTIONS.map((opt) => (
-                              <button
-                                key={opt.value}
-                                type="button"
-                                className={`srb ${opt.srb}${isActiveStatus(c.status, opt.value) ? ' on' : ''}`}
-                                disabled={
-                                  updatingCaseId === c.testRunCaseId ||
-                                  detail.status !== 'active'
-                                }
-                                onClick={() =>
-                                  void handleStatusUpdate(c.testRunCaseId, opt.value)
-                                }
-                              >
-                                {opt.label}
-                              </button>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <p className="tr-empty">Could not load run detail.</p>
-          )}
-        </section>
+            )}
+          </>
+        ) : (
+          <p className="tr-empty tr-empty-grow">Could not load run detail.</p>
+        )}
       </div>
     </RunsAppShell>
   )

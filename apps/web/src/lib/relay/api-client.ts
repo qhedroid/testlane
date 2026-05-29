@@ -91,11 +91,23 @@ export async function fetchRunDetail(
   )
 }
 
+export interface UpdateCaseResultOptions {
+  comment?: string | null
+}
+
 export async function updateCaseResult(
   runId: string,
   testRunCaseId: string,
   status: CaseResultStatusInput,
+  options: UpdateCaseResultOptions = {},
 ): Promise<void> {
+  const body: { status: CaseResultStatusInput; comment?: string | null } = {
+    status,
+  }
+  if (options.comment !== undefined) {
+    body.comment = options.comment
+  }
+
   await parseResponse<unknown>(
     await fetch(`/api/runs/${runId}/cases/${testRunCaseId}/result`, {
       method: 'POST',
@@ -103,7 +115,7 @@ export async function updateCaseResult(
         ...actorHeaders(),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(body),
     }),
   )
 }

@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
-import { testRunCases, testRuns, type TestRun } from '../../schema'
+import { testRunCases, testRuns, users, type TestRun } from '../../schema'
 import {
   assertMinProjectRole,
   InsufficientPermissionsError,
@@ -45,11 +45,15 @@ export interface RunDetailCaseItem {
   title: string
   priority: (typeof testRunCases.$inferSelect)['snapshotPriority']
   type: (typeof testRunCases.$inferSelect)['snapshotType']
+  module: string | null
   assignedTo: string | null
+  assignedToName: string | null
   status: (typeof testRunCases.$inferSelect)['status']
   comment: string | null
   executedBy: string | null
+  executedByName: string | null
   executedAt: Date | null
+  updatedAt: Date
   position: number
 }
 
@@ -255,7 +259,7 @@ export async function getRunDetail(input: GetRunDetailInput): Promise<RunDetail>
     throw new RunReadError(`Test run not found: ${runId}`, 'RUN_NOT_FOUND')
   }
 
-  const cases = await db
+  const caseRows = await db
     .select({
       testRunCaseId: testRunCases.id,
       originalTestCaseId: testRunCases.testCaseId,
@@ -263,16 +267,43 @@ export async function getRunDetail(input: GetRunDetailInput): Promise<RunDetail>
       title: testRunCases.snapshotTitle,
       priority: testRunCases.snapshotPriority,
       type: testRunCases.snapshotType,
+      module: testRunCases.snapshotFolderName,
       assignedTo: testRunCases.assignedTo,
       status: testRunCases.status,
       comment: testRunCases.comment,
       executedBy: testRunCases.executedBy,
       executedAt: testRunCases.executedAt,
+      updatedAt: testRunCases.updatedAt,
       position: testRunCases.position,
     })
     .from(testRunCases)
     .where(eq(testRunCases.testRunId, runId))
     .orderBy(testRunCases.position)
+
+  const userIds = [
+    ...new Set(
+      caseRows.flatMap((c) =>
+        [c.assignedTo, c.executedBy].filter((id): id is string => !!id),
+      ),
+    ),
+  ]
+
+  const nameById = new Map<string, string>()
+  if (userIds.length > 0) {
+    const userRows = await db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(inArray(users.id, userIds))
+    for (const u of userRows) {
+      nameById.set(u.id, u.name)
+    }
+  }
+
+  const cases: RunDetailCaseItem[] = caseRows.map((c) => ({
+    ...c,
+    assignedToName: c.assignedTo ? (nameById.get(c.assignedTo) ?? null) : null,
+    executedByName: c.executedBy ? (nameById.get(c.executedBy) ?? null) : null,
+  }))
 
   return {
     ...run,

@@ -24,11 +24,15 @@ export interface RunDetailCase {
   title: string
   priority: 'critical' | 'high' | 'medium' | 'low'
   type: string
+  module: string | null
   assignedTo: string | null
+  assignedToName: string | null
   status: 'not_run' | 'pass' | 'fail' | 'blocked' | 'skip'
   comment: string | null
   executedBy: string | null
+  executedByName: string | null
   executedAt: string | null
+  updatedAt: string
   position: number
 }
 

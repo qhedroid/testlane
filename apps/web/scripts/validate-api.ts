@@ -201,6 +201,27 @@ async function main(): Promise<void> {
   )
   assert(failRes.status === 200, `expected 200, got ${failRes.status}`)
 
+  console.log('[api] GET detail — comment persisted on run case…')
+  const detailAfterComment = await request(
+    'GET',
+    `/api/runs/${run.id}`,
+    {
+      userId: ids.users.priya,
+      query: { projectId: seedRefs.projectId },
+    },
+  )
+  assert(detailAfterComment.status === 200, `expected 200, got ${detailAfterComment.status}`)
+  const casesAfter = (
+    detailAfterComment.json.data as {
+      testRunCases?: Array<{ testRunCaseId: string; comment: string | null }>
+    }
+  ).testRunCases
+  const commented = casesAfter?.find((c) => c.testRunCaseId === cases[1].testRunCaseId)
+  assert(
+    commented?.comment === 'API validation failure note',
+    `expected persisted comment, got ${commented?.comment ?? 'null'}`,
+  )
+
   console.log('[api] POST result — viewer blocked…')
   const viewerUpdate = await request(
     'POST',

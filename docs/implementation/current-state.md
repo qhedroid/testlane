@@ -17,7 +17,7 @@
 | Area | Status |
 |------|--------|
 | Monorepo bootstrap | pnpm workspaces, `@relay/web`, `@relay/db` |
-| Next.js app shell | App Router, `/api/health`, `/runs` with Relay-style shell + data integration |
+| Next.js app shell | App Router, `/api/health`, `/runs` three-pane execution workspace |
 | Drizzle schema | 20-table MySQL model in `packages/db/schema.ts` |
 | Migrations | `0000` initial schema, `0001` capability RBAC roles |
 | Docker local stack | MySQL 8.0 + OpenSearch 2.18 |
@@ -160,7 +160,7 @@ curl http://localhost:3000/api/health
 | **Append-only audit log** | `audit_log` — INSERT only; no UPDATE/DELETE at service layer |
 | **Service-layer architecture** | Business logic in services under `packages/db/services/` (future: `apps/web` imports); API routes stay thin |
 | **ULID primary keys** | 26-char time-ordered IDs generated in application code, not DB auto-increment |
-| **Split-pane operational UX** | Prototype demonstrates list + detail execution workspace; UI not implemented in Next.js yet |
+| **Split-pane operational UX** | `/runs` three-pane layout: run list, case list (filter/search), case detail (status + comments) |
 | **RBAC at capability level** | Four platform roles; enforced in middleware (future) and services (e.g. spawn gate on `TestRunService`) |
 | **Project = module** | CTMS, eTMF, etc. are `projects` in the data model; UI may say "module" contextually |
 | **MySQL primary, OpenSearch for search** | No NoSQL at MVP; search index is denormalised sync from MySQL writes |
@@ -257,25 +257,27 @@ docker compose exec mysql mysql -u relay -prelay relay -e \
 
 ## 9. Next Immediate Task
 
+### Current milestone
+
+**Execution Experience** — slices 1–4 complete on `/runs`:
+
+- Three-pane layout (runs · case list · case detail)
+- Client-side status filters and case search (ref, title, assignee, suite)
+- Result updates and execution comments via `POST .../result` (existing `test_run_cases.comment`)
+- Read-only UI when dev actor is viewer (`NEXT_PUBLIC_RELAY_USER_ID` = seed viewer ULID)
+
 ### Next implementation phase
 
-**Run sealing HTTP** and plans/case library reads — UI screens still deferred. API contract: `docs/implementation/api-contracts.md`.
+**Activity/history read API**, step-level execution, run sealing HTTP — not started. API contract: `docs/implementation/api-contracts.md`.
 
 ```bash
 pnpm dev
 pnpm api:validate
 ```
 
-### Completed in this phase
-
-- API contract documentation (`docs/implementation/api-contracts.md`)
-- Read APIs: `GET /api/runs`, `GET /api/runs/:runId`
-- Thin Next.js routes with Zod validation and standard JSON errors
-- Temporary dev auth via `x-relay-user-id` header
-
 ### Explicitly deferred
 
-**UI implementation remains intentionally out of scope.**
+Dashboard, global search, auth providers, OpenSearch, Test Plans/Cases library UI, steps/defects tabs, audit activity UI, keyboard shortcuts, resizable panes.
 
 ---
 
