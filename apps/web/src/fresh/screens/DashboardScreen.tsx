@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { RunDonut } from '../components/RunDonut'
+import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { ATTENTION_ITEMS, COVERAGE_ITEMS, DEFECT_NAMES, RUN_CARDS } from '../data/seed'
 import type { RunCard } from '../data/types'
@@ -198,25 +198,22 @@ function RunCardItem({
   return (
     <div className={`run-card${run.stalled ? ' stalled' : ''}`}>
       <div className="rct" onClick={() => onToggle()}>
-        <RunDonut pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} />
+        <RunStatusInfographic pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} size={96} />
         <div className="rct-info">
           <div className="rct-name">{run.name}</div>
           <div className="rct-ctx">{run.plan} &nbsp;·&nbsp; {run.env}</div>
-          <div className="rct-counts">
-            <span className="rct-count"><span className="rct-dot" style={{ background: '#2E7D32' }} /><span style={{ color: '#2E7D32' }}>{run.pass}</span></span>
-            <span className="rct-count"><span className="rct-dot" style={{ background: '#C62828' }} /><span style={{ color: '#C62828' }}>{run.fail}</span></span>
-            {run.blocked > 0 ? (
-              <span className="rct-count"><span className="rct-dot" style={{ background: '#E65100' }} /><span style={{ color: '#E65100' }}>{run.blocked}</span></span>
-            ) : null}
-            <span className="rct-count"><span className="rct-dot" style={{ background: '#B4C4D4' }} /><span style={{ color: 'var(--text3)' }}>{run.notrun}</span></span>
-          </div>
         </div>
         <div className="rct-right">
           <span className={`pill ${run.stalled ? 'p-block' : 'p-act'}`} style={{ fontSize: 9.5, padding: '1px 5px' }}>
             <span className="pill-dot" />
             {run.stalled ? 'Stalled' : 'Active'}
           </span>
-          <button type="button" className={`expand-btn${expanded ? ' open' : ''}`} onClick={onToggle} title={expanded ? 'Collapse' : 'Expand'}>
+          <button
+            type="button"
+            className={`expand-btn${expanded ? ' open' : ''}`}
+            onClick={(e) => { e.stopPropagation(); onToggle(e) }}
+            title={expanded ? 'Collapse' : 'Expand'}
+          >
             <i className="ti ti-chevron-down" />
           </button>
         </div>
@@ -260,13 +257,15 @@ function RunCardItem({
             </div>
           </div>
           <div className={`rcd-pane${tab === 'assignees' ? ' on' : ''}`}>
-            {run.assignees.map((a) => (
+            {run.assignees.length > 0 ? run.assignees.map((a) => (
               <div key={a.n} className="assignee-row">
                 <div className="av-mini">{a.n.split(' ').map((x) => x[0]).join('').slice(0, 2)}</div>
                 <span style={{ color: 'var(--text)', fontWeight: 500 }}>{a.n}</span>
                 <span style={{ color: 'var(--text3)', fontSize: 10.5, marginLeft: 'auto' }}>QA Team</span>
               </div>
-            ))}
+            )) : (
+              <div className="rcd-empty">No data — no assignees on this run.</div>
+            )}
           </div>
           <div className={`rcd-pane${tab === 'defects' ? ' on' : ''}`}>
             {run.defects.length ? run.defects.map((d) => (
