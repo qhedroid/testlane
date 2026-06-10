@@ -332,9 +332,10 @@ export function RunsScreen() {
                 blocked={summary.blocked}
                 notrun={summary.notRun}
                 skipped={summary.skipped}
-                size={72}
+                size={144}
                 compact
                 showCompleteLabel={false}
+                interactive
               />
             </div>
           </div>
@@ -380,7 +381,7 @@ export function RunsScreen() {
           </div>
         </div>
 
-        <div className="resizer-v" data-resize="run-list" data-min="220" data-max="420" />
+        <div className="resizer-v" data-resize="run-list" data-min="220" data-max-half="true" />
 
         {edVisible ? (
           <div className={`ed-pane${edFullscreen ? ' fs' : ''}`}>

@@ -559,6 +559,10 @@
   border-top: 1px solid var(--border);
 }
 
+.runs-v12 .ec-run-summary .run-status-info.compact .run-status-list {
+  min-height: 144px;
+}
+
 .runs-v12 .ec-case-right {
   display: flex;
   flex-direction: column;
@@ -569,15 +573,28 @@
 }
 
 .runs-v12 .ec-cmt-badge {
+  position: relative;
   font-size: 9px;
   font-weight: 600;
   font-family: var(--mono);
   background: var(--accent-lt);
   color: var(--accent);
-  border: 1px solid rgba(24, 95, 165, 0.25);
-  border-radius: 8px;
-  padding: 0 5px;
-  line-height: 14px;
+  border: 1px solid rgba(24, 95, 165, 0.3);
+  border-radius: 7px 7px 7px 3px;
+  padding: 1px 6px 2px;
+  line-height: 13px;
+}
+
+.runs-v12 .ec-cmt-badge::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  bottom: -4px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid rgba(24, 95, 165, 0.3);
+  border-right: 4px solid transparent;
+  border-left: 0 solid transparent;
 }
 
 .runs-v12 .ec-status-pill {

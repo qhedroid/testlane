@@ -11,7 +11,8 @@ export function useResizablePanes() {
 
       const type = handle.dataset.resize
       const min = Number(handle.dataset.min || 180)
-      const max = Number(handle.dataset.max || 600)
+      const maxAttr = handle.dataset.max
+      const maxHalf = handle.dataset.maxHalf === 'true'
       const startX = e.clientX
       let start = 0
 
@@ -25,9 +26,19 @@ export function useResizablePanes() {
         start = document.querySelector('.ec-pane')?.getBoundingClientRect().width ?? 0
       }
 
+      function paneMax(): number {
+        if (maxHalf && type === 'run-list') {
+          const lay = document.querySelector('.runs-v12 .tr-lay') ?? document.querySelector('.tr-lay')
+          const w = lay?.getBoundingClientRect().width ?? window.innerWidth
+          return Math.max(min, Math.floor(w * 0.5))
+        }
+        return Number(maxAttr || 600)
+      }
+
       function onMove(ev: MouseEvent) {
         const dx = ev.clientX - startX
         const root = document.documentElement
+        const max = paneMax()
         if (type === 'case-detail') {
           const val = Math.max(min, Math.min(max, start + dx))
           root.style.setProperty('--case-detail-width', `${val}px`)
