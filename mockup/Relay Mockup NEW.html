@@ -1,0 +1,2494 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>BetterTestiny</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#042C53;--accent:#185FA5;--accent-lt:#E6F1FB;--accent-hover:#134F8A;
+  --bg:#F0F4F9;--surface:#FFFFFF;--surface2:#F5F8FB;
+  --border:#D3DCE8;--border2:#B8C9DA;
+  --text:#0F1C2E;--text2:#4A6080;--text3:#7A92AB;
+  --pass:#2E7D32;--pass-bg:#E8F5E9;--fail:#C62828;--fail-bg:#FFEBEE;
+  --block:#E65100;--block-bg:#FFF3E0;--skip:#4527A0;--skip-bg:#EDE7F6;
+  --crit-text:#B71C1C;--high-text:#BF360C;--med-text:#0D47A1;
+  --mono:ui-monospace,'Cascadia Code','SF Mono',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--navy);display:flex;align-items:stretch;justify-content:center;min-height:100vh;padding:0}
+#app{display:flex;width:100vw;height:100vh;overflow:hidden}
+/* SIDEBAR */
+.sb{width:196px;background:var(--navy);flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid rgba(255,255,255,0.07)}
+.sb-logo{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:8px}
+.sb-mark{width:26px;height:26px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;font-family:var(--mono);flex-shrink:0}
+.sb-name{font-size:13px;font-weight:600;color:#fff;letter-spacing:-0.01em}.sb-name span{color:#6AADE8}
+.sb-sec{padding:10px 0 2px}
+.sb-lbl{padding:0 13px 3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(168,196,224,.45)}
+.sbi{display:flex;align-items:center;gap:7px;padding:5px 13px;color:#A8C4E0;cursor:pointer;font-size:12.5px;border-left:2px solid transparent;user-select:none;transition:background .1s}
+.sbi:hover{background:rgba(255,255,255,.06);color:#fff}
+.sbi.on{background:rgba(24,95,165,.28);color:#fff;border-left-color:#378ADD;font-weight:500}
+.sbi.disabled{opacity:.42;cursor:not-allowed}
+.sbi.disabled:hover{background:transparent;color:#A8C4E0}
+.sbi .soon{margin-left:auto;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:rgba(181,212,244,.75)}
+.sbi i{font-size:14px;opacity:.75}.sbi.on i{opacity:1}
+.sb-sub{padding:3px 13px 3px 30px;font-size:12px;color:rgba(168,196,224,.6);cursor:pointer;display:flex;align-items:center;gap:5px;border-left:2px solid transparent}
+.sb-sub:hover{color:#fff}.sb-sub.on{color:#6AADE8;border-left-color:#378ADD}
+.sb-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sb-sp{flex:1}
+.sb-foot{padding:8px 12px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px}
+.sb-av{width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0}
+.sb-uname{font-size:12px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-urole{font-size:10.5px;color:#A8C4E0}
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+/* TOPBAR */
+.topbar{height:38px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0}
+.bc{display:flex;align-items:center;gap:4px;font-size:12px;flex:1}
+.bc a{color:var(--accent);cursor:pointer;font-size:11.5px}.bc a:hover{text-decoration:underline}
+.bc .sep{color:var(--text3);font-size:11px;margin:0 1px}.bc .cur{color:var(--text);font-weight:500}
+.ta{display:flex;align-items:center;gap:5px}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:var(--sans);white-space:nowrap;transition:background .1s}
+.btn:hover{background:var(--surface2)}
+.btn-p{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-p:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.search-box{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg);font-size:12px;color:var(--text3)}
+/* VIEWS */
+.view{display:none;flex:1;flex-direction:column;overflow:hidden}.view.on{display:flex}
+/* PILLS */
+.pill{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:3px;font-size:10.5px;font-weight:500;white-space:nowrap}
+.pill-dot{width:4px;height:4px;border-radius:50%;background:currentColor}
+.p-pass{background:var(--pass-bg);color:var(--pass)}.p-fail{background:var(--fail-bg);color:var(--fail)}
+.p-block{background:var(--block-bg);color:var(--block)}.p-skip{background:var(--skip-bg);color:var(--skip)}
+.p-notrun{background:var(--surface2);color:var(--text3)}.p-act{background:var(--accent-lt);color:var(--accent)}
+/* PRIORITY */
+.pri{display:inline-block;padding:1px 5px;border-radius:2px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.pr-crit{background:var(--fail-bg);color:var(--crit-text)}.pr-high{background:var(--block-bg);color:var(--high-text)}.pr-med{background:var(--accent-lt);color:var(--med-text)}.pr-low{background:var(--surface2);color:var(--text3)}
+/* PROGBAR */
+.prog{display:flex;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.pg-p{background:#2E7D32}.pg-f{background:#C62828}.pg-b{background:#E65100}.pg-s{background:#4527A0}
+/* PANEL */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:5px;display:flex;flex-direction:column;overflow:hidden}
+.pnl-hd{padding:7px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0}
+.pnl-ttl{font-size:12px;font-weight:600;flex:1}
+.pnl-ct{font-size:10.5px;font-weight:500;background:var(--surface2);color:var(--text2);border-radius:10px;padding:0 6px;border:1px solid var(--border)}
+.pnl-body{flex:1;overflow-y:auto}
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl thead th{background:var(--surface2);color:var(--text2);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1;cursor:pointer}
+.tbl thead th:hover{background:#EBF1F8}
+.tbl tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .08s}
+.tbl tbody tr:hover{background:var(--surface2)}.tbl tbody tr.sel{background:#EBF4FF}
+.tbl tbody td{padding:5px 8px;vertical-align:middle}
+.tmono{font-family:var(--mono);font-size:11px;color:var(--text3)}
+/* CHIPS */
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:3px;font-size:11px;border:1px solid var(--border);cursor:pointer;color:var(--text2);white-space:nowrap;transition:all .1s}
+.chip:hover{border-color:var(--accent);color:var(--accent)}.chip.on{background:var(--accent-lt);border-color:var(--accent);color:var(--accent);font-weight:500}
+/* KBD */
+.kbd{display:inline-block;padding:0 4px;background:var(--surface2);border:1px solid var(--border2);border-bottom-width:2px;border-radius:3px;font-family:var(--mono);font-size:10px;color:var(--text2)}
+/* SCROLLBARS */
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+/* DIVIDER */
+.divider-lbl{padding:3px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border)}
+
+/* ===== DASHBOARD ===== */
+.dash-wrap{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.met-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.mc{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:10px 12px}
+.mv{font-size:21px;font-weight:700;line-height:1.1;margin-bottom:2px}
+.ml{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)}
+.mt{font-size:10.5px;margin-top:3px;color:var(--text3)}.mt-up{color:#2E7D32}.mt-dn{color:#C62828}
+.dash-body{display:grid;grid-template-columns:1fr 340px;gap:10px;flex:1;min-height:0}
+.run-row{padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer}
+.run-row:hover{background:var(--surface2)}
+.rr-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.rn{font-size:12.5px;font-weight:500}
+.rm{display:flex;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.rmi{font-size:10.5px;color:var(--text3);display:flex;align-items:center;gap:2px}
+.rs{display:flex;gap:8px}
+.rst{font-size:10.5px;font-weight:500}
+.rst-p{color:#2E7D32}.rst-f{color:#C62828}.rst-b{color:#E65100}.rst-n{color:var(--text3)}
+.fi{padding:7px 10px;border-bottom:1px solid var(--border);cursor:pointer}
+.fi:hover{background:var(--surface2)}
+.fi-id{font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:1px}
+.fi-nm{font-size:12px;font-weight:500;margin-bottom:3px;line-height:1.3}
+.fi-mt{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.fi-nd{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--fail);background:var(--fail-bg);padding:1px 5px;border-radius:2px}
+.dtag{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;background:var(--fail-bg);border-radius:2px;font-size:10px;font-weight:500;color:var(--fail);font-family:var(--mono)}
+.cov-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px 10px}
+.cov-lbl{font-size:10.5px;color:var(--text2);margin-bottom:3px}
+.cov-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:2px}
+.cov-fill{height:100%;border-radius:2px;background:var(--accent)}
+.cov-pct{font-size:11.5px;font-weight:600;font-family:var(--mono)}
+
+/* ===== TEST CASES ===== */
+.tc-lay{flex:1;display:flex;overflow:hidden}
+.suite-tree{width:210px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.st-hd{padding:6px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;flex-shrink:0}
+.st-ttl{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);flex:1}
+.st-body{flex:1;overflow-y:auto;padding:4px 0}
+.st-root{display:flex;align-items:center;gap:5px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);user-select:none}
+.st-root:hover{background:var(--surface2)}
+.st-tog{font-size:9px;color:var(--text3);width:10px;transition:transform .15s}.st-tog.open{transform:rotate(90deg)}
+.st-ct{margin-left:auto;font-size:10px;color:var(--text3)}
+.st-kids{display:none}.st-kids.open{display:block}
+.st-sec{display:flex;align-items:center;padding:3px 10px 3px 26px;cursor:pointer;font-size:12px;color:var(--text2);border-left:2px solid transparent}
+.st-sec:hover{background:var(--surface2);color:var(--text)}
+.st-sec.on{background:var(--accent-lt);color:var(--accent);border-left-color:var(--accent);font-weight:500}
+.tc-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tc-bar{padding:5px 8px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap}
+.bulk{display:none;align-items:center;gap:6px;padding:5px 8px;background:var(--accent-lt);border-bottom:1px solid rgba(24,95,165,.2);flex-shrink:0}
+.bulk.on{display:flex}
+.bulk-n{font-size:12px;font-weight:600;color:var(--accent)}
+.tc-wrap{flex:1;overflow-y:auto}
+/* DETAIL PANEL */
+.dp{width:0;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .15s ease}
+.dp.open{width:320px}
+.dp-hd{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:6px;flex-shrink:0}
+.dp-id{font-family:var(--mono);font-size:10px;color:var(--text3);display:block;margin-bottom:2px}
+.dp-ttl{font-size:12.5px;font-weight:600;line-height:1.3;flex:1}
+.dp-body{flex:1;overflow-y:auto}
+.dp-sec{padding:8px 10px;border-bottom:1px solid var(--border)}
+.dp-sl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:7px}
+.dp-mg{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.dp-ml{font-size:10px;color:var(--text3);margin-bottom:1px}.dp-mv{font-size:12px;font-weight:500}
+.step-i{display:flex;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)}
+.step-i:last-child{border-bottom:none}
+.step-n{width:16px;height:16px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:600;color:var(--text2);flex-shrink:0;font-family:var(--mono)}
+.step-act{font-size:12px;color:var(--text);margin-bottom:1px}
+.step-exp{font-size:10.5px;color:var(--text3);font-style:italic}
+.tag{display:inline-block;padding:1px 5px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;font-size:10px;color:var(--text2)}
+
+/* ===== TEST RUNS ===== */
+.tr-lay{flex:1;display:flex;overflow:hidden}
+.rl-pane{width:218px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.rl-hd{padding:6px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;flex-shrink:0}
+.rl-body{flex:1;overflow-y:auto}
+.rl-item{padding:7px 10px;border-bottom:1px solid var(--border);cursor:pointer;border-left:2px solid transparent}
+.rl-item:hover{background:var(--surface2)}.rl-item.on{background:var(--accent-lt);border-left-color:var(--accent)}
+.rl-nm{font-size:12px;font-weight:500;margin-bottom:3px;line-height:1.3}
+.rl-mt{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.rl-pg{display:flex;align-items:center;gap:5px}
+.rl-pt{font-size:10px;font-family:var(--mono);color:var(--text3);white-space:nowrap}
+/* EXEC CASE PANE */
+.ec-pane{width:278px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.ec-run-hd{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ec-rttl{font-size:12px;font-weight:600;margin-bottom:3px;line-height:1.3}
+.ec-rmt{display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap}
+.ec-rmt span{font-size:10.5px;color:var(--text3)}
+.ec-rpg{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.ec-rpt{font-size:10px;font-family:var(--mono);color:var(--text3)}
+.ec-rst{display:flex;gap:7px}
+.ec-ftab-bar{padding:4px 8px;border-bottom:1px solid var(--border);display:flex;gap:3px;flex-shrink:0}
+.ftab{padding:2px 8px;border-radius:3px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text2)}
+.ftab:hover{background:var(--surface2)}.ftab.on{background:var(--accent);color:#fff}
+.ec-list{flex:1;overflow-y:auto}
+.ec-case{display:flex;align-items:flex-start;gap:7px;padding:6px 10px;border-bottom:1px solid var(--border);cursor:pointer;border-left:2px solid transparent}
+.ec-case:hover{background:var(--surface2)}.ec-case.on{background:var(--accent-lt);border-left-color:var(--accent)}
+.ec-dot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.d-p{background:#2E7D32}.d-f{background:#C62828}.d-b{background:#E65100}.d-n{background:var(--border2)}.d-s{background:#4527A0}
+.ec-info{flex:1;overflow:hidden}
+.ec-cid{font-family:var(--mono);font-size:9.5px;color:var(--text3)}
+.ec-cnm{font-size:12px;font-weight:500;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ec-cby{font-size:10px;color:var(--text3);margin-top:1px}
+.ec-pri{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;padding:1px 4px;border-radius:2px;flex-shrink:0;margin-top:3px}
+/* EXEC DETAIL */
+.ed-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.ed-hd{background:var(--surface);border-bottom:1px solid var(--border);padding:9px 12px;flex-shrink:0}
+.ed-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:5px}
+.ed-id{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.ed-ttl{font-size:13.5px;font-weight:600;line-height:1.3}
+.ed-mt{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ed-body{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ed-precond{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 10px}
+.ed-sl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:5px}
+.ed-pt{font-size:12px;color:var(--text2);line-height:1.5}
+.esc{background:var(--surface);border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.esc-hd{display:flex;align-items:center;gap:6px;padding:5px 9px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.esc-n{font-family:var(--mono);font-size:10px;color:var(--text3);font-weight:600;min-width:42px}
+.esc-ttl{flex:1;font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.esc-btns{display:flex;gap:3px}
+.srb{padding:2px 6px;border-radius:3px;font-size:10.5px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .1s}
+.srb-p{background:var(--pass-bg);color:var(--pass)}.srb-p:hover,.srb-p.on{background:var(--pass);color:#fff}
+.srb-f{background:var(--fail-bg);color:var(--fail)}.srb-f:hover,.srb-f.on{background:var(--fail);color:#fff}
+.srb-b{background:var(--block-bg);color:var(--block)}.srb-b:hover,.srb-b.on{background:var(--block);color:#fff}
+.srb-s{background:var(--skip-bg);color:var(--skip)}.srb-s:hover,.srb-s.on{background:var(--skip);color:#fff}
+.esc-body{padding:7px 9px}
+.esc-act{font-size:12px;margin-bottom:2px}
+.esc-exp{font-size:10.5px;color:var(--text3);font-style:italic;margin-bottom:5px}
+.esc-cmt{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:3px 7px;font-size:11.5px;font-family:var(--sans);color:var(--text);outline:none;resize:none}
+.esc-cmt:focus{border-color:var(--accent);background:var(--surface)}
+.ed-defects{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 10px}
+.ed-dtag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:var(--fail-bg);border:1px solid rgba(198,40,40,.2);border-radius:3px;font-size:11px;font-weight:500;color:var(--fail);font-family:var(--mono)}
+.ed-dlink{display:flex;align-items:center;gap:5px;padding:4px 8px;border:1px dashed var(--border2);border-radius:4px;font-size:11.5px;color:var(--text3);cursor:pointer;margin-top:6px}
+.ed-dlink:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-lt)}
+/* RESULT FOOTER */
+.ed-foot{background:var(--surface);border-top:1px solid var(--border);padding:8px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.ed-rl{font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
+.ed-rbs{display:flex;gap:6px;flex:1}
+.rmb{flex:1;padding:6px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;text-align:center;transition:all .12s}
+.rmb-p{background:var(--pass-bg);color:var(--pass);border-color:rgba(46,125,50,.2)}.rmb-p:hover,.rmb-p.on{background:var(--pass);color:#fff}
+.rmb-f{background:var(--fail-bg);color:var(--fail);border-color:rgba(198,40,40,.2)}.rmb-f:hover,.rmb-f.on{background:var(--fail);color:#fff}
+.rmb-b{background:var(--block-bg);color:var(--block);border-color:rgba(230,81,0,.2)}.rmb-b:hover,.rmb-b.on{background:var(--block);color:#fff}
+.rmb-s{background:var(--skip-bg);color:var(--skip);border-color:rgba(69,39,160,.2)}.rmb-s:hover,.rmb-s.on{background:var(--skip);color:#fff}
+/* SHORTCUT BAR */
+.sc-bar{display:flex;align-items:center;gap:10px;padding:3px 12px;background:var(--surface2);border-top:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.sc-h{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3)}
+/* AUTOSAVE */
+.autosave{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:#2E7D32}
+.as-dot{width:5px;height:5px;border-radius:50%;background:#2E7D32;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--surface2);padding:0 8px}
+.nav-tab{padding:4px 10px;font-size:11.5px;font-weight:500;cursor:pointer;color:var(--text2);border-radius:3px 3px 0 0;margin-top:3px}
+.nav-tab:hover{background:var(--surface)}.nav-tab.on{background:var(--surface);color:var(--accent);box-shadow:0 -2px 0 var(--accent) inset}
+
+/* ── sidebar subtitle ── */
+.sb-name small{display:block;font-size:9px;font-weight:400;color:rgba(168,196,224,.45);letter-spacing:.03em;margin-top:1px}
+/* ── sidebar divider ── */
+.sb-div{height:1px;background:rgba(255,255,255,.06);margin:4px 13px}
+/* ── sidebar disabled ── */
+.sbi.disabled{opacity:.35;cursor:not-allowed}
+.sbi.disabled:hover{background:transparent;color:#A8C4E0}
+.sbi .soon{margin-left:auto;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:rgba(168,196,224,.55);font-weight:500;background:rgba(168,196,224,.1);padding:1px 5px;border-radius:2px}
+/* ── metric card accent border ── */
+.mc{position:relative;overflow:hidden}
+.mc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.mc.c-blue::before{background:var(--accent)}.mc.c-green::before{background:var(--pass)}
+.mc.c-red::before{background:var(--fail)}.mc.c-amber::before{background:var(--block)}
+.mc.c-grey::before{background:var(--text3)}
+/* ── table title cell ── */
+.tbl tbody tr:hover{background:#EDF2F9}
+.tbl tbody tr.sel{background:#EAF3FF}
+.tbl .title-cell{font-weight:500;color:var(--text)}
+/* ── search trigger ── */
+.search-trigger{display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);font-size:12px;color:var(--text3);cursor:pointer;transition:border-color .15s,background .15s;user-select:none}
+.search-trigger:hover{border-color:var(--accent);background:#fff}
+.search-trigger i{font-size:13px}
+/* ── not-run pill ── */
+.p-notrun{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+/* ── nav tab ── */
+.nav-tab.on{box-shadow:0 -2px 0 var(--accent) inset;font-weight:600}
+/* ── detail panel history/activity ── */
+.hist-item{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px}
+.hist-dot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.hist-label{font-size:12px;font-weight:500;color:var(--text);line-height:1.3}
+.hist-meta{font-size:10.5px;color:var(--text3);margin-top:1px}
+.act-item{padding:7px 10px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text2);line-height:1.4}
+.act-item strong{color:var(--text);font-weight:500}
+.act-time{font-size:10px;color:var(--text3);display:block;margin-top:1px}
+/* ── TEST PLANS view ── */
+.tp-lay{flex:1;display:flex;overflow:hidden}
+.tp-list-pane{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.tpl-hd{padding:6px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;flex-shrink:0}
+.tpl-body{flex:1;overflow-y:auto}
+.tpl-item{padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;border-left:2px solid transparent;transition:background .08s}
+.tpl-item:hover{background:var(--surface2)}.tpl-item.on{background:var(--accent-lt);border-left-color:var(--accent)}
+.tpl-nm{font-size:12px;font-weight:500;margin-bottom:3px;line-height:1.3;color:var(--text)}
+.tpl-mt{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.tp-detail{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.tpd-hd{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;flex-shrink:0}
+.tpd-ttl{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.tpd-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.tpd-meta span{font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:4px}
+.tpd-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.tpd-panel{background:var(--surface);border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.tpd-panel-hd{padding:7px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.tpd-panel-title{font-size:11.5px;font-weight:600;flex:1}
+.tp-module-row{padding:6px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:12px}
+.tp-module-row:last-child{border-bottom:none}
+.tp-mod-name{flex:1;font-weight:500;color:var(--text)}
+.tp-mod-count{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.tp-run-row{padding:6px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:12px}
+.tp-run-row:last-child{border-bottom:none}
+.tp-run-name{flex:1;color:var(--text)}
+.tp-run-date{font-size:11px;color:var(--text3)}
+.tpd-cta{padding:10px 14px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px}
+.p-draft{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+/* ── SEARCH MODAL ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(4,44,83,.42);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding-top:80px;backdrop-filter:blur(2px)}
+.modal-backdrop.hidden{display:none}
+.search-dialog{width:580px;background:var(--surface);border-radius:8px;border:1px solid var(--border);box-shadow:0 12px 40px rgba(4,44,83,.22);overflow:hidden;max-height:calc(100vh - 160px);display:flex;flex-direction:column}
+.search-input-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.search-input-row i{font-size:17px;color:var(--text3);flex-shrink:0}
+.search-input-row input{flex:1;border:none;outline:none;font-family:var(--sans);font-size:14px;color:var(--text);background:transparent}
+.search-input-row input::placeholder{color:var(--text3)}
+.search-results-wrap{flex:1;overflow-y:auto}
+.search-group-label{padding:5px 14px 3px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border)}
+.search-result-item{display:flex;align-items:flex-start;gap:10px;padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .08s}
+.search-result-item:hover,.search-result-item.focused{background:var(--accent-lt)}
+.search-result-icon{width:28px;height:28px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.search-result-icon i{font-size:13px;color:var(--text2)}
+.search-result-info{flex:1;overflow:hidden}
+.search-result-title{font-size:12.5px;font-weight:500;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-result-meta{font-size:11px;color:var(--text3)}
+.search-result-right{flex-shrink:0;display:flex;align-items:center}
+.search-empty{padding:28px;text-align:center;color:var(--text3);font-size:12.5px}
+.search-empty i{display:block;font-size:28px;margin-bottom:8px;opacity:.4}
+.search-footer{padding:6px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2);flex-shrink:0}
+.search-footer-hint{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text3)}
+/* ── SHORTCUTS MODAL ── */
+.shortcuts-dialog{width:460px;background:var(--surface);border-radius:8px;border:1px solid var(--border);box-shadow:0 12px 40px rgba(4,44,83,.22);overflow:hidden;margin-top:60px}
+.shortcuts-hd{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.shortcuts-title{font-size:13px;font-weight:600;color:var(--text)}
+.shortcuts-body{padding:12px 16px;display:flex;gap:20px}
+.shortcuts-col{flex:1}
+.shortcuts-section{margin-bottom:12px}
+.shortcuts-section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:6px}
+.shortcut-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:12px;color:var(--text2)}
+.kbd-group{display:flex;gap:3px}
+
+
+/* ── SIDEBAR COLLAPSE ── */
+.sb{transition:width .2s ease}
+.sb.collapsed{width:48px}
+.sb.collapsed .sb-lbl,
+.sb.collapsed .sb-sub .sbi-text,
+.sb.collapsed .sb-sub .sb-dot,
+.sb.collapsed .sbi-text,
+.sb.collapsed .soon,
+.sb.collapsed .sb-name,
+.sb.collapsed .sb-uname,
+.sb.collapsed .sb-urole{display:none}
+.sb.collapsed .sbi,.sb.collapsed .sb-sub{justify-content:center;padding:7px 0;border-left:none;border-right:2px solid transparent;gap:0}
+.sb.collapsed .sbi.on{background:rgba(24,95,165,.22);border-right-color:#5BA3E0}
+.sb.collapsed .sbi i,.sb.collapsed .sb-sub i{font-size:17px;opacity:.85;margin:0}
+.sb.collapsed .sb-logo{justify-content:center;padding:10px 0;position:relative}
+.sb.collapsed .sb-mark{width:28px;height:28px;font-size:10px}
+.sb.collapsed .sb-foot{justify-content:center;padding:9px 0}
+.sb.collapsed .sb-div{margin:4px 8px}
+.sb.collapsed .sb-sec{padding:6px 0 2px}
+.sb-toggle{background:none;border:none;cursor:pointer;color:rgba(168,196,224,.45);padding:4px 6px;border-radius:3px;font-size:13px;transition:color .1s,background .1s;margin-left:auto;flex-shrink:0}
+.sb-toggle:hover{color:#fff;background:rgba(255,255,255,.1)}
+.sb.collapsed .sb-toggle{position:absolute;right:2px;bottom:1px;margin:0;padding:1px 2px;font-size:10px;background:rgba(255,255,255,.08)}
+/* tooltip for collapsed sidebar */
+.sbi[title]{cursor:pointer}
+
+/* ── IMPROVED METRIC CARDS ── */
+.mc{padding:10px 12px 9px}
+.mc-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
+.mc-ic{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mc.c-blue .mc-ic{background:#D6E8F9}.mc.c-blue .mc-ic i{color:var(--accent)}
+.mc.c-green .mc-ic{background:#E3F2E4}.mc.c-green .mc-ic i{color:var(--pass)}
+.mc.c-red .mc-ic{background:#FDEAEA}.mc.c-red .mc-ic i{color:var(--fail)}
+.mc.c-amber .mc-ic{background:#FFF0E3}.mc.c-amber .mc-ic i{color:var(--block)}
+.mc.c-grey .mc-ic{background:var(--surface2)}.mc.c-grey .mc-ic i{color:var(--text3)}
+.mc-ic i{font-size:13px}
+.mc .mv{font-size:22px;font-weight:700;line-height:1;margin-bottom:1px}
+.mc .ml{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)}
+.mc .mt{font-size:10.5px;margin-top:4px;color:var(--text3);padding-top:5px;border-top:1px solid var(--border)}
+
+/* ── RUNS SECTION ── */
+.runs-col{display:flex;flex-direction:column;gap:8px;overflow:hidden;min-height:0}
+.runs-col-hd{display:flex;align-items:center;gap:6px;flex-shrink:0;padding:0 1px}
+.runs-col-ttl{font-size:12px;font-weight:600;color:var(--text2);flex:1}
+.run-cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;overflow-y:auto;padding-bottom:2px}
+
+/* ── RUN CARD ── */
+.run-card{background:var(--surface);border:1px solid var(--border);border-radius:5px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.run-card:hover{border-color:var(--border2);box-shadow:0 1px 6px rgba(4,44,83,.07)}
+.run-card.stalled{border-left:3px solid var(--block)}
+.run-card.stalled .run-card-top{padding-left:9px}
+.rct{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;cursor:pointer}
+.rct-donut{flex-shrink:0;position:relative}
+.rct-info{flex:1;min-width:0;padding-top:1px}
+.rct-name{font-size:12px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.35;margin-bottom:3px}
+.rct-ctx{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.rct-counts{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.rct-count{display:flex;align-items:center;gap:2.5px;font-size:10.5px;font-weight:600;font-family:var(--mono)}
+.rct-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.rct-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:4px;flex-shrink:0;padding-top:1px}
+.expand-btn{width:20px;height:20px;border:none;background:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;border-radius:3px;transition:all .1s;font-size:13px}
+.expand-btn:hover{background:var(--surface2);color:var(--text)}
+.expand-btn.open i{transform:rotate(180deg)}
+.expand-btn i{transition:transform .15s}
+
+/* ── EXPANDED CARD DETAIL ── */
+.rcd{border-top:1px solid var(--border);display:none}
+.rcd.open{display:block}
+.rcd-tabs{display:flex;background:var(--surface2);border-bottom:1px solid var(--border);padding:0 11px}
+.rcd-tab{padding:5px 9px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .1s}
+.rcd-tab:hover{color:var(--text)}.rcd-tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.rcd-body{padding:9px 11px;font-size:12px}
+.rcd-pane{display:none}.rcd-pane.on{display:block}
+.rcd-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;font-size:11.5px}
+.rcd-grid-item .rcd-lbl{font-size:10px;color:var(--text3);margin-bottom:1px}
+.rcd-grid-item .rcd-val{font-weight:500;color:var(--text)}
+.assignee-row{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11.5px}
+.assignee-row:last-child{border-bottom:none}
+.av-mini{width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#fff;flex-shrink:0}
+.defect-row{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11.5px}
+.defect-row:last-child{border-bottom:none}
+
+/* ── ATTENTION WIDGET ── */
+.att-item{display:flex;align-items:stretch;border-bottom:1px solid var(--border);cursor:pointer;transition:background .08s;position:relative}
+.att-item:hover{background:var(--surface2)}
+.att-item-stripe{width:3px;flex-shrink:0;border-radius:0}
+.att-item-stripe.crit{background:var(--fail)}.att-item-stripe.high{background:var(--block)}.att-item-stripe.med{background:var(--accent)}
+.att-item-body{flex:1;padding:7px 10px;min-width:0}
+.att-title{font-size:12px;font-weight:500;color:var(--text);line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:2px}
+.att-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.att-run{font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+.att-actor{font-size:10px;color:var(--text3)}
+.att-item-right{padding:7px 9px 7px 0;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:4px;flex-shrink:0}
+.no-defect-tag{display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:600;color:var(--fail);background:var(--fail-bg);padding:1px 4px;border-radius:2px;white-space:nowrap}
+.defect-tag-sm{display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:500;color:var(--fail);background:var(--fail-bg);padding:1px 4px;border-radius:2px;font-family:var(--mono)}
+.att-footer{padding:6px 10px;border-top:1px solid var(--border);text-align:center;flex-shrink:0}
+.att-footer a{font-size:11.5px;color:var(--accent);cursor:pointer;font-weight:500}
+.att-footer a:hover{text-decoration:underline}
+
+/* ── DASH BODY ── */
+.dash-right{display:flex;flex-direction:column;gap:10px;overflow:hidden;min-height:0}
+
+
+/* SEAL RUN */
+.seal-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:4px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--sans);transition:all .1s}
+.seal-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.sealed-banner{background:#F5F8FB;border:1px solid var(--border);border-radius:4px;padding:8px 12px;margin:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+.sealed-banner i{font-size:15px;color:var(--text3);flex-shrink:0}
+
+/* AUDIT VIEW */
+.audit-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:10px;gap:8px}
+.audit-row{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);transition:background .08s;cursor:default}
+.audit-row:hover{background:var(--surface2)}
+.audit-ic{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.audit-ic.result{background:#FFF3E0}.audit-ic.result i{color:var(--block)}
+.audit-ic.create{background:#E8F5E9}.audit-ic.create i{color:var(--pass)}
+.audit-ic.edit{background:var(--accent-lt)}.audit-ic.edit i{color:var(--accent)}
+.audit-ic.seal{background:#EDE7F6}.audit-ic.seal i{color:#4527A0}
+.audit-ic.assign{background:#E8F5E9}.audit-ic.assign i{color:var(--pass)}
+.audit-ic.delete{background:var(--fail-bg)}.audit-ic.delete i{color:var(--fail)}
+.audit-ic.link{background:var(--block-bg)}.audit-ic.link i{color:var(--block)}
+.audit-desc{font-size:12px;color:var(--text);line-height:1.4;margin-bottom:2px}
+.audit-desc strong{font-weight:600}
+.audit-desc .audit-ref{color:var(--accent);font-family:var(--mono);font-size:11px}
+.audit-ctx{font-size:10.5px;color:var(--text3)}
+.audit-time{font-size:10.5px;color:var(--text3);white-space:nowrap;margin-left:auto;padding-top:2px;flex-shrink:0}
+
+/* FEEDBACK PASS: module switcher, resizers, dense execution layouts */
+.module-switcher{position:relative;flex-shrink:0}
+.module-btn{height:28px;display:flex;align-items:center;gap:6px;padding:0 9px;border:1px solid var(--border);background:var(--surface2);border-radius:4px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;min-width:172px}
+.module-btn:hover{border-color:var(--accent);background:#fff}
+.module-btn i{font-size:13px;color:var(--accent)}
+.module-menu{position:absolute;top:32px;left:0;width:238px;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 12px 28px rgba(4,44,83,.18);z-index:800;display:none;overflow:hidden}
+.module-menu.open{display:block}
+.module-search{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.module-search input{border:none;background:transparent;outline:none;font-family:var(--sans);font-size:12px;color:var(--text);width:100%}
+.module-item{display:flex;align-items:center;gap:7px;padding:7px 10px;font-size:12px;color:var(--text2);cursor:pointer;border-left:2px solid transparent}
+.module-item:hover{background:var(--surface2);color:var(--text)}
+.module-item.on{background:var(--accent-lt);color:var(--accent);border-left-color:var(--accent);font-weight:600}
+.resizer-v{width:6px;flex:0 0 6px;background:var(--bg);border-left:1px solid var(--border);border-right:1px solid var(--border);cursor:col-resize;position:relative}
+.resizer-v::after{content:'';position:absolute;top:50%;left:2px;width:2px;height:34px;border-radius:2px;background:var(--border2);transform:translateY(-50%)}
+.resizer-v:hover::after{background:var(--accent)}
+.dp.open{width:var(--case-detail-width,360px)}
+.detail-resizer{display:none}
+.tc-main:has(+ .detail-resizer + .dp.open) + .detail-resizer{display:block}
+.suite-tree{width:var(--suite-tree-width,210px)}
+.tp-list-pane{width:var(--plan-list-width,240px)}
+.empty-state{height:100%;min-height:280px;display:none;align-items:center;justify-content:center;text-align:center;padding:32px;color:var(--text2)}
+.empty-state.on{display:flex}
+.empty-card{max-width:360px}
+.empty-card i{font-size:34px;color:var(--text3);display:block;margin-bottom:10px}
+.empty-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.empty-copy{font-size:12px;line-height:1.45;color:var(--text3);margin-bottom:12px}
+.quick-box{display:none;gap:6px;padding:8px;border-bottom:1px solid var(--border);background:#fff;flex-shrink:0}
+.quick-box.on{display:flex}
+.quick-box textarea{flex:1;min-height:58px;resize:vertical;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--sans);font-size:12px;outline:none}
+.quick-box textarea:focus{border-color:var(--accent)}
+.form-field{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}
+.form-field label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+.form-field input,.form-field select,.form-field textarea{border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--sans);font-size:12px;color:var(--text);outline:none;background:#fff}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--accent)}
+.create-dialog{width:430px;background:var(--surface);border-radius:8px;border:1px solid var(--border);box-shadow:0 12px 40px rgba(4,44,83,.22);overflow:hidden;margin-top:60px}
+.create-body{padding:12px 16px}
+.create-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:6px;background:var(--surface2)}
+.tr-lay{display:grid;grid-template-columns:minmax(430px,var(--run-list-width,52%)) 6px minmax(360px,1fr);grid-template-rows:auto minmax(0,1fr);gap:0}
+.rl-pane{display:none}
+.run-exec-toolbar{grid-column:1 / 4;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 10px;display:flex;align-items:center;gap:8px;min-width:0}
+.run-picker{position:relative;min-width:310px}
+.run-picker-btn{height:30px;width:100%;display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface2);border-radius:4px;padding:0 9px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer}
+.run-picker-menu{position:absolute;top:34px;left:0;width:390px;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 12px 28px rgba(4,44,83,.18);z-index:700;display:none;overflow:hidden}
+.run-picker-menu.open{display:block}
+.run-picker-search{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.run-picker-search input{border:none;outline:none;background:transparent;font-family:var(--sans);font-size:12px;flex:1}
+.run-choice{display:flex;align-items:center;gap:8px;padding:7px 10px;border-left:2px solid transparent;cursor:pointer}
+.run-choice:hover{background:var(--surface2)}
+.run-choice.on{background:var(--accent-lt);border-left-color:var(--accent)}
+.run-choice-main{flex:1;min-width:0}
+.run-choice-title{font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.run-choice-meta{font-size:10.5px;color:var(--text3)}
+.run-summary-card{display:flex;align-items:center;gap:12px;margin-left:auto;border:1px solid var(--border);background:var(--surface2);border-radius:5px;padding:6px 8px;min-width:370px}
+.run-summary-card.collapsed .run-summary-details{display:none}
+.run-summary-details{display:flex;align-items:center;gap:10px;flex:1}
+.summary-metric{min-width:54px}
+.summary-metric strong{display:block;font-size:13px;font-family:var(--mono)}
+.summary-metric span{display:block;font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.ec-pane{grid-column:1;grid-row:2;width:auto;min-width:0}
+.tr-lay>.resizer-v{grid-column:2;grid-row:2}
+.ed-pane{grid-column:3;grid-row:2;min-width:0}
+.ec-run-hd{display:none}
+.ec-pane>.ec-ftab-bar{display:none}
+.ec-case{padding:7px 10px}
+.ec-cnm{-webkit-line-clamp:1}
+.tp-overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tp-stat{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 9px}
+.tp-stat strong{display:block;font-size:18px;line-height:1;color:var(--text)}
+.tp-stat span{display:block;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+.tp-tab-pane{display:none}.tp-tab-pane.on{display:flex;flex-direction:column;gap:10px}
+.validation-note{font-size:11.5px;color:var(--text2);line-height:1.45;background:var(--accent-lt);border-top:1px solid rgba(24,95,165,.15);padding:8px 10px}
+
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- SIDEBAR -->
+<nav class="sb">
+  <div class="sb-logo">
+    <div class="sb-mark">BT</div>
+    <div class="sb-name">Better<span>Testiny</span><small>QA Workspace</small></div>
+    <button class="sb-toggle" onclick="toggleSidebar()" title="Collapse sidebar"><i class="ti ti-layout-sidebar-left-collapse"></i></button>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Workspace</div>
+    <div class="sbi on" id="snav-dashboard" onclick="go('dashboard')" title="Dashboard"><i class="ti ti-layout-dashboard"></i><span class="sbi-text"> Dashboard</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">TI-Core Platform</div>
+    <div class="sbi" id="snav-cases" onclick="go('cases')" title="Test Cases"><i class="ti ti-file-description"></i><span class="sbi-text"> Test Cases</span></div>
+    <div class="sbi" id="snav-plans" onclick="go('plans')" title="Test Plans"><i class="ti ti-clipboard-list"></i><span class="sbi-text"> Test Plans</span></div>
+    <div class="sbi" id="snav-runs" onclick="go('runs')" title="Test Runs"><i class="ti ti-player-play"></i><span class="sbi-text"> Test Runs</span></div>
+    <div class="sbi disabled"><i class="ti ti-chart-bar"></i><span class="sbi-text"> Reports</span> <span class="soon">Planned</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Pinned Modules</div>
+    <div class="sb-sub" title="eTMF Module"><span class="sb-dot"></span><span class="sbi-text">eTMF Module</span></div>
+    <div class="sb-sub" title="API Gateway"><span class="sb-dot"></span><span class="sbi-text">API Gateway</span></div>
+    <div class="sb-sub" title="Add shortcut" style="color:rgba(168,196,224,.3)"><i class="ti ti-plus" style="font-size:10px"></i><span class="sbi-text">Add shortcut</span></div>
+  </div>
+  <div class="sb-sp"></div>
+  <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 13px"></div>
+  <div class="sb-sec" style="padding-bottom:0">
+    <div class="sbi" id="snav-audit" onclick="go('audit')" title="Audit History"><i class="ti ti-history"></i><span class="sbi-text"> Audit History</span></div>
+    <div class="sbi" title="Defects"><i class="ti ti-bug"></i><span class="sbi-text"> Defects</span></div>
+    <div class="sbi disabled" title="Integrations"><i class="ti ti-plug"></i><span class="sbi-text"> Integrations</span> <span class="soon">Planned</span></div>
+    <div class="sbi" title="Settings"><i class="ti ti-settings"></i><span class="sbi-text"> Settings</span></div>
+  </div>
+  <div class="sb-foot">
+    <div class="sb-av">NQ</div>
+    <div>
+      <div class="sb-uname">Noel Q.</div>
+      <div class="sb-urole">Super Admin</div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ===================== DASHBOARD ===================== -->
+<div class="view on" id="view-dashboard">
+  <div class="topbar">
+    <div class="module-switcher">
+      <button class="module-btn" onclick="toggleModuleMenu(event)"><i class="ti ti-layout-grid"></i><span id="module-current">TI-Core Platform</span><i class="ti ti-chevron-down" style="margin-left:auto;color:var(--text3)"></i></button>
+      <div class="module-menu" id="module-menu">
+        <div class="module-search"><i class="ti ti-search" style="font-size:12px;color:var(--text3)"></i><input id="module-filter" placeholder="Switch project or module..." oninput="renderModuleMenu(this.value)"></div>
+        <div id="module-list"></div>
+      </div>
+    </div>
+    <div class="bc">
+      <span class="cur">Dashboard</span>
+      <span class="sep">·</span>
+      <span style="font-size:11px;color:var(--text3)">Sprint 44 · Release 2.4.1</span>
+    </div>
+    <div class="ta">
+      <div class="search-trigger" onclick="openSearch()" style="min-width:220px"><i class="ti ti-search" style="font-size:13px"></i><span style="flex:1">Search everything…</span><span class="kbd" style="margin-left:6px">⌘K</span></div>
+      <button class="btn"><i class="ti ti-download" style="font-size:12px"></i> Export</button>
+      <button class="btn btn-p" onclick="go('runs')"><i class="ti ti-plus" style="font-size:12px"></i> New Run</button>
+    </div>
+  </div>
+  <div class="dash-wrap">
+    <!-- METRIC CARDS -->
+    <div class="met-row">
+      <div class="mc c-blue">
+        <div class="mc-head">
+          <div><div class="mv" style="color:var(--accent)">8</div><div class="ml">Active Runs</div></div>
+          <div class="mc-ic"><i class="ti ti-player-play"></i></div>
+        </div>
+        <div class="mt">3 critical path &nbsp;·&nbsp; 1 stalled</div>
+      </div>
+      <div class="mc c-green">
+        <div class="mc-head">
+          <div><div class="mv" style="color:#2E7D32">74.2%</div><div class="ml">Pass Rate</div></div>
+          <div class="mc-ic"><i class="ti ti-trending-up"></i></div>
+        </div>
+        <div class="mt mt-up">↑ 6.1 pp vs Sprint 43</div>
+      </div>
+      <div class="mc c-red">
+        <div class="mc-head">
+          <div><div class="mv" style="color:#C62828">23</div><div class="ml">Open Failures</div></div>
+          <div class="mc-ic"><i class="ti ti-alert-circle"></i></div>
+        </div>
+        <div class="mt mt-dn">↑ 4 unlinked since yesterday</div>
+      </div>
+      <div class="mc c-amber">
+        <div class="mc-head">
+          <div><div class="mv" style="color:#E65100">7</div><div class="ml">Blocked Cases</div></div>
+          <div class="mc-ic"><i class="ti ti-ban"></i></div>
+        </div>
+        <div class="mt">2 without defect &nbsp;·&nbsp; action needed</div>
+      </div>
+      <div class="mc c-grey">
+        <div class="mc-head">
+          <div><div class="mv">68%</div><div class="ml">Run Coverage</div></div>
+          <div class="mc-ic"><i class="ti ti-chart-donut"></i></div>
+        </div>
+        <div class="mt mt-up">312 of 458 cases executed</div>
+      </div>
+    </div>
+
+    <!-- MAIN BODY -->
+    <div class="dash-body" style="min-height:0;overflow:hidden">
+      <!-- LEFT: RUN CARDS -->
+      <div class="runs-col">
+        <div class="runs-col-hd">
+          <i class="ti ti-player-play" style="font-size:13px;color:var(--accent)"></i>
+          <span class="runs-col-ttl">Active runs</span>
+          <span class="pnl-ct">8</span>
+          <div style="display:flex;gap:3px;margin-left:4px">
+            <span class="chip on" onclick="chipToggle(this)">All</span>
+            <span class="chip" onclick="chipToggle(this)">Critical</span>
+            <span class="chip" onclick="chipToggle(this)">Stalled</span>
+          </div>
+          <button class="btn" style="font-size:10.5px;padding:2px 7px;margin-left:auto" onclick="go('runs')">All runs <i class="ti ti-arrow-right" style="font-size:11px"></i></button>
+        </div>
+        <div class="run-cards-grid" id="run-cards"></div>
+      </div>
+
+      <!-- RIGHT: ATTENTION + COVERAGE -->
+      <div class="dash-right">
+        <!-- ATTENTION WIDGET -->
+        <div class="panel" style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+          <div class="pnl-hd">
+            <i class="ti ti-alert-triangle" style="font-size:13px;color:var(--fail)"></i>
+            <span class="pnl-ttl">Needs attention</span>
+            <span class="pnl-ct" style="background:var(--fail-bg);color:var(--fail);border-color:rgba(198,40,40,.2)">11</span>
+            <span style="font-size:10px;color:var(--text3);margin-left:auto">unlinked failures</span>
+          </div>
+          <div class="pnl-body" style="flex:1">
+            <div class="att-item" onclick="go('runs')">
+              <div class="att-item-stripe crit"></div>
+              <div class="att-item-body">
+                <div class="att-title">CTMS user role mapping drops Viewer permission after save</div>
+                <div class="att-meta">
+                  <span class="pri pr-crit">Critical</span>
+                  <span class="att-run">CTMS Regression · Sprint 44</span>
+                  <span class="att-actor">Aisha R. · 1h</span>
+                </div>
+              </div>
+              <div class="att-item-right"><span class="no-defect-tag"><i class="ti ti-link-off" style="font-size:9px"></i> Link defect</span></div>
+            </div>
+            <div class="att-item" onclick="go('runs')">
+              <div class="att-item-stripe crit"></div>
+              <div class="att-item-body">
+                <div class="att-title">Viewer grid filter does not refresh row count after change</div>
+                <div class="att-meta">
+                  <span class="pri pr-crit">Critical</span>
+                  <span class="att-run">Viewer Module Regression</span>
+                  <span class="att-actor">Priya N. · 4h</span>
+                </div>
+              </div>
+              <div class="att-item-right"><span class="no-defect-tag"><i class="ti ti-link-off" style="font-size:9px"></i> Link defect</span></div>
+            </div>
+            <div class="att-item" onclick="go('runs')">
+              <div class="att-item-stripe high"></div>
+              <div class="att-item-body">
+                <div class="att-title">Document classification applies wrong type after bulk upload</div>
+                <div class="att-meta">
+                  <span class="pri pr-high">High</span>
+                  <span class="att-run">eTMF Document Workflow Smoke</span>
+                  <span class="att-actor">Marcus W. · 2h</span>
+                </div>
+              </div>
+              <div class="att-item-right"><span class="no-defect-tag"><i class="ti ti-link-off" style="font-size:9px"></i> Link defect</span></div>
+            </div>
+            <div class="att-item" onclick="go('runs')">
+              <div class="att-item-stripe high"></div>
+              <div class="att-item-body">
+                <div class="att-title">Run summary export omits skipped execution rows</div>
+                <div class="att-meta">
+                  <span class="pri pr-high">High</span>
+                  <span class="att-run">Reporting Module · Integration Suite</span>
+                  <span class="att-actor">James O. · 3h</span>
+                </div>
+              </div>
+              <div class="att-item-right"><span class="defect-tag-sm"><i class="ti ti-bug" style="font-size:9px"></i>TI-4421</span></div>
+            </div>
+            <div class="att-item" onclick="go('runs')">
+              <div class="att-item-stripe high"></div>
+              <div class="att-item-body">
+                <div class="att-title">Bulk API import drops request header metadata</div>
+                <div class="att-meta">
+                  <span class="pri pr-high">High</span>
+                  <span class="att-run">API Gateway Regression</span>
+                  <span class="att-actor">Marcus W. · 8h</span>
+                </div>
+              </div>
+              <div class="att-item-right"><span class="no-defect-tag"><i class="ti ti-link-off" style="font-size:9px"></i> Link defect</span></div>
+            </div>
+            <div class="att-item" onclick="go('runs')">
+              <div class="att-item-stripe med"></div>
+              <div class="att-item-body">
+                <div class="att-title">Reader role can access executor-only test action endpoint</div>
+                <div class="att-meta">
+                  <span class="pri pr-med">Medium</span>
+                  <span class="att-run">SSO/IAM Role Matrix</span>
+                  <span class="att-actor">Fatima A. · 6h</span>
+                </div>
+              </div>
+              <div class="att-item-right"><span class="defect-tag-sm"><i class="ti ti-bug" style="font-size:9px"></i>TI-4398</span></div>
+            </div>
+          </div>
+          <div class="att-footer"><a onclick="go('runs')">View all 11 failures →</a></div>
+        </div>
+
+        <!-- COVERAGE WIDGET -->
+        <div class="panel" style="flex-shrink:0">
+          <div class="pnl-hd">
+            <i class="ti ti-chart-donut" style="font-size:13px;color:var(--accent)"></i>
+            <span class="pnl-ttl">Coverage — Sprint 44</span>
+            <span style="font-size:10.5px;color:var(--text3);font-family:var(--mono);margin-left:auto">68% overall</span>
+          </div>
+          <div class="cov-grid">
+            <div><div class="cov-lbl">CTMS</div><div class="cov-bar"><div class="cov-fill" style="width:88%;background:#2E7D32"></div></div><div class="cov-pct">88%</div></div>
+            <div><div class="cov-lbl">eTMF</div><div class="cov-bar"><div class="cov-fill" style="width:75%"></div></div><div class="cov-pct">75%</div></div>
+            <div><div class="cov-lbl">User Management</div><div class="cov-bar"><div class="cov-fill" style="width:62%"></div></div><div class="cov-pct">62%</div></div>
+            <div><div class="cov-lbl">Viewer</div><div class="cov-bar"><div class="cov-fill" style="width:54%;background:#E65100"></div></div><div class="cov-pct">54%</div></div>
+            <div><div class="cov-lbl">GlobalLearn</div><div class="cov-bar"><div class="cov-fill" style="width:71%"></div></div><div class="cov-pct">71%</div></div>
+            <div><div class="cov-lbl">API Gateway</div><div class="cov-bar"><div class="cov-fill" style="width:42%;background:#C62828"></div></div><div class="cov-pct">42%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TEST CASES ===================== -->
+<div class="view" id="view-cases">
+  <div class="topbar">
+    <div class="module-switcher">
+      <button class="module-btn" onclick="toggleModuleMenu(event)"><i class="ti ti-layout-grid"></i><span class="module-current-label">TI-Core Platform</span><i class="ti ti-chevron-down" style="margin-left:auto;color:var(--text3)"></i></button>
+      <div class="module-menu"><div class="module-search"><i class="ti ti-search" style="font-size:12px;color:var(--text3)"></i><input placeholder="Switch project or module..." oninput="renderModuleMenu(this.value)"></div><div class="module-list"></div></div>
+    </div>
+    <div class="bc">
+      <a onclick="go('dashboard')">Dashboard</a><span class="sep">/</span>
+      <a>TI-Core Platform</a><span class="sep">/</span>
+      <span class="cur">Test cases</span>
+    </div>
+    <div class="ta">
+      <div class="search-trigger" onclick="openSearch()" style="width:200px"><i class="ti ti-search" style="font-size:13px"></i><span style="flex:1">Search cases…</span><span class="kbd">⌘K</span></div>
+      <button class="btn" onclick="showImportState()"><i class="ti ti-upload" style="font-size:12px"></i> Import</button>
+      <button class="btn" onclick="toggleQuickCreate()"><i class="ti ti-bolt" style="font-size:12px"></i> Quick create</button>
+      <button class="btn btn-p" onclick="openCreateCase()"><i class="ti ti-plus" style="font-size:12px"></i> New case</button>
+    </div>
+  </div>
+  <div class="tc-lay">
+    <!-- SUITE TREE -->
+    <div class="suite-tree">
+      <div class="st-hd">
+        <i class="ti ti-folder" style="font-size:13px;color:var(--text2)"></i>
+        <span class="st-ttl">Suites</span>
+        <button class="btn" style="padding:2px 5px;font-size:13px;line-height:1"><i class="ti ti-plus"></i></button>
+      </div>
+      <div class="st-body">
+        <div class="st-root" onclick="toggleSuite('s1')"><span class="st-tog open" id="tog-s1">▶</span><i class="ti ti-folder" style="font-size:12px;color:var(--accent)"></i>CTMS<span class="st-ct">87</span></div>
+        <div class="st-kids open" id="s1">
+          <div class="st-sec on" onclick="selSec(this)">Record management<span class="st-ct" style="margin-left:auto">24</span></div>
+          <div class="st-sec" onclick="selSec(this)">Role &amp; permissions<span class="st-ct" style="margin-left:auto">18</span></div>
+          <div class="st-sec" onclick="selSec(this)">User assignment<span class="st-ct" style="margin-left:auto">21</span></div>
+          <div class="st-sec" onclick="selSec(this)">Audit history<span class="st-ct" style="margin-left:auto">24</span></div>
+        </div>
+        <div class="st-root" onclick="toggleSuite('s2')"><span class="st-tog" id="tog-s2">▶</span><i class="ti ti-folder" style="font-size:12px;color:var(--text2)"></i>eTMF<span class="st-ct">64</span></div>
+        <div class="st-kids" id="s2">
+          <div class="st-sec" onclick="selSec(this)">Document upload<span class="st-ct" style="margin-left:auto">22</span></div>
+          <div class="st-sec" onclick="selSec(this)">Classification &amp; QC<span class="st-ct" style="margin-left:auto">42</span></div>
+        </div>
+        <div class="st-root" onclick="toggleSuite('s3')"><span class="st-tog" id="tog-s3">▶</span><i class="ti ti-folder" style="font-size:12px;color:var(--text2)"></i>SSO/IAM &amp; User Mgmt<span class="st-ct">52</span></div>
+        <div class="st-kids" id="s3">
+          <div class="st-sec" onclick="selSec(this)">Role mapping &amp; sync<span class="st-ct" style="margin-left:auto">18</span></div>
+          <div class="st-sec" onclick="selSec(this)">Permission enforcement<span class="st-ct" style="margin-left:auto">16</span></div>
+          <div class="st-sec" onclick="selSec(this)">Cross-module access<span class="st-ct" style="margin-left:auto">18</span></div>
+        </div>
+        <div class="st-root" onclick="toggleSuite('s4')"><span class="st-tog" id="tog-s4">▶</span><i class="ti ti-folder" style="font-size:12px;color:var(--text2)"></i>Viewer<span class="st-ct">29</span></div>
+        <div class="st-kids" id="s4">
+          <div class="st-sec" onclick="selSec(this)">Grid &amp; filtering<span class="st-ct" style="margin-left:auto">14</span></div>
+          <div class="st-sec" onclick="selSec(this)">Read-only permissions<span class="st-ct" style="margin-left:auto">15</span></div>
+        </div>
+        <div class="st-root" onclick="toggleSuite('s5')"><span class="st-tog" id="tog-s5">▶</span><i class="ti ti-folder" style="font-size:12px;color:var(--text2)"></i>API Gateway<span class="st-ct">0</span></div>
+        <div class="st-kids" id="s5">
+          <div class="st-sec" onclick="selSec(this)" data-empty="true">Import validation<span class="st-ct" style="margin-left:auto">0</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="resizer-v" data-resize="suite-tree" data-min="160" data-max="360"></div>
+    <!-- CASE MAIN -->
+    <div class="tc-main">
+      <div class="tc-bar">
+        <span class="chip on" onclick="chipToggle(this)">All status</span>
+        <span class="chip" onclick="chipToggle(this)">Pass</span>
+        <span class="chip" onclick="chipToggle(this)">Fail</span>
+        <span class="chip" onclick="chipToggle(this)">Blocked</span>
+        <span class="chip" onclick="chipToggle(this)">Not run</span>
+        <div style="width:1px;height:14px;background:var(--border);margin:0 2px"></div>
+        <span class="chip" onclick="chipToggle(this)">Priority <i class="ti ti-chevron-down" style="font-size:10px"></i></span>
+        <span class="chip" onclick="chipToggle(this)">Assignee <i class="ti ti-chevron-down" style="font-size:10px"></i></span>
+        <span class="chip" onclick="chipToggle(this)">Type <i class="ti ti-chevron-down" style="font-size:10px"></i></span>
+        <span style="margin-left:auto;font-size:10.5px;color:var(--text3);font-family:var(--mono)">24 cases</span>
+      </div>
+      <div class="bulk" id="bulk-bar">
+        <span class="bulk-n" id="bulk-cnt">0 selected</span>
+        <div style="width:1px;height:14px;background:rgba(24,95,165,.25)"></div>
+        <button class="btn" style="font-size:10.5px;padding:2px 7px">Add to run</button>
+        <button class="btn" style="font-size:10.5px;padding:2px 7px">Clone</button>
+        <button class="btn" style="font-size:10.5px;padding:2px 7px">Move</button>
+        <button class="btn" style="font-size:10.5px;padding:2px 7px">Assign</button>
+        <button class="btn" style="font-size:10.5px;padding:2px 7px;color:var(--fail);border-color:rgba(198,40,40,.3)">Archive</button>
+        <button class="btn" style="font-size:10.5px;padding:2px 7px;margin-left:auto" onclick="clearSel()"><i class="ti ti-x" style="font-size:11px"></i> Clear</button>
+      </div>
+      <div class="quick-box" id="quick-create-box">
+        <textarea id="quick-create-input" placeholder="One test case title per line. Details can be filled later."></textarea>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn btn-p" onclick="addQuickCases()"><i class="ti ti-plus" style="font-size:12px"></i> Add</button>
+          <button class="btn" onclick="toggleQuickCreate(false)">Cancel</button>
+        </div>
+      </div>
+      <div class="tc-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th style="width:28px"><input type="checkbox" id="chk-all" onchange="selAll(this)"></th>
+            <th style="width:68px">ID</th>
+            <th>Title</th>
+            <th style="width:72px">Priority</th>
+            <th style="width:80px">Suite</th>
+            <th style="width:88px">Type</th>
+            <th style="width:80px">Last run</th>
+            <th style="width:100px">Assigned</th>
+            <th style="width:50px;text-align:center">Steps</th>
+            <th style="width:70px">Updated</th>
+          </tr></thead>
+          <tbody id="case-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="case-empty-state">
+          <div class="empty-card">
+            <i class="ti ti-folder-open"></i>
+            <div class="empty-title">No test cases in this folder</div>
+            <div class="empty-copy">Create a new case, quick add several titles, or import existing cases into the selected folder.</div>
+            <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+              <button class="btn btn-p" onclick="openCreateCase()"><i class="ti ti-plus" style="font-size:12px"></i> Create test case</button>
+              <button class="btn" onclick="toggleQuickCreate(true)"><i class="ti ti-bolt" style="font-size:12px"></i> Quick create</button>
+              <button class="btn" onclick="showImportState()"><i class="ti ti-upload" style="font-size:12px"></i> Import existing cases</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="resizer-v detail-resizer" data-resize="case-detail" data-min="300" data-max="540"></div>
+    <!-- DETAIL PANEL -->
+    <div class="dp" id="detail-panel">
+      <div class="dp-hd">
+        <div style="flex:1;overflow:hidden">
+          <span class="dp-id" id="dp-id">TC-1001</span>
+          <div class="dp-ttl" id="dp-ttl">Validate CTMS role permissions for Viewer user</div>
+        </div>
+        <button class="btn" style="padding:2px 6px;flex-shrink:0" onclick="closeDetail()"><i class="ti ti-x" style="font-size:13px"></i></button>
+      </div>
+      <div class="nav-tab-bar">
+        <div class="nav-tab on" onclick="switchDpTab(this,'details')">Details</div>
+        <div class="nav-tab" onclick="switchDpTab(this,'history')">History</div>
+        <div class="nav-tab" onclick="switchDpTab(this,'activity')">Activity</div>
+      </div>
+      <div class="dp-body">
+        <div id="dp-tab-details">
+        <div class="dp-sec">
+          <div class="dp-sl">Metadata</div>
+          <div class="dp-mg">
+            <div><div class="dp-ml">Priority</div><div class="dp-mv" id="dp-pri"></div></div>
+            <div><div class="dp-ml">Type</div><div class="dp-mv" id="dp-type">Functional</div></div>
+            <div><div class="dp-ml">Assigned to</div><div class="dp-mv" id="dp-assigned">Aisha Rahman</div></div>
+            <div><div class="dp-ml">Last result</div><div class="dp-mv" id="dp-last"></div></div>
+            <div><div class="dp-ml">Suite</div><div class="dp-mv" id="dp-suite">CTMS</div></div>
+            <div><div class="dp-ml">Automation</div><div class="dp-mv">Manual</div></div>
+          </div>
+        </div>
+        <div class="dp-sec">
+          <div class="dp-sl">Preconditions</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.5" id="dp-precond">CTMS test tenant has Admin, Executor, and Reader users seeded for permission testing.</div>
+        </div>
+        <div class="dp-sec">
+          <div class="dp-sl">Steps</div>
+          <div id="dp-steps"></div>
+        </div>
+        <div class="dp-sec">
+          <div class="dp-sl">Recent runs</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px"><span class="pill p-pass">Pass</span><span style="color:var(--text3)">Sprint 44 Regression · 2d ago · Aisha R.</span></div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px"><span class="pill p-pass">Pass</span><span style="color:var(--text3)">Sprint 43 Regression · 14d ago · Marcus W.</span></div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px"><span class="pill p-fail">Fail</span><span style="color:var(--text3)">Sprint 43 Smoke · 15d ago · James O.</span></div>
+          </div>
+        </div>
+        <div class="dp-sec" style="border-bottom:none">
+          <div class="dp-sl">Tags</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap" id="dp-tags"><span class="tag">ctms</span><span class="tag">role-mapping</span><span class="tag">permissions</span><span class="tag">regression</span></div>
+        </div>
+        </div><!-- /dp-tab-details -->
+        <div id="dp-tab-history" style="display:none">
+          <div class="hist-item"><div class="hist-dot" style="background:var(--pass)"></div><div><div class="hist-label">Passed — CTMS Regression · Sprint 44</div><div class="hist-meta">Aisha R. · 2d ago · all steps passed</div></div></div>
+          <div class="hist-item"><div class="hist-dot" style="background:var(--pass)"></div><div><div class="hist-label">Passed — CTMS Regression · Sprint 43</div><div class="hist-meta">Marcus W. · 14d ago · all steps passed</div></div></div>
+          <div class="hist-item"><div class="hist-dot" style="background:var(--fail)"></div><div><div class="hist-label">Failed — Sprint 43 Smoke Test</div><div class="hist-meta">James O. · 15d ago · Step 2 failed · Defect TI-4401</div></div></div>
+          <div class="hist-item"><div class="hist-dot" style="background:var(--pass)"></div><div><div class="hist-label">Passed — Sprint 42 Regression</div><div class="hist-meta">Aisha R. · 28d ago · all steps passed</div></div></div>
+        </div>
+        <div id="dp-tab-activity" style="display:none">
+          <div class="act-item"><strong>Aisha R.</strong> updated preconditions<span class="act-time">2d ago · 09:14</span></div>
+          <div class="act-item"><strong>Marcus W.</strong> added step 4: verify audit trail entry<span class="act-time">5d ago · 14:32</span></div>
+          <div class="act-item"><strong>Aisha R.</strong> changed priority High → Critical<span class="act-time">8d ago · 11:05</span></div>
+          <div class="act-item"><strong>James O.</strong> created test case<span class="act-time">21d ago · 16:48</span></div>
+        </div>
+      </div>
+      <div style="padding:7px 10px;border-top:1px solid var(--border);display:flex;gap:5px">
+        <button class="btn btn-p" style="flex:1"><i class="ti ti-edit" style="font-size:12px"></i> Edit case</button>
+        <button class="btn"><i class="ti ti-player-play" style="font-size:12px"></i> Add to run</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TEST RUNS ===================== -->
+<div class="view" id="view-runs">
+  <div class="topbar">
+    <div class="module-switcher">
+      <button class="module-btn" onclick="toggleModuleMenu(event)"><i class="ti ti-layout-grid"></i><span class="module-current-label">TI-Core Platform</span><i class="ti ti-chevron-down" style="margin-left:auto;color:var(--text3)"></i></button>
+      <div class="module-menu"><div class="module-search"><i class="ti ti-search" style="font-size:12px;color:var(--text3)"></i><input placeholder="Switch project or module..." oninput="renderModuleMenu(this.value)"></div><div class="module-list"></div></div>
+    </div>
+    <div class="bc">
+      <a onclick="go('dashboard')">Dashboard</a><span class="sep">/</span>
+      <a>TI-Core Platform</a><span class="sep">/</span>
+      <span class="cur">Test runs</span>
+    </div>
+    <div class="ta">
+      <div class="autosave"><div class="as-dot"></div>Auto-saving</div>
+      <div style="width:1px;height:14px;background:var(--border)"></div>
+      <button class="btn"><i class="ti ti-filter" style="font-size:12px"></i> Filter</button>
+      <button class="btn btn-p"><i class="ti ti-plus" style="font-size:12px"></i> New run</button>
+    </div>
+  </div>
+  <div class="tr-lay">
+    <div class="run-exec-toolbar">
+      <div class="run-picker">
+        <button class="run-picker-btn" onclick="toggleRunPicker(event)"><i class="ti ti-player-play" style="font-size:13px;color:var(--accent)"></i><span id="run-picker-label">CTMS Regression — Sprint 44</span><i class="ti ti-chevron-down" style="margin-left:auto;color:var(--text3)"></i></button>
+        <div class="run-picker-menu" id="run-picker-menu">
+          <div class="run-picker-search"><i class="ti ti-search" style="font-size:12px;color:var(--text3)"></i><input id="run-picker-search" placeholder="Search runs..." oninput="renderRunPicker(this.value)"></div>
+          <div id="run-picker-list"></div>
+        </div>
+      </div>
+      <div class="ec-ftab-bar" style="border:0;padding:0;background:transparent">
+        <div class="ftab on" onclick="filterTab(this,'all')">All</div>
+        <div class="ftab" onclick="filterTab(this,'not_run')">Not run</div>
+        <div class="ftab" onclick="filterTab(this,'fail')">Fail</div>
+        <div class="ftab" onclick="filterTab(this,'blocked')">Blocked</div>
+      </div>
+      <div class="run-summary-card" id="run-summary-card">
+        <button class="btn" style="padding:2px 5px" onclick="toggleRunSummary()" title="Collapse summary"><i class="ti ti-chevron-up" id="run-summary-icon" style="font-size:12px"></i></button>
+        <div class="run-summary-details">
+          <div class="summary-metric"><strong>102/132</strong><span>Executed</span></div>
+          <div class="summary-metric" style="color:var(--pass)"><strong>71</strong><span>Passed</span></div>
+          <div class="summary-metric" style="color:var(--fail)"><strong>24</strong><span>Failed</span></div>
+          <div class="summary-metric" style="color:var(--block)"><strong>7</strong><span>Blocked</span></div>
+          <div class="prog" style="width:110px;height:6px"><div class="pg-p" style="width:54%"></div><div class="pg-f" style="width:18%"></div><div class="pg-b" style="width:5%"></div></div>
+        </div>
+        <button id="seal-run-btn" class="seal-btn" onclick="sealCurrentRun()"><i class="ti ti-lock" style="font-size:12px"></i> Seal Run</button>
+      </div>
+    </div>
+    <!-- RUN LIST -->
+    <div class="rl-pane">
+      <div class="rl-hd">
+        <i class="ti ti-list" style="font-size:13px;color:var(--text2)"></i>
+        <span class="st-ttl">Runs</span>
+        <span class="pnl-ct">8</span>
+      </div>
+      <div class="rl-body">
+        <div class="divider-lbl">Active</div>
+        <div class="rl-item on" onclick="selRun(this)">
+          <div class="rl-nm">CTMS Regression — Sprint 44</div>
+          <div class="rl-mt"><span class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">132 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:54%"></div><div class="pg-f" style="width:18%"></div><div class="pg-b" style="width:5%"></div></div><span class="rl-pt">77%</span></div>
+        </div>
+        <div class="rl-item" onclick="selRun(this)">
+          <div class="rl-nm">eTMF Document Workflow Smoke</div>
+          <div class="rl-mt"><span class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">40 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:80%"></div><div class="pg-f" style="width:10%"></div></div><span class="rl-pt">90%</span></div>
+        </div>
+        <div class="rl-item" onclick="selRun(this)">
+          <div class="rl-nm">Viewer Module — Functional</div>
+          <div class="rl-mt"><span class="pill p-block" style="font-size:10px;padding:1px 5px">Stalled</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">70 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:40%"></div><div class="pg-f" style="width:8%"></div><div class="pg-b" style="width:12%"></div></div><span class="rl-pt">60%</span></div>
+        </div>
+        <div class="rl-item" onclick="selRun(this)">
+          <div class="rl-nm">Reporting Module — Integration</div>
+          <div class="rl-mt"><span class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">80 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:62%"></div><div class="pg-f" style="width:15%"></div></div><span class="rl-pt">79%</span></div>
+        </div>
+        <div class="rl-item" onclick="selRun(this)">
+          <div class="rl-nm">SSO/IAM Role Matrix</div>
+          <div class="rl-mt"><span class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">24 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:33%"></div><div class="pg-f" style="width:8%"></div></div><span class="rl-pt">41%</span></div>
+        </div>
+        <div class="divider-lbl">Completed</div>
+        <div class="rl-item" onclick="selRun(this)">
+          <div class="rl-nm">Sprint 43 — Full regression</div>
+          <div class="rl-mt"><span class="pill p-pass" style="font-size:10px;padding:1px 5px">Sealed</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">128 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:81%"></div><div class="pg-f" style="width:12%"></div><div class="pg-b" style="width:4%"></div><div class="pg-s" style="width:3%"></div></div><span class="rl-pt">100%</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- EXEC CASE PANE -->
+    <div class="ec-pane">
+      <div class="ec-run-hd">
+        <div class="ec-rttl">CTMS Regression — Sprint 44</div>
+        <div class="ec-rmt">
+          <span id="ec-run-status-pill" class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span>
+          <span>Due: 12 May</span><span>Plan: Release 2.4.1 Regression</span>
+          <button class="seal-btn" onclick="sealCurrentRun()" style="margin-left:auto"><i class="ti ti-lock" style="font-size:12px"></i> Seal Run</button>
+        </div>
+        <div class="ec-rpg" style="margin-bottom:3px">
+          <span class="ec-rpt">102 / 132</span>
+          <div class="prog" style="flex:1;height:4px"><div class="pg-p" style="width:54%"></div><div class="pg-f" style="width:18%"></div><div class="pg-b" style="width:5%"></div></div>
+          <span class="ec-rpt">77%</span>
+        </div>
+        <div class="ec-rst">
+          <span class="rst rst-p" style="font-size:10px">✓ 71</span>
+          <span class="rst rst-f" style="font-size:10px">✗ 24</span>
+          <span class="rst rst-b" style="font-size:10px">⊘ 7</span>
+          <span class="rst rst-n" style="font-size:10px">○ 30 Not run</span>
+        </div>
+      </div>
+      <div class="ec-ftab-bar">
+        <div class="ftab on" onclick="filterTab(this,'all')">All</div>
+        <div class="ftab" onclick="filterTab(this,'not_run')">Not run</div>
+        <div class="ftab" onclick="filterTab(this,'fail')">Fail</div>
+        <div class="ftab" onclick="filterTab(this,'blocked')">Blocked</div>
+        <span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">132</span>
+      </div>
+      <div class="ec-list" id="ec-list"></div>
+    </div>
+    <div class="resizer-v" data-resize="run-list" data-min="380" data-max="760"></div>
+    <!-- EXEC DETAIL -->
+    <div class="ed-pane">
+      <div class="ed-hd">
+        <div class="ed-top">
+          <div>
+            <div class="ed-id" id="ed-id">TC-2041</div>
+            <div class="ed-ttl" id="ed-ttl">CTMS user role mapping drops Viewer permission</div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px">
+            <button class="btn" style="font-size:11px;padding:2px 7px" onclick="navCase(-1)"><i class="ti ti-arrow-left" style="font-size:11px"></i> Prev</button>
+            <button class="btn" style="font-size:11px;padding:2px 7px" onclick="navCase(1)">Next <i class="ti ti-arrow-right" style="font-size:11px"></i></button>
+          </div>
+        </div>
+        <div class="ed-mt">
+          <span id="ed-pri"></span>
+          <span class="tag">ctms</span><span class="tag">role-mapping</span>
+          <span style="font-size:11px;color:var(--text2)">Assigned: <strong id="ed-by">Aisha Rahman</strong></span>
+          <span id="ed-status-pill" style="margin-left:auto"></span>
+        </div>
+      </div>
+      <div class="ed-body" id="ed-body">
+        <div class="ed-precond">
+          <div class="ed-sl">Preconditions</div>
+          <div class="ed-pt" id="ed-precond">CTMS test tenant contains seeded Admin, Executor, and Reader users with module-level permissions enabled.</div>
+        </div>
+        <div id="ed-steps-wrap"></div>
+        <div class="ed-defects">
+          <div class="ed-sl">Linked defects</div>
+          <div id="ed-defect-list"></div>
+          <div class="ed-dlink" onclick="linkDefect()"><i class="ti ti-plus" style="font-size:12px"></i> Link defect <span class="kbd">D</span></div>
+        </div>
+      </div>
+      <div class="ed-foot">
+        <span class="ed-rl">Result:</span>
+        <div class="ed-rbs">
+          <div class="rmb rmb-p" onclick="setResult('pass',this)">P Pass</div>
+          <div class="rmb rmb-f" onclick="setResult('fail',this)">F Fail</div>
+          <div class="rmb rmb-b" onclick="setResult('blocked',this)">B Blocked</div>
+          <div class="rmb rmb-s" onclick="setResult('skip',this)">S Skip</div>
+        </div>
+        <button onclick="clearResult()" style="padding:3px 8px;border:1px solid var(--border);background:transparent;border-radius:4px;font-size:11px;color:var(--text3);cursor:pointer;white-space:nowrap;margin-left:4px" title="Reset to Not run">↩ Clear</button>
+      </div>
+      <div class="sc-bar">
+        <div class="sc-h"><span class="kbd">P</span>Pass</div>
+        <div class="sc-h"><span class="kbd">F</span>Fail</div>
+        <div class="sc-h"><span class="kbd">B</span>Blocked</div>
+        <div class="sc-h"><span class="kbd">S</span>Skip</div>
+        <div class="sc-h"><span class="kbd">D</span>Defect</div>
+        <div class="sc-h"><span class="kbd">J/K</span>Navigate</div>
+        <div class="sc-h" style="margin-left:auto"><span class="kbd" style="cursor:pointer" onclick="openShortcuts()">?</span>&nbsp;Shortcuts</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== TEST PLANS ===================== -->
+<div class="view" id="view-plans">
+  <div class="topbar">
+    <div class="module-switcher">
+      <button class="module-btn" onclick="toggleModuleMenu(event)"><i class="ti ti-layout-grid"></i><span class="module-current-label">TI-Core Platform</span><i class="ti ti-chevron-down" style="margin-left:auto;color:var(--text3)"></i></button>
+      <div class="module-menu"><div class="module-search"><i class="ti ti-search" style="font-size:12px;color:var(--text3)"></i><input placeholder="Switch project or module..." oninput="renderModuleMenu(this.value)"></div><div class="module-list"></div></div>
+    </div>
+    <div class="bc">
+      <a onclick="go('dashboard')">Dashboard</a><span class="sep">/</span>
+      <a>TI-Core Platform</a><span class="sep">/</span>
+      <span class="cur">Test plans</span>
+    </div>
+    <div class="ta">
+      <div class="search-trigger" onclick="openSearch()" style="width:200px"><i class="ti ti-search" style="font-size:13px"></i><span style="flex:1">Search plans…</span><span class="kbd">⌘K</span></div>
+      <button class="btn btn-p"><i class="ti ti-plus" style="font-size:12px"></i> New plan</button>
+    </div>
+  </div>
+  <div class="tp-lay">
+    <div class="tp-list-pane">
+      <div class="tpl-hd">
+        <i class="ti ti-clipboard-list" style="font-size:13px;color:var(--text2)"></i>
+        <span class="st-ttl">Plans</span>
+        <span class="pnl-ct">5</span>
+      </div>
+      <div class="tpl-body">
+        <div class="divider-lbl">Active</div>
+        <div class="tpl-item on" onclick="selPlan(this,0)">
+          <div class="tpl-nm">CTMS Module — Full Regression</div>
+          <div class="tpl-mt"><span class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">87 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:88%"></div></div><span class="rl-pt">3 runs</span></div>
+        </div>
+        <div class="tpl-item" onclick="selPlan(this,1)">
+          <div class="tpl-nm">eTMF Document Workflow — Regression</div>
+          <div class="tpl-mt"><span class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">64 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:75%"></div><div class="pg-f" style="width:10%"></div></div><span class="rl-pt">5 runs</span></div>
+        </div>
+        <div class="tpl-item" onclick="selPlan(this,2)">
+          <div class="tpl-nm">SSO/IAM &amp; Permissions — Security Suite</div>
+          <div class="tpl-mt"><span class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">52 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:94%"></div></div><span class="rl-pt">2 runs</span></div>
+        </div>
+        <div class="tpl-item" onclick="selPlan(this,3)">
+          <div class="tpl-nm">Reporting Module — Integration Suite</div>
+          <div class="tpl-mt"><span class="pill p-act" style="font-size:10px;padding:1px 5px">Active</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">80 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"><div class="pg-p" style="width:62%"></div><div class="pg-f" style="width:18%"></div></div><span class="rl-pt">4 runs</span></div>
+        </div>
+        <div class="divider-lbl">Draft</div>
+        <div class="tpl-item" onclick="selPlan(this,4)">
+          <div class="tpl-nm">Viewer Module — Functional Regression</div>
+          <div class="tpl-mt"><span class="pill p-draft" style="font-size:10px;padding:1px 5px">Draft</span><span style="font-size:9.5px;color:var(--text3);font-family:var(--mono)">29 cases</span></div>
+          <div class="rl-pg"><div class="prog" style="flex:1;height:3px"></div><span class="rl-pt">0 runs</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="resizer-v" data-resize="plan-list" data-min="190" data-max="360"></div>
+    <div class="tp-detail">
+      <div class="tpd-hd">
+        <div class="tpd-ttl" id="tpd-ttl">CTMS Module — Full Regression</div>
+        <div class="tpd-meta">
+          <span class="pill p-act" id="tpd-status"><span class="pill-dot"></span>Active</span>
+          <span id="tpd-env"><i class="ti ti-server" style="font-size:12px"></i> Environment: UAT</span>
+          <span id="tpd-owner"><i class="ti ti-user" style="font-size:12px"></i> Owner: Aisha Rahman</span>
+          <span id="tpd-cases" style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text3)">87 cases across 4 suites</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.5" id="tpd-desc">Full functional regression coverage for the CTMS module. Covers record management, role permissions, user assignment, and audit trail validation.</div>
+      </div>
+      <div class="nav-tab-bar">
+        <div class="nav-tab on" onclick="switchPlanTab(this,'overview')">Overview</div>
+        <div class="nav-tab" onclick="switchPlanTab(this,'suites')">Included suites</div>
+        <div class="nav-tab" onclick="switchPlanTab(this,'runs')">Run history</div>
+      </div>
+      <div class="tpd-body">
+        <div class="tp-tab-pane on" id="tp-tab-overview">
+          <div class="tp-overview-grid">
+            <div class="tp-stat"><strong id="tp-stat-cases">87</strong><span>Cases</span></div>
+            <div class="tp-stat"><strong id="tp-stat-suites">4</strong><span>Suites</span></div>
+            <div class="tp-stat"><strong id="tp-stat-pass">84%</strong><span>Avg pass</span></div>
+            <div class="tp-stat"><strong id="tp-stat-runs">3</strong><span>Runs</span></div>
+          </div>
+          <div class="tpd-panel">
+            <div class="tpd-panel-hd">
+              <i class="ti ti-chart-donut" style="font-size:13px;color:var(--accent)"></i>
+              <span class="tpd-panel-title">Coverage / metrics</span>
+              <span style="font-size:10.5px;color:var(--text3);margin-left:auto">Release validation readiness</span>
+            </div>
+            <div class="cov-grid" id="tpd-coverage"></div>
+          </div>
+          <div class="validation-note"><strong>Validation involvement:</strong> 2-3 QA users validate sample real workflows weekly, focused on execution, search, folders, run sealing, and clear acceptance criteria for MVP readiness.</div>
+        </div>
+        <div class="tp-tab-pane" id="tp-tab-suites">
+        <div class="tpd-panel">
+          <div class="tpd-panel-hd">
+            <i class="ti ti-folder" style="font-size:13px;color:var(--accent)"></i>
+            <span class="tpd-panel-title">Included suites</span>
+            <span class="pnl-ct" id="tpd-suite-count">4 suites</span>
+          </div>
+          <div id="tpd-modules">
+            <div class="tp-module-row"><span class="tp-mod-name">CTMS — Record creation &amp; editing</span><span class="tp-mod-count">24 cases</span><span class="pill p-pass" style="font-size:10px">88% pass</span></div>
+            <div class="tp-module-row"><span class="tp-mod-name">CTMS — Role &amp; permission validation</span><span class="tp-mod-count">18 cases</span><span class="pill p-pass" style="font-size:10px">94% pass</span></div>
+            <div class="tp-module-row"><span class="tp-mod-name">CTMS — User assignment flows</span><span class="tp-mod-count">21 cases</span><span class="pill p-fail" style="font-size:10px">71% pass</span></div>
+            <div class="tp-module-row"><span class="tp-mod-name">CTMS — Audit history</span><span class="tp-mod-count">24 cases</span><span class="pill p-pass" style="font-size:10px">83% pass</span></div>
+          </div>
+        </div>
+        </div>
+        <div class="tp-tab-pane" id="tp-tab-runs">
+        <div class="tpd-panel">
+          <div class="tpd-panel-hd">
+            <i class="ti ti-history" style="font-size:13px;color:var(--text2)"></i>
+            <span class="tpd-panel-title">Run history</span>
+            <span class="pnl-ct" id="tpd-run-count">3 runs</span>
+          </div>
+          <div id="tpd-runs">
+            <div class="tp-run-row"><span class="pill p-act" style="font-size:10px">Active</span><span class="tp-run-name">CTMS Regression — Sprint 44</span><span class="tp-run-date">Started 2d ago · Aisha R.</span><button class="btn" style="font-size:10.5px;padding:2px 7px" onclick="go('runs')">Open →</button></div>
+            <div class="tp-run-row"><span class="pill p-pass" style="font-size:10px">Sealed</span><span class="tp-run-name">CTMS Regression — Sprint 43</span><span class="tp-run-date">Sealed 16d ago · 82% pass</span></div>
+            <div class="tp-run-row"><span class="pill p-pass" style="font-size:10px">Sealed</span><span class="tp-run-name">CTMS Regression — Sprint 42</span><span class="tp-run-date">Sealed 30d ago · 79% pass</span></div>
+          </div>
+        </div>
+        </div>
+      </div>
+      <div class="tpd-cta">
+        <button class="btn btn-p" onclick="go('runs')"><i class="ti ti-player-play" style="font-size:13px"></i> Spawn new run from this plan</button>
+        <button class="btn"><i class="ti ti-edit" style="font-size:12px"></i> Edit plan</button>
+        <button class="btn"><i class="ti ti-copy" style="font-size:12px"></i> Clone plan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== AUDIT HISTORY ===================== -->
+<div class="view" id="view-audit">
+  <div class="topbar">
+    <div class="module-switcher">
+      <button class="module-btn" onclick="toggleModuleMenu(event)"><i class="ti ti-layout-grid"></i><span class="module-current-label">TI-Core Platform</span><i class="ti ti-chevron-down" style="margin-left:auto;color:var(--text3)"></i></button>
+      <div class="module-menu"><div class="module-search"><i class="ti ti-search" style="font-size:12px;color:var(--text3)"></i><input placeholder="Switch project or module..." oninput="renderModuleMenu(this.value)"></div><div class="module-list"></div></div>
+    </div>
+    <div class="bc">
+      <a onclick="go('dashboard')">Dashboard</a><span class="sep">/</span>
+      <a>TI-Core Platform</a><span class="sep">/</span>
+      <span class="cur">Audit History</span>
+    </div>
+    <div class="ta">
+      <div class="search-trigger" onclick="openSearch()" style="width:200px"><i class="ti ti-search" style="font-size:13px"></i><span style="flex:1">Search audit…</span><span class="kbd">⌘K</span></div>
+    </div>
+  </div>
+  <div class="audit-wrap">
+    <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+      <span class="chip on" onclick="chipToggle(this)">All events</span>
+      <span class="chip" onclick="chipToggle(this)">Test Cases</span>
+      <span class="chip" onclick="chipToggle(this)">Test Runs</span>
+      <span class="chip" onclick="chipToggle(this)">Test Plans</span>
+      <span class="chip" onclick="chipToggle(this)">Users</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text3);font-family:var(--mono)">147 events · last 7 days</span>
+    </div>
+    <div class="panel" style="flex:1;overflow:hidden">
+      <div class="pnl-hd">
+        <i class="ti ti-history" style="font-size:13px;color:var(--accent)"></i>
+        <span class="pnl-ttl">Audit log</span>
+        <span class="pnl-ct">147</span>
+        <span style="font-size:10.5px;color:var(--text3);margin-left:auto">Append-only · all mutations captured</span>
+        <button class="btn" style="font-size:11px;padding:2px 8px;margin-left:6px"><i class="ti ti-download" style="font-size:11px"></i> Export</button>
+      </div>
+      <div class="pnl-body">
+
+        <div class="audit-row">
+          <div class="audit-ic result"><i class="ti ti-x"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Aisha R.</strong> marked <span class="audit-ref">TC-1004</span> as <span class="pill p-fail" style="font-size:10px">Fail</span> <span style="color:var(--text3)">(was Not run)</span></div>
+            <div class="audit-ctx">CTMS Regression — Sprint 44 · execution result change</div>
+          </div>
+          <div class="audit-time">1h ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic link"><i class="ti ti-bug"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Aisha R.</strong> linked defect <span class="audit-ref">TI-4419</span> to <span class="audit-ref">TC-2041</span></div>
+            <div class="audit-ctx">CTMS Regression — Sprint 44 · defect linked</div>
+          </div>
+          <div class="audit-time">2h ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic result"><i class="ti ti-check"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Priya N.</strong> marked <span class="audit-ref">TC-1012</span> as <span class="pill p-pass" style="font-size:10px">Pass</span> <span style="color:var(--text3)">(was Not run)</span></div>
+            <div class="audit-ctx">SSO/IAM Role Matrix — Permission Validation</div>
+          </div>
+          <div class="audit-time">3h ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic edit"><i class="ti ti-edit"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Marcus W.</strong> updated preconditions on <span class="audit-ref">TC-1008</span></div>
+            <div class="audit-ctx">CTMS · Reporting suite · content edit</div>
+          </div>
+          <div class="audit-time">4h ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic create"><i class="ti ti-player-play"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Noel Q.</strong> created run <span class="audit-ref">CTMS Regression — Sprint 44</span> from plan <span class="audit-ref">CTMS Module — Full Regression</span></div>
+            <div class="audit-ctx">132 cases snapshotted · 3 assignees · UAT environment</div>
+          </div>
+          <div class="audit-time">2d ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic assign"><i class="ti ti-user"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Noel Q.</strong> assigned <span class="audit-ref">TC-1007</span> to <strong>Aisha Rahman</strong></div>
+            <div class="audit-ctx">Viewer suite · assignee change</div>
+          </div>
+          <div class="audit-time">2d ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic edit"><i class="ti ti-edit"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Aisha R.</strong> changed priority of <span class="audit-ref">TC-1007</span> from <strong>High</strong> → <strong>Critical</strong></div>
+            <div class="audit-ctx">Viewer · Grid &amp; filtering suite</div>
+          </div>
+          <div class="audit-time">2d ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic seal"><i class="ti ti-lock"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Noel Q.</strong> sealed run <span class="audit-ref">SSO/IAM Role Matrix — Permission Validation</span></div>
+            <div class="audit-ctx">24 cases · 89% pass rate · sealed after sign-off</div>
+          </div>
+          <div class="audit-time">5d ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic create"><i class="ti ti-file-plus"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Marcus W.</strong> created test case <span class="audit-ref">TC-1013</span> <em style="color:var(--text3);font-size:11px">Viewer pagination resets on filter clear</em></div>
+            <div class="audit-ctx">Viewer · Grid &amp; filtering suite</div>
+          </div>
+          <div class="audit-time">5d ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic edit"><i class="ti ti-folders"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Noel Q.</strong> moved <span class="audit-ref">TC-1006</span> from <strong>CTMS</strong> to <strong>Viewer</strong> suite</div>
+            <div class="audit-ctx">Folder / suite reassignment</div>
+          </div>
+          <div class="audit-time">6d ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic seal"><i class="ti ti-lock-open"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Noel Q.</strong> reopened sealed run <span class="audit-ref">eTMF Regression — Sprint 43</span></div>
+            <div class="audit-ctx">Reason: TC-1005 result was incorrect — 1 case re-executed and resealed</div>
+          </div>
+          <div class="audit-time">6d ago</div>
+        </div>
+
+        <div class="audit-row">
+          <div class="audit-ic create"><i class="ti ti-clipboard-list"></i></div>
+          <div style="flex:1;min-width:0">
+            <div class="audit-desc"><strong>Noel Q.</strong> created test plan <span class="audit-ref">Viewer Module — Functional Regression</span></div>
+            <div class="audit-ctx">Draft · 29 cases across 2 suites · QA environment</div>
+          </div>
+          <div class="audit-time">7d ago</div>
+        </div>
+
+        <div style="padding:14px;text-align:center;border-top:1px solid var(--border)">
+          <button class="btn" style="font-size:12px;padding:4px 14px">Load 135 older events</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ===== CREATE CASE MODAL ===== -->
+<div class="modal-backdrop hidden" id="create-case-modal" onclick="handleCreateBackdrop(event)">
+  <div class="create-dialog" onclick="event.stopPropagation()">
+    <div class="shortcuts-hd">
+      <div class="shortcuts-title">Create test case</div>
+      <button class="btn" style="padding:2px 6px" onclick="closeCreateCase()"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>
+    <div class="create-body">
+      <div class="form-field"><label>Title</label><input id="new-case-title" placeholder="Describe the behavior to validate"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="form-field"><label>Suite</label><select id="new-case-suite"><option>CTMS</option><option>eTMF</option><option>SSO/IAM</option><option>Viewer</option><option>Reporting</option><option>GlobalLearn</option><option>API Gateway</option><option>User Management</option></select></div>
+        <div class="form-field"><label>Priority</label><select id="new-case-pri"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+      </div>
+      <div class="form-field"><label>Preconditions</label><textarea id="new-case-precond" rows="3" placeholder="Data, role, tenant, or module setup required"></textarea></div>
+      <div class="form-field"><label>First step</label><textarea id="new-case-step" rows="2" placeholder="Action to perform"></textarea></div>
+      <div class="form-field"><label>Expected result</label><textarea id="new-case-expected" rows="2" placeholder="Observable result"></textarea></div>
+    </div>
+    <div class="create-foot">
+      <button class="btn" onclick="closeCreateCase()">Cancel</button>
+      <button class="btn btn-p" onclick="createFullCase()"><i class="ti ti-plus" style="font-size:12px"></i> Create case</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SEARCH MODAL ===== -->
+<div class="modal-backdrop hidden" id="search-modal" onclick="handleBackdropClick(event)">
+  <div class="search-dialog" onclick="event.stopPropagation()">
+    <div class="search-input-row">
+      <i class="ti ti-search"></i>
+      <input type="text" id="search-input" placeholder="Search test cases, runs, plans…" oninput="runSearch(this.value)" onkeydown="searchKeyNav(event)" autocomplete="off">
+      <span class="kbd">Esc</span>
+    </div>
+    <div class="search-results-wrap" id="search-results-wrap"></div>
+    <div class="search-footer">
+      <div class="search-footer-hint"><span class="kbd">↑</span><span class="kbd">↓</span>&nbsp;navigate</div>
+      <div class="search-footer-hint"><span class="kbd">↵</span>&nbsp;open</div>
+      <div class="search-footer-hint"><span class="kbd">Esc</span>&nbsp;close</div>
+      <span style="font-size:10.5px;color:var(--text3)">Cases · Runs · Plans</span><span style="margin-left:auto;font-size:10.5px;color:var(--text3)" id="search-count"></span>
+    </div>
+  </div>
+</div>
+<!-- ===== SHORTCUTS MODAL ===== -->
+<div class="modal-backdrop hidden" id="shortcuts-modal" onclick="closeShortcuts()">
+  <div class="shortcuts-dialog" onclick="event.stopPropagation()">
+    <div class="shortcuts-hd">
+      <span class="shortcuts-title">Keyboard shortcuts</span>
+      <button class="btn" style="padding:2px 6px;font-size:12px" onclick="closeShortcuts()"><i class="ti ti-x" style="font-size:12px"></i></button>
+    </div>
+    <div class="shortcuts-body">
+      <div class="shortcuts-col">
+        <div class="shortcuts-section">
+          <div class="shortcuts-section-title">Execution (Test Runs view)</div>
+          <div class="shortcut-row"><span>Mark pass</span><div class="kbd-group"><span class="kbd">P</span></div></div>
+          <div class="shortcut-row"><span>Mark fail</span><div class="kbd-group"><span class="kbd">F</span></div></div>
+          <div class="shortcut-row"><span>Mark blocked</span><div class="kbd-group"><span class="kbd">B</span></div></div>
+          <div class="shortcut-row"><span>Mark skip</span><div class="kbd-group"><span class="kbd">S</span></div></div>
+          <div class="shortcut-row"><span>Link defect</span><div class="kbd-group"><span class="kbd">D</span></div></div>
+          <div class="shortcut-row"><span>Next case</span><div class="kbd-group"><span class="kbd">J</span></div></div>
+          <div class="shortcut-row"><span>Previous case</span><div class="kbd-group"><span class="kbd">K</span></div></div>
+        </div>
+      </div>
+      <div class="shortcuts-col">
+        <div class="shortcuts-section">
+          <div class="shortcuts-section-title">Global</div>
+          <div class="shortcut-row"><span>Global search</span><div class="kbd-group"><span class="kbd">⌘</span><span class="kbd">K</span></div></div>
+          <div class="shortcut-row"><span>Show shortcuts</span><div class="kbd-group"><span class="kbd">?</span></div></div>
+          <div class="shortcut-row"><span>Close / dismiss</span><div class="kbd-group"><span class="kbd">Esc</span></div></div>
+        </div>
+        <div class="shortcuts-section">
+          <div class="shortcuts-section-title">Navigation</div>
+          <div class="shortcut-row"><span>Dashboard</span><div class="kbd-group"><span class="kbd">G</span><span class="kbd">D</span></div></div>
+          <div class="shortcut-row"><span>Test Cases</span><div class="kbd-group"><span class="kbd">G</span><span class="kbd">C</span></div></div>
+          <div class="shortcut-row"><span>Test Runs</span><div class="kbd-group"><span class="kbd">G</span><span class="kbd">R</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+const CASES=[
+  {id:'TC-1001',suite:'CTMS',title:'Validate CTMS role permissions for Viewer user',pri:'critical',type:'Functional',last:'pass',by:'Aisha R.',steps:4,upd:'2d ago',precond:'CTMS test tenant has Admin, Executor, and Reader users seeded for permission testing.',stepList:[
+    {a:'Log in as a Viewer user and open the CTMS module',e:'Viewer can open CTMS in read-only mode'},
+    {a:'Attempt to create a CTMS record from the toolbar',e:'Create action is hidden or disabled'},
+    {a:'Navigate directly to the create-record route',e:'Request is rejected with a permission error'},
+    {a:'Verify audit history captures the denied action',e:'Audit entry records user, module, and attempted action'},
+  ]},
+  {id:'TC-1002',suite:'CTMS',title:'Create CTMS record with required fields',pri:'critical',type:'Functional',last:'pass',by:'Aisha R.',steps:3,upd:'2d ago',precond:'Executor user has CTMS create permission in UAT.',stepList:[
+    {a:'Open the CTMS module and select New record',e:'Create form opens with required fields marked'},
+    {a:'Submit the form with valid required values',e:'Record saves successfully and receives a system ID'},
+    {a:'Reopen the record from search results',e:'Saved values match the submitted data'},
+  ]},
+  {id:'TC-1003',suite:'eTMF',title:'eTMF document upload preserves classification metadata',pri:'critical',type:'Functional',last:'pass',by:'James O.',steps:5,upd:'3d ago',precond:'eTMF test project contains a configured document workflow and sample PDF.',stepList:[
+    {a:'Open eTMF document upload from the module navigation',e:'Upload dialog appears with classification fields'},
+    {a:'Upload a valid PDF using drag and drop',e:'File is accepted and appears in the upload queue'},
+    {a:'Select document type and workflow owner',e:'Metadata values are accepted without validation errors'},
+    {a:'Submit the document into workflow',e:'Document status changes to QC review'},
+    {a:'Reopen the document details pane',e:'Classification metadata is retained exactly'},
+  ]},
+  {id:'TC-1004',suite:'CTMS',title:'CTMS user role mapping preserves Viewer permission',pri:'high',type:'Functional',last:'fail',by:'Aisha R.',steps:4,upd:'1d ago',precond:'CTMS module has a Viewer user assigned through SSO/IAM role mapping.',stepList:[
+    {a:'Assign Viewer role to the user from User Management',e:'Viewer role appears on the user profile'},
+    {a:'Save the role mapping and reopen the profile',e:'Viewer role remains assigned'},
+    {a:'Open CTMS as that user',e:'User sees read-only CTMS pages'},
+    {a:'Review audit history for role update',e:'Audit entry includes before and after role values'},
+  ]},
+  {id:'TC-1005',suite:'eTMF',title:'Bulk upload eTMF documents routes each file to workflow',pri:'high',type:'Functional',last:'pass',by:'Marcus W.',steps:5,upd:'4d ago',precond:'eTMF document workflow is enabled and bulk upload test files are available.',stepList:[
+    {a:'Open bulk upload in the eTMF module',e:'Bulk upload panel accepts multiple files'},
+    {a:'Upload five valid PDF documents',e:'All files complete scanning successfully'},
+    {a:'Apply classification metadata to each row',e:'Each document has required type and owner values'},
+    {a:'Submit the batch',e:'Every document enters the selected workflow state'},
+    {a:'Filter the document list by batch ID',e:'All uploaded documents appear with expected statuses'},
+  ]},
+  {id:'TC-1006',suite:'Viewer',title:'Reader cannot edit configuration in Viewer module',pri:'high',type:'Security',last:'pass',by:'James O.',steps:3,upd:'5d ago',precond:'Reader user has access to Viewer module dashboards.',stepList:[
+    {a:'Open Viewer module as Reader',e:'Dashboard and records are visible in read-only mode'},
+    {a:'Attempt to update a configuration field through direct URL',e:'Request is rejected with insufficient permission'},
+    {a:'Verify security audit entry is created',e:'Denied edit attempt is recorded with user and module IDs'},
+  ]},
+  {id:'TC-1007',suite:'Viewer',title:'Viewer grid filter refreshes result count',pri:'critical',type:'Integration',last:'fail',by:'Aisha R.',steps:4,upd:'1d ago',precond:'Viewer module contains seeded records across multiple statuses.',stepList:[
+    {a:'Open the Viewer grid with all records visible',e:'Total count matches seeded dataset'},
+    {a:'Apply Status = Active filter',e:'Grid rows are filtered to active records'},
+    {a:'Clear the filter and apply Owner = Current user',e:'Rows update to owned records only'},
+    {a:'Verify footer count after each filter change',e:'Displayed count matches visible rows'},
+  ]},
+  {id:'TC-1008',suite:'Reporting',title:'Reporting export includes skipped and not-run executions',pri:'critical',type:'Functional',last:'fail',by:'Aisha R.',steps:3,upd:'1d ago',precond:'Completed test run contains Passed, Failed, Blocked, Skipped, and Not run executions.',stepList:[
+    {a:'Open the run summary report',e:'All result categories are visible in the summary'},
+    {a:'Export the report to CSV',e:'CSV downloads successfully'},
+    {a:'Compare CSV rows to run execution table',e:'Skipped and Not run executions are included'},
+  ]},
+  {id:'TC-1009',suite:'GlobalLearn',title:'GlobalLearn completion syncs to user training widget',pri:'medium',type:'Integration',last:'pass',by:'Marcus W.',steps:3,upd:'6d ago',precond:'Test user has assigned GlobalLearn training in the integration environment.',stepList:[
+    {a:'Mark required training complete in GlobalLearn',e:'Completion event is available for sync'},
+    {a:'Run training sync for the user account',e:'User training status changes to Complete'},
+    {a:'Open the training widget in User Management',e:'Training item is marked complete with completion date'},
+  ]},
+  {id:'TC-1010',suite:'eTMF',title:'Document workflow metadata survives status transition',pri:'medium',type:'Functional',last:'pass',by:'Priya N.',steps:4,upd:'3d ago',precond:'Document workflow has Draft, QC review, Approved, and Rejected states.',stepList:[
+    {a:'Create a document record with required metadata',e:'Document record saves with type, owner, and module values'},
+    {a:'Move document from Draft to QC review',e:'Workflow transition succeeds'},
+    {a:'Approve the document from QC review',e:'Status changes to Approved'},
+    {a:'Reopen document metadata panel',e:'Original metadata values are preserved'},
+  ]},
+  {id:'TC-1011',suite:'CTMS',title:'Archive inactive CTMS record without losing audit history',pri:'low',type:'Functional',last:'not_run',by:'Fatima A.',steps:2,upd:'7d ago',precond:'CTMS record has prior edits and linked audit history.',stepList:[
+    {a:'Archive the inactive CTMS record from record actions',e:'Record is removed from active lists'},
+    {a:'Open audit history and historical reports',e:'Archived record activity remains available for reporting'},
+  ]},
+  {id:'TC-1012',suite:'SSO/IAM',title:'SSO/IAM role change propagates to module permissions',pri:'high',type:'Security',last:'pass',by:'Priya N.',steps:2,upd:'5d ago',precond:'User has Executor access to CTMS and eTMF modules.',stepList:[
+    {a:'Change user from Executor to Reader in User Management',e:'Role change is saved on the user profile'},
+    {a:'Open CTMS and eTMF permissions for the same user',e:'User access is downgraded to read-only without manual sync'},
+  ]},
+]
+
+const EXEC_CASES=[
+  {id:'TC-2041',title:'CTMS user role mapping drops Viewer permission',status:'fail',by:'Aisha Rahman',pri:'critical',precond:'CTMS test tenant contains seeded Admin, Executor, and Reader users with module-level permissions enabled.',steps:[
+    {a:'Assign Viewer permission to the user from User Management',e:'Viewer permission appears on the user profile'},
+    {a:'Save the permission update',e:'Success toast confirms the role mapping was saved'},
+    {a:'Reopen the user profile',e:'Viewer permission is still present'},
+    {a:'Open CTMS as that user',e:'User can view CTMS records in read-only mode'},
+  ],sr:['fail',null,null,null],defects:['TI-4419']},
+  {id:'TC-2042',title:'eTMF bulk upload preserves document classifications',status:'not_run',by:'Aisha Rahman',pri:'critical',precond:'eTMF module has bulk upload enabled and five sample PDFs ready.',steps:[
+    {a:'Open the eTMF bulk upload dialog',e:'Dialog supports multiple files and classification columns'},
+    {a:'Upload five PDFs and classify each row',e:'Each row has document type, owner, and workflow state'},
+    {a:'Submit the batch and reopen the document list',e:'All documents retain their selected classifications'},
+  ],sr:[null,null,null],defects:[]},
+  {id:'TC-2043',title:'Viewer grid count updates after filter changes',status:'pass',by:'Marcus Webb',pri:'high',precond:'Viewer module has seeded rows across multiple statuses.',steps:[
+    {a:'Apply Status = Active filter in the Viewer grid',e:'Grid displays only active rows'},
+    {a:'Clear the filter and apply Owner = Current user',e:'Grid displays only rows owned by current user'},
+    {a:'Check footer count after each filter change',e:'Footer count matches visible row count'},
+  ],sr:['pass','pass','pass'],defects:[]},
+  {id:'TC-2044',title:'Reader cannot approve eTMF workflow item',status:'pass',by:'Priya Nair',pri:'high',precond:'Reader user has access to an eTMF document in QC review.',steps:[
+    {a:'Open document workflow as Reader',e:'Workflow item is visible in read-only mode'},
+    {a:'Attempt to approve the workflow item',e:'Approval action is hidden and API rejects direct request'},
+  ],sr:['pass','pass'],defects:[]},
+  {id:'TC-2045',title:'Admin can reopen sealed test run',status:'not_run',by:"James O'Sullivan",pri:'medium',precond:'Completed test run is sealed with failed executions.',steps:[
+    {a:'Open sealed run as Admin',e:'Reopen action is available with confirmation'},
+    {a:'Reopen the run and add reason',e:'Run becomes editable and reason is required'},
+    {a:'Verify audit log records reopen event',e:'Audit entry includes admin user, timestamp, and reason'},
+  ],sr:[null,null,null],defects:[]},
+  {id:'TC-2046',title:'Reporting export blocks when run data is still syncing',status:'blocked',by:"James O'Sullivan",pri:'medium',precond:'Run result aggregation job is still in progress.',steps:[
+    {a:'Open run report while aggregation is in progress',e:'Report shows syncing state'},
+    {a:'Attempt to export CSV before aggregation completes',e:'Export is blocked with a clear message'},
+    {a:'Wait for aggregation to complete and retry export',e:'CSV export is enabled and downloads successfully'},
+  ],sr:['blocked',null,null],defects:['TI-4422']},
+  {id:'TC-2047',title:'Archived CTMS record remains visible in audit history',status:'not_run',by:'Fatima Al-Amin',pri:'low',precond:'CTMS record has historical edits and linked audit events.',steps:[
+    {a:'Archive inactive CTMS record',e:'Record is removed from active lists'},
+    {a:'Open audit history for the module',e:'Archived record activity remains visible with archived label'},
+  ],sr:[null,null],defects:[]},
+  {id:'TC-2048',title:'SSO/IAM role change syncs to module permissions',status:'pass',by:'Priya Nair',pri:'high',precond:'User has Executor access to CTMS and eTMF modules.',steps:[
+    {a:'Downgrade user from Executor to Reader in User Management',e:'Role change saves successfully'},
+    {a:'Open CTMS and eTMF as the same user',e:'User has read-only access after sync'},
+  ],sr:['pass','pass'],defects:[]},
+  {id:'TC-2049',title:'Export completed run evidence for release sign-off',status:'not_run',by:'Marcus Webb',pri:'high',precond:'At least one completed regression run exists for the release.',steps:[
+    {a:'Open completed run and click Export',e:'Export options dialog is shown'},
+    {a:'Select release sign-off CSV format',e:'CSV file is generated'},
+    {a:'Open CSV and verify headers match spec',e:'ID, Title, Status, Assigned, Result, Defect columns are present'},
+    {a:'Verify row count matches execution total',e:'No missing or extra rows'},
+  ],sr:[null,null,null,null],defects:[]},
+  {id:'TC-2050',title:'Import legacy regression test cases from Excel',status:'not_run',by:'Marcus Webb',pri:'medium',precond:'Valid .xlsx template with 50 test cases populated.',steps:[
+    {a:'Navigate to Test Cases and click Import',e:'Import dialog is shown'},
+    {a:'Upload valid regression workbook',e:'Preview of 50 cases with folder mapping is shown'},
+    {a:'Confirm import',e:'50 cases are created in target folder without error'},
+  ],sr:[null,null,null],defects:[]},
+]
+
+const DEFECT_NAMES={'TI-4419':'Viewer permission not persisted after role mapping','TI-4421':'Run summary export omits skipped execution rows','TI-4422':'Reporting export blocked while run data is syncing','TI-4398':'Reader role accessing executor-only endpoint'};
+let selectedCases=new Set();
+let currentFolderEmpty=false;
+let activeExecIdx=0;
+let currentFilter='all';
+const storedCases=JSON.parse(sessionStorage.getItem('bt_demo_cases')||'[]');
+if(storedCases.length)CASES.push(...storedCases);
+const MODULES=['TI-Core Platform','CTMS','eTMF','SSO/IAM','Viewer','Reporting','GlobalLearn','API Gateway','User Management'];
+const PLANS=[
+  {title:'CTMS Module — Full Regression',status:'active',cases:87,desc:'Full functional regression coverage for the CTMS module. Covers record management, role permissions, user assignment, and audit trail validation. Spawned each sprint.',env:'UAT',owner:'Aisha Rahman',suiteCt:'4 suites',modules:[
+    {name:'CTMS — Record creation & editing',ct:24,pass:88},
+    {name:'CTMS — Role & permission validation',ct:18,pass:94},
+    {name:'CTMS — User assignment flows',ct:21,pass:71},
+    {name:'CTMS — Audit history',ct:24,pass:83},
+  ],runs:[
+    {status:'act',name:'CTMS Regression — Sprint 44',meta:'Started 2d ago · Aisha R.'},
+    {status:'pass',name:'CTMS Regression — Sprint 43',meta:'Sealed 16d ago · 82% pass'},
+    {status:'pass',name:'CTMS Regression — Sprint 42',meta:'Sealed 30d ago · 79% pass'},
+  ]},
+  {title:'eTMF Document Workflow — Regression',status:'active',cases:64,desc:'Regression coverage for eTMF document upload, classification, QC workflow, and metadata preservation. Validates all workflow state transitions and bulk operations.',env:'UAT',owner:'Marcus Webb',suiteCt:'2 suites',modules:[
+    {name:'eTMF — Document upload & scanning',ct:22,pass:86},
+    {name:'eTMF — Classification & QC workflow',ct:42,pass:72},
+  ],runs:[
+    {status:'act',name:'eTMF Document Workflow Smoke — Pre-release',meta:'Started 4h ago · James O.'},
+    {status:'pass',name:'eTMF Regression — Sprint 43',meta:'Sealed 18d ago · 76% pass'},
+  ]},
+  {title:'SSO/IAM & Permissions — Security Suite',status:'active',cases:52,desc:'Security-focused coverage for RBAC enforcement across all modules. Validates role propagation, permission inheritance, and access control edge cases.',env:'UAT',owner:"James O'Sullivan",suiteCt:'3 suites',modules:[
+    {name:'SSO/IAM — Role mapping & sync',ct:18,pass:94},
+    {name:'User Management — Role assignment',ct:16,pass:88},
+    {name:'Module permissions — Cross-module sync',ct:18,pass:77},
+  ],runs:[
+    {status:'pass',name:'SSO/IAM Role Matrix — Permission Validation',meta:'Sealed 5d ago · 89% pass'},
+    {status:'pass',name:'Permissions Hardening — Sprint 43',meta:'Sealed 21d ago · 84% pass'},
+  ]},
+  {title:'Reporting Module — Integration Suite',status:'active',cases:80,desc:'Integration test coverage for the Reporting module. Validates export formats, data aggregation, run summary accuracy, and cross-module data joins.',env:'Staging',owner:'Priya Nair',suiteCt:'4 suites',modules:[
+    {name:'Reporting — CSV export formats',ct:18,pass:94},
+    {name:'Reporting — Run summary generation',ct:42,pass:72},
+    {name:'Reporting — Data aggregation jobs',ct:18,pass:77},
+    {name:'API Gateway — Report data endpoints',ct:15,pass:80},
+  ],runs:[
+    {status:'act',name:'Reporting Module — Integration Suite',meta:'Started 1d ago · Marcus W.'},
+    {status:'pass',name:'Reporting Integration — Sprint 43',meta:'Sealed 20d ago · 81% pass'},
+  ]},
+  {title:'Viewer Module — Functional Regression',status:'draft',cases:29,desc:'Draft functional regression plan for the Viewer module. Covers grid filtering, row counts, pagination, and read-only permission enforcement. Pending case review.',env:'QA',owner:'Fatima Al-Amin',suiteCt:'2 suites',modules:[
+    {name:'Viewer — Grid filtering & pagination',ct:14,pass:null},
+    {name:'Viewer — Read-only permission checks',ct:15,pass:null},
+  ],runs:[]},
+]
+const SEARCH_RUNS=[
+  {id:'RUN-001',title:'CTMS Regression — Sprint 44',status:'act'},
+  {id:'RUN-002',title:'eTMF Document Workflow Smoke — Pre-release',status:'act'},
+  {id:'RUN-003',title:'Viewer Module — Functional Regression',status:'block'},
+  {id:'RUN-004',title:'Reporting Module — Integration Suite',status:'act'},
+  {id:'RUN-005',title:'SSO/IAM Role Matrix — Permission Validation',status:'act'},
+];
+let searchFocusIdx=-1;
+let searchResultItems=[];
+const RUN_CARDS=[
+  {id:'R1',name:'CTMS Regression — Sprint 44',plan:'Release 2.4.1 Regression',
+   status:'active',due:'12 May',total:132,pass:71,fail:24,blocked:7,notrun:30,stalled:false,
+   assignees:[{n:'Aisha Rahman'},{n:'Marcus Webb'},{n:'Priya Nair'}],
+   env:'UAT',defects:['TI-4419','TI-4422']},
+  {id:'R2',name:'eTMF Document Workflow Smoke — Pre-release',plan:'Pre-release Smoke Suite',
+   status:'active',due:'9 May',total:40,pass:32,fail:4,blocked:0,notrun:4,stalled:false,
+   assignees:[{n:"James O'Sullivan"}],
+   env:'QA',defects:['TI-4421']},
+  {id:'R3',name:'Viewer Module — Functional Regression',plan:'Viewer Module Regression',
+   status:'stalled',due:'10 May',total:70,pass:28,fail:6,blocked:8,notrun:28,stalled:true,
+   assignees:[{n:'Fatima Al-Amin'}],
+   env:'UAT',defects:[]},
+  {id:'R4',name:'Reporting Module — Integration Suite',plan:'Reporting Integration Tests',
+   status:'active',due:'11 May',total:80,pass:49,fail:12,blocked:2,notrun:17,stalled:false,
+   assignees:[{n:'Marcus Webb'},{n:'Priya Nair'}],
+   env:'Staging',defects:['TI-4421','TI-4422']},
+  {id:'R5',name:'SSO/IAM Role Matrix — Permission Validation',plan:'Permissions Hardening Suite',
+   status:'active',due:'12 May',total:24,pass:8,fail:2,blocked:0,notrun:14,stalled:false,
+   assignees:[{n:"James O'Sullivan"},{n:'Aisha Rahman'}],
+   env:'UAT',defects:[]},
+];
+const expandedCards=new Set();
+const cardTabs={};
+
+
+function go(v){
+  closeSearch();
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.getElementById('view-'+v).classList.add('on');
+  ['dashboard','cases','plans','runs','audit'].forEach(n=>{
+    const el=document.getElementById('snav-'+n);
+    if(el)el.classList.toggle('on',n===v);
+  });
+}
+
+function chipToggle(el){
+  const parent=el.parentElement;
+  parent.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function toggleSuite(id){
+  const kids=document.getElementById(id);
+  const tog=document.getElementById('tog-'+id);
+  kids.classList.toggle('open');
+  tog.classList.toggle('open');
+}
+
+function selSec(el){
+  document.querySelectorAll('.st-sec').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on');
+  currentFolderEmpty=el.dataset.empty==='true';
+  renderCases();
+}
+
+function renderCases(){
+  const tb=document.getElementById('case-tbody');
+  const table=tb.closest('table');
+  const empty=document.getElementById('case-empty-state');
+  if(currentFolderEmpty){
+    tb.innerHTML='';
+    if(table)table.style.display='none';
+    if(empty)empty.classList.add('on');
+    return;
+  }
+  if(table)table.style.display='';
+  if(empty)empty.classList.remove('on');
+  const priMap={critical:'pr-crit',high:'pr-high',medium:'pr-med',low:'pr-low'};
+  const pillMap={pass:'p-pass',fail:'p-fail',blocked:'p-block',not_run:'p-notrun'};
+  const pillLbl={pass:'✓ Pass',fail:'✗ Fail',blocked:'⊘ Blocked',not_run:'○ Not run',skip:'→ Skip'};
+  tb.innerHTML=CASES.map((c,i)=>`
+    <tr class="${selectedCases.has(i)?'sel':''}" onclick="openDetail(${i})">
+      <td><input type="checkbox" ${selectedCases.has(i)?'checked':''} onchange="togCase(${i},this)" onclick="event.stopPropagation()"></td>
+      <td class="tmono">${c.id}</td>
+      <td class="title-cell" style="max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.title}</td>
+      <td><span class="pri ${priMap[c.pri]}">${c.pri}</span></td>
+      <td style="color:var(--accent);font-size:11.5px;font-weight:500">${c.suite||'—'}</td>
+      <td style="color:var(--text2)">${c.type}</td>
+      <td><span class="pill ${pillMap[c.last]||'p-notrun'}">${pillLbl[c.last]||'—'}</span></td>
+      <td style="color:var(--text2)">${c.by}</td>
+      <td style="text-align:center;font-family:var(--mono);color:var(--text3)">${c.steps}</td>
+      <td style="color:var(--text3)">${c.upd}</td>
+    </tr>
+  `).join('');
+}
+
+function togCase(i,el){
+  if(el.checked)selectedCases.add(i);else selectedCases.delete(i);
+  updateBulk();renderCases();
+}
+function selAll(el){
+  if(el.checked)CASES.forEach((_,i)=>selectedCases.add(i));else selectedCases.clear();
+  updateBulk();renderCases();
+}
+function clearSel(){selectedCases.clear();document.getElementById('chk-all').checked=false;updateBulk();renderCases();}
+function updateBulk(){
+  const b=document.getElementById('bulk-bar');
+  b.classList.toggle('on',selectedCases.size>0);
+  document.getElementById('bulk-cnt').textContent=selectedCases.size+' selected';
+}
+
+function openDetail(i){
+  const c=CASES[i];
+  const dp=document.getElementById('detail-panel');
+  dp.classList.add('open');
+  document.getElementById('dp-id').textContent=c.id;
+  document.getElementById('dp-ttl').textContent=c.title;
+  const priMap={critical:'pr-crit',high:'pr-high',medium:'pr-med',low:'pr-low'};
+  document.getElementById('dp-pri').innerHTML=`<span class="pri ${priMap[c.pri]}">${c.pri.charAt(0).toUpperCase()+c.pri.slice(1)}</span>`;
+  document.getElementById('dp-type').textContent=c.type;
+  document.getElementById('dp-assigned').textContent=c.by;
+  document.getElementById('dp-precond').textContent=c.precond;
+  const suiteEl=document.getElementById('dp-suite');if(suiteEl)suiteEl.textContent=c.suite||'CTMS Studies';
+  const lmap={pass:'p-pass',fail:'p-fail',blocked:'p-block',not_run:'p-notrun',skip:'p-skip'};
+  const llbl={pass:'✓ Pass',fail:'✗ Fail',blocked:'⊘ Blocked',not_run:'○ Not run',skip:'→ Skip'};
+  document.getElementById('dp-last').innerHTML=`<span class="pill ${lmap[c.last]||'p-notrun'}">${llbl[c.last]||'Not run'}</span>`;
+  document.getElementById('dp-steps').innerHTML=c.stepList.map((s,n)=>`
+    <div class="step-i">
+      <div class="step-n">${n+1}</div>
+      <div><div class="step-act">${s.a}</div><div class="step-exp">→ ${s.e}</div></div>
+    </div>
+  `).join('');
+  document.querySelectorAll('#case-tbody tr').forEach((r,j)=>r.classList.toggle('sel',j===i));
+}
+function closeDetail(){document.getElementById('detail-panel').classList.remove('open');}
+
+function nextCaseId(){
+  const max=CASES.reduce((m,c)=>Math.max(m,Number((c.id||'').replace('TC-',''))||0),1000);
+  return 'TC-'+String(max+1);
+}
+
+function persistDemoCases(){
+  const demoCases=CASES.filter(c=>c.demoCreated);
+  sessionStorage.setItem('bt_demo_cases',JSON.stringify(demoCases));
+}
+
+function addCase(data,openAfter=true){
+  const c={
+    id:nextCaseId(),
+    suite:data.suite||'CTMS',
+    title:data.title,
+    pri:data.pri||'medium',
+    type:data.type||'Functional',
+    last:'not_run',
+    by:'Noel Q.',
+    steps:data.stepList?.length||1,
+    upd:'just now',
+    precond:data.precond||'Ready for QA validation in the selected module.',
+    stepList:data.stepList?.length?data.stepList:[{a:'Execute the workflow under test',e:'Expected behavior is observed'}],
+    demoCreated:true
+  };
+  CASES.unshift(c);
+  currentFolderEmpty=false;
+  persistDemoCases();
+  renderCases();
+  if(openAfter)setTimeout(()=>openDetail(0),30);
+  return c;
+}
+
+function openCreateCase(){
+  const modal=document.getElementById('create-case-modal');
+  modal.classList.remove('hidden');
+  setTimeout(()=>document.getElementById('new-case-title').focus(),30);
+}
+function closeCreateCase(){document.getElementById('create-case-modal').classList.add('hidden');}
+function handleCreateBackdrop(e){if(e.target===document.getElementById('create-case-modal'))closeCreateCase();}
+function createFullCase(){
+  const title=document.getElementById('new-case-title').value.trim();
+  if(!title){document.getElementById('new-case-title').focus();return;}
+  const step=document.getElementById('new-case-step').value.trim()||'Execute the workflow under test';
+  const expected=document.getElementById('new-case-expected').value.trim()||'Expected result is observed and recorded';
+  addCase({
+    title,
+    suite:document.getElementById('new-case-suite').value,
+    pri:document.getElementById('new-case-pri').value,
+    precond:document.getElementById('new-case-precond').value.trim(),
+    stepList:[{a:step,e:expected}]
+  });
+  ['new-case-title','new-case-precond','new-case-step','new-case-expected'].forEach(id=>document.getElementById(id).value='');
+  closeCreateCase();
+}
+function toggleQuickCreate(force){
+  const box=document.getElementById('quick-create-box');
+  const on=typeof force==='boolean'?force:!box.classList.contains('on');
+  box.classList.toggle('on',on);
+  if(on)setTimeout(()=>document.getElementById('quick-create-input').focus(),30);
+}
+function addQuickCases(){
+  const input=document.getElementById('quick-create-input');
+  const titles=input.value.split('\n').map(t=>t.trim()).filter(Boolean);
+  if(!titles.length){input.focus();return;}
+  titles.reverse().forEach(title=>addCase({title,pri:'medium',suite:'CTMS'},false));
+  input.value='';
+  toggleQuickCreate(false);
+}
+function showImportState(){
+  currentFolderEmpty=true;
+  document.querySelectorAll('.st-sec').forEach(s=>s.classList.remove('on'));
+  renderCases();
+}
+
+/* EXEC */
+function renderExecList(){
+  const list=document.getElementById('ec-list');
+  const dotMap={pass:'d-p',fail:'d-f',blocked:'d-b',not_run:'d-n',skip:'d-s'};
+  const filter=currentFilter;
+  const order=['fail','blocked','not_run','pass','skip'];
+  let html='';
+  order.forEach(status=>{
+    const cases=EXEC_CASES.filter((c,i)=>{
+      if(filter!=='all'&&filter!==status)return false;
+      return c.status===status;
+    });
+    if(!cases.length)return;
+    const lbl={fail:'Failing',blocked:'Blocked',not_run:'Not run',pass:'Passed',skip:'Skipped'};
+    html+=`<div class="divider-lbl">${lbl[status]}</div>`;
+    cases.forEach(c=>{
+      const i=EXEC_CASES.indexOf(c);
+      const priMap={critical:'pr-crit',high:'pr-high',medium:'pr-med',low:'pr-low'};
+      html+=`<div class="ec-case${i===activeExecIdx?' on':''}" onclick="selExecCase(${i})">
+        <div class="ec-dot ${dotMap[c.status]}"></div>
+        <div class="ec-info">
+          <div class="ec-cid">${c.id}</div>
+          <div class="ec-cnm">${c.title}</div>
+          <div class="ec-cby">${c.by}</div>
+        </div>
+        <span class="pri ${priMap[c.pri]}" style="font-size:9px;padding:1px 4px;margin-top:3px">${c.pri.slice(0,4)}</span>
+      </div>`;
+    });
+  });
+  if(!html)html='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">No cases match filter</div>';
+  list.innerHTML=html;
+}
+
+function selExecCase(i){
+  activeExecIdx=i;
+  const c=EXEC_CASES[i];
+  document.getElementById('ed-id').textContent=c.id;
+  document.getElementById('ed-ttl').textContent=c.title;
+  document.getElementById('ed-by').textContent=c.by;
+  document.getElementById('ed-precond').textContent=c.precond;
+  const priMap={critical:'pr-crit',high:'pr-high',medium:'pr-med',low:'pr-low'};
+  document.getElementById('ed-pri').innerHTML=`<span class="pri ${priMap[c.pri]}">${c.pri.charAt(0).toUpperCase()+c.pri.slice(1)}</span>`;
+  const sm={pass:'p-pass',fail:'p-fail',blocked:'p-block',not_run:'p-notrun',skip:'p-skip'};
+  const sl={pass:'✓ Pass',fail:'✗ Fail',blocked:'⊘ Blocked',not_run:'○ Not run',skip:'→ Skip'};
+  document.getElementById('ed-status-pill').innerHTML=`<span class="pill ${sm[c.status]||'p-notrun'}"><span class="pill-dot"></span>${sl[c.status]||'Not run'}</span>`;
+  document.getElementById('ed-steps-wrap').innerHTML=c.steps.map((s,n)=>{
+    const sr=c.sr[n];
+    const act=(cls)=>sr===cls?'on':'';
+    return`<div class="esc">
+      <div class="esc-hd">
+        <span class="esc-n">Step ${n+1}</span>
+        <span class="esc-ttl">${s.a.length>52?s.a.slice(0,52)+'…':s.a}</span>
+        <div class="esc-btns">
+          <div class="srb srb-p ${act('pass')}" onclick="setStepR(${i},${n},'pass',this)">P</div>
+          <div class="srb srb-f ${act('fail')}" onclick="setStepR(${i},${n},'fail',this)">F</div>
+          <div class="srb srb-b ${act('blocked')}" onclick="setStepR(${i},${n},'blocked',this)">B</div>
+          <div class="srb srb-s ${act('skip')}" onclick="setStepR(${i},${n},'skip',this)">S</div>
+        </div>
+      </div>
+      <div class="esc-body">
+        <div class="esc-act">${s.a}</div>
+        <div class="esc-exp">Expected: ${s.e}</div>
+        <textarea class="esc-cmt" rows="1" placeholder="Step comment… (optional)">${sr==='fail'&&n===0&&i===0?'Viewer permission is saved on submit but reverts to previous value after profile reload.':''}</textarea>
+      </div>
+    </div>`;
+  }).join('');
+  renderDefects(c.defects);
+  document.querySelectorAll('.rmb').forEach(b=>b.classList.remove('on'));
+  const rmClass={pass:'rmb-p',fail:'rmb-f',blocked:'rmb-b',skip:'rmb-s'};
+  if(rmClass[c.status])document.querySelector('.'+rmClass[c.status])?.classList.add('on');
+  renderExecList();
+}
+
+function renderDefects(defects){
+  document.getElementById('ed-defect-list').innerHTML=defects.map(d=>`
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <span class="ed-dtag"><i class="ti ti-bug" style="font-size:10px"></i>${d}</span>
+      <span style="font-size:11px;color:var(--text2)">${DEFECT_NAMES[d]||'Open defect'}</span>
+      <button class="btn" style="font-size:10px;padding:1px 4px;margin-left:auto;color:var(--text3)"><i class="ti ti-x" style="font-size:10px"></i></button>
+    </div>
+  `).join('');
+}
+
+function setStepR(ci,si,result,el){
+  el.closest('.esc-btns').querySelectorAll('.srb').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  EXEC_CASES[ci].sr[si]=result;
+}
+
+function setResult(result,el){
+  document.querySelectorAll('.rmb').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  EXEC_CASES[activeExecIdx].status=result;
+  const sm={pass:'p-pass',fail:'p-fail',blocked:'p-block',skip:'p-skip'};
+  const sl={pass:'✓ Pass',fail:'✗ Fail',blocked:'⊘ Blocked',skip:'→ Skip'};
+  document.getElementById('ed-status-pill').innerHTML=`<span class="pill ${sm[result]}"><span class="pill-dot"></span>${sl[result]}</span>`;
+  renderExecList();
+}
+
+function clearResult(){
+  document.querySelectorAll('.rmb').forEach(b=>b.classList.remove('on'));
+  EXEC_CASES[activeExecIdx].status='not_run';
+  document.getElementById('ed-status-pill').innerHTML='<span class="pill p-notrun"><span class="pill-dot"></span>Not run</span>';
+  renderExecList();
+}
+
+function filterTab(el,f){
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  currentFilter=f;
+  renderExecList();
+}
+
+function navCase(dir){
+  let next=activeExecIdx+dir;
+  if(next<0)next=0;if(next>=EXEC_CASES.length)next=EXEC_CASES.length-1;
+  selExecCase(next);
+}
+
+function linkDefect(){
+  const c=EXEC_CASES[activeExecIdx];
+  const newId='TI-'+(4420+Math.floor(Math.random()*80));
+  c.defects.push(newId);
+  renderDefects(c.defects);
+}
+
+const sealedRunIds=new Set(['sprint43']);
+let currentRunId='sprint44';
+
+function sealCurrentRun(){
+  if(sealedRunIds.has(currentRunId))return;
+  sealedRunIds.add(currentRunId);
+  const pill=document.getElementById('ec-run-status-pill');
+  if(pill){pill.className='pill p-skip';pill.innerHTML='<span class="pill-dot"></span>Sealed';}
+  const btn=document.getElementById('seal-run-btn');
+  if(btn)btn.style.display='none';
+  const banner=document.createElement('div');
+  banner.className='sealed-banner';
+  banner.innerHTML='<i class="ti ti-lock"></i><div><strong>Run sealed</strong> — results are now immutable. Admins can reopen via Audit History with a recorded reason.</div>';
+  const body=document.getElementById('ed-body');
+  if(body)body.prepend(banner);
+  document.querySelectorAll('.rmb').forEach(b=>{b.style.pointerEvents='none';b.style.opacity='.4';});
+}
+
+function selRun(el){
+  document.querySelectorAll('.rl-item').forEach(r=>r.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function renderModuleMenu(q=''){
+  const ql=q.toLowerCase();
+  const current=document.querySelector('#module-current,.module-current-label')?.textContent||'TI-Core Platform';
+  document.querySelectorAll('.module-list,#module-list').forEach(list=>{
+    list.innerHTML=MODULES.filter(m=>m.toLowerCase().includes(ql)).map(m=>`
+      <div class="module-item${m===current?' on':''}" onclick="selectModule('${m.replace(/'/g,"\\'")}')">
+        <i class="ti ${m==='TI-Core Platform'?'ti-building':'ti-box'}" style="font-size:13px"></i><span>${m}</span>
+      </div>`).join('');
+  });
+}
+function toggleModuleMenu(e){
+  e.stopPropagation();
+  const menu=e.currentTarget.parentElement.querySelector('.module-menu');
+  document.querySelectorAll('.module-menu').forEach(m=>{if(m!==menu)m.classList.remove('open');});
+  menu.classList.toggle('open');
+  renderModuleMenu('');
+  const input=menu.querySelector('input');
+  if(input){input.value='';setTimeout(()=>input.focus(),20);}
+}
+function selectModule(name){
+  document.querySelectorAll('#module-current,.module-current-label').forEach(el=>el.textContent=name);
+  document.querySelectorAll('.module-menu').forEach(m=>m.classList.remove('open'));
+}
+
+function renderRunPicker(q=''){
+  const list=document.getElementById('run-picker-list');
+  if(!list)return;
+  const ql=q.toLowerCase();
+  list.innerHTML=RUN_CARDS.filter(r=>r.name.toLowerCase().includes(ql)||r.plan.toLowerCase().includes(ql)).map((r,i)=>`
+    <div class="run-choice${i===0?' on':''}" onclick="selectRunChoice('${r.name.replace(/'/g,"\\'")}')">
+      <span class="pill ${r.stalled?'p-block':'p-act'}" style="font-size:10px">${r.stalled?'Stalled':'Active'}</span>
+      <div class="run-choice-main"><div class="run-choice-title">${r.name}</div><div class="run-choice-meta">${r.plan} · ${r.total} cases · ${r.env}</div></div>
+    </div>`).join('')||'<div style="padding:14px;text-align:center;color:var(--text3);font-size:12px">No matching runs</div>';
+}
+function toggleRunPicker(e){
+  e.stopPropagation();
+  const menu=document.getElementById('run-picker-menu');
+  menu.classList.toggle('open');
+  renderRunPicker('');
+  const input=document.getElementById('run-picker-search');
+  input.value='';
+  setTimeout(()=>input.focus(),20);
+}
+function selectRunChoice(name){
+  document.getElementById('run-picker-label').textContent=name;
+  document.getElementById('run-picker-menu').classList.remove('open');
+}
+function toggleRunSummary(){
+  const card=document.getElementById('run-summary-card');
+  card.classList.toggle('collapsed');
+  document.getElementById('run-summary-icon').className=card.classList.contains('collapsed')?'ti ti-chevron-down':'ti ti-chevron-up';
+}
+
+function switchPlanTab(el,tab){
+  document.querySelectorAll('#view-plans .nav-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  ['overview','suites','runs'].forEach(t=>{
+    const pane=document.getElementById('tp-tab-'+t);
+    if(pane)pane.classList.toggle('on',t===tab);
+  });
+}
+
+function updatePlanMetrics(p){
+  const passes=p.modules.map(m=>m.pass).filter(v=>v!==null);
+  const avg=passes.length?Math.round(passes.reduce((a,b)=>a+b,0)/passes.length):0;
+  document.getElementById('tp-stat-cases').textContent=p.cases;
+  document.getElementById('tp-stat-suites').textContent=p.modules.length;
+  document.getElementById('tp-stat-pass').textContent=passes.length?avg+'%':'-';
+  document.getElementById('tp-stat-runs').textContent=p.runs.length;
+  document.getElementById('tpd-coverage').innerHTML=p.modules.map(m=>`
+    <div><div class="cov-lbl">${m.name.replace(/^.*? — /,'')}</div><div class="cov-bar"><div class="cov-fill" style="width:${m.pass||0}%;background:${m.pass===null?'var(--border2)':m.pass>=80?'#2E7D32':m.pass>=70?'#E65100':'#C62828'}"></div></div><div class="cov-pct">${m.pass!==null?m.pass+'%':'Not run'}</div></div>
+  `).join('');
+}
+
+function initResizablePanes(){
+  document.querySelectorAll('.resizer-v').forEach(handle=>{
+    handle.addEventListener('mousedown',e=>{
+      e.preventDefault();
+      const type=handle.dataset.resize;
+      const min=Number(handle.dataset.min||180),max=Number(handle.dataset.max||600);
+      const startX=e.clientX;
+      let start=0;
+      if(type==='suite-tree')start=document.querySelector('.suite-tree').getBoundingClientRect().width;
+      if(type==='case-detail')start=document.getElementById('detail-panel').getBoundingClientRect().width||360;
+      if(type==='plan-list')start=document.querySelector('.tp-list-pane').getBoundingClientRect().width;
+      if(type==='run-list')start=document.querySelector('.ec-pane').getBoundingClientRect().width;
+      const move=ev=>{
+        const dx=ev.clientX-startX;
+        const val=Math.max(min,Math.min(max,start+dx));
+        if(type==='suite-tree')document.documentElement.style.setProperty('--suite-tree-width',val+'px');
+        if(type==='case-detail')document.documentElement.style.setProperty('--case-detail-width',val+'px');
+        if(type==='plan-list')document.documentElement.style.setProperty('--plan-list-width',val+'px');
+        if(type==='run-list')document.documentElement.style.setProperty('--run-list-width',val+'px');
+      };
+      const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);};
+      document.addEventListener('mousemove',move);
+      document.addEventListener('mouseup',up);
+    });
+  });
+}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.module-switcher'))document.querySelectorAll('.module-menu').forEach(m=>m.classList.remove('open'));
+  if(!e.target.closest('.run-picker'))document.getElementById('run-picker-menu')?.classList.remove('open');
+});
+
+document.addEventListener('keydown',e=>{
+  // Global ⌘K / Ctrl+K
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){
+    e.preventDefault();
+    if(document.getElementById('search-modal').classList.contains('hidden'))openSearch();
+    else closeSearch();
+    return;
+  }
+  // Escape
+  if(e.key==='Escape'){
+    if(!document.getElementById('create-case-modal').classList.contains('hidden')){closeCreateCase();return;}
+    if(!document.getElementById('shortcuts-modal').classList.contains('hidden')){closeShortcuts();return;}
+    if(!document.getElementById('search-modal').classList.contains('hidden')){closeSearch();return;}
+    closeDetail();return;
+  }
+  if(!document.getElementById('search-modal').classList.contains('hidden'))return;
+  if(!document.getElementById('shortcuts-modal').classList.contains('hidden'))return;
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  const v=document.querySelector('.view.on');
+  if(!v)return;
+  if(e.key==='?'){openShortcuts();return;}
+  if(v.id==='view-runs'){
+    const map={p:'pass',f:'fail',b:'blocked',s:'skip'};
+    const k=e.key.toLowerCase();
+    if(map[k]){const btn=document.querySelector('.rmb-'+k[0]);if(btn)setResult(map[k],btn);}
+    if(k==='j')navCase(1);
+    if(k==='k')navCase(-1);
+    if(k==='d'){linkDefect();}
+  }
+});
+
+renderCases();
+renderExecList();
+selExecCase(0);
+renderModuleMenu('');
+renderRunPicker('');
+initResizablePanes();
+
+/* ===========================
+   TEST PLANS JS
+=========================== */
+function selPlan(el,idx){
+  document.querySelectorAll('.tpl-item').forEach(r=>r.classList.remove('on'));
+  el.classList.add('on');
+  const p=PLANS[idx];
+  document.getElementById('tpd-ttl').textContent=p.title;
+  document.getElementById('tpd-desc').textContent=p.desc;
+  document.getElementById('tpd-env').innerHTML=`<i class="ti ti-server" style="font-size:12px"></i> Environment: ${p.env}`;
+  document.getElementById('tpd-owner').innerHTML=`<i class="ti ti-user" style="font-size:12px"></i> Owner: ${p.owner}`;
+  document.getElementById('tpd-cases').textContent=`${p.cases} cases · ${p.suiteCt}`;
+  document.getElementById('tpd-suite-count').textContent=p.suiteCt;
+  document.getElementById('tpd-run-count').textContent=`${p.runs.length} run${p.runs.length!==1?'s':''}`;
+  const stEl=document.getElementById('tpd-status');
+  stEl.innerHTML=`<span class="pill-dot"></span>${p.status==='active'?'Active':'Draft'}`;
+  stEl.className=`pill ${p.status==='active'?'p-act':'p-draft'}`;
+  document.getElementById('tpd-modules').innerHTML=p.modules.map(m=>`
+    <div class="tp-module-row">
+      <span class="tp-mod-name">${m.name}</span>
+      <span class="tp-mod-count">${m.ct} cases</span>
+      ${m.pass!==null?`<span class="pill ${m.pass>=80?'p-pass':'p-fail'}" style="font-size:10px">${m.pass}% pass</span>`:'<span class="pill p-notrun" style="font-size:10px">Not run</span>'}
+    </div>`).join('');
+  document.getElementById('tpd-runs').innerHTML=p.runs.length?p.runs.map(r=>`
+    <div class="tp-run-row">
+      <span class="pill ${r.status==='act'?'p-act':'p-pass'}" style="font-size:10px">${r.status==='act'?'Active':'Sealed'}</span>
+      <span class="tp-run-name">${r.name}</span>
+      <span class="tp-run-date">${r.meta}</span>
+      ${r.status==='act'?`<button class="btn" style="font-size:10.5px;padding:2px 7px" onclick="go('runs')">Open →</button>`:''}
+    </div>`).join(''):'<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">No runs yet — spawn a run to begin execution.</div>';
+  updatePlanMetrics(p);
+}
+
+function switchDpTab(el,tab){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('on'));
+  if(el)el.classList.add('on');
+  ['details','history','activity'].forEach(t=>{
+    const d=document.getElementById('dp-tab-'+t);
+    if(d)d.style.display=t===tab?'block':'none';
+  });
+}
+
+/* ===========================
+   SEARCH MODAL JS
+=========================== */
+
+function openSearch(){
+  document.getElementById('search-modal').classList.remove('hidden');
+  const input=document.getElementById('search-input');
+  input.value='';input.focus();
+  searchFocusIdx=-1;
+  renderSearchRecent();
+}
+
+function closeSearch(){
+  document.getElementById('search-modal').classList.add('hidden');
+  searchFocusIdx=-1;searchResultItems=[];
+}
+
+function handleBackdropClick(e){
+  if(e.target===document.getElementById('search-modal'))closeSearch();
+}
+
+function renderSearchRecent(){
+  const wrap=document.getElementById('search-results-wrap');
+  document.getElementById('search-count').textContent='';
+  const recent=[
+    {icon:'ti-file-description',title:'CTMS user role mapping preserves Viewer permission',meta:'CTMS · High · Failed 1d ago',view:'cases',idx:3},
+    {icon:'ti-file-description',title:'Reporting export includes skipped and not-run executions',meta:'Reporting · Critical · Failed 1d ago',view:'cases',idx:7},
+    {icon:'ti-player-play',title:'CTMS Regression — Sprint 44',meta:'Active · 132 cases · 77% complete',view:'runs',idx:-1},
+    {icon:'ti-player-play',title:'eTMF Document Workflow Smoke — Pre-release',meta:'Active · 40 cases · 90% complete',view:'runs',idx:-1},
+    {icon:'ti-clipboard-list',title:'CTMS Module — Full Regression',meta:'Plan · Active · 87 cases · 3 runs',view:'plans',idx:0},
+  ];
+  wrap.innerHTML=`<div class="search-group-label">Recently viewed</div>`+recent.map(r=>`
+    <div class="search-result-item" onclick="searchGo('${r.view}',${r.idx})">
+      <div class="search-result-icon"><i class="ti ${r.icon}"></i></div>
+      <div class="search-result-info">
+        <div class="search-result-title">${r.title}</div>
+        <div class="search-result-meta">${r.meta}</div>
+      </div>
+    </div>`).join('');
+  searchResultItems=[...wrap.querySelectorAll('.search-result-item')];
+}
+
+function runSearch(q){
+  const wrap=document.getElementById('search-results-wrap');
+  const cnt=document.getElementById('search-count');
+  if(!q.trim()){renderSearchRecent();return;}
+  const ql=q.toLowerCase();
+  const cm=CASES.filter(c=>c.title.toLowerCase().includes(ql)||c.id.toLowerCase().includes(ql));
+  const rm=SEARCH_RUNS.filter(r=>r.title.toLowerCase().includes(ql));
+  const pm=PLANS.filter(p=>p.title.toLowerCase().includes(ql));
+  const total=cm.length+rm.length+pm.length;
+  cnt.textContent=total?`${total} result${total!==1?'s':''}`:'' ;
+  if(!total){
+    wrap.innerHTML=`<div class="search-empty"><i class="ti ti-search-off"></i>No results for "${q}"<br><small style="font-size:11px;margin-top:4px;display:block">Try a different keyword or check spelling</small></div>`;
+    searchResultItems=[];return;
+  }
+  const priMap={critical:'pr-crit',high:'pr-high',medium:'pr-med',low:'pr-low'};
+  let html='';
+  if(cm.length){
+    html+=`<div class="search-group-label">Test cases (${cm.length})</div>`;
+    cm.forEach(c=>{
+      const idx=CASES.indexOf(c);
+      html+=`<div class="search-result-item" onclick="searchGo('cases',${idx})">
+        <div class="search-result-icon"><i class="ti ti-file-description"></i></div>
+        <div class="search-result-info">
+          <div class="search-result-title">${hl(c.title,ql)}</div>
+          <div class="search-result-meta">${c.suite||'CTMS Studies'} · ${c.type}</div>
+        </div>
+        <div class="search-result-right"><span class="pri ${priMap[c.pri]}">${c.pri}</span></div>
+      </div>`;
+    });
+  }
+  if(rm.length){
+    html+=`<div class="search-group-label">Test runs (${rm.length})</div>`;
+    rm.forEach(r=>{html+=`<div class="search-result-item" onclick="searchGo('runs',-1)">
+      <div class="search-result-icon"><i class="ti ti-player-play"></i></div>
+      <div class="search-result-info"><div class="search-result-title">${hl(r.title,ql)}</div><div class="search-result-meta">${r.id}</div></div>
+    </div>`;});
+  }
+  if(pm.length){
+    html+=`<div class="search-group-label">Test plans (${pm.length})</div>`;
+    pm.forEach(p=>{const pi=PLANS.indexOf(p);html+=`<div class="search-result-item" onclick="searchGo('plans',${pi})">
+      <div class="search-result-icon"><i class="ti ti-clipboard-list"></i></div>
+      <div class="search-result-info"><div class="search-result-title">${hl(p.title,ql)}</div><div class="search-result-meta">${p.cases} cases · ${p.env}</div></div>
+    </div>`;});
+  }
+  wrap.innerHTML=html;
+  searchResultItems=[...wrap.querySelectorAll('.search-result-item')];
+  searchFocusIdx=-1;
+}
+
+function hl(text,q){
+  const idx=text.toLowerCase().indexOf(q);
+  if(idx<0)return text;
+  return text.slice(0,idx)+'<mark style="background:#FFF3B0;border-radius:2px;padding:0 1px">'+text.slice(idx,idx+q.length)+'</mark>'+text.slice(idx+q.length);
+}
+
+function searchGo(view,caseIdx){
+  closeSearch();go(view);
+  if(view==='cases'&&caseIdx>=0)setTimeout(()=>openDetail(caseIdx),60);
+  if(view==='plans'&&caseIdx>=0)setTimeout(()=>{const items=document.querySelectorAll('.tpl-item');if(items[caseIdx])selPlan(items[caseIdx],caseIdx);},60);
+}
+
+function searchKeyNav(e){
+  if(e.key==='Escape'){closeSearch();return;}
+  if(e.key==='ArrowDown'){e.preventDefault();searchFocusIdx=Math.min(searchFocusIdx+1,searchResultItems.length-1);updateSearchFocus();}
+  else if(e.key==='ArrowUp'){e.preventDefault();searchFocusIdx=Math.max(searchFocusIdx-1,-1);updateSearchFocus();}
+  else if(e.key==='Enter'){if(searchFocusIdx>=0&&searchResultItems[searchFocusIdx])searchResultItems[searchFocusIdx].click();}
+}
+
+function updateSearchFocus(){
+  searchResultItems.forEach((el,i)=>el.classList.toggle('focused',i===searchFocusIdx));
+  if(searchFocusIdx>=0&&searchResultItems[searchFocusIdx])searchResultItems[searchFocusIdx].scrollIntoView({block:'nearest'});
+}
+
+/* ===========================
+   SHORTCUTS MODAL JS
+=========================== */
+function openShortcuts(){document.getElementById('shortcuts-modal').classList.remove('hidden');}
+function closeShortcuts(){document.getElementById('shortcuts-modal').classList.add('hidden');}
+
+/* Init plan view */
+setTimeout(()=>{const items=document.querySelectorAll('.tpl-item');if(items[0])selPlan(items[0],0);},0);
+
+
+/* ───────────────────────────
+   SIDEBAR TOGGLE
+─────────────────────────── */
+function toggleSidebar(){
+  const sb=document.querySelector('.sb');
+  const isCollapsed=sb.classList.toggle('collapsed');
+  const btn=sb.querySelector('.sb-toggle i');
+  if(btn){
+    btn.className=isCollapsed?'ti ti-layout-sidebar-right-collapse':'ti ti-layout-sidebar-left-collapse';
+  }
+}
+
+/* ───────────────────────────
+   DONUT CHART GENERATOR
+   Uses stroke-dasharray stacking technique.
+   C = 2π × 26 ≈ 163.36
+─────────────────────────── */
+function makeDonut(pass,fail,blocked,notrun){
+  const total=pass+fail+blocked+notrun;
+  if(total===0)return '';
+  const r=26,cx=34,cy=34;
+  const C=2*Math.PI*r;
+  const done=pass+fail+blocked;
+  const pct=Math.round((done/total)*100);
+
+  function seg(len,color,cumStart){
+    if(len<=0)return'';
+    return`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="10"
+      stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}"
+      stroke-dashoffset="${(C-cumStart).toFixed(2)}"
+      transform="rotate(-90 ${cx} ${cy})"/>`;
+  }
+
+  const pL=(pass/total)*C, fL=(fail/total)*C, bL=(blocked/total)*C, nL=(notrun/total)*C;
+
+  return`<svg viewBox="0 0 68 68" width="68" height="68" style="display:block;flex-shrink:0">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E5EBF2" stroke-width="10"/>
+    ${seg(pL,'#2E7D32',0)}
+    ${seg(fL,'#C62828',pL)}
+    ${seg(bL,'#E65100',pL+fL)}
+    ${seg(nL,'#C5D1DE',pL+fL+bL)}
+    <text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle"
+      font-size="11" font-weight="700" fill="#0F1C2E"
+      font-family="ui-monospace,'SF Mono',monospace">${pct}%</text>
+    <text x="${cx}" y="${cy+13}" text-anchor="middle"
+      font-size="7" fill="#7A92AB"
+      font-family="-apple-system,system-ui,sans-serif">done</text>
+  </svg>`;
+}
+
+/* ───────────────────────────
+   RUN CARDS DATA + RENDERING
+─────────────────────────── */
+
+function renderRunCards(){
+  const container=document.getElementById('run-cards');
+  if(!container)return;
+  container.innerHTML=RUN_CARDS.map(run=>{
+    const isExp=expandedCards.has(run.id);
+    const tab=cardTabs[run.id]||'overview';
+    const passP=(run.pass/run.total*100).toFixed(1);
+    const failP=(run.fail/run.total*100).toFixed(1);
+    const blkP=(run.blocked/run.total*100).toFixed(1);
+
+    const detailContent={
+      overview:`
+        <div style="margin-bottom:9px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Execution progress</span>
+            <span style="font-size:10.5px;font-family:var(--mono);color:var(--text3)">${run.pass+run.fail+run.blocked} / ${run.total}</span>
+          </div>
+          <div class="prog" style="height:6px;margin-bottom:5px">
+            <div class="pg-p" style="width:${passP}%"></div>
+            <div class="pg-f" style="width:${failP}%"></div>
+            ${run.blocked>0?`<div class="pg-b" style="width:${blkP}%"></div>`:''}
+          </div>
+          <div style="display:flex;gap:10px;font-size:10.5px">
+            <span style="color:var(--pass)">✓ ${run.pass} passed</span>
+            <span style="color:var(--fail)">✗ ${run.fail} failed</span>
+            ${run.blocked>0?`<span style="color:var(--block)">⊘ ${run.blocked} blocked</span>`:''}
+            <span style="color:var(--text3)">○ ${run.notrun} not run</span>
+          </div>
+        </div>
+        <div class="rcd-grid">
+          <div class="rcd-grid-item"><div class="rcd-lbl">Due</div><div class="rcd-val">${run.due}</div></div>
+          <div class="rcd-grid-item"><div class="rcd-lbl">Environment</div><div class="rcd-val">${run.env}</div></div>
+          <div class="rcd-grid-item" style="grid-column:span 2"><div class="rcd-lbl">Test plan</div><div class="rcd-val">${run.plan}</div></div>
+        </div>`,
+      assignees: run.assignees.map(a=>`
+        <div class="assignee-row">
+          <div class="av-mini">${a.n.split(' ').map(x=>x[0]).join('').slice(0,2)}</div>
+          <span style="color:var(--text);font-weight:500">${a.n}</span>
+          <span style="color:var(--text3);font-size:10.5px;margin-left:auto">QA Team</span>
+        </div>`).join(''),
+      defects: run.defects.length?run.defects.map(d=>`
+        <div class="defect-row">
+          <span class="ed-dtag" style="font-size:10px;padding:1px 5px"><i class="ti ti-bug" style="font-size:9px"></i>${d}</span>
+          <span style="color:var(--text2);font-size:11px">${DEFECT_NAMES[d]||'Open defect'}</span>
+        </div>`).join(''):`<div style="padding:10px 0;text-align:center;color:var(--text3);font-size:11.5px"><i class="ti ti-check" style="display:block;font-size:18px;margin-bottom:4px;color:var(--pass)"></i>No defects linked to this run</div>`,
+    };
+
+    return`<div class="run-card${run.stalled?' stalled':''}" id="card-${run.id}">
+      <div class="rct" onclick="toggleCard('${run.id}')">
+        <div class="rct-donut">${makeDonut(run.pass,run.fail,run.blocked,run.notrun)}</div>
+        <div class="rct-info">
+          <div class="rct-name">${run.name}</div>
+          <div class="rct-ctx">${run.plan} &nbsp;·&nbsp; ${run.env}</div>
+          <div class="rct-counts">
+            <span class="rct-count"><span class="rct-dot" style="background:#2E7D32"></span><span style="color:#2E7D32">${run.pass}</span></span>
+            <span class="rct-count"><span class="rct-dot" style="background:#C62828"></span><span style="color:#C62828">${run.fail}</span></span>
+            ${run.blocked>0?`<span class="rct-count"><span class="rct-dot" style="background:#E65100"></span><span style="color:#E65100">${run.blocked}</span></span>`:''}
+            <span class="rct-count"><span class="rct-dot" style="background:#B4C4D4"></span><span style="color:var(--text3)">${run.notrun}</span></span>
+          </div>
+        </div>
+        <div class="rct-right">
+          <span class="pill ${run.stalled?'p-block':'p-act'}" style="font-size:9.5px;padding:1px 5px"><span class="pill-dot"></span>${run.stalled?'Stalled':'Active'}</span>
+          <button class="expand-btn${isExp?' open':''}" onclick="toggleCard('${run.id}',event)" title="${isExp?'Collapse':'Expand'}">
+            <i class="ti ti-chevron-down"></i>
+          </button>
+        </div>
+      </div>
+      <div class="rcd${isExp?' open':''}" id="rcd-${run.id}">
+        <div class="rcd-tabs">
+          <div class="rcd-tab${tab==='overview'?' on':''}" onclick="switchCardTab('${run.id}','overview',event)">Overview</div>
+          <div class="rcd-tab${tab==='assignees'?' on':''}" onclick="switchCardTab('${run.id}','assignees',event)">Assignees (${run.assignees.length})</div>
+          <div class="rcd-tab${tab==='defects'?' on':''}" onclick="switchCardTab('${run.id}','defects',event)">Defects${run.defects.length?` (${run.defects.length})`:''}</div>
+        </div>
+        <div class="rcd-body">
+          <div class="rcd-pane${tab==='overview'?' on':''}">${detailContent.overview}</div>
+          <div class="rcd-pane${tab==='assignees'?' on':''}">${detailContent.assignees}</div>
+          <div class="rcd-pane${tab==='defects'?' on':''}">${detailContent.defects}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCard(id,e){
+  if(e)e.stopPropagation();
+  if(expandedCards.has(id))expandedCards.delete(id);
+  else expandedCards.add(id);
+  renderRunCards();
+}
+
+function switchCardTab(id,tab,e){
+  if(e)e.stopPropagation();
+  cardTabs[id]=tab;
+  renderRunCards();
+}
+
+/* Init run cards */
+renderRunCards();
+
+</script>
+</body></html>
