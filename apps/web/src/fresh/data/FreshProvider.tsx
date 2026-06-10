@@ -8,7 +8,7 @@ import {
   useReducer,
   type ReactNode,
 } from 'react'
-import { buildInitialDemoState, getCurrentRun } from './demo-seed'
+import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder } from './demo-model'
 import { newId } from './demo-model'
 import { nextCaseId } from './ui-utils'
@@ -19,7 +19,7 @@ function loadState(): DemoState {
   if (typeof window === 'undefined') return buildInitialDemoState()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as DemoState
+    if (raw) return mergeSeedRuns(JSON.parse(raw) as DemoState)
   } catch {
     /* use seed */
   }

@@ -1,6 +1,7 @@
 import type { Case, CaseExecution, CasePriority, CaseStep, DemoRun, DemoState, ExecStatus, Folder } from './demo-model'
 import { LEGACY_TO_EXEC, LEGACY_TO_PRIORITY, newId } from './demo-model'
-import { INITIAL_CASES, INITIAL_EXEC_CASES, RUN_CARDS } from './seed'
+import { INITIAL_CASES, INITIAL_EXEC_CASES, RUN_CARDS, RUN_PICKER_LIST } from './seed'
+import type { RunCard } from './types'
 import type { DemoCase, ExecCase, ResultStatus } from './types'
 
 export const SEED_FOLDERS: Folder[] = [
@@ -117,6 +118,72 @@ function buildExecution(c: ExecCase): CaseExecution {
   }
 }
 
+function distributeStatuses(
+  n: number,
+  pass: number,
+  fail: number,
+  blocked: number,
+  notrun: number,
+): ExecStatus[] {
+  const total = pass + fail + blocked + notrun
+  if (n <= 0) return []
+  if (total <= 0) return Array(n).fill('Not run')
+  const scale = n / total
+  const counts = [
+    Math.round(pass * scale),
+    Math.round(fail * scale),
+    Math.round(blocked * scale),
+    Math.round(notrun * scale),
+  ]
+  let sum = counts.reduce((a, b) => a + b, 0)
+  while (sum > n) {
+    const i = counts.findIndex((c) => c > 0)
+    if (i < 0) break
+    counts[i] -= 1
+    sum -= 1
+  }
+  while (sum < n) {
+    counts[3] += 1
+    sum += 1
+  }
+  const statuses: ExecStatus[] = [
+    ...Array(counts[0]).fill('Passed' as ExecStatus),
+    ...Array(counts[1]).fill('Failed' as ExecStatus),
+    ...Array(counts[2]).fill('Blocked' as ExecStatus),
+    ...Array(counts[3]).fill('Not run' as ExecStatus),
+  ]
+  return statuses.slice(0, n)
+}
+
+function buildExecutionFromStatus(c: ExecCase, status: ExecStatus): CaseExecution {
+  const base = buildExecution(c)
+  const stepResults: Record<string, ExecStatus> = {}
+  c.steps.forEach((_, i) => {
+    stepResults[`step-${i}`] = status === 'Not run' ? 'Not run' : status
+  })
+  return { ...base, status, stepResults }
+}
+
+function buildRunFromCard(card: RunCard, sealed = false): DemoRun {
+  const caseOrder = INITIAL_EXEC_CASES.map((c) => c.id)
+  const statuses = distributeStatuses(caseOrder.length, card.pass, card.fail, card.blocked, card.notrun)
+  const executions: Record<string, CaseExecution> = {}
+  INITIAL_EXEC_CASES.forEach((c, i) => {
+    executions[c.id] = buildExecutionFromStatus(c, statuses[i] ?? 'Not run')
+  })
+  return {
+    id: card.id,
+    name: card.name,
+    planId: `plan-${card.id.toLowerCase()}`,
+    planName: card.plan,
+    due: card.due,
+    createdAt: '2026-05-28T09:00:00.000Z',
+    sealed,
+    caseOrder,
+    executions,
+  }
+}
+
 function buildDefaultRun(): DemoRun {
   const card = RUN_CARDS[0]
   const caseOrder = INITIAL_EXEC_CASES.map((c) => c.id)
@@ -135,6 +202,46 @@ function buildDefaultRun(): DemoRun {
     caseOrder,
     executions,
   }
+}
+
+function buildAllRuns(): DemoRun[] {
+  return RUN_PICKER_LIST.map((picker) => {
+    const card = RUN_CARDS.find((r) => r.id === picker.id)
+    if (card) {
+      if (card.id === 'R1') return buildDefaultRun()
+      return buildRunFromCard(card, false)
+    }
+    if (picker.id === 'R6') {
+      const sealedCard: RunCard = {
+        id: 'R6',
+        name: picker.name,
+        plan: 'Sprint 43 Regression',
+        status: 'sealed',
+        due: '28 Apr',
+        total: picker.cases,
+        pass: picker.cases,
+        fail: 0,
+        blocked: 0,
+        notrun: 0,
+        stalled: false,
+        assignees: [{ n: 'Noel Quinn' }],
+        env: 'UAT',
+        defects: [],
+      }
+      return buildRunFromCard(sealedCard, true)
+    }
+    return buildDefaultRun()
+  })
+}
+
+export function mergeSeedRuns(state: DemoState): DemoState {
+  const seedRuns = buildAllRuns()
+  const byId = new Map(state.runs.map((r) => [r.id, r]))
+  for (const run of seedRuns) {
+    if (!byId.has(run.id)) byId.set(run.id, run)
+  }
+  const currentRunId = byId.has(state.currentRunId) ? state.currentRunId : seedRuns[0]?.id ?? state.currentRunId
+  return { ...state, runs: Array.from(byId.values()), currentRunId }
 }
 
 export function buildInitialDemoState(): DemoState {
@@ -187,7 +294,7 @@ export function buildInitialDemoState(): DemoState {
     module: 'TI-Core Platform',
     folders: SEED_FOLDERS,
     cases: Array.from(caseMap.values()),
-    runs: [defaultRun],
+    runs: buildAllRuns(),
     currentRunId: defaultRun.id,
     nextCaseNum: 13,
   }

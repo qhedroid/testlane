@@ -5,23 +5,30 @@ export function RunStatusInfographic({
   fail,
   blocked,
   notrun,
+  skipped = 0,
   size = 96,
   compact = false,
+  showCompleteLabel = true,
 }: {
   pass: number
   fail: number
   blocked: number
   notrun: number
+  skipped?: number
   size?: number
   compact?: boolean
+  showCompleteLabel?: boolean
 }) {
   return (
     <div className={`run-status-info${compact ? ' compact' : ''}`}>
-      <RunDonut pass={pass} fail={fail} blocked={blocked} notrun={notrun} size={size} />
+      <RunDonut pass={pass} fail={fail} blocked={blocked} notrun={notrun} skipped={skipped} size={size} showCompleteLabel={showCompleteLabel} />
       <ul className="run-status-list">
         <li><span className="rsi-n" style={{ color: '#2E7D32' }}>{pass}</span><span className="rsi-lbl">Passed</span></li>
         <li><span className="rsi-n" style={{ color: '#C62828' }}>{fail}</span><span className="rsi-lbl">Failed</span></li>
         <li><span className="rsi-n" style={{ color: '#E65100' }}>{blocked}</span><span className="rsi-lbl">Blocked</span></li>
+        {skipped > 0 ? (
+          <li><span className="rsi-n" style={{ color: '#4527A0' }}>{skipped}</span><span className="rsi-lbl">Skipped</span></li>
+        ) : null}
         <li><span className="rsi-n" style={{ color: 'var(--text3)' }}>{notrun}</span><span className="rsi-lbl">Not run</span></li>
       </ul>
     </div>

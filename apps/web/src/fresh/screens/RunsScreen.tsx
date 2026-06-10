@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import type { Case, ExecStatus } from '../data/demo-model'
-import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary, stepResultCounts } from '../data/demo-model'
+import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { DEFECT_NAMES, MODULES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
@@ -22,10 +22,17 @@ const RMB_CLASS: Record<Exclude<ExecStatus, 'Not run'>, string> = {
 }
 
 const RMB_LABEL: Record<Exclude<ExecStatus, 'Not run'>, string> = {
-  Passed: 'P Pass',
-  Failed: 'F Fail',
-  Blocked: 'B Blocked',
-  Skipped: 'S Skip',
+  Passed: 'Pass',
+  Failed: 'Fail',
+  Blocked: 'Blocked',
+  Skipped: 'Skipped',
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true
+  if (target.isContentEditable) return true
+  return !!target.closest('input, textarea, select, [contenteditable="true"]')
 }
 
 const PICKER_PILL: Record<string, { cls: string; lbl: string }> = {
@@ -108,8 +115,21 @@ export function RunsScreen() {
 
   const pickerRuns = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase()
-    return q ? RUN_PICKER_LIST.filter((r) => r.name.toLowerCase().includes(q)) : RUN_PICKER_LIST
-  }, [pickerQuery])
+    return state.runs
+      .map((run) => {
+        const meta = RUN_PICKER_LIST.find((r) => r.id === run.id)
+        const s = runSummary(run)
+        const pct = s.total ? Math.round(((s.total - s.notRun) / s.total) * 100) : 0
+        return {
+          id: run.id,
+          name: run.name,
+          status: run.sealed ? 'sealed' as const : (meta?.status ?? 'act'),
+          pct,
+          cases: s.total,
+        }
+      })
+      .filter((r) => !q || r.name.toLowerCase().includes(q))
+  }, [state.runs, pickerQuery])
 
   const filteredRows = useMemo(() => {
     const sq = runSearch.trim().toLowerCase()
@@ -120,13 +140,17 @@ export function RunsScreen() {
     })
   }, [runRows, filter, runSearch])
 
-  const pctDone = summary.total ? Math.round(((summary.total - summary.notRun) / summary.total) * 100) : 0
-
   useEffect(() => {
     if (!currentRun.caseOrder.includes(activeCaseId)) {
       setActiveCaseId(currentRun.caseOrder[0] ?? '')
     }
   }, [currentRun, activeCaseId])
+
+  useEffect(() => {
+    setActiveCaseId(currentRun.caseOrder[0] ?? '')
+    setFilter('all')
+    setRunSearch('')
+  }, [currentRun.id])
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -189,7 +213,7 @@ export function RunsScreen() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (isTypingTarget(e.target)) return
       if (isRunSealed) return
       const k = e.key.toLowerCase()
       if (k === '?') {
@@ -301,20 +325,17 @@ export function RunsScreen() {
               {currentRun.due ? <span>Due: {currentRun.due}</span> : null}
               {currentRun.planName ? <span>Plan: {currentRun.planName}</span> : null}
             </div>
-            <div className="ec-rpg" style={{ marginBottom: 3 }}>
-              <span className="ec-rpt">{summary.total - summary.notRun} / {summary.total}</span>
-              <div className="prog" style={{ flex: 1, height: 4 }}>
-                <div className="pg-p" style={{ width: `${summary.total ? (summary.passed / summary.total) * 100 : 0}%` }} />
-                <div className="pg-f" style={{ width: `${summary.total ? (summary.failed / summary.total) * 100 : 0}%` }} />
-                <div className="pg-b" style={{ width: `${summary.total ? (summary.blocked / summary.total) * 100 : 0}%` }} />
-              </div>
-              <span className="ec-rpt">{pctDone}%</span>
-            </div>
-            <div className="ec-rst">
-              <span className="rst rst-p" style={{ fontSize: 10 }}>✓ {summary.passed}</span>
-              <span className="rst rst-f" style={{ fontSize: 10 }}>✗ {summary.failed}</span>
-              <span className="rst rst-b" style={{ fontSize: 10 }}>⊘ {summary.blocked}</span>
-              <span className="rst rst-n" style={{ fontSize: 10 }}>○ {summary.notRun} Not run</span>
+            <div className="ec-run-summary">
+              <RunStatusInfographic
+                pass={summary.passed}
+                fail={summary.failed}
+                blocked={summary.blocked}
+                notrun={summary.notRun}
+                skipped={summary.skipped}
+                size={72}
+                compact
+                showCompleteLabel={false}
+              />
             </div>
           </div>
 
@@ -335,40 +356,26 @@ export function RunsScreen() {
             {filteredRows.length === 0 ? (
               <div style={{ padding: 16, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>No cases match filter</div>
             ) : (
-              filteredRows.map((row) => {
-                const ex = currentRun.executions[row.caseId]
-                const counts = stepResultCounts(row.case.steps, ex?.stepResults ?? {})
-                return (
-                  <div
-                    key={row.caseId}
-                    className={`ec-case${activeCaseId === row.caseId ? ' on' : ''}`}
-                    onClick={() => { setActiveCaseId(row.caseId); setEdVisible(true) }}
-                  >
-                    <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
-                    <div className="ec-info">
-                      <div className="ec-cid">{row.case.id}</div>
-                      <div className="ec-cnm">{row.case.title}</div>
-                      <div className="ec-cby">{row.assignee}</div>
-                    </div>
-                    <div className="ec-case-stats">
-                      <RunStatusInfographic
-                        pass={counts.pass}
-                        fail={counts.fail}
-                        blocked={counts.blocked}
-                        notrun={counts.notrun}
-                        size={52}
-                        compact
-                      />
-                    </div>
-                    <div className="ec-case-right">
-                      {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
-                      <span className={`pill ec-status-pill ${EXEC_PILL_MAP[row.status]}`} style={{ fontSize: 9, padding: '1px 5px' }}>
-                        {EXEC_PILL_LABEL[row.status].replace(/^[✓✗⊘○→]\s*/, '')}
-                      </span>
-                    </div>
+              filteredRows.map((row) => (
+                <div
+                  key={row.caseId}
+                  className={`ec-case${activeCaseId === row.caseId ? ' on' : ''}`}
+                  onClick={() => { setActiveCaseId(row.caseId); setEdVisible(true) }}
+                >
+                  <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
+                  <div className="ec-info">
+                    <div className="ec-cid">{row.case.id}</div>
+                    <div className="ec-cnm">{row.case.title}</div>
+                    <div className="ec-cby">{row.assignee}</div>
                   </div>
-                )
-              })
+                  <div className="ec-case-right">
+                    {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
+                    <span className={`pill ec-status-pill ${EXEC_PILL_MAP[row.status]}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                      {EXEC_PILL_LABEL[row.status].replace(/^[✓✗⊘○→]\s*/, '')}
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
@@ -663,7 +670,7 @@ function ExecDetailPane({
         <div className="sc-h"><span className="kbd">P</span>Pass</div>
         <div className="sc-h"><span className="kbd">F</span>Fail</div>
         <div className="sc-h"><span className="kbd">B</span>Blocked</div>
-        <div className="sc-h"><span className="kbd">S</span>Skip</div>
+        <div className="sc-h"><span className="kbd">S</span>Skipped</div>
         <div className="sc-h"><span className="kbd">D</span>Defect</div>
         <div className="sc-h"><span className="kbd">J/K</span>Navigate</div>
         <div className="sc-h" style={{ marginLeft: 'auto' }}>

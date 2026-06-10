@@ -4,15 +4,19 @@ export function RunDonut({
   fail,
   blocked,
   notrun,
+  skipped = 0,
   size = 80,
+  showCompleteLabel = true,
 }: {
   pass: number
   fail: number
   blocked: number
   notrun: number
+  skipped?: number
   size?: number
+  showCompleteLabel?: boolean
 }) {
-  const total = pass + fail + blocked + notrun
+  const total = pass + fail + blocked + notrun + skipped
   if (total === 0) return null
 
   const scale = size / 80
@@ -21,7 +25,7 @@ export function RunDonut({
   const cy = 40 * scale
   const stroke = 10 * scale
   const C = 2 * Math.PI * r
-  const done = pass + fail + blocked
+  const done = pass + fail + blocked + skipped
   const pct = Math.round((done / total) * 100)
   const vb = 80 * scale
 
@@ -46,6 +50,7 @@ export function RunDonut({
   const pL = (pass / total) * C
   const fL = (fail / total) * C
   const bL = (blocked / total) * C
+  const sL = (skipped / total) * C
   const nL = (notrun / total) * C
 
   return (
@@ -54,7 +59,8 @@ export function RunDonut({
       {seg(pL, '#2E7D32', 0)}
       {seg(fL, '#C62828', pL)}
       {seg(bL, '#E65100', pL + fL)}
-      {seg(nL, '#C5D1DE', pL + fL + bL)}
+      {seg(sL, '#4527A0', pL + fL + bL)}
+      {seg(nL, '#C5D1DE', pL + fL + bL + sL)}
       <text
         x={cx}
         y={cy - 2 * scale}
@@ -67,18 +73,20 @@ export function RunDonut({
       >
         {pct}%
       </text>
-      <text
-        x={cx}
-        y={cy + 12 * scale}
-        textAnchor="middle"
-        fontSize={6.5 * scale}
-        fontWeight={600}
-        fill="#7A92AB"
-        fontFamily="-apple-system,system-ui,sans-serif"
-        letterSpacing="0.06em"
-      >
-        COMPLETE
-      </text>
+      {showCompleteLabel ? (
+        <text
+          x={cx}
+          y={cy + 12 * scale}
+          textAnchor="middle"
+          fontSize={6.5 * scale}
+          fontWeight={600}
+          fill="#7A92AB"
+          fontFamily="-apple-system,system-ui,sans-serif"
+          letterSpacing="0.06em"
+        >
+          COMPLETE
+        </text>
+      ) : null}
     </svg>
   )
 }
