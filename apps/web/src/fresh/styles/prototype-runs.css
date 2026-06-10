@@ -559,8 +559,23 @@
   border-top: 1px solid var(--border);
 }
 
+.runs-v12 .ec-run-summary .run-status-info.compact {
+  align-items: center;
+}
+
 .runs-v12 .ec-run-summary .run-status-info.compact .run-status-list {
-  min-height: 144px;
+  min-height: var(--donut-size, 122px);
+  height: var(--donut-size, 122px);
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.runs-v12 .ec-run-summary .run-status-info.compact .rsi-n {
+  font-size: 11px;
+}
+
+.runs-v12 .ec-run-summary .run-status-info.compact .rsi-lbl {
+  font-size: 10px;
 }
 
 .runs-v12 .ec-case-right {

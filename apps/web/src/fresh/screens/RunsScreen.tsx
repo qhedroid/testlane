@@ -332,9 +332,9 @@ export function RunsScreen() {
                 blocked={summary.blocked}
                 notrun={summary.notRun}
                 skipped={summary.skipped}
-                size={144}
+                size={122}
                 compact
-                showCompleteLabel={false}
+                showCompleteLabel
                 interactive
               />
             </div>
