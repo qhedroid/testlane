@@ -1,14 +1,22 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { useFresh } from '../data/FreshProvider'
-import { SUITE_TREE } from '../data/seed'
-import type { DemoCase } from '../data/types'
-import { PILL_LABEL, PILL_MAP, PRI_MAP } from '../data/ui-utils'
+import type { Case, CasePriority, CaseStep, ExecStatus } from '../data/demo-model'
+import {
+  casesInFolder,
+  EXEC_TO_LEGACY,
+  folderLabel,
+  formatRelativeTime,
+  newId,
+  PRIORITY_TO_LEGACY,
+} from '../data/demo-model'
+import { EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
+type DetailTab = 'details' | 'history' | 'activity'
 
 const STATUS_CHIPS: { label: string; value: StatusFilter }[] = [
   { label: 'All status', value: 'all' },
@@ -18,29 +26,50 @@ const STATUS_CHIPS: { label: string; value: StatusFilter }[] = [
   { label: 'Not run', value: 'not_run' },
 ]
 
+const PRI_OPTIONS: CasePriority[] = ['Critical', 'High', 'Medium', 'Low']
+
+function caseLastStatus(state: { runs: { executions: Record<string, { status: ExecStatus }> }[] }, caseId: string): ExecStatus {
+  for (const run of state.runs) {
+    const ex = run.executions[caseId]
+    if (ex) return ex.status
+  }
+  return 'Not run'
+}
+
 export function CasesScreen() {
-  const { state, addCase } = useFresh()
+  const { state, addCase, replaceCase } = useFresh()
   const { openCreateCase } = useFreshUI()
-  const [openSuites, setOpenSuites] = useState<Set<string>>(new Set(['s1']))
-  const [selectedSection, setSelectedSection] = useState('Record management')
-  const [folderEmpty, setFolderEmpty] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [detailIdx, setDetailIdx] = useState<number | null>(null)
-  const [detailTab, setDetailTab] = useState<'details' | 'history' | 'activity'>('details')
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
+  const [selectedFolderId, setSelectedFolderId] = useState<string | '__unfiled__'>('f-rec')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [detailCaseId, setDetailCaseId] = useState<string | null>(null)
+  const [detailTab, setDetailTab] = useState<DetailTab>('details')
+  const [detailMaximized, setDetailMaximized] = useState(false)
+  const savedDetailWidth = useRef('360px')
   const [quickOpen, setQuickOpen] = useState(false)
   const [quickText, setQuickText] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
-  const cases = state.cases
-  const displayedCases = useMemo(() => {
-    if (folderEmpty) return []
-    if (statusFilter === 'all') return cases
-    return cases.filter((c) => c.last === statusFilter)
-  }, [cases, statusFilter, folderEmpty])
-  const detail = detailIdx !== null ? displayedCases[detailIdx] : null
+  const rootFolders = useMemo(() => state.folders.filter((f) => !f.parentId), [state.folders])
+  const childFolders = useCallback(
+    (parentId: string) => state.folders.filter((f) => f.parentId === parentId),
+    [state.folders],
+  )
 
-  function toggleSuite(id: string) {
-    setOpenSuites((prev) => {
+  const folderCases = useMemo(
+    () => casesInFolder(state.cases, state.folders, selectedFolderId),
+    [state.cases, state.folders, selectedFolderId],
+  )
+
+  const displayedCases = useMemo(() => {
+    if (statusFilter === 'all') return folderCases
+    return folderCases.filter((c) => EXEC_TO_LEGACY[caseLastStatus(state, c.id)] === statusFilter)
+  }, [folderCases, statusFilter, state])
+
+  const detail = detailCaseId ? state.cases.find((c) => c.id === detailCaseId) ?? null : null
+
+  function toggleFolder(id: string) {
+    setOpenFolders((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -48,38 +77,48 @@ export function CasesScreen() {
     })
   }
 
-  function selectSection(name: string, empty?: boolean) {
-    setSelectedSection(name)
-    setFolderEmpty(!!empty)
-    setDetailIdx(null)
+  function selectFolder(id: string | '__unfiled__') {
+    setSelectedFolderId(id)
+    setDetailCaseId(null)
     setSelectedIds(new Set())
   }
 
-  function showImportState() {
-    setFolderEmpty(true)
-    setSelectedSection('Import validation')
+  function toggleMaximize() {
+    if (!detailMaximized) {
+      const w = getComputedStyle(document.documentElement).getPropertyValue('--case-detail-width').trim()
+      if (w) savedDetailWidth.current = w
+      setDetailMaximized(true)
+    } else {
+      document.documentElement.style.setProperty('--case-detail-width', savedDetailWidth.current)
+      setDetailMaximized(false)
+    }
   }
+
+  useEffect(() => {
+    if (!detail) setDetailMaximized(false)
+  }, [detail])
 
   function addQuickCases() {
     const titles = quickText.split('\n').map((t) => t.trim()).filter(Boolean)
+    const folderId = selectedFolderId === '__unfiled__' ? null : selectedFolderId
     titles.forEach((title) => {
       addCase({
-        suite: 'CTMS',
         title,
-        pri: 'medium',
+        folderId,
+        priority: 'Medium',
         type: 'Functional',
-        last: 'not_run',
-        by: 'You',
-        steps: 1,
-        upd: 'just now',
-        precond: '—',
-        stepList: [{ a: 'Execute test steps', e: 'Expected result documented' }],
+        preconditions: '—',
+        steps: [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
+        generalComments: [],
+        tags: [],
+        assignee: 'You',
       })
     })
     setQuickText('')
     setQuickOpen(false)
-    setFolderEmpty(false)
   }
+
+  const unfiledCount = state.cases.filter((c) => !c.folderId).length
 
   return (
     <div className="view">
@@ -93,44 +132,61 @@ export function CasesScreen() {
         searchWidth={200}
         actions={
           <>
-            <button type="button" className="btn" onClick={showImportState}><i className="ti ti-upload" style={{ fontSize: 12 }} /> Import</button>
+            <button type="button" className="btn" onClick={() => selectFolder('f-import')}><i className="ti ti-upload" style={{ fontSize: 12 }} /> Import</button>
             <button type="button" className="btn" onClick={() => setQuickOpen((v) => !v)}><i className="ti ti-bolt" style={{ fontSize: 12 }} /> Quick create</button>
             <button type="button" className="btn btn-p" onClick={openCreateCase}><i className="ti ti-plus" style={{ fontSize: 12 }} /> New case</button>
           </>
         }
       />
-      <div className="tc-lay">
+      <div className={`tc-lay${detailMaximized ? ' dp-maximized' : ''}`}>
         <div className="suite-tree">
           <div className="st-hd">
             <i className="ti ti-folder" style={{ fontSize: 13, color: 'var(--text2)' }} />
-            <span className="st-ttl">Suites</span>
+            <span className="st-ttl">Folders</span>
             <button type="button" className="btn" style={{ padding: '2px 5px', fontSize: 13, lineHeight: 1 }}><i className="ti ti-plus" /></button>
           </div>
           <div className="st-body">
-            {SUITE_TREE.map((suite) => (
-              <div key={suite.id}>
-                <div className="st-root" onClick={() => toggleSuite(suite.id)}>
-                  <span className={`st-tog${openSuites.has(suite.id) ? ' open' : ''}`}>▶</span>
-                  <i className="ti ti-folder" style={{ fontSize: 12, color: openSuites.has(suite.id) ? 'var(--accent)' : 'var(--text2)' }} />
-                  {suite.name}
-                  <span className="st-ct">{suite.count}</span>
-                </div>
-                {openSuites.has(suite.id) ? (
-                  <div className="st-kids open">
-                    {suite.sections.map((sec) => (
-                      <div
-                        key={sec.name}
-                        className={`st-sec${selectedSection === sec.name && !folderEmpty ? ' on' : ''}`}
-                        onClick={() => selectSection(sec.name, sec.empty)}
-                      >
-                        {sec.name}
-                        <span className="st-ct" style={{ marginLeft: 'auto' }}>{sec.count}</span>
-                      </div>
-                    ))}
+            {rootFolders.map((folder) => {
+              const kids = childFolders(folder.id)
+              const hasKids = kids.length > 0
+              return (
+                <div key={folder.id}>
+                  <div
+                    className={`st-root${selectedFolderId === folder.id ? ' on' : ''}`}
+                    onClick={() => { if (hasKids) toggleFolder(folder.id); selectFolder(folder.id) }}
+                  >
+                    {hasKids ? (
+                      <span className={`st-tog${openFolders.has(folder.id) ? ' open' : ''}`} onClick={(e) => { e.stopPropagation(); toggleFolder(folder.id) }}>▶</span>
+                    ) : <span className="st-tog" style={{ visibility: 'hidden' }}>▶</span>}
+                    <i className="ti ti-folder" style={{ fontSize: 12, color: selectedFolderId === folder.id ? 'var(--accent)' : 'var(--text2)' }} />
+                    {folder.name}
+                    <span className="st-ct">{casesInFolder(state.cases, state.folders, folder.id).length}</span>
                   </div>
-                ) : null}
-              </div>
-            ))}
+                  {hasKids && openFolders.has(folder.id) ? (
+                    <div className="st-kids open">
+                      {kids.map((child) => (
+                        <div
+                          key={child.id}
+                          className={`st-sec${selectedFolderId === child.id ? ' on' : ''}`}
+                          onClick={() => selectFolder(child.id)}
+                        >
+                          {child.name}
+                          <span className="st-ct" style={{ marginLeft: 'auto' }}>{casesInFolder(state.cases, state.folders, child.id).length}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+            <div
+              className={`st-sec${selectedFolderId === '__unfiled__' ? ' on' : ''}`}
+              style={{ marginTop: 6 }}
+              onClick={() => selectFolder('__unfiled__')}
+            >
+              Unfiled
+              <span className="st-ct" style={{ marginLeft: 'auto' }}>{unfiledCount}</span>
+            </div>
           </div>
         </div>
 
@@ -142,7 +198,7 @@ export function CasesScreen() {
               <span
                 key={label}
                 className={`chip${statusFilter === value ? ' on' : ''}`}
-                onClick={() => { setStatusFilter(value); setDetailIdx(null) }}
+                onClick={() => { setStatusFilter(value); setDetailCaseId(null) }}
               >
                 {label}
               </span>
@@ -151,7 +207,7 @@ export function CasesScreen() {
             <span className="chip">Priority <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
             <span className="chip">Assignee <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
             <span className="chip">Type <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
-            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{folderEmpty ? 0 : displayedCases.length} cases</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{displayedCases.length} cases</span>
           </div>
 
           <div className={`bulk${selectedIds.size > 0 ? ' on' : ''}`}>
@@ -179,18 +235,18 @@ export function CasesScreen() {
           </div>
 
           <div className="tc-wrap">
-            {!folderEmpty ? (
+            {displayedCases.length > 0 ? (
               <table className="tbl">
                 <thead>
                   <tr>
                     <th style={{ width: 28 }}><input type="checkbox" onChange={(e) => {
-                      if (e.target.checked) setSelectedIds(new Set(displayedCases.map((_, i) => i)))
+                      if (e.target.checked) setSelectedIds(new Set(displayedCases.map((c) => c.id)))
                       else setSelectedIds(new Set())
                     }} /></th>
                     <th style={{ width: 68 }}>ID</th>
                     <th>Title</th>
                     <th style={{ width: 72 }}>Priority</th>
-                    <th style={{ width: 80 }}>Suite</th>
+                    <th style={{ width: 100 }}>Folder</th>
                     <th style={{ width: 88 }}>Type</th>
                     <th style={{ width: 80 }}>Last run</th>
                     <th style={{ width: 100 }}>Assigned</th>
@@ -199,56 +255,70 @@ export function CasesScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedCases.map((c, i) => (
-                    <tr
-                      key={c.id}
-                      className={detailIdx === i ? 'sel' : ''}
-                      onClick={() => setDetailIdx(i)}
-                    >
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(i)}
-                          onChange={() => setSelectedIds((prev) => {
-                            const next = new Set(prev)
-                            if (next.has(i)) next.delete(i)
-                            else next.add(i)
-                            return next
-                          })}
-                        />
-                      </td>
-                      <td className="tmono">{c.id}</td>
-                      <td className="title-cell" style={{ maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</td>
-                      <td><span className={`pri ${PRI_MAP[c.pri]}`}>{c.pri}</span></td>
-                      <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{c.suite}</td>
-                      <td style={{ color: 'var(--text2)' }}>{c.type}</td>
-                      <td><span className={`pill ${PILL_MAP[c.last]}`}>{PILL_LABEL[c.last]}</span></td>
-                      <td style={{ color: 'var(--text2)' }}>{c.by}</td>
-                      <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{c.steps}</td>
-                      <td style={{ color: 'var(--text3)' }}>{c.upd}</td>
-                    </tr>
-                  ))}
+                  {displayedCases.map((c) => {
+                    const last = caseLastStatus(state, c.id)
+                    return (
+                      <tr
+                        key={c.id}
+                        className={detailCaseId === c.id ? 'sel' : ''}
+                        onClick={() => setDetailCaseId(c.id)}
+                      >
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(c.id)}
+                            onChange={() => setSelectedIds((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(c.id)) next.delete(c.id)
+                              else next.add(c.id)
+                              return next
+                            })}
+                          />
+                        </td>
+                        <td className="tmono">{c.id}</td>
+                        <td className="title-cell" style={{ maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</td>
+                        <td><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></td>
+                        <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{folderLabel(state.folders, c.folderId)}</td>
+                        <td style={{ color: 'var(--text2)' }}>{c.type}</td>
+                        <td><span className={`pill ${EXEC_PILL_MAP[last]}`}>{EXEC_PILL_LABEL[last]}</span></td>
+                        <td style={{ color: 'var(--text2)' }}>{c.assignee ?? '—'}</td>
+                        <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{c.steps.length}</td>
+                        <td style={{ color: 'var(--text3)' }}>{formatRelativeTime(c.updatedAt)}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
-            ) : null}
-            <div className={`empty-state${folderEmpty ? ' on' : ''}`}>
-              <div className="empty-card">
-                <i className="ti ti-folder-open" />
-                <div className="empty-title">No test cases in this folder</div>
-                <div className="empty-copy">Create a new case, quick add several titles, or import existing cases into the selected folder.</div>
-                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button type="button" className="btn btn-p" onClick={openCreateCase}><i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test case</button>
-                  <button type="button" className="btn" onClick={() => setQuickOpen(true)}><i className="ti ti-bolt" style={{ fontSize: 12 }} /> Quick create</button>
-                  <button type="button" className="btn" onClick={showImportState}><i className="ti ti-upload" style={{ fontSize: 12 }} /> Import existing cases</button>
+            ) : (
+              <div className="empty-state on">
+                <div className="empty-card">
+                  <i className="ti ti-folder-open" />
+                  <div className="empty-title">No test cases in this folder</div>
+                  <div className="empty-copy">Create a new case, quick add several titles, or import existing cases into the selected folder.</div>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-p" onClick={openCreateCase}><i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test case</button>
+                    <button type="button" className="btn" onClick={() => setQuickOpen(true)}><i className="ti ti-bolt" style={{ fontSize: 12 }} /> Quick create</button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
         <div className="resizer-v detail-resizer" data-resize="case-detail" data-min="300" data-max="540" />
-        <div className={`dp${detail ? ' open' : ''}`}>
-          {detail ? <CaseDetail case={detail} tab={detailTab} onTab={setDetailTab} onClose={() => setDetailIdx(null)} /> : null}
+        <div className={`dp${detail ? ' open' : ''}${detailMaximized ? ' maximized' : ''}`}>
+          {detail ? (
+            <CaseDetail
+              caseData={detail}
+              folders={state.folders}
+              tab={detailTab}
+              onTab={setDetailTab}
+              onClose={() => setDetailCaseId(null)}
+              onSave={replaceCase}
+              maximized={detailMaximized}
+              onToggleMaximize={toggleMaximize}
+            />
+          ) : null}
         </div>
       </div>
     </div>
@@ -256,23 +326,77 @@ export function CasesScreen() {
 }
 
 function CaseDetail({
-  case: c,
+  caseData,
+  folders,
   tab,
   onTab,
   onClose,
+  onSave,
+  maximized,
+  onToggleMaximize,
 }: {
-  case: DemoCase
-  tab: string
-  onTab: (t: 'details' | 'history' | 'activity') => void
+  caseData: Case
+  folders: { id: string; name: string; parentId?: string | null }[]
+  tab: DetailTab
+  onTab: (t: DetailTab) => void
   onClose: () => void
+  onSave: (c: Case) => void
+  maximized: boolean
+  onToggleMaximize: () => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(caseData)
+
+  useEffect(() => {
+    setDraft(caseData)
+    setEditing(false)
+  }, [caseData])
+
+  function startEdit() {
+    setDraft({ ...caseData, steps: caseData.steps.map((s) => ({ ...s, comments: [...s.comments] })) })
+    setEditing(true)
+  }
+
+  function saveEdit() {
+    onSave({ ...draft, updatedAt: new Date().toISOString() })
+    setEditing(false)
+  }
+
+  function updateStep(idx: number, patch: Partial<CaseStep>) {
+    setDraft((d) => ({
+      ...d,
+      steps: d.steps.map((s, i) => (i === idx ? { ...s, ...patch } : s)),
+    }))
+  }
+
+  function addStep() {
+    setDraft((d) => ({
+      ...d,
+      steps: [...d.steps, { id: newId('step'), action: '', expected: '', comments: [] }],
+    }))
+  }
+
+  function removeStep(idx: number) {
+    if (draft.steps.length <= 1) return
+    setDraft((d) => ({ ...d, steps: d.steps.filter((_, i) => i !== idx) }))
+  }
+
+  const c = editing ? draft : caseData
+
   return (
     <>
       <div className="dp-hd">
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <span className="dp-id">{c.id}</span>
-          <div className="dp-ttl">{c.title}</div>
+          {editing ? (
+            <input className="dp-edit-title" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} />
+          ) : (
+            <div className="dp-ttl">{c.title}</div>
+          )}
         </div>
+        <button type="button" className="dp-max-btn" title={maximized ? 'Restore panel width' : 'Maximize panel'} onClick={onToggleMaximize}>
+          <i className={`ti ${maximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`} />
+        </button>
         <button type="button" className="btn" style={{ padding: '2px 6px', flexShrink: 0 }} onClick={onClose}>
           <i className="ti ti-x" style={{ fontSize: 13 }} />
         </button>
@@ -287,33 +411,86 @@ function CaseDetail({
           <>
             <div className="dp-sec">
               <div className="dp-sl">Metadata</div>
-              <div className="dp-mg">
-                <div><div className="dp-ml">Priority</div><div className="dp-mv"><span className={`pri ${PRI_MAP[c.pri]}`}>{c.pri.charAt(0).toUpperCase() + c.pri.slice(1)}</span></div></div>
-                <div><div className="dp-ml">Type</div><div className="dp-mv">{c.type}</div></div>
-                <div><div className="dp-ml">Assigned to</div><div className="dp-mv">{c.by}</div></div>
-                <div><div className="dp-ml">Last result</div><div className="dp-mv"><span className={`pill ${PILL_MAP[c.last]}`}>{PILL_LABEL[c.last]}</span></div></div>
-                <div><div className="dp-ml">Suite</div><div className="dp-mv">{c.suite}</div></div>
-                <div><div className="dp-ml">Automation</div><div className="dp-mv">Manual</div></div>
-              </div>
+              {editing ? (
+                <div className="dp-edit-grid">
+                  <div className="form-field">
+                    <label>Folder</label>
+                    <select value={draft.folderId ?? ''} onChange={(e) => setDraft((d) => ({ ...d, folderId: e.target.value || null }))}>
+                      <option value="">Unfiled</option>
+                      {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label>Priority</label>
+                    <select value={draft.priority} onChange={(e) => setDraft((d) => ({ ...d, priority: e.target.value as CasePriority }))}>
+                      {PRI_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label>Type</label>
+                    <input value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))} />
+                  </div>
+                </div>
+              ) : (
+                <div className="dp-mg">
+                  <div><div className="dp-ml">Priority</div><div className="dp-mv"><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></div></div>
+                  <div><div className="dp-ml">Type</div><div className="dp-mv">{c.type}</div></div>
+                  <div><div className="dp-ml">Assigned to</div><div className="dp-mv">{c.assignee ?? '—'}</div></div>
+                  <div><div className="dp-ml">Folder</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
+                  <div><div className="dp-ml">Suite</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
+                  <div><div className="dp-ml">Automation</div><div className="dp-mv">Manual</div></div>
+                </div>
+              )}
             </div>
             <div className="dp-sec">
               <div className="dp-sl">Preconditions</div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{c.precond}</div>
+              {editing ? (
+                <textarea className="dp-edit-area" rows={3} value={draft.preconditions ?? ''} onChange={(e) => setDraft((d) => ({ ...d, preconditions: e.target.value }))} />
+              ) : (
+                <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{c.preconditions}</div>
+              )}
             </div>
             <div className="dp-sec">
               <div className="dp-sl">Steps</div>
-              {c.stepList.map((s, n) => (
-                <div key={n} className="step-i">
+              {c.steps.map((s, n) => (
+                <div key={s.id} className="step-i">
                   <div className="step-n">{n + 1}</div>
-                  <div><div className="step-act">{s.a}</div><div className="step-exp">→ {s.e}</div></div>
+                  <div style={{ flex: 1 }}>
+                    {editing ? (
+                      <>
+                        <textarea className="dp-edit-area" rows={2} value={draft.steps[n]?.action ?? ''} onChange={(e) => updateStep(n, { action: e.target.value })} placeholder="Action" />
+                        <textarea className="dp-edit-area" rows={2} value={draft.steps[n]?.expected ?? ''} onChange={(e) => updateStep(n, { expected: e.target.value })} placeholder="Expected" style={{ marginTop: 4 }} />
+                        {draft.steps.length > 1 ? (
+                          <button type="button" className="btn" style={{ fontSize: 10, marginTop: 4 }} onClick={() => removeStep(n)}>Remove step</button>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <div className="step-act">{s.action}</div>
+                        <div className="step-exp">→ {s.expected}</div>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
+              {editing ? (
+                <button type="button" className="add-step-btn" onClick={addStep}><i className="ti ti-plus" style={{ fontSize: 12 }} /> Add Step</button>
+              ) : null}
             </div>
             <div className="dp-sec" style={{ borderBottom: 'none' }}>
               <div className="dp-sl">Tags</div>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {(c.tags ?? [c.suite.toLowerCase()]).map((t) => <span key={t} className="tag">{t}</span>)}
-              </div>
+              {editing ? (
+                <input
+                  className="dp-edit-area"
+                  value={(draft.tags ?? []).join(', ')}
+                  onChange={(e) => setDraft((d) => ({ ...d, tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) }))}
+                  placeholder="comma-separated tags"
+                />
+              ) : (
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {(c.tags ?? []).map((t) => <span key={t} className="tag">{t}</span>)}
+                </div>
+              )}
             </div>
           </>
         ) : null}
@@ -331,8 +508,17 @@ function CaseDetail({
         ) : null}
       </div>
       <div style={{ padding: '7px 10px', borderTop: '1px solid var(--border)', display: 'flex', gap: 5 }}>
-        <button type="button" className="btn btn-p" style={{ flex: 1 }}><i className="ti ti-edit" style={{ fontSize: 12 }} /> Edit case</button>
-        <button type="button" className="btn"><i className="ti ti-player-play" style={{ fontSize: 12 }} /> Add to run</button>
+        {editing ? (
+          <>
+            <button type="button" className="btn btn-p" style={{ flex: 1 }} onClick={saveEdit}><i className="ti ti-check" style={{ fontSize: 12 }} /> Save changes</button>
+            <button type="button" className="btn" onClick={() => { setEditing(false); setDraft(caseData) }}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="btn btn-p" style={{ flex: 1 }} onClick={startEdit}><i className="ti ti-edit" style={{ fontSize: 12 }} /> Edit case</button>
+            <button type="button" className="btn"><i className="ti ti-player-play" style={{ fontSize: 12 }} /> Add to run</button>
+          </>
+        )}
       </div>
     </>
   )

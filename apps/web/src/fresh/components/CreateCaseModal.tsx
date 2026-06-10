@@ -2,47 +2,72 @@
 
 import { useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
-import { MODULES } from '../data/seed'
-import type { DemoCase, Priority } from '../data/types'
+import type { CasePriority } from '../data/demo-model'
+import { newId } from '../data/demo-model'
 import { useFreshUI } from '../hooks/useFreshUI'
+
+interface StepDraft {
+  action: string
+  expected: string
+}
 
 export function CreateCaseModal() {
   const { createCaseOpen, closeCreateCase } = useFreshUI()
-  const { addCase } = useFresh()
+  const { state, addCase } = useFresh()
   const [title, setTitle] = useState('')
-  const [suite, setSuite] = useState('CTMS')
-  const [pri, setPri] = useState<Priority>('medium')
+  const [folderId, setFolderId] = useState<string>('')
+  const [pri, setPri] = useState<CasePriority>('Medium')
+  const [type, setType] = useState('Functional')
   const [precond, setPrecond] = useState('')
-  const [step, setStep] = useState('')
-  const [expected, setExpected] = useState('')
+  const [steps, setSteps] = useState<StepDraft[]>([{ action: '', expected: '' }])
 
   if (!createCaseOpen) return null
+
+  function addStep() {
+    setSteps((prev) => [...prev, { action: '', expected: '' }])
+  }
+
+  function updateStep(idx: number, field: keyof StepDraft, value: string) {
+    setSteps((prev) => prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)))
+  }
+
+  function removeStep(idx: number) {
+    if (steps.length <= 1) return
+    setSteps((prev) => prev.filter((_, i) => i !== idx))
+  }
 
   function submit() {
     const trimmed = title.trim()
     if (!trimmed) return
-    const data: Omit<DemoCase, 'id'> = {
-      suite,
+    const stepData = steps
+      .filter((s) => s.action.trim())
+      .map((s) => ({
+        id: newId('step'),
+        action: s.action.trim(),
+        expected: s.expected.trim() || 'Expected result documented',
+        comments: [],
+      }))
+    addCase({
       title: trimmed,
-      pri,
-      type: 'Functional',
-      last: 'not_run',
-      by: 'You',
-      steps: step ? 1 : 0,
-      upd: 'just now',
-      precond: precond || '—',
-      stepList: step
-        ? [{ a: step, e: expected || 'Expected result documented' }]
-        : [{ a: 'Execute test steps', e: 'Expected result documented' }],
-      tags: [suite.toLowerCase()],
-    }
-    addCase(data)
+      folderId: folderId || null,
+      priority: pri,
+      type,
+      preconditions: precond || '—',
+      steps: stepData.length > 0 ? stepData : [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
+      generalComments: [],
+      tags: [],
+      assignee: 'You',
+    })
     setTitle('')
+    setFolderId('')
+    setPri('Medium')
+    setType('Functional')
     setPrecond('')
-    setStep('')
-    setExpected('')
+    setSteps([{ action: '', expected: '' }])
     closeCreateCase()
   }
+
+  const folderOptions = state.folders
 
   return (
     <div className="modal-backdrop" onClick={closeCreateCase}>
@@ -60,35 +85,55 @@ export function CreateCaseModal() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div className="form-field">
-              <label>Suite</label>
-              <select value={suite} onChange={(e) => setSuite(e.target.value)}>
-                {MODULES.filter((m) => m !== 'TI-Core Platform').map((m) => (
-                  <option key={m} value={m}>{m}</option>
+              <label>Folder</label>
+              <select value={folderId} onChange={(e) => setFolderId(e.target.value)}>
+                <option value="">Unfiled</option>
+                {folderOptions.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
                 ))}
               </select>
             </div>
             <div className="form-field">
               <label>Priority</label>
-              <select value={pri} onChange={(e) => setPri(e.target.value as Priority)}>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
+              <select value={pri} onChange={(e) => setPri(e.target.value as CasePriority)}>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
               </select>
             </div>
+          </div>
+          <div className="form-field">
+            <label>Type</label>
+            <input value={type} onChange={(e) => setType(e.target.value)} placeholder="Functional" />
           </div>
           <div className="form-field">
             <label>Preconditions</label>
             <textarea rows={3} value={precond} onChange={(e) => setPrecond(e.target.value)} placeholder="Data, role, tenant, or module setup required" />
           </div>
-          <div className="form-field">
-            <label>First step</label>
-            <textarea rows={2} value={step} onChange={(e) => setStep(e.target.value)} placeholder="Action to perform" />
-          </div>
-          <div className="form-field">
-            <label>Expected result</label>
-            <textarea rows={2} value={expected} onChange={(e) => setExpected(e.target.value)} placeholder="Observable result" />
-          </div>
+          {steps.map((step, idx) => (
+            <div key={idx} className="step-draft-block">
+              <div className="step-draft-hd">
+                <span>Step {idx + 1}</span>
+                {steps.length > 1 ? (
+                  <button type="button" className="btn" style={{ fontSize: 10, padding: '1px 5px' }} onClick={() => removeStep(idx)}>
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+              <div className="form-field">
+                <label>Action</label>
+                <textarea rows={2} value={step.action} onChange={(e) => updateStep(idx, 'action', e.target.value)} placeholder="Action to perform" />
+              </div>
+              <div className="form-field">
+                <label>Expected result</label>
+                <textarea rows={2} value={step.expected} onChange={(e) => updateStep(idx, 'expected', e.target.value)} placeholder="Observable result" />
+              </div>
+            </div>
+          ))}
+          <button type="button" className="add-step-btn" onClick={addStep}>
+            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add Step
+          </button>
         </div>
         <div className="create-foot">
           <button type="button" className="btn" onClick={closeCreateCase}>Cancel</button>

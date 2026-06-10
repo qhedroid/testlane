@@ -29,7 +29,7 @@ export function useResizablePanes() {
         const dx = ev.clientX - startX
         const root = document.documentElement
         if (type === 'case-detail') {
-          const val = Math.max(min, Math.min(max, start - dx))
+          const val = Math.max(min, Math.min(max, start + dx))
           root.style.setProperty('--case-detail-width', `${val}px`)
         } else {
           const val = Math.max(min, Math.min(max, start + dx))
