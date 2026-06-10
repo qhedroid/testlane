@@ -391,10 +391,11 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 .rct-counts{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .rct-count{display:flex;align-items:center;gap:2.5px;font-size:10.5px;font-weight:600;font-family:var(--mono)}
 .rct-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-.run-status-info{display:flex;align-items:stretch;gap:8px;flex-shrink:0;height:var(--donut-size,122px);--rsi-count-size:max(11.5px,min(13px,calc(var(--donut-size,122px)*0.105)));--rsi-label-size:max(10.5px,min(12px,calc(var(--donut-size,122px)*0.098)))}
+.run-status-info{display:flex;align-items:flex-start;gap:8px;flex-shrink:0;height:var(--pieSize,122px);--statusListScale:0.836;--statusListHeight:calc(var(--pieSize,122px)*var(--statusListScale));--rsi-count-size:max(11.5px,min(13px,calc(var(--pieSize,122px)*0.105)));--rsi-label-size:max(10.5px,min(12px,calc(var(--pieSize,122px)*0.098)))}
 .run-status-info.compact{gap:6px}
-.run-status-chart{flex:0 0 var(--donut-size,122px);width:var(--donut-size,122px);height:var(--donut-size,122px)}
-.run-status-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;justify-content:space-between;height:100%;min-height:0;max-height:100%;overflow:hidden;box-sizing:border-box;flex:1 1 auto;min-width:0}
+.run-status-chart{flex:0 0 var(--pieSize,122px);width:var(--pieSize,122px);height:var(--pieSize,122px)}
+.run-status-col{display:flex;align-items:center;height:var(--pieSize,122px);flex:1 1 auto;min-width:0}
+.run-status-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;justify-content:space-between;height:var(--statusListHeight);max-height:var(--statusListHeight);overflow:hidden;box-sizing:border-box;width:100%}
 .run-status-list li{display:flex;align-items:baseline;gap:6px;margin:0;padding:0;line-height:1.15;flex-shrink:0}
 .rsi-n{font-size:var(--rsi-count-size);font-weight:700;font-family:var(--mono);min-width:16px;text-align:right;margin:0;padding:0;line-height:1.15}
 .rsi-lbl{font-size:var(--rsi-label-size);color:var(--text2);font-weight:500;margin:0;padding:0;line-height:1.15}
