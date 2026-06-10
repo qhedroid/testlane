@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
+import { formatDonutPercent } from '../data/ui-utils'
 
 type Segment = {
   key: string
@@ -43,7 +44,7 @@ export function RunDonut({
     const stroke = Math.max(7, 10 * scale - (size > 100 ? 2 : 0))
     const C = 2 * Math.PI * r
     const done = pass + fail + blocked + skipped
-    const pct = Math.round((done / total) * 100)
+    const pctLabel = formatDonutPercent(done, total)
     const vb = 80 * scale
     const pL = (pass / total) * C
     const fL = (fail / total) * C
@@ -60,17 +61,17 @@ export function RunDonut({
     const pctSize = showCompleteLabel ? 15 * scale : 18 * scale
     const labelSize = 7 * scale
     const pctY = showCompleteLabel ? cy - 3 * scale : cy
-    return { scale, r, cx, cy, stroke, C, pct, vb, segments, pctSize, labelSize, pctY }
+    return { scale, r, cx, cy, stroke, C, pctLabel, vb, segments, pctSize, labelSize, pctY }
   }, [total, pass, fail, blocked, notrun, skipped, size, showCompleteLabel])
 
   const showTip = useCallback(
     (seg: Segment, e: React.MouseEvent) => {
       if (!interactive || !geometry) return
-      const pct = total ? Math.round((seg.count / total) * 100) : 0
+      const pct = formatDonutPercent(seg.count, total)
       const rect = (e.currentTarget as SVGElement).closest('.donut-wrap')?.getBoundingClientRect()
       if (!rect) return
       setTooltip({
-        text: `${seg.count} (${pct}%) ${seg.label}`,
+        text: `${seg.count} (${pct}) ${seg.label}`,
         x: e.clientX - rect.left + 10,
         y: e.clientY - rect.top - 28,
       })
@@ -80,7 +81,7 @@ export function RunDonut({
 
   if (!geometry) return null
 
-  const { r, cx, cy, stroke, pct, vb, segments, pctSize, labelSize, pctY, C } = geometry
+  const { r, cx, cy, stroke, pctLabel, vb, segments, pctSize, labelSize, pctY, C } = geometry
 
   function segEl(seg: Segment, hit = false) {
     if (seg.len <= 0) return null
@@ -121,7 +122,7 @@ export function RunDonut({
           fontFamily="ui-monospace,'SF Mono',monospace"
           style={{ pointerEvents: 'none' }}
         >
-          {pct}%
+          {pctLabel}
         </text>
         {showCompleteLabel ? (
           <text

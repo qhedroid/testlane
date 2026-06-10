@@ -22,7 +22,10 @@ export function RunStatusInfographic({
   interactive?: boolean
 }) {
   return (
-    <div className={`run-status-info${compact ? ' compact' : ''}`}>
+    <div
+      className={`run-status-info${compact ? ' compact' : ''}`}
+      style={{ ['--donut-size' as string]: `${size}px` }}
+    >
       <RunDonut
         pass={pass}
         fail={fail}

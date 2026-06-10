@@ -70,3 +70,11 @@ export const GROUP_LABEL: Record<ResultStatus, string> = {
 export function nextCaseId(num: number): string {
   return `TC-${1000 + num}`
 }
+
+/** Percent for donut charts: show >1% when count > 0 but share is below 1%. */
+export function formatDonutPercent(count: number, total: number): string {
+  if (total <= 0 || count <= 0) return '0%'
+  const raw = (count / total) * 100
+  if (raw > 0 && raw < 1) return '>1%'
+  return `${Math.round(raw)}%`
+}
