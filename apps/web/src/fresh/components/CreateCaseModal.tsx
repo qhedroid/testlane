@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import type { CasePriority } from '../data/demo-model'
-import { newId } from '../data/demo-model'
+import { newId, parseTagsCsv } from '../data/demo-model'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 interface StepDraft {
@@ -19,6 +19,7 @@ export function CreateCaseModal() {
   const [pri, setPri] = useState<CasePriority>('Medium')
   const [type, setType] = useState('Functional')
   const [precond, setPrecond] = useState('')
+  const [tagsText, setTagsText] = useState('')
   const [steps, setSteps] = useState<StepDraft[]>([{ action: '', expected: '' }])
 
   if (!createCaseOpen) return null
@@ -55,7 +56,7 @@ export function CreateCaseModal() {
       preconditions: precond || '—',
       steps: stepData.length > 0 ? stepData : [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
       generalComments: [],
-      tags: [],
+      tags: parseTagsCsv(tagsText),
       assignee: 'You',
     })
     setTitle('')
@@ -63,6 +64,7 @@ export function CreateCaseModal() {
     setPri('Medium')
     setType('Functional')
     setPrecond('')
+    setTagsText('')
     setSteps([{ action: '', expected: '' }])
     closeCreateCase()
   }
@@ -110,6 +112,10 @@ export function CreateCaseModal() {
           <div className="form-field">
             <label>Preconditions</label>
             <textarea rows={3} value={precond} onChange={(e) => setPrecond(e.target.value)} placeholder="Data, role, tenant, or module setup required" />
+          </div>
+          <div className="form-field">
+            <label>Tags</label>
+            <input value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="comma-separated tags (spaces allowed)" />
           </div>
           {steps.map((step, idx) => (
             <div key={idx} className="step-draft-block">

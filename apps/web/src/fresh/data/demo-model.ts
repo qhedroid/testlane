@@ -185,6 +185,32 @@ export function folderLabel(folders: Folder[], folderId: string | null | undefin
   return folders.find((f) => f.id === folderId)?.name ?? 'Unfiled'
 }
 
+export function parseTagsCsv(value: string): string[] {
+  return value.split(',').map((part) => part.trim()).filter(Boolean)
+}
+
+export const TYPE_PLACEHOLDER_TAGS = [
+  'Functional (placeholder)',
+  'Integration (placeholder)',
+  'Security (placeholder)',
+  'Smoke (placeholder)',
+] as const
+
+export function stepResultCounts(
+  steps: { id: string }[],
+  stepResults: Record<string, ExecStatus>,
+): { pass: number; fail: number; blocked: number; notrun: number } {
+  const counts = { pass: 0, fail: 0, blocked: 0, notrun: 0 }
+  for (const step of steps) {
+    const sr = stepResults[step.id] ?? 'Not run'
+    if (sr === 'Passed') counts.pass += 1
+    else if (sr === 'Failed') counts.fail += 1
+    else if (sr === 'Blocked') counts.blocked += 1
+    else counts.notrun += 1
+  }
+  return counts
+}
+
 export function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)

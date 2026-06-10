@@ -10,7 +10,9 @@ import {
   folderLabel,
   formatRelativeTime,
   newId,
+  parseTagsCsv,
   PRIORITY_TO_LEGACY,
+  TYPE_PLACEHOLDER_TAGS,
 } from '../data/demo-model'
 import { EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { useFreshUI } from '../hooks/useFreshUI'
@@ -37,7 +39,7 @@ function caseLastStatus(state: { runs: { executions: Record<string, { status: Ex
 }
 
 export function CasesScreen() {
-  const { state, addCase, replaceCase } = useFresh()
+  const { state, addCase, replaceCase, addFolder } = useFresh()
   const { openCreateCase } = useFreshUI()
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
   const [selectedFolderId, setSelectedFolderId] = useState<string | '__unfiled__'>('f-rec')
@@ -48,6 +50,7 @@ export function CasesScreen() {
   const savedDetailWidth = useRef('360px')
   const [quickOpen, setQuickOpen] = useState(false)
   const [quickText, setQuickText] = useState('')
+  const quickInputRef = useRef<HTMLInputElement>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   const rootFolders = useMemo(() => state.folders.filter((f) => !f.parentId), [state.folders])
@@ -77,7 +80,7 @@ export function CasesScreen() {
     })
   }
 
-  function selectFolder(id: string | '__unfiled__') {
+  function selectFolder(id: string) {
     setSelectedFolderId(id)
     setDetailCaseId(null)
     setSelectedIds(new Set())
@@ -98,24 +101,37 @@ export function CasesScreen() {
     if (!detail) setDetailMaximized(false)
   }, [detail])
 
-  function addQuickCases() {
-    const titles = quickText.split('\n').map((t) => t.trim()).filter(Boolean)
-    const folderId = selectedFolderId === '__unfiled__' ? null : selectedFolderId
-    titles.forEach((title) => {
-      addCase({
-        title,
-        folderId,
-        priority: 'Medium',
-        type: 'Functional',
-        preconditions: '—',
-        steps: [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
-        generalComments: [],
-        tags: [],
-        assignee: 'You',
-      })
+  useEffect(() => {
+    if (quickOpen) quickInputRef.current?.focus()
+  }, [quickOpen])
+
+  const targetFolderId = selectedFolderId === '__unfiled__' ? null : selectedFolderId
+
+  function addQuickCase(title: string) {
+    const trimmed = title.trim()
+    if (!trimmed) return
+    addCase({
+      title: trimmed,
+      folderId: targetFolderId,
+      priority: 'Medium',
+      type: 'Functional',
+      preconditions: '—',
+      steps: [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
+      generalComments: [],
+      tags: [],
+      assignee: 'You',
     })
     setQuickText('')
-    setQuickOpen(false)
+    requestAnimationFrame(() => quickInputRef.current?.focus())
+  }
+
+  function createFolder() {
+    const name = window.prompt('Folder name')
+    if (!name?.trim()) return
+    const parentId = selectedFolderId === '__unfiled__' ? null : selectedFolderId
+    const id = addFolder(name.trim(), parentId)
+    if (parentId) setOpenFolders((prev) => new Set(prev).add(parentId))
+    selectFolder(id)
   }
 
   const unfiledCount = state.cases.filter((c) => !c.folderId).length
@@ -143,9 +159,17 @@ export function CasesScreen() {
           <div className="st-hd">
             <i className="ti ti-folder" style={{ fontSize: 13, color: 'var(--text2)' }} />
             <span className="st-ttl">Folders</span>
-            <button type="button" className="btn" style={{ padding: '2px 5px', fontSize: 13, lineHeight: 1 }}><i className="ti ti-plus" /></button>
+            <button type="button" className="btn" style={{ padding: '2px 5px', fontSize: 13, lineHeight: 1 }} onClick={createFolder} title="Add folder"><i className="ti ti-plus" /></button>
           </div>
           <div className="st-body">
+            <div
+              className={`st-sec${selectedFolderId === '__unfiled__' ? ' on' : ''}`}
+              style={{ marginBottom: 4 }}
+              onClick={() => selectFolder('__unfiled__')}
+            >
+              Unfiled
+              <span className="st-ct" style={{ marginLeft: 'auto' }}>{unfiledCount}</span>
+            </div>
             {rootFolders.map((folder) => {
               const kids = childFolders(folder.id)
               const hasKids = kids.length > 0
@@ -179,14 +203,6 @@ export function CasesScreen() {
                 </div>
               )
             })}
-            <div
-              className={`st-sec${selectedFolderId === '__unfiled__' ? ' on' : ''}`}
-              style={{ marginTop: 6 }}
-              onClick={() => selectFolder('__unfiled__')}
-            >
-              Unfiled
-              <span className="st-ct" style={{ marginLeft: 'auto' }}>{unfiledCount}</span>
-            </div>
           </div>
         </div>
 
@@ -223,15 +239,22 @@ export function CasesScreen() {
           </div>
 
           <div className={`quick-box${quickOpen ? ' on' : ''}`}>
-            <textarea
-              placeholder="One test case title per line. Details can be filled later."
+            <input
+              ref={quickInputRef}
+              className="quick-input"
+              type="text"
+              placeholder="Type a title and press Enter to add…"
               value={quickText}
               onChange={(e) => setQuickText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addQuickCase(quickText)
+                }
+                if (e.key === 'Escape') setQuickOpen(false)
+              }}
             />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <button type="button" className="btn btn-p" onClick={addQuickCases}><i className="ti ti-plus" style={{ fontSize: 12 }} /> Add</button>
-              <button type="button" className="btn" onClick={() => setQuickOpen(false)}>Cancel</button>
-            </div>
+            <button type="button" className="btn" onClick={() => setQuickOpen(false)}>Close</button>
           </div>
 
           <div className="tc-wrap">
@@ -386,6 +409,9 @@ function CaseDetail({
   return (
     <>
       <div className="dp-hd">
+        <button type="button" className="dp-max-btn" title={maximized ? 'Restore panel width' : 'Maximize panel'} onClick={onToggleMaximize}>
+          <i className={`ti ${maximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`} />
+        </button>
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <span className="dp-id">{c.id}</span>
           {editing ? (
@@ -394,9 +420,6 @@ function CaseDetail({
             <div className="dp-ttl">{c.title}</div>
           )}
         </div>
-        <button type="button" className="dp-max-btn" title={maximized ? 'Restore panel width' : 'Maximize panel'} onClick={onToggleMaximize}>
-          <i className={`ti ${maximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`} />
-        </button>
         <button type="button" className="btn" style={{ padding: '2px 6px', flexShrink: 0 }} onClick={onClose}>
           <i className="ti ti-x" style={{ fontSize: 13 }} />
         </button>
@@ -426,9 +449,21 @@ function CaseDetail({
                       {PRI_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
-                  <div className="form-field">
+                  <div className="form-field" style={{ gridColumn: 'span 2' }}>
                     <label>Type</label>
                     <input value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))} />
+                    <div className="type-placeholder-chips">
+                      {TYPE_PLACEHOLDER_TAGS.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          className={`chip${draft.type === t ? ' on' : ''}`}
+                          onClick={() => setDraft((d) => ({ ...d, type: t }))}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -483,8 +518,8 @@ function CaseDetail({
                 <input
                   className="dp-edit-area"
                   value={(draft.tags ?? []).join(', ')}
-                  onChange={(e) => setDraft((d) => ({ ...d, tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) }))}
-                  placeholder="comma-separated tags"
+                  onChange={(e) => setDraft((d) => ({ ...d, tags: parseTagsCsv(e.target.value) }))}
+                  placeholder="comma-separated tags (spaces allowed)"
                 />
               ) : (
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

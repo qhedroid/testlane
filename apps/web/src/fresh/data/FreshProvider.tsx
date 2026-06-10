@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { buildInitialDemoState, getCurrentRun } from './demo-seed'
-import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus } from './demo-model'
+import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder } from './demo-model'
 import { newId } from './demo-model'
 import { nextCaseId } from './ui-utils'
 
@@ -41,6 +41,7 @@ export type FreshAction =
   | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
   | { type: 'SEAL_RUN'; runId: string }
   | { type: 'SET_CURRENT_RUN'; runId: string }
+  | { type: 'ADD_FOLDER'; folder: Folder }
   | { type: 'HYDRATE'; state: DemoState }
 
 function reducer(state: DemoState, action: FreshAction): DemoState {
@@ -129,6 +130,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
     case 'SET_CURRENT_RUN':
       next = { ...state, currentRunId: action.runId }
       break
+    case 'ADD_FOLDER':
+      next = { ...state, folders: [...state.folders, action.folder] }
+      break
     default:
       return state
   }
@@ -149,6 +153,7 @@ interface FreshContextValue {
   addGeneralComment: (caseId: string, body: string, author?: string) => void
   sealRun: () => void
   setCurrentRun: (runId: string) => void
+  addFolder: (name: string, parentId?: string | null) => string
   isRunSealed: boolean
 }
 
@@ -211,6 +216,12 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_CURRENT_RUN', runId })
   }, [])
 
+  const addFolder = useCallback((name: string, parentId?: string | null) => {
+    const id = newId('folder')
+    dispatch({ type: 'ADD_FOLDER', folder: { id, name, parentId: parentId ?? null } })
+    return id
+  }, [])
+
   const isRunSealed = currentRun.sealed
 
   const value = useMemo(
@@ -227,6 +238,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       addGeneralComment,
       sealRun,
       setCurrentRun,
+      addFolder,
       isRunSealed,
     }),
     [
@@ -242,6 +254,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       addGeneralComment,
       sealRun,
       setCurrentRun,
+      addFolder,
       isRunSealed,
     ],
   )
