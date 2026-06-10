@@ -60,7 +60,7 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
         id: action.run.id,
         status: 'active' as const,
         name: action.run.name,
-        meta: 'Started just now · You',
+        meta: 'Started just now · Shaun Sevume',
       }
       return {
         ...state,

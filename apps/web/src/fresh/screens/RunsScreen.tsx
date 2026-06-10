@@ -10,6 +10,7 @@ import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { DEFECT_NAMES, MODULES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
+import { displayAssigneeName, normalizeAssigneeName, TEAM_USERS } from '../data/team-users'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 type FilterTab = 'all' | ExecStatus
@@ -104,7 +105,7 @@ export function RunsScreen() {
           caseId,
           case: caseData,
           status: ex?.status ?? 'Not run',
-          assignee: ex?.assignee ?? caseData.assignee ?? '—',
+          assignee: displayAssigneeName(ex?.assignee ?? caseData.assignee),
           comments: commentCount(caseData),
         }
       })
@@ -398,6 +399,7 @@ export function RunsScreen() {
               onAddStepComment={(stepId, body) => addStepComment(activeCaseId, stepId, body)}
               onAddGeneralComment={(body) => addGeneralComment(activeCaseId, body)}
               onLinkDefect={linkDefect}
+              onAssigneeChange={(name) => updateExecution(activeCaseId, { assignee: name })}
               onOpenShortcuts={openShortcuts}
               onClose={() => setEdVisible(false)}
               onToggleFs={() => setEdFullscreen((v) => !v)}
@@ -423,6 +425,7 @@ function ExecDetailPane({
   onAddStepComment,
   onAddGeneralComment,
   onLinkDefect,
+  onAssigneeChange,
   onOpenShortcuts,
   onClose,
   onToggleFs,
@@ -440,6 +443,7 @@ function ExecDetailPane({
   onAddStepComment: (stepId: string, body: string) => void
   onAddGeneralComment: (body: string) => void
   onLinkDefect: () => void
+  onAssigneeChange: (name: string) => void
   onOpenShortcuts: () => void
   onClose: () => void
   onToggleFs: () => void
@@ -449,6 +453,8 @@ function ExecDetailPane({
   const status = execution?.status ?? 'Not run'
   const statusClass = EXEC_PILL_MAP[status]
   const statusLabel = EXEC_STATUS_LABEL[status]
+  const currentAssignee =
+    normalizeAssigneeName(execution?.assignee ?? caseData.assignee) ?? TEAM_USERS[1]
   const [generalDraft, setGeneralDraft] = useState('')
   const [stepDrafts, setStepDrafts] = useState<Record<string, string>>({})
 
@@ -505,7 +511,7 @@ function ExecDetailPane({
         <div className="ed-mt">
           <span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[caseData.priority]]}`}>{caseData.priority}</span>
           {(caseData.tags ?? []).slice(0, 2).map((t) => <span key={t} className="tag">{t}</span>)}
-          <span style={{ fontSize: 11, color: 'var(--text2)' }}>Assigned: <strong>{execution?.assignee ?? caseData.assignee ?? '—'}</strong></span>
+          <span style={{ fontSize: 11, color: 'var(--text2)' }}>Assigned: <strong>{displayAssigneeName(execution?.assignee ?? caseData.assignee)}</strong></span>
           <span style={{ marginLeft: 'auto' }}>
             <span className={`pill ${statusClass}`}><span className="pill-dot" />{statusLabel}</span>
           </span>
@@ -531,7 +537,24 @@ function ExecDetailPane({
           <div className="ed-meta-grid">
             <div><div className="ed-ml">Priority</div><div className="ed-mv"><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[caseData.priority]]}`}>{caseData.priority}</span></div></div>
             <div><div className="ed-ml">Type</div><div className="ed-mv">{caseData.type}</div></div>
-            <div><div className="ed-ml">Assigned to</div><div className="ed-mv">{execution?.assignee ?? caseData.assignee}</div></div>
+            <div>
+              <div className="ed-ml">Assigned to</div>
+              <div className="ed-mv">
+                {sealed ? (
+                  displayAssigneeName(execution?.assignee ?? caseData.assignee)
+                ) : (
+                  <select
+                    value={currentAssignee}
+                    onChange={(e) => onAssigneeChange(e.target.value)}
+                    style={{ fontSize: 11.5, padding: '2px 4px', borderRadius: 3, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', maxWidth: '100%' }}
+                  >
+                    {TEAM_USERS.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
             <div><div className="ed-ml">Last result</div><div className="ed-mv">{statusLabel}</div></div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import type { CasePriority } from '../data/demo-model'
 import { newId, TYPE_PLACEHOLDER_TAGS } from '../data/demo-model'
+import { TEAM_USERS } from '../data/team-users'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 interface StepDraft {
@@ -21,6 +22,7 @@ export function CreateCaseModal() {
   const [precond, setPrecond] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
+  const [assignee, setAssignee] = useState<string>(TEAM_USERS[1])
   const [steps, setSteps] = useState<StepDraft[]>([{ action: '', expected: '' }])
 
   if (!createCaseOpen) return null
@@ -58,10 +60,11 @@ export function CreateCaseModal() {
       steps: stepData.length > 0 ? stepData : [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
       generalComments: [],
       tags,
-      assignee: 'Shaun Sevume',
+      assignee,
     })
     setTitle('')
     setFolderId('')
+    setAssignee(TEAM_USERS[1])
     setPri('Medium')
     setType(TYPE_PLACEHOLDER_TAGS[0])
     setPrecond('')
@@ -112,6 +115,14 @@ export function CreateCaseModal() {
             <select value={type} onChange={(e) => setType(e.target.value)}>
               {TYPE_PLACEHOLDER_TAGS.map((t) => (
                 <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-field">
+            <label>Assigned to</label>
+            <select value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+              {TEAM_USERS.map((name) => (
+                <option key={name} value={name}>{name}</option>
               ))}
             </select>
           </div>

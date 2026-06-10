@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
+import { migrateDemoState } from './migrate-demo-state'
 import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder } from './demo-model'
 import { newId } from './demo-model'
 import { nextCaseId } from './ui-utils'
@@ -19,7 +20,16 @@ function loadState(): DemoState {
   if (typeof window === 'undefined') return buildInitialDemoState()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return mergeSeedRuns(JSON.parse(raw) as DemoState)
+    if (raw) {
+      const migrated = migrateDemoState(mergeSeedRuns(JSON.parse(raw) as DemoState))
+      try {
+        const next = JSON.stringify(migrated)
+        if (next !== raw) localStorage.setItem(STORAGE_KEY, next)
+      } catch {
+        /* ignore quota */
+      }
+      return migrated
+    }
   } catch {
     /* use seed */
   }

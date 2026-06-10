@@ -282,7 +282,7 @@ export function buildInitialDemoState(): DemoState {
       generalComments: [],
       tags: ['ops'],
       updatedAt: NOW,
-      assignee: 'Nasir D.',
+      assignee: 'Nasir Dipto',
     },
   ]
 

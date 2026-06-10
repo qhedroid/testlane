@@ -14,6 +14,7 @@ import {
   TYPE_PLACEHOLDER_TAGS,
 } from '../data/demo-model'
 import { EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
+import { displayAssigneeName, TEAM_USERS } from '../data/team-users'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
@@ -248,7 +249,7 @@ export function CasesScreen() {
       steps: [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
       generalComments: [],
       tags: [],
-      assignee: 'Shaun Sevume',
+      assignee: TEAM_USERS[1],
     })
     setQuickText('')
     requestAnimationFrame(() => quickInputRef.current?.focus())
@@ -469,7 +470,7 @@ export function CasesScreen() {
                         <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{folderLabel(state.folders, c.folderId)}</td>
                         <td style={{ color: 'var(--text2)' }}>{c.type}</td>
                         <td><span className={`pill ${EXEC_PILL_MAP[last]}`}>{EXEC_PILL_LABEL[last]}</span></td>
-                        <td style={{ color: 'var(--text2)' }}>{c.assignee ?? '—'}</td>
+                        <td style={{ color: 'var(--text2)' }}>{displayAssigneeName(c.assignee)}</td>
                         <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{c.steps.length}</td>
                         <td style={{ color: 'var(--text3)' }}>{formatRelativeTime(c.updatedAt)}</td>
                       </tr>
@@ -684,12 +685,24 @@ function CaseDetail({
                       ))}
                     </select>
                   </div>
+                  <div className="form-field" style={{ gridColumn: 'span 2' }}>
+                    <label>Assigned to</label>
+                    <select
+                      value={draft.assignee ?? ''}
+                      onChange={(e) => setDraft((d) => ({ ...d, assignee: e.target.value || undefined }))}
+                    >
+                      <option value="">Unassigned</option>
+                      {TEAM_USERS.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               ) : (
                 <div className="dp-mg">
                   <div><div className="dp-ml">Priority</div><div className="dp-mv"><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></div></div>
                   <div><div className="dp-ml">Type</div><div className="dp-mv">{c.type}</div></div>
-                  <div><div className="dp-ml">Assigned to</div><div className="dp-mv">{c.assignee ?? '—'}</div></div>
+                  <div><div className="dp-ml">Assigned to</div><div className="dp-mv">{displayAssigneeName(c.assignee)}</div></div>
                   <div><div className="dp-ml">Folder</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
                   <div><div className="dp-ml">Suite</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
                   <div><div className="dp-ml">Automation</div><div className="dp-mv">Manual</div></div>
@@ -771,14 +784,14 @@ function CaseDetail({
         ) : null}
         {tab === 'history' ? (
           <>
-            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--pass)' }} /><div><div className="hist-label">Passed — CTMS Regression · Sprint 44</div><div className="hist-meta">Nadim S. · 2d ago · all steps passed</div></div></div>
-            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--fail)' }} /><div><div className="hist-label">Failed — Sprint 43 Smoke Test</div><div className="hist-meta">Jamil K. · 15d ago · Step 2 failed · Defect TI-4401</div></div></div>
+            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--pass)' }} /><div><div className="hist-label">Passed — CTMS Regression · Sprint 44</div><div className="hist-meta">Nadim Sharif · 2d ago · all steps passed</div></div></div>
+            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--fail)' }} /><div><div className="hist-label">Failed — Sprint 43 Smoke Test</div><div className="hist-meta">Jamil Khan · 15d ago · Step 2 failed · Defect TI-4401</div></div></div>
           </>
         ) : null}
         {tab === 'activity' ? (
           <>
-            <div className="act-item"><strong>Nadim S.</strong> updated preconditions<span className="act-time">2d ago · 09:14</span></div>
-            <div className="act-item"><strong>Nasir D.</strong> added step 4<span className="act-time">5d ago · 14:32</span></div>
+            <div className="act-item"><strong>Nadim Sharif</strong> updated preconditions<span className="act-time">2d ago · 09:14</span></div>
+            <div className="act-item"><strong>Nasir Dipto</strong> added step 4<span className="act-time">5d ago · 14:32</span></div>
           </>
         ) : null}
       </div>
