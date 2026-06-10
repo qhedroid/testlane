@@ -1,7 +1,13 @@
 node_modules/
+.pnpm-store/
+pnpm-store/
+.pnpm/
 .next/
 dist/
 build/
+*.tsbuildinfo
+.turbo/
+coverage/
 .env
 .env.local
 .DS_Store
