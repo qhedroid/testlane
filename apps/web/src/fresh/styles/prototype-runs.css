@@ -15,7 +15,7 @@
 }
 
 .runs-v12 .ec-pane {
-  width: 300px;
+  width: var(--run-list-width, 300px);
   flex-shrink: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -56,29 +56,8 @@
   background: var(--bg);
 }
 
-.runs-v12 .resize-handle {
-  width: 4px;
-  flex-shrink: 0;
-  cursor: col-resize;
-  background: transparent;
-  position: relative;
-  transition: background 0.15s;
-  user-select: none;
-}
-
-.runs-v12 .resize-handle::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--border2);
-  opacity: 0;
-  transition: opacity 0.15s;
-  border-radius: 2px;
-}
-
-.runs-v12 .resize-handle:hover::after,
-.runs-v12 .resize-handle.dragging::after {
-  opacity: 1;
+.runs-v12 .tr-lay > .resizer-v {
+  flex: 0 0 6px;
 }
 
 .runs-v12 .run-sel-bar {
@@ -567,36 +546,17 @@
   margin: 0 3px;
 }
 
-/* Run summary cards (dashboard mc style) */
-.runs-v12 .run-summary-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  padding: 8px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  background: var(--bg);
-}
-
-.runs-v12 .run-mc {
-  padding: 8px 10px;
-  min-height: auto;
-}
-
-.runs-v12 .run-mc .mv {
-  font-size: 18px;
-  line-height: 1.1;
-}
-
-.runs-v12 .run-mc .ml {
-  font-size: 9.5px;
-}
-
-/* Case list — status pill + comment badge */
+/* Case list — step infographic + status pill */
 .runs-v12 .ec-case {
   display: flex;
   align-items: flex-start;
   gap: 6px;
+}
+
+.runs-v12 .ec-case-stats {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 4px;
 }
 
 .runs-v12 .ec-case-right {
@@ -643,62 +603,14 @@
   cursor: pointer;
 }
 
-.runs-v12 .ed-rbs .rmb {
-  flex: 1;
-  padding: 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  text-align: center;
-  transition: all 0.12s;
-}
-
-.runs-v12 .ed-rbs .rmb-p {
-  background: var(--pass-bg);
-  color: var(--pass);
-  border-color: rgba(46, 125, 50, 0.2);
-}
-
-.runs-v12 .ed-rbs .rmb-p:hover,
-.runs-v12 .ed-rbs .rmb-p.on {
-  background: var(--pass);
-  color: #fff;
-}
-
-.runs-v12 .ed-rbs .rmb-f {
-  background: var(--fail-bg);
-  color: var(--fail);
-  border-color: rgba(198, 40, 40, 0.2);
-}
-
-.runs-v12 .ed-rbs .rmb-f:hover,
-.runs-v12 .ed-rbs .rmb-f.on {
-  background: var(--fail);
-  color: #fff;
-}
-
-.runs-v12 .ed-rbs .rmb-b {
-  background: var(--block-bg);
-  color: var(--block);
-  border-color: rgba(230, 81, 0, 0.2);
-}
-
-.runs-v12 .ed-rbs .rmb-b:hover,
-.runs-v12 .ed-rbs .rmb-b.on {
-  background: var(--block);
-  color: #fff;
-}
-
-.runs-v12 .ed-rbs .rmb-s {
-  background: var(--skip-bg);
-  color: var(--skip);
-  border-color: rgba(69, 39, 160, 0.2);
-}
-
-.runs-v12 .ed-rbs .rmb-s:hover,
-.runs-v12 .ed-rbs .rmb-s.on {
-  background: var(--skip);
-  color: #fff;
-}
+/* Result shortcuts — verbatim from Relay_Prototype_v1.2.html */
+.runs-v12 .ed-foot{background:var(--surface);border-top:1px solid var(--border);padding:8px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.runs-v12 .ed-rl{font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
+.runs-v12 .ed-rbs{display:flex;gap:6px;flex:1}
+.runs-v12 .ed-rbs .rmb{flex:1;padding:6px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;text-align:center;transition:all .12s}
+.runs-v12 .ed-rbs .rmb-p{background:var(--pass-bg);color:var(--pass);border-color:rgba(46,125,50,.2)}.runs-v12 .ed-rbs .rmb-p:hover,.runs-v12 .ed-rbs .rmb-p.on{background:var(--pass);color:#fff}
+.runs-v12 .ed-rbs .rmb-f{background:var(--fail-bg);color:var(--fail);border-color:rgba(198,40,40,.2)}.runs-v12 .ed-rbs .rmb-f:hover,.runs-v12 .ed-rbs .rmb-f.on{background:var(--fail);color:#fff}
+.runs-v12 .ed-rbs .rmb-b{background:var(--block-bg);color:var(--block);border-color:rgba(230,81,0,.2)}.runs-v12 .ed-rbs .rmb-b:hover,.runs-v12 .ed-rbs .rmb-b.on{background:var(--block);color:#fff}
+.runs-v12 .ed-rbs .rmb-s{background:var(--skip-bg);color:var(--skip);border-color:rgba(69,39,160,.2)}.runs-v12 .ed-rbs .rmb-s:hover,.runs-v12 .ed-rbs .rmb-s.on{background:var(--skip);color:#fff}
+.runs-v12 .sc-bar{display:flex;align-items:center;gap:10px;padding:3px 12px;background:var(--surface2);border-top:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.runs-v12 .sc-bar .sc-h{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3)}

@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import type { Case, ExecStatus } from '../data/demo-model'
-import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
+import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary, stepResultCounts } from '../data/demo-model'
+import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { DEFECT_NAMES, MODULES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
@@ -18,6 +19,13 @@ const RMB_CLASS: Record<Exclude<ExecStatus, 'Not run'>, string> = {
   Failed: 'rmb-f',
   Blocked: 'rmb-b',
   Skipped: 'rmb-s',
+}
+
+const RMB_LABEL: Record<Exclude<ExecStatus, 'Not run'>, string> = {
+  Passed: 'P Pass',
+  Failed: 'F Fail',
+  Blocked: 'B Blocked',
+  Skipped: 'S Skip',
 }
 
 const PICKER_PILL: Record<string, { cls: string; lbl: string }> = {
@@ -75,7 +83,6 @@ export function RunsScreen() {
   const [edFullscreen, setEdFullscreen] = useState(false)
   const projRef = useRef<HTMLDivElement>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
-  const ecPaneRef = useRef<HTMLDivElement>(null)
 
   const summary = useMemo(() => runSummary(currentRun), [currentRun])
 
@@ -131,37 +138,6 @@ export function RunsScreen() {
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
-  }, [])
-
-  useEffect(() => {
-    const handle = document.getElementById('rh-ec')
-    const pane = ecPaneRef.current
-    if (!handle || !pane) return
-
-    function onDown(e: MouseEvent) {
-      if (e.target !== handle && !handle!.contains(e.target as Node)) return
-      e.preventDefault()
-      handle!.classList.add('dragging')
-      const startX = e.clientX
-      const startW = pane!.getBoundingClientRect().width
-
-      function onMove(ev: MouseEvent) {
-        const w = Math.max(220, Math.min(420, startW + (ev.clientX - startX)))
-        pane!.style.width = `${w}px`
-      }
-
-      function onUp() {
-        handle!.classList.remove('dragging')
-        document.removeEventListener('mousemove', onMove)
-        document.removeEventListener('mouseup', onUp)
-      }
-
-      document.addEventListener('mousemove', onMove)
-      document.addEventListener('mouseup', onUp)
-    }
-
-    handle.addEventListener('mousedown', onDown)
-    return () => handle.removeEventListener('mousedown', onDown)
   }, [])
 
   const setResult = useCallback(
@@ -281,8 +257,7 @@ export function RunsScreen() {
       </div>
 
       <div className="tr-lay">
-        <div className="resize-handle" id="rh-ec" title="Drag to resize" />
-        <div className="ec-pane" ref={ecPaneRef}>
+        <div className="ec-pane">
           <div className="run-sel-bar" ref={pickerRef}>
             <button type="button" className="run-sel-btn" onClick={() => setPickerOpen((v) => !v)}>
               <i className="ti ti-player-play" style={{ fontSize: 11, color: 'var(--accent)' }} />
@@ -317,21 +292,6 @@ export function RunsScreen() {
                 </div>
               </div>
             ) : null}
-          </div>
-
-          <div className="run-summary-row">
-            <div className="mc c-green run-mc">
-              <div className="mc-head"><div><div className="mv" style={{ color: '#2E7D32' }}>{summary.passed}</div><div className="ml">Passed</div></div></div>
-            </div>
-            <div className="mc c-red run-mc">
-              <div className="mc-head"><div><div className="mv" style={{ color: '#C62828' }}>{summary.failed}</div><div className="ml">Failed</div></div></div>
-            </div>
-            <div className="mc c-amber run-mc">
-              <div className="mc-head"><div><div className="mv" style={{ color: '#E65100' }}>{summary.blocked}</div><div className="ml">Blocked</div></div></div>
-            </div>
-            <div className="mc c-grey run-mc">
-              <div className="mc-head"><div><div className="mv">{summary.notRun}</div><div className="ml">Not run</div></div></div>
-            </div>
           </div>
 
           <div className="ec-run-hd">
@@ -375,29 +335,45 @@ export function RunsScreen() {
             {filteredRows.length === 0 ? (
               <div style={{ padding: 16, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>No cases match filter</div>
             ) : (
-              filteredRows.map((row) => (
-                <div
-                  key={row.caseId}
-                  className={`ec-case${activeCaseId === row.caseId ? ' on' : ''}`}
-                  onClick={() => { setActiveCaseId(row.caseId); setEdVisible(true) }}
-                >
-                  <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
-                  <div className="ec-info">
-                    <div className="ec-cid">{row.case.id}</div>
-                    <div className="ec-cnm">{row.case.title}</div>
-                    <div className="ec-cby">{row.assignee}</div>
+              filteredRows.map((row) => {
+                const ex = currentRun.executions[row.caseId]
+                const counts = stepResultCounts(row.case.steps, ex?.stepResults ?? {})
+                return (
+                  <div
+                    key={row.caseId}
+                    className={`ec-case${activeCaseId === row.caseId ? ' on' : ''}`}
+                    onClick={() => { setActiveCaseId(row.caseId); setEdVisible(true) }}
+                  >
+                    <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
+                    <div className="ec-info">
+                      <div className="ec-cid">{row.case.id}</div>
+                      <div className="ec-cnm">{row.case.title}</div>
+                      <div className="ec-cby">{row.assignee}</div>
+                    </div>
+                    <div className="ec-case-stats">
+                      <RunStatusInfographic
+                        pass={counts.pass}
+                        fail={counts.fail}
+                        blocked={counts.blocked}
+                        notrun={counts.notrun}
+                        size={52}
+                        compact
+                      />
+                    </div>
+                    <div className="ec-case-right">
+                      {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
+                      <span className={`pill ec-status-pill ${EXEC_PILL_MAP[row.status]}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                        {EXEC_PILL_LABEL[row.status].replace(/^[✓✗⊘○→]\s*/, '')}
+                      </span>
+                    </div>
                   </div>
-                  <div className="ec-case-right">
-                    {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
-                    <span className={`pill ec-status-pill ${EXEC_PILL_MAP[row.status]}`} style={{ fontSize: 9, padding: '1px 5px' }}>
-                      {EXEC_PILL_LABEL[row.status].replace(/^[✓✗⊘○→]\s*/, '')}
-                    </span>
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
+
+        <div className="resizer-v" data-resize="run-list" data-min="220" data-max="420" />
 
         {edVisible ? (
           <div className={`ed-pane${edFullscreen ? ' fs' : ''}`}>
@@ -672,10 +648,10 @@ function ExecDetailPane({
           {(['Passed', 'Failed', 'Blocked', 'Skipped'] as const).map((r) => (
             <div
               key={r}
-              className={`${RMB_CLASS[r]}${status === r ? ' on' : ''}${sealed ? ' disabled' : ''}`}
+              className={`rmb ${RMB_CLASS[r]}${status === r ? ' on' : ''}${sealed ? ' disabled' : ''}`}
               onClick={() => !sealed && onResult(r)}
             >
-              {r[0].toUpperCase()} {r}
+              {RMB_LABEL[r]}
             </div>
           ))}
         </div>
