@@ -71,7 +71,7 @@ export function RunsAppShell({ children, topbarActions }: RunsAppShellProps) {
         <div className="relay-sb-foot">
           <div className="relay-sb-av">PN</div>
           <div>
-            <div className="relay-sb-uname">Priya Nair</div>
+            <div className="relay-sb-uname">Monica Dayalani</div>
             <div className="relay-sb-urole">Contributor · dev</div>
           </div>
         </div>

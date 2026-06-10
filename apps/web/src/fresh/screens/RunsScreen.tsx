@@ -588,9 +588,9 @@ function ExecDetailPane({
 
       <div className={`ed-tp${tab === 'activity' ? ' on' : ''}`}>
         <div className="ed-act-item">
-          <div className="ed-act-av" style={{ background: '#185FA5' }}>AR</div>
+          <div className="ed-act-av" style={{ background: '#185FA5' }}>NS</div>
           <div className="ed-act-body">
-            <strong>Aisha Rahman</strong> marked Step 1 as <span style={{ color: 'var(--fail)' }}>Failed</span>
+            <strong>Nadim Sharif</strong> marked Step 1 as <span style={{ color: 'var(--fail)' }}>Failed</span>
             <div className="ed-act-time">Today at 14:32 · CTMS Regression — Sprint 44</div>
           </div>
         </div>
@@ -601,7 +601,7 @@ function ExecDetailPane({
           <div className="ed-hist-dot" style={{ background: 'var(--fail)' }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Result: Failed</div>
-            <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>Sprint 44 · Aisha Rahman · Today</div>
+            <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>Sprint 44 · Nadim Sharif · Today</div>
           </div>
         </div>
       </div>

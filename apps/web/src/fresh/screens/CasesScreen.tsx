@@ -248,7 +248,7 @@ export function CasesScreen() {
       steps: [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
       generalComments: [],
       tags: [],
-      assignee: 'You',
+      assignee: 'Shaun Sevume',
     })
     setQuickText('')
     requestAnimationFrame(() => quickInputRef.current?.focus())
@@ -771,14 +771,14 @@ function CaseDetail({
         ) : null}
         {tab === 'history' ? (
           <>
-            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--pass)' }} /><div><div className="hist-label">Passed — CTMS Regression · Sprint 44</div><div className="hist-meta">Aisha R. · 2d ago · all steps passed</div></div></div>
-            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--fail)' }} /><div><div className="hist-label">Failed — Sprint 43 Smoke Test</div><div className="hist-meta">James O. · 15d ago · Step 2 failed · Defect TI-4401</div></div></div>
+            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--pass)' }} /><div><div className="hist-label">Passed — CTMS Regression · Sprint 44</div><div className="hist-meta">Nadim S. · 2d ago · all steps passed</div></div></div>
+            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--fail)' }} /><div><div className="hist-label">Failed — Sprint 43 Smoke Test</div><div className="hist-meta">Jamil K. · 15d ago · Step 2 failed · Defect TI-4401</div></div></div>
           </>
         ) : null}
         {tab === 'activity' ? (
           <>
-            <div className="act-item"><strong>Aisha R.</strong> updated preconditions<span className="act-time">2d ago · 09:14</span></div>
-            <div className="act-item"><strong>Marcus W.</strong> added step 4<span className="act-time">5d ago · 14:32</span></div>
+            <div className="act-item"><strong>Nadim S.</strong> updated preconditions<span className="act-time">2d ago · 09:14</span></div>
+            <div className="act-item"><strong>Nasir D.</strong> added step 4<span className="act-time">5d ago · 14:32</span></div>
           </>
         ) : null}
       </div>

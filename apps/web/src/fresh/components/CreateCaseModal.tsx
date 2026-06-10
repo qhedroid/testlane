@@ -58,7 +58,7 @@ export function CreateCaseModal() {
       steps: stepData.length > 0 ? stepData : [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
       generalComments: [],
       tags,
-      assignee: 'You',
+      assignee: 'Shaun Sevume',
     })
     setTitle('')
     setFolderId('')

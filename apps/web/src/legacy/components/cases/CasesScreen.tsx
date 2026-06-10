@@ -91,7 +91,7 @@ export function CasesScreen() {
       priority: fields.priority ?? 'medium',
       type: 'Functional',
       lastResult: 'not_run',
-      assignedTo: 'You',
+      assignedTo: 'Shaun Sevume',
       steps: fields.steps ?? [{ action: 'Execute test steps', expected: 'Expected result documented' }],
       preconditions: fields.preconditions ?? 'Demo case — add preconditions as needed.',
       tags: [suite.toLowerCase()],

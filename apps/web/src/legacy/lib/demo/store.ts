@@ -254,7 +254,7 @@ export function makeSpawnedRun(planId: string, state: DemoState, name?: string):
     blocked: 0,
     notrun: cases.length,
     stalled: false,
-    assignees: [{ name: 'You', cases: cases.length }],
+    assignees: [{ name: 'Shaun Sevume', cases: cases.length }],
     defects: [],
     cases,
   }

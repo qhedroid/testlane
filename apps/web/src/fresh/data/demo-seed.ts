@@ -66,7 +66,7 @@ function execCaseToCase(c: ExecCase): Case {
     const seedComment =
       c.sr[i] === 'fail' && i === 0 && c.id === 'TC-2041'
         ? {
-            author: 'Aisha Rahman',
+            author: 'Nadim Sharif',
             body: 'Viewer permission is saved on submit but reverts to previous value after profile reload.',
           }
         : undefined
@@ -224,7 +224,7 @@ function buildAllRuns(): DemoRun[] {
         blocked: 0,
         notrun: 0,
         stalled: false,
-        assignees: [{ n: 'Noel Quinn' }],
+        assignees: [{ n: 'Noel Quadri' }],
         env: 'UAT',
         defects: [],
       }
@@ -266,7 +266,7 @@ export function buildInitialDemoState(): DemoState {
       generalComments: [],
       tags: ['smoke'],
       updatedAt: NOW,
-      assignee: 'You',
+      assignee: 'Shaun Sevume',
     },
     {
       id: 'TC-UF-02',
@@ -282,7 +282,7 @@ export function buildInitialDemoState(): DemoState {
       generalComments: [],
       tags: ['ops'],
       updatedAt: NOW,
-      assignee: 'Marcus W.',
+      assignee: 'Nasir D.',
     },
   ]
 

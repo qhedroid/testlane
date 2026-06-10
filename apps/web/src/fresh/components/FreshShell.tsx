@@ -109,7 +109,7 @@ export function FreshShell({ children }: { children: ReactNode }) {
         <div className="sb-foot">
           <div className="sb-av">NQ</div>
           <div>
-            <div className="sb-uname">Noel Q.</div>
+            <div className="sb-uname">Noel Quadri</div>
             <div className="sb-urole">Super Admin</div>
           </div>
         </div>

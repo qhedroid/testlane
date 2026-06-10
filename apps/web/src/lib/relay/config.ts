@@ -4,10 +4,10 @@ export const RELAY_PROJECT_ID = '01SEED00000000000000000010'
 /** PLAN-001 on CTMS — default plan for create run. */
 export const RELAY_TEST_PLAN_ID = '01SEED00000000000000000400'
 
-/** Alex Viewer (viewer) — read-only; mutations return 403 from API. */
+/** Arvindh Chandran (viewer) — read-only; mutations return 403 from API. */
 export const RELAY_VIEWER_ACTOR_ID = '01SEED00000000000000000007'
 
-/** Priya Nair (contributor) — read runs and update results. Override via NEXT_PUBLIC_RELAY_USER_ID. */
+/** Monica Dayalani (contributor) — read runs and update results. Override via NEXT_PUBLIC_RELAY_USER_ID. */
 export const RELAY_DEV_ACTOR_ID =
   process.env.NEXT_PUBLIC_RELAY_USER_ID ?? '01SEED00000000000000000004'
 

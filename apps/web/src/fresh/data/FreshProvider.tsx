@@ -195,14 +195,14 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   )
 
   const addStepComment = useCallback(
-    (caseId: string, stepId: string, body: string, author = 'You') => {
+    (caseId: string, stepId: string, body: string, author = 'Shaun Sevume') => {
       dispatch({ type: 'ADD_STEP_COMMENT', caseId, stepId, author, body })
     },
     [],
   )
 
   const addGeneralComment = useCallback(
-    (caseId: string, body: string, author = 'You') => {
+    (caseId: string, body: string, author = 'Shaun Sevume') => {
       dispatch({ type: 'ADD_GENERAL_COMMENT', caseId, author, body })
     },
     [],

@@ -121,7 +121,7 @@ export function RelayAppShell({ children }: RelayAppShellProps) {
         <div className="relay-sb-foot">
           <div className="relay-sb-av">NQ</div>
           <div className="relay-sb-user">
-            <div className="relay-sb-uname">Noel Q.</div>
+            <div className="relay-sb-uname">Noel Quadri</div>
             <div className="relay-sb-urole">Super Admin</div>
           </div>
         </div>
