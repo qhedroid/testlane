@@ -9,6 +9,7 @@ export function RunStatusInfographic({
   size = 96,
   compact = false,
   showCompleteLabel = true,
+  interactive = false,
 }: {
   pass: number
   fail: number
@@ -18,10 +19,20 @@ export function RunStatusInfographic({
   size?: number
   compact?: boolean
   showCompleteLabel?: boolean
+  interactive?: boolean
 }) {
   return (
     <div className={`run-status-info${compact ? ' compact' : ''}`}>
-      <RunDonut pass={pass} fail={fail} blocked={blocked} notrun={notrun} skipped={skipped} size={size} showCompleteLabel={showCompleteLabel} />
+      <RunDonut
+        pass={pass}
+        fail={fail}
+        blocked={blocked}
+        notrun={notrun}
+        skipped={skipped}
+        size={size}
+        showCompleteLabel={showCompleteLabel}
+        interactive={interactive}
+      />
       <ul className="run-status-list">
         <li><span className="rsi-n" style={{ color: '#2E7D32' }}>{pass}</span><span className="rsi-lbl">Passed</span></li>
         <li><span className="rsi-n" style={{ color: '#C62828' }}>{fail}</span><span className="rsi-lbl">Failed</span></li>

@@ -374,7 +374,7 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 .runs-col{display:flex;flex-direction:column;gap:8px;overflow:hidden;min-height:0}
 .runs-col-hd{display:flex;align-items:center;gap:6px;flex-shrink:0;padding:0 1px}
 .runs-col-ttl{font-size:12px;font-weight:600;color:var(--text2);flex:1}
-.run-cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;overflow-y:auto;padding-bottom:2px}
+.run-cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;overflow-y:auto;padding-bottom:2px;align-items:start}
 
 /* ── RUN CARD ── */
 .run-card{background:var(--surface);border:1px solid var(--border);border-radius:5px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
@@ -569,8 +569,9 @@ a.bc-link:hover{text-decoration:underline}
 .met-row .mc-ic{width:34px;height:34px}
 .met-row .mc-ic i{font-size:16px}
 .run-card .rct-donut{width:96px;height:96px}
-.run-card .rct-donut text:first-of-type{font-size:15px!important;font-weight:800!important}
-.run-card .rct-donut text:last-of-type{font-size:7px!important;font-weight:600!important;letter-spacing:.06em}
+.run-card .donut-wrap{width:96px;height:96px}
+.run-card .rct-donut text:first-of-type{font-size:17px!important;font-weight:800!important}
+.run-card .rct-donut text:last-of-type{font-size:7.5px!important;font-weight:600!important;letter-spacing:.06em}
 
 /* Run card tabs — flat, no heavy button chrome */
 button.rcd-tab{border:none;background:transparent;font-family:var(--sans);cursor:pointer}

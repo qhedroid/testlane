@@ -13,7 +13,7 @@ type CardTab = 'overview' | 'assignees' | 'defects'
 
 export function DashboardScreen() {
   const [cardFilter, setCardFilter] = useState<CardFilter>('all')
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(['R1']))
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [cardTabs, setCardTabs] = useState<Record<string, CardTab>>({})
 
   const filteredRuns = useMemo(() => {
