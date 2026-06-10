@@ -559,10 +559,6 @@
   border-top: 1px solid var(--border);
 }
 
-.runs-v12 .ec-run-summary .run-status-info.compact {
-  align-items: flex-start;
-}
-
 .runs-v12 .ec-case-right {
   display: flex;
   flex-direction: column;
