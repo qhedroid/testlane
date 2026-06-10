@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import type { CasePriority } from '../data/demo-model'
-import { newId, parseTagsCsv } from '../data/demo-model'
+import { newId, TYPE_PLACEHOLDER_TAGS } from '../data/demo-model'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 interface StepDraft {
@@ -17,9 +17,10 @@ export function CreateCaseModal() {
   const [title, setTitle] = useState('')
   const [folderId, setFolderId] = useState<string>('')
   const [pri, setPri] = useState<CasePriority>('Medium')
-  const [type, setType] = useState('Functional')
+  const [type, setType] = useState<string>(TYPE_PLACEHOLDER_TAGS[0])
   const [precond, setPrecond] = useState('')
-  const [tagsText, setTagsText] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState('')
   const [steps, setSteps] = useState<StepDraft[]>([{ action: '', expected: '' }])
 
   if (!createCaseOpen) return null
@@ -56,15 +57,16 @@ export function CreateCaseModal() {
       preconditions: precond || '—',
       steps: stepData.length > 0 ? stepData : [{ id: newId('step'), action: 'Execute test steps', expected: 'Expected result documented', comments: [] }],
       generalComments: [],
-      tags: parseTagsCsv(tagsText),
+      tags,
       assignee: 'You',
     })
     setTitle('')
     setFolderId('')
     setPri('Medium')
-    setType('Functional')
+    setType(TYPE_PLACEHOLDER_TAGS[0])
     setPrecond('')
-    setTagsText('')
+    setTags([])
+    setTagInput('')
     setSteps([{ action: '', expected: '' }])
     closeCreateCase()
   }
@@ -107,7 +109,11 @@ export function CreateCaseModal() {
           </div>
           <div className="form-field">
             <label>Type</label>
-            <input value={type} onChange={(e) => setType(e.target.value)} placeholder="Functional" />
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              {TYPE_PLACEHOLDER_TAGS.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </div>
           <div className="form-field">
             <label>Preconditions</label>
@@ -115,7 +121,40 @@ export function CreateCaseModal() {
           </div>
           <div className="form-field">
             <label>Tags</label>
-            <input value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="comma-separated tags (spaces allowed)" />
+            <div className="tag-chip-field">
+              <input
+                className="tag-chip-input"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    const trimmed = tagInput.trim()
+                    if (!trimmed || tags.includes(trimmed)) return
+                    setTags((prev) => [...prev, trimmed])
+                    setTagInput('')
+                  }
+                }}
+                placeholder="Type a tag and press Enter…"
+              />
+              {tags.length > 0 ? (
+                <div className="tag-chip-list">
+                  {tags.map((t) => (
+                    <span key={t} className="tag-chip">
+                      {t}
+                      <button
+                        type="button"
+                        className="tag-chip-rm"
+                        onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
+                        aria-label={`Remove ${t}`}
+                      >
+                        <i className="ti ti-x" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
           {steps.map((step, idx) => (
             <div key={idx} className="step-draft-block">

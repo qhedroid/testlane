@@ -10,7 +10,6 @@ import {
   folderLabel,
   formatRelativeTime,
   newId,
-  parseTagsCsv,
   PRIORITY_TO_LEGACY,
   TYPE_PLACEHOLDER_TAGS,
 } from '../data/demo-model'
@@ -369,11 +368,30 @@ function CaseDetail({
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(caseData)
+  const [tagInput, setTagInput] = useState('')
+  const tagInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setDraft(caseData)
     setEditing(false)
+    setTagInput('')
   }, [caseData])
+
+  function addTag(value: string) {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    setDraft((d) => {
+      const existing = d.tags ?? []
+      if (existing.includes(trimmed)) return d
+      return { ...d, tags: [...existing, trimmed] }
+    })
+    setTagInput('')
+    requestAnimationFrame(() => tagInputRef.current?.focus())
+  }
+
+  function removeTag(tag: string) {
+    setDraft((d) => ({ ...d, tags: (d.tags ?? []).filter((t) => t !== tag) }))
+  }
 
   function startEdit() {
     setDraft({ ...caseData, steps: caseData.steps.map((s) => ({ ...s, comments: [...s.comments] })) })
@@ -451,19 +469,12 @@ function CaseDetail({
                   </div>
                   <div className="form-field" style={{ gridColumn: 'span 2' }}>
                     <label>Type</label>
-                    <input value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))} />
-                    <div className="type-placeholder-chips">
+                    <select value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}>
+                      <option value="">Select type…</option>
                       {TYPE_PLACEHOLDER_TAGS.map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          className={`chip${draft.type === t ? ' on' : ''}`}
-                          onClick={() => setDraft((d) => ({ ...d, type: t }))}
-                        >
-                          {t}
-                        </button>
+                        <option key={t} value={t}>{t}</option>
                       ))}
-                    </div>
+                    </select>
                   </div>
                 </div>
               ) : (
@@ -515,12 +526,33 @@ function CaseDetail({
             <div className="dp-sec" style={{ borderBottom: 'none' }}>
               <div className="dp-sl">Tags</div>
               {editing ? (
-                <input
-                  className="dp-edit-area"
-                  value={(draft.tags ?? []).join(', ')}
-                  onChange={(e) => setDraft((d) => ({ ...d, tags: parseTagsCsv(e.target.value) }))}
-                  placeholder="comma-separated tags (spaces allowed)"
-                />
+                <div className="tag-chip-field">
+                  <input
+                    ref={tagInputRef}
+                    className="dp-edit-area tag-chip-input"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addTag(tagInput)
+                      }
+                    }}
+                    placeholder="Type a tag and press Enter…"
+                  />
+                  {(draft.tags ?? []).length > 0 ? (
+                    <div className="tag-chip-list">
+                      {(draft.tags ?? []).map((t) => (
+                        <span key={t} className="tag-chip">
+                          {t}
+                          <button type="button" className="tag-chip-rm" onClick={() => removeTag(t)} aria-label={`Remove ${t}`}>
+                            <i className="ti ti-x" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               ) : (
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   {(c.tags ?? []).map((t) => <span key={t} className="tag">{t}</span>)}
