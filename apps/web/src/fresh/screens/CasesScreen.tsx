@@ -50,6 +50,8 @@ export function CasesScreen() {
   const [quickOpen, setQuickOpen] = useState(false)
   const [quickText, setQuickText] = useState('')
   const quickInputRef = useRef<HTMLInputElement>(null)
+  const newFolderInputRef = useRef<HTMLInputElement>(null)
+  const [newFolderDraft, setNewFolderDraft] = useState<{ parentId: string | null } | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   const rootFolders = useMemo(() => state.folders.filter((f) => !f.parentId), [state.folders])
@@ -124,13 +126,50 @@ export function CasesScreen() {
     requestAnimationFrame(() => quickInputRef.current?.focus())
   }
 
-  function createFolder() {
-    const name = window.prompt('Folder name')
-    if (!name?.trim()) return
+  const newFolderHostRootId = useMemo(() => {
+    if (!newFolderDraft) return null
+    if (!newFolderDraft.parentId) return '__root__'
+    const parent = state.folders.find((f) => f.id === newFolderDraft.parentId)
+    if (!parent) return '__root__'
+    if (!parent.parentId) return parent.id
+    return parent.parentId
+  }, [newFolderDraft, state.folders])
+
+  useEffect(() => {
+    if (!newFolderDraft) return
+    if (newFolderDraft.parentId) {
+      const parent = state.folders.find((f) => f.id === newFolderDraft.parentId)
+      const openId = parent?.parentId ?? newFolderDraft.parentId
+      setOpenFolders((prev) => new Set(prev).add(openId))
+    }
+    requestAnimationFrame(() => {
+      const el = newFolderInputRef.current
+      if (el) {
+        el.focus()
+        el.select()
+      }
+    })
+  }, [newFolderDraft, state.folders])
+
+  function startCreateFolder() {
     const parentId = selectedFolderId === '__unfiled__' ? null : selectedFolderId
-    const id = addFolder(name.trim(), parentId)
-    if (parentId) setOpenFolders((prev) => new Set(prev).add(parentId))
+    setNewFolderDraft({ parentId })
+  }
+
+  function commitNewFolder(name: string) {
+    if (!newFolderDraft) return
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setNewFolderDraft(null)
+      return
+    }
+    const id = addFolder(trimmed, newFolderDraft.parentId)
+    setNewFolderDraft(null)
     selectFolder(id)
+  }
+
+  function cancelNewFolder() {
+    setNewFolderDraft(null)
   }
 
   const unfiledCount = state.cases.filter((c) => !c.folderId).length
@@ -158,7 +197,7 @@ export function CasesScreen() {
           <div className="st-hd">
             <i className="ti ti-folder" style={{ fontSize: 13, color: 'var(--text2)' }} />
             <span className="st-ttl">Folders</span>
-            <button type="button" className="btn" style={{ padding: '2px 5px', fontSize: 13, lineHeight: 1 }} onClick={createFolder} title="Add folder"><i className="ti ti-plus" /></button>
+            <button type="button" className="btn" style={{ padding: '2px 5px', fontSize: 13, lineHeight: 1 }} onClick={startCreateFolder} title="Add folder"><i className="ti ti-plus" /></button>
           </div>
           <div className="st-body">
             <div
@@ -197,11 +236,25 @@ export function CasesScreen() {
                           <span className="st-ct" style={{ marginLeft: 'auto' }}>{casesInFolder(state.cases, state.folders, child.id).length}</span>
                         </div>
                       ))}
+                      {newFolderDraft && newFolderHostRootId === folder.id ? (
+                        <NewFolderInput
+                          inputRef={newFolderInputRef}
+                          onCommit={commitNewFolder}
+                          onCancel={cancelNewFolder}
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
               )
             })}
+            {newFolderDraft && newFolderHostRootId === '__root__' ? (
+              <NewFolderInput
+                inputRef={newFolderInputRef}
+                onCommit={commitNewFolder}
+                onCancel={cancelNewFolder}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -343,6 +396,48 @@ export function CasesScreen() {
           ) : null}
         </div>
       </div>
+    </div>
+  )
+}
+
+function NewFolderInput({
+  inputRef,
+  onCommit,
+  onCancel,
+}: {
+  inputRef: React.RefObject<HTMLInputElement | null>
+  onCommit: (name: string) => void
+  onCancel: () => void
+}) {
+  const [name, setName] = useState('New folder')
+  const committedRef = useRef(false)
+
+  return (
+    <div className="st-new-folder" onClick={(e) => e.stopPropagation()}>
+      <i className="ti ti-folder" style={{ fontSize: 12, color: 'var(--accent)', flexShrink: 0 }} />
+      <input
+        ref={inputRef}
+        className="st-new-folder-input"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            committedRef.current = true
+            onCommit(name)
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            committedRef.current = true
+            onCancel()
+          }
+        }}
+        onBlur={() => {
+          if (committedRef.current) return
+          if (!name.trim()) onCancel()
+          else onCommit(name)
+        }}
+      />
     </div>
   )
 }

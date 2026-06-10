@@ -80,7 +80,7 @@ export function RunDonut({
 
   if (!geometry) return null
 
-  const { r, cx, cy, stroke, pct, vb, segments, pctSize, labelSize, pctY } = geometry
+  const { r, cx, cy, stroke, pct, vb, segments, pctSize, labelSize, pctY, C } = geometry
 
   function segEl(seg: Segment, hit = false) {
     if (seg.len <= 0) return null
@@ -93,8 +93,8 @@ export function RunDonut({
         fill="none"
         stroke={hit ? 'transparent' : seg.color}
         strokeWidth={hit ? stroke + 10 : stroke}
-        strokeDasharray={`${seg.len.toFixed(2)} ${(geometry.C - seg.len).toFixed(2)}`}
-        strokeDashoffset={(geometry.C - seg.cumStart).toFixed(2)}
+        strokeDasharray={`${seg.len.toFixed(2)} ${(C - seg.len).toFixed(2)}`}
+        strokeDashoffset={(C - seg.cumStart).toFixed(2)}
         transform={`rotate(-90 ${cx} ${cy})`}
         style={hit ? { cursor: 'pointer', pointerEvents: 'stroke' } : undefined}
         onMouseEnter={hit ? (e) => showTip(seg, e) : undefined}

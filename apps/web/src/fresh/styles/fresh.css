@@ -507,6 +507,8 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 .tag-chip-rm{display:none;border:none;background:none;padding:0 2px;cursor:pointer;color:var(--text3);font-size:10px;line-height:1}
 .tag-chip:hover .tag-chip-rm{display:inline-flex;align-items:center}
 .tag-chip-rm:hover{color:var(--fail)}
+.st-new-folder{display:flex;align-items:center;gap:6px;padding:4px 8px 4px 24px;margin-top:2px}
+.st-new-folder-input{flex:1;min-width:0;border:1px solid var(--accent);border-radius:3px;padding:2px 6px;font-family:var(--sans);font-size:12px;outline:none;background:var(--surface)}
 .form-field{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}
 .form-field label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
 .form-field input,.form-field select,.form-field textarea{border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--sans);font-size:12px;color:var(--text);outline:none;background:#fff}
