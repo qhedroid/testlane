@@ -13,9 +13,9 @@ export function RunDonut({
   const total = pass + fail + blocked + notrun
   if (total === 0) return null
 
-  const r = 26
-  const cx = 34
-  const cy = 34
+  const r = 32
+  const cx = 40
+  const cy = 40
   const C = 2 * Math.PI * r
   const done = pass + fail + blocked
   const pct = Math.round((done / total) * 100)
@@ -44,7 +44,7 @@ export function RunDonut({
   const nL = (notrun / total) * C
 
   return (
-    <svg viewBox="0 0 68 68" width="68" height="68" style={{ display: 'block', flexShrink: 0 }} className="rct-donut">
+    <svg viewBox="0 0 80 80" width="80" height="80" style={{ display: 'block', flexShrink: 0 }} className="rct-donut">
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#E5EBF2" strokeWidth={10} />
       {seg(pL, '#2E7D32', 0)}
       {seg(fL, '#C62828', pL)}

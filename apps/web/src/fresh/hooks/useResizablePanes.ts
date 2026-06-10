@@ -27,12 +27,16 @@ export function useResizablePanes() {
 
       function onMove(ev: MouseEvent) {
         const dx = ev.clientX - startX
-        const val = Math.max(min, Math.min(max, start + dx))
         const root = document.documentElement
-        if (type === 'suite-tree') root.style.setProperty('--suite-tree-width', `${val}px`)
-        if (type === 'case-detail') root.style.setProperty('--case-detail-width', `${val}px`)
-        if (type === 'plan-list') root.style.setProperty('--plan-list-width', `${val}px`)
-        if (type === 'run-list') root.style.setProperty('--run-list-width', `${val}px`)
+        if (type === 'case-detail') {
+          const val = Math.max(min, Math.min(max, start - dx))
+          root.style.setProperty('--case-detail-width', `${val}px`)
+        } else {
+          const val = Math.max(min, Math.min(max, start + dx))
+          if (type === 'suite-tree') root.style.setProperty('--suite-tree-width', `${val}px`)
+          if (type === 'plan-list') root.style.setProperty('--plan-list-width', `${val}px`)
+          if (type === 'run-list') root.style.setProperty('--run-list-width', `${val}px`)
+        }
       }
 
       function onUp() {

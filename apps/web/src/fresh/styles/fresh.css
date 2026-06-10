@@ -536,9 +536,32 @@ html,body{height:100%;margin:0;padding:0}
 .sb-mark svg{display:block}
 .sb-name span{color:#6AADE8}
 button.btn,button.rmb,button.seal-btn,button.expand-btn,button.srb{font-family:var(--sans)}
-a.sbi{text-decoration:none;color:inherit}
+a.sbi{text-decoration:none;color:#A8C4E0}
+a.sbi:hover{color:#fff}
+a.sbi.on{color:#fff}
 a.bc-link{color:var(--accent);cursor:pointer;font-size:11.5px;text-decoration:none}
 a.bc-link:hover{text-decoration:underline}
 .rcd-pane{display:none}.rcd-pane.on{display:block}
 .hidden{display:none!important}
+
+/* Dashboard — larger metric cards & donuts */
+.met-row .mc{padding:14px 16px 12px;min-height:90px}
+.met-row .mc .mv{font-size:26px}
+.met-row .mc-ic{width:34px;height:34px}
+.met-row .mc-ic i{font-size:16px}
+.run-card .rct-donut{width:80px;height:80px}
+
+/* Run card tabs — flat, no heavy button chrome */
+button.rcd-tab{border:none;background:transparent;font-family:var(--sans);cursor:pointer}
+
+/* Needs attention — no link underline on rows */
+a.att-item{text-decoration:none;color:inherit;display:flex}
+a.att-item:hover{text-decoration:none}
+a.att-item .att-title{text-decoration:none}
+
+/* Module switcher — match FRESH streamlined trigger/menu */
+button.module-btn{appearance:none;font-family:var(--sans)}
+button.module-item{width:100%;border:none;background:transparent;text-align:left;font-family:var(--sans);display:flex;align-items:center;gap:7px;padding:7px 10px;font-size:12px;color:var(--text2);cursor:pointer;border-left:2px solid transparent}
+button.module-item:hover{background:var(--surface2);color:var(--text)}
+button.module-item.on{background:var(--accent-lt);color:var(--accent);border-left-color:var(--accent);font-weight:600}
 

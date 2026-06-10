@@ -1,12 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { useFresh } from '../data/FreshProvider'
 import { SUITE_TREE } from '../data/seed'
 import type { DemoCase } from '../data/types'
 import { PILL_LABEL, PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { useFreshUI } from '../hooks/useFreshUI'
+
+type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
+
+const STATUS_CHIPS: { label: string; value: StatusFilter }[] = [
+  { label: 'All status', value: 'all' },
+  { label: 'Pass', value: 'pass' },
+  { label: 'Fail', value: 'fail' },
+  { label: 'Blocked', value: 'blocked' },
+  { label: 'Not run', value: 'not_run' },
+]
 
 export function CasesScreen() {
   const { state, addCase } = useFresh()
@@ -19,9 +29,15 @@ export function CasesScreen() {
   const [detailTab, setDetailTab] = useState<'details' | 'history' | 'activity'>('details')
   const [quickOpen, setQuickOpen] = useState(false)
   const [quickText, setQuickText] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   const cases = state.cases
-  const detail = detailIdx !== null ? cases[detailIdx] : null
+  const displayedCases = useMemo(() => {
+    if (folderEmpty) return []
+    if (statusFilter === 'all') return cases
+    return cases.filter((c) => c.last === statusFilter)
+  }, [cases, statusFilter, folderEmpty])
+  const detail = detailIdx !== null ? displayedCases[detailIdx] : null
 
   function toggleSuite(id: string) {
     setOpenSuites((prev) => {
@@ -122,14 +138,20 @@ export function CasesScreen() {
 
         <div className="tc-main">
           <div className="tc-bar">
-            {['All status', 'Pass', 'Fail', 'Blocked', 'Not run'].map((label, i) => (
-              <span key={label} className={`chip${i === 0 ? ' on' : ''}`}>{label}</span>
+            {STATUS_CHIPS.map(({ label, value }) => (
+              <span
+                key={label}
+                className={`chip${statusFilter === value ? ' on' : ''}`}
+                onClick={() => { setStatusFilter(value); setDetailIdx(null) }}
+              >
+                {label}
+              </span>
             ))}
             <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px' }} />
             <span className="chip">Priority <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
             <span className="chip">Assignee <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
             <span className="chip">Type <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
-            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{folderEmpty ? 0 : cases.length} cases</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{folderEmpty ? 0 : displayedCases.length} cases</span>
           </div>
 
           <div className={`bulk${selectedIds.size > 0 ? ' on' : ''}`}>
@@ -162,7 +184,7 @@ export function CasesScreen() {
                 <thead>
                   <tr>
                     <th style={{ width: 28 }}><input type="checkbox" onChange={(e) => {
-                      if (e.target.checked) setSelectedIds(new Set(cases.map((_, i) => i)))
+                      if (e.target.checked) setSelectedIds(new Set(displayedCases.map((_, i) => i)))
                       else setSelectedIds(new Set())
                     }} /></th>
                     <th style={{ width: 68 }}>ID</th>
@@ -177,7 +199,7 @@ export function CasesScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cases.map((c, i) => (
+                  {displayedCases.map((c, i) => (
                     <tr
                       key={c.id}
                       className={detailIdx === i ? 'sel' : ''}
