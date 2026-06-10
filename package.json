@@ -15,6 +15,7 @@
     "db:validate-create-run": "pnpm db:wait && pnpm --filter @relay/db validate:create-run",
     "db:validate-update-case-result": "pnpm db:wait && pnpm --filter @relay/db validate:update-case-result",
     "api:validate": "pnpm db:seed && pnpm --filter @relay/web validate:api",
+    "publish:demo": "bash scripts/publish-here-now.sh",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

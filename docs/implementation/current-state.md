@@ -28,6 +28,7 @@
 | ExecutionService.updateCaseResult() | Wired; validated via `pnpm db:validate-update-case-result` |
 | Internal HTTP API | Health, `GET/POST /api/runs`, `GET /api/runs/:runId`, case result POST; contract in `api-contracts.md`; `pnpm api:validate` |
 | Interactive prototype | `mockup/Relay_Prototype_v1.2.html` (unchanged, no build step) |
+| Hosted demo (here.now) | https://silent-intent-5wwe.here.now/ — static export; see `docs/deployment/here-now.md` |
 
 ### Intentionally deferred
 
