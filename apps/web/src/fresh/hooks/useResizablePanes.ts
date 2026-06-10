@@ -19,8 +19,9 @@ export function useResizablePanes() {
       if (type === 'suite-tree') {
         start = document.querySelector('.suite-tree')?.getBoundingClientRect().width ?? 0
       } else if (type === 'case-detail') {
-        const dp = document.querySelector('.dp.open')
-        start = dp?.getBoundingClientRect().width ?? 360
+        const raw = getComputedStyle(document.documentElement).getPropertyValue('--case-detail-width').trim()
+        start = raw ? parseFloat(raw) : (document.querySelector('.dp.open')?.getBoundingClientRect().width ?? 360)
+        document.querySelector('.dp.open')?.classList.add('no-transition')
       } else if (type === 'plan-list') {
         start = document.querySelector('.tp-list-pane')?.getBoundingClientRect().width ?? 0
       } else if (type === 'run-list') {
@@ -41,7 +42,6 @@ export function useResizablePanes() {
         const root = document.documentElement
         const max = paneMax()
         if (type === 'case-detail') {
-          // Drag right (+dx) widens the right-hand detail panel.
           const val = Math.max(min, Math.min(max, start + dx))
           root.style.setProperty('--case-detail-width', `${val}px`)
         } else {
@@ -55,6 +55,9 @@ export function useResizablePanes() {
       function onUp() {
         document.removeEventListener('mousemove', onMove)
         document.removeEventListener('mouseup', onUp)
+        if (type === 'case-detail') {
+          document.querySelector('.dp.open')?.classList.remove('no-transition')
+        }
       }
 
       document.addEventListener('mousemove', onMove)

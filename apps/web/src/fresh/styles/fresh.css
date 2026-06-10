@@ -136,6 +136,7 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 .tc-wrap{flex:1;overflow-y:auto}
 /* DETAIL PANEL */
 .dp{width:0;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .15s ease}
+.dp.no-transition{transition:none!important}
 .dp.open{width:320px}
 .dp-hd{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:6px;flex-shrink:0}
 .dp-id{font-family:var(--mono);font-size:10px;color:var(--text3);display:block;margin-bottom:2px}
