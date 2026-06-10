@@ -54,9 +54,13 @@ export function CasesScreen() {
   const [newFolderDraft, setNewFolderDraft] = useState<{ parentId: string | null } | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
-  const rootFolders = useMemo(() => state.folders.filter((f) => !f.parentId), [state.folders])
+  const rootFolders = useMemo(
+    () => state.folders.filter((f) => !f.parentId).sort((a, b) => a.name.localeCompare(b.name)),
+    [state.folders],
+  )
   const childFolders = useCallback(
-    (parentId: string) => state.folders.filter((f) => f.parentId === parentId),
+    (parentId: string) =>
+      state.folders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name)),
     [state.folders],
   )
 
@@ -85,6 +89,12 @@ export function CasesScreen() {
     setSelectedFolderId(id)
     setDetailCaseId(null)
     setSelectedIds(new Set())
+    if (id !== '__unfiled__') {
+      const folder = state.folders.find((f) => f.id === id)
+      if (folder?.parentId) {
+        setOpenFolders((prev) => new Set(prev).add(folder.parentId!))
+      }
+    }
   }
 
   function toggleMaximize() {
@@ -163,8 +173,18 @@ export function CasesScreen() {
       setNewFolderDraft(null)
       return
     }
-    const id = addFolder(trimmed, newFolderDraft.parentId)
+    const parentId = newFolderDraft.parentId
+    const id = addFolder(trimmed, parentId)
     setNewFolderDraft(null)
+    if (parentId) {
+      const parent = state.folders.find((f) => f.id === parentId)
+      setOpenFolders((prev) => {
+        const next = new Set(prev)
+        next.add(parentId)
+        if (parent?.parentId) next.add(parent.parentId)
+        return next
+      })
+    }
     selectFolder(id)
   }
 
@@ -211,20 +231,26 @@ export function CasesScreen() {
             {rootFolders.map((folder) => {
               const kids = childFolders(folder.id)
               const hasKids = kids.length > 0
+              const isOpen = openFolders.has(folder.id)
+              const draftingChildHere = newFolderDraft !== null && newFolderHostRootId === folder.id
+              const showKids = isOpen && (hasKids || draftingChildHere)
               return (
                 <div key={folder.id}>
                   <div
                     className={`st-root${selectedFolderId === folder.id ? ' on' : ''}`}
-                    onClick={() => { if (hasKids) toggleFolder(folder.id); selectFolder(folder.id) }}
+                    onClick={() => {
+                      if (hasKids && !isOpen) toggleFolder(folder.id)
+                      selectFolder(folder.id)
+                    }}
                   >
                     {hasKids ? (
-                      <span className={`st-tog${openFolders.has(folder.id) ? ' open' : ''}`} onClick={(e) => { e.stopPropagation(); toggleFolder(folder.id) }}>▶</span>
+                      <span className={`st-tog${isOpen ? ' open' : ''}`} onClick={(e) => { e.stopPropagation(); toggleFolder(folder.id) }}>▶</span>
                     ) : <span className="st-tog" style={{ visibility: 'hidden' }}>▶</span>}
                     <i className="ti ti-folder" style={{ fontSize: 12, color: selectedFolderId === folder.id ? 'var(--accent)' : 'var(--text2)' }} />
                     {folder.name}
                     <span className="st-ct">{casesInFolder(state.cases, state.folders, folder.id).length}</span>
                   </div>
-                  {hasKids && openFolders.has(folder.id) ? (
+                  {showKids ? (
                     <div className="st-kids open">
                       {kids.map((child) => (
                         <div
