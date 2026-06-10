@@ -564,6 +564,8 @@ a.bc-link:hover{text-decoration:underline}
 .met-row .mc-ic{width:34px;height:34px}
 .met-row .mc-ic i{font-size:16px}
 .run-card .rct-donut{width:96px;height:96px}
+.run-card .rct-donut text:first-of-type{font-size:15px!important;font-weight:800!important}
+.run-card .rct-donut text:last-of-type{font-size:7px!important;font-weight:600!important;letter-spacing:.06em}
 
 /* Run card tabs — flat, no heavy button chrome */
 button.rcd-tab{border:none;background:transparent;font-family:var(--sans);cursor:pointer}

@@ -57,18 +57,27 @@ export function RunDonut({
       {seg(nL, '#C5D1DE', pL + fL + bL)}
       <text
         x={cx}
-        y={cy + 1 * scale}
+        y={cy - 2 * scale}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={11 * scale}
-        fontWeight={700}
+        fontSize={14 * scale}
+        fontWeight={800}
         fill="#0F1C2E"
         fontFamily="ui-monospace,'SF Mono',monospace"
       >
         {pct}%
       </text>
-      <text x={cx} y={cy + 13 * scale} textAnchor="middle" fontSize={7 * scale} fill="#7A92AB" fontFamily="-apple-system,system-ui,sans-serif">
-        done
+      <text
+        x={cx}
+        y={cy + 12 * scale}
+        textAnchor="middle"
+        fontSize={6.5 * scale}
+        fontWeight={600}
+        fill="#7A92AB"
+        fontFamily="-apple-system,system-ui,sans-serif"
+        letterSpacing="0.06em"
+      >
+        COMPLETE
       </text>
     </svg>
   )
