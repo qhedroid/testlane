@@ -648,4 +648,15 @@ export const AUDIT_EVENTS: AuditEvent[] = [
   { icon: 'create', iconClass: 'ti-clipboard-list', html: '<strong>Noel Q.</strong> created test plan <span class="audit-ref">Viewer Module — Functional Regression</span>', ctx: 'Draft · 29 cases across 2 suites · QA environment', time: '7d ago' },
 ]
 
+export const RUN_PICKER_LIST = [
+  ...RUN_CARDS.map((r) => ({
+    id: r.id,
+    name: r.name,
+    status: (r.stalled ? 'stalled' : 'act') as 'act' | 'stalled' | 'sealed',
+    pct: Math.round(((r.total - r.notrun) / r.total) * 100),
+    cases: r.total,
+  })),
+  { id: 'R6', name: 'Sprint 43 — Full regression', status: 'sealed' as const, pct: 100, cases: 128 },
+]
+
 export const DEFAULT_RUN = RUN_CARDS[0]
