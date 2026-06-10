@@ -16,7 +16,7 @@ export function RelayMark() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx="18" cy="11" r="2.8" fill="#223b70" />
+      <circle cx="18" cy="11" r="2.8" fill="#6AADE8" />
     </svg>
   )
 }
