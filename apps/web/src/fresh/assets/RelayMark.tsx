@@ -4,7 +4,7 @@ export function RelayMark() {
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
       <polyline
         points="2,4 8,11 2,18"
-        stroke="rgba(34,59,112,0.5)"
+        stroke="rgba(107,173,232,0.5)"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"

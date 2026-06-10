@@ -552,7 +552,7 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 /* ── Next.js / Relay branding overrides ── */
 html,body{height:100%;margin:0;padding:0}
 #app{width:100%;height:100vh;min-height:100vh}
-.sb-mark{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1)}
+.sb-mark{background:#193c5f;border:1px solid rgba(255,255,255,0.12)}
 .sb-mark svg{display:block}
 .sb-name span{color:#6AADE8}
 button.btn,button.rmb,button.seal-btn,button.expand-btn,button.srb{font-family:var(--sans)}
