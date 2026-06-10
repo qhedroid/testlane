@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
+import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { ATTENTION_ITEMS, COVERAGE_ITEMS, DEFECT_NAMES, RUN_CARDS } from '../data/seed'
 import type { RunCard } from '../data/types'
@@ -222,7 +223,7 @@ function RunCardItem({
   return (
     <div className={`run-card${run.stalled ? ' stalled' : ''}`}>
       <div className="rct" onClick={() => onToggle()}>
-        <RunStatusInfographic pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} size={120} />
+        <RunStatusInfographic pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} size={DONUT_CHART_SIZE} compact />
         <div className="rct-info">
           <div className="rct-name">{run.name}</div>
           <div className="rct-ctx">{run.plan} &nbsp;·&nbsp; {run.env}</div>

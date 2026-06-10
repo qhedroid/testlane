@@ -71,6 +71,9 @@ export function nextCaseId(num: number): string {
   return `TC-${1000 + num}`
 }
 
+/** Shared donut diameter (px) — Dashboard and Test Runs must match. */
+export const DONUT_CHART_SIZE = 122
+
 /** Percent for donut charts: show >1% when count > 0 but share is below 1%. */
 export function formatDonutPercent(count: number, total: number): string {
   if (total <= 0 || count <= 0) return '0%'

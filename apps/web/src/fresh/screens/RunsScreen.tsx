@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import type { Case, ExecStatus } from '../data/demo-model'
 import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
+import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { DEFECT_NAMES, MODULES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
@@ -332,7 +333,7 @@ export function RunsScreen() {
                 blocked={summary.blocked}
                 notrun={summary.notRun}
                 skipped={summary.skipped}
-                size={122}
+                size={DONUT_CHART_SIZE}
                 compact
                 showCompleteLabel
                 interactive
