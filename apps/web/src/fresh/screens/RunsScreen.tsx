@@ -371,10 +371,10 @@ export function RunsScreen() {
                     <div className="ec-cby">{row.assignee}</div>
                   </div>
                   <div className="ec-case-right">
-                    {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
                     <span className={`pill ec-status-pill ${EXEC_PILL_MAP[row.status]}`} style={{ fontSize: 9, padding: '1px 5px' }}>
                       {EXEC_PILL_LABEL[row.status].replace(/^[✓✗⊘○→]\s*/, '')}
                     </span>
+                    {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
                   </div>
                 </div>
               ))
