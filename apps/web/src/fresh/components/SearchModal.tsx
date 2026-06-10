@@ -3,7 +3,9 @@
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
+import { folderLabel, PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { PLANS, RUN_CARDS } from '../data/seed'
+import { PRI_MAP } from '../data/ui-utils'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 export function SearchModal() {
@@ -16,11 +18,20 @@ export function SearchModal() {
   const results = useMemo(() => {
     const ql = q.trim().toLowerCase()
     if (!ql) return []
-    const items: { type: string; title: string; meta: string; href: string }[] = []
+    const items: { type: string; title: string; meta: string; href: string; priCls?: string; priLbl?: string }[] = []
     state.cases
       .filter((c) => c.id.toLowerCase().includes(ql) || c.title.toLowerCase().includes(ql))
       .slice(0, 5)
-      .forEach((c) => items.push({ type: 'Test Case', title: `${c.id} · ${c.title}`, meta: c.suite, href: '/cases' }))
+      .forEach((c) =>
+        items.push({
+          type: 'Test Case',
+          title: c.title,
+          meta: `${c.id} · ${folderLabel(state.folders, c.folderId)} · ${c.type}`,
+          href: '/cases',
+          priCls: PRI_MAP[PRIORITY_TO_LEGACY[c.priority]],
+          priLbl: c.priority,
+        }),
+      )
     RUN_CARDS.filter((r) => r.name.toLowerCase().includes(ql))
       .slice(0, 5)
       .forEach((r) => items.push({ type: 'Test Run', title: r.name, meta: r.plan, href: '/runs' }))
@@ -28,7 +39,7 @@ export function SearchModal() {
       .slice(0, 5)
       .forEach((p) => items.push({ type: 'Test Plan', title: p.title, meta: `${p.cases} cases`, href: '/plans' }))
     return items
-  }, [q, state.cases])
+  }, [q, state.cases, state.folders])
 
   if (!searchOpen) return null
 
@@ -53,7 +64,7 @@ export function SearchModal() {
   }
 
   return (
-    <div className="modal-backdrop" onClick={closeSearch}>
+    <div className="modal-backdrop search-backdrop" onClick={closeSearch}>
       <div className="search-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="search-input-row">
           <i className="ti ti-search" />
@@ -75,11 +86,13 @@ export function SearchModal() {
             </div>
           ) : null}
           {results.map((r, i) => (
-            <button
+            <div
               key={`${r.type}-${r.title}`}
-              type="button"
+              role="button"
+              tabIndex={0}
               className={`search-result-item${focusIdx === i ? ' focused' : ''}`}
               onClick={() => go(r.href)}
+              onKeyDown={(e) => { if (e.key === 'Enter') go(r.href) }}
             >
               <div className="search-result-icon">
                 <i className={`ti ${r.type === 'Test Case' ? 'ti-file-description' : r.type === 'Test Run' ? 'ti-player-play' : 'ti-clipboard-list'}`} />
@@ -88,7 +101,12 @@ export function SearchModal() {
                 <div className="search-result-title">{r.title}</div>
                 <div className="search-result-meta">{r.type} · {r.meta}</div>
               </div>
-            </button>
+              {r.priCls ? (
+                <div className="search-result-right">
+                  <span className={`pri ${r.priCls}`}>{r.priLbl}</span>
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
         <div className="search-footer">

@@ -566,3 +566,139 @@
   flex-shrink: 0;
   margin: 0 3px;
 }
+
+/* Run summary cards (dashboard mc style) */
+.runs-v12 .run-summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.runs-v12 .run-mc {
+  padding: 8px 10px;
+  min-height: auto;
+}
+
+.runs-v12 .run-mc .mv {
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.runs-v12 .run-mc .ml {
+  font-size: 9.5px;
+}
+
+/* Case list — status pill + comment badge */
+.runs-v12 .ec-case {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.runs-v12 .ec-case-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.runs-v12 .ec-cmt-badge {
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--mono);
+  background: var(--accent-lt);
+  color: var(--accent);
+  border: 1px solid rgba(24, 95, 165, 0.25);
+  border-radius: 8px;
+  padding: 0 5px;
+  line-height: 14px;
+}
+
+.runs-v12 .ec-status-pill {
+  white-space: nowrap;
+}
+
+/* Shortcut bar — bordered kbd chips */
+.runs-v12 .sc-bar .sc-h .kbd {
+  display: inline-block;
+  padding: 0 4px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text2);
+  min-width: 14px;
+  text-align: center;
+}
+
+.runs-v12 .sc-bar .sc-kbd-btn {
+  cursor: pointer;
+}
+
+.runs-v12 .ed-rbs .rmb {
+  flex: 1;
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-align: center;
+  transition: all 0.12s;
+}
+
+.runs-v12 .ed-rbs .rmb-p {
+  background: var(--pass-bg);
+  color: var(--pass);
+  border-color: rgba(46, 125, 50, 0.2);
+}
+
+.runs-v12 .ed-rbs .rmb-p:hover,
+.runs-v12 .ed-rbs .rmb-p.on {
+  background: var(--pass);
+  color: #fff;
+}
+
+.runs-v12 .ed-rbs .rmb-f {
+  background: var(--fail-bg);
+  color: var(--fail);
+  border-color: rgba(198, 40, 40, 0.2);
+}
+
+.runs-v12 .ed-rbs .rmb-f:hover,
+.runs-v12 .ed-rbs .rmb-f.on {
+  background: var(--fail);
+  color: #fff;
+}
+
+.runs-v12 .ed-rbs .rmb-b {
+  background: var(--block-bg);
+  color: var(--block);
+  border-color: rgba(230, 81, 0, 0.2);
+}
+
+.runs-v12 .ed-rbs .rmb-b:hover,
+.runs-v12 .ed-rbs .rmb-b.on {
+  background: var(--block);
+  color: #fff;
+}
+
+.runs-v12 .ed-rbs .rmb-s {
+  background: var(--skip-bg);
+  color: var(--skip);
+  border-color: rgba(69, 39, 160, 0.2);
+}
+
+.runs-v12 .ed-rbs .rmb-s:hover,
+.runs-v12 .ed-rbs .rmb-s.on {
+  background: var(--skip);
+  color: #fff;
+}

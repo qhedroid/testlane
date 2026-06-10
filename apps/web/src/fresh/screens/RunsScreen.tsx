@@ -3,19 +3,21 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
-import { DEFAULT_RUN, DEFECT_NAMES, MODULES, RUN_CARDS, RUN_PICKER_LIST } from '../data/seed'
-import type { ExecCase, ResultStatus } from '../data/types'
-import { DOT_MAP, GROUP_LABEL, GROUP_ORDER, PILL_LABEL, PILL_MAP, PRI_MAP } from '../data/ui-utils'
+import type { Case, ExecStatus } from '../data/demo-model'
+import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
+import { DEFECT_NAMES, MODULES, RUN_PICKER_LIST } from '../data/seed'
+import { PRIORITY_TO_LEGACY } from '../data/demo-model'
+import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { useFreshUI } from '../hooks/useFreshUI'
 
-type FilterTab = 'all' | ResultStatus
+type FilterTab = 'all' | ExecStatus
 type EdTab = 'details' | 'steps' | 'activity' | 'history' | 'comments' | 'defects'
 
-const RMB_CLASS: Record<Exclude<ResultStatus, 'not_run'>, string> = {
-  pass: 'rmb-p',
-  fail: 'rmb-f',
-  blocked: 'rmb-b',
-  skip: 'rmb-s',
+const RMB_CLASS: Record<Exclude<ExecStatus, 'Not run'>, string> = {
+  Passed: 'rmb-p',
+  Failed: 'rmb-f',
+  Blocked: 'rmb-b',
+  Skipped: 'rmb-s',
 }
 
 const PICKER_PILL: Record<string, { cls: string; lbl: string }> = {
@@ -33,14 +35,38 @@ const ED_TABS: { id: EdTab; label: string }[] = [
   { id: 'defects', label: 'Defects' },
 ]
 
+const FILTER_TABS: { id: FilterTab; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'Not run', label: 'Not run' },
+  { id: 'Failed', label: 'Fail' },
+  { id: 'Blocked', label: 'Blocked' },
+]
+
+interface RunCaseRow {
+  caseId: string
+  case: Case
+  status: ExecStatus
+  assignee: string
+  comments: number
+}
+
 export function RunsScreen() {
-  const { state, updateExecCase, setCurrentRun } = useFresh()
+  const {
+    state,
+    currentRun,
+    getCase,
+    updateExecution,
+    addStepComment,
+    addGeneralComment,
+    setCurrentRun,
+    isRunSealed,
+  } = useFresh()
   const { openShortcuts } = useFreshUI()
   const [module, setModule] = useState(state.module)
   const [projOpen, setProjOpen] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [runSearch, setRunSearch] = useState('')
-  const [activeIdx, setActiveIdx] = useState(0)
+  const [activeCaseId, setActiveCaseId] = useState(currentRun.caseOrder[0] ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
   const [priHidden, setPriHidden] = useState(false)
@@ -51,33 +77,49 @@ export function RunsScreen() {
   const pickerRef = useRef<HTMLDivElement>(null)
   const ecPaneRef = useRef<HTMLDivElement>(null)
 
-  const run = RUN_CARDS.find((r) => r.id === state.currentRunId) ?? DEFAULT_RUN
-  const execCases = state.execCases
-  const active = execCases[activeIdx] ?? execCases[0]
+  const summary = useMemo(() => runSummary(currentRun), [currentRun])
 
-  const passPct = Math.round((run.pass / run.total) * 100)
-  const failPct = Math.round((run.fail / run.total) * 100)
-  const blockPct = Math.round((run.blocked / run.total) * 100)
-  const pctDone = Math.round(((run.total - run.notrun) / run.total) * 100)
+  const runRows: RunCaseRow[] = useMemo(() => {
+    return currentRun.caseOrder
+      .map((caseId) => {
+        const caseData = getCase(caseId)
+        if (!caseData) return null
+        const ex = currentRun.executions[caseId]
+        return {
+          caseId,
+          case: caseData,
+          status: ex?.status ?? 'Not run',
+          assignee: ex?.assignee ?? caseData.assignee ?? '—',
+          comments: commentCount(caseData),
+        }
+      })
+      .filter((r): r is RunCaseRow => r !== null)
+  }, [currentRun, getCase])
+
+  const active = getCase(activeCaseId)
+  const activeEx = currentRun.executions[activeCaseId]
 
   const pickerRuns = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase()
     return q ? RUN_PICKER_LIST.filter((r) => r.name.toLowerCase().includes(q)) : RUN_PICKER_LIST
   }, [pickerQuery])
 
-  const filteredGroups = useMemo(() => {
+  const filteredRows = useMemo(() => {
     const sq = runSearch.trim().toLowerCase()
-    return GROUP_ORDER.map((status) => ({
-      status,
-      cases: execCases
-        .map((c, i) => ({ c, i }))
-        .filter(({ c }) => {
-          if (filter !== 'all' && filter !== status) return false
-          if (sq && !c.id.toLowerCase().includes(sq) && !c.title.toLowerCase().includes(sq)) return false
-          return c.status === status
-        }),
-    })).filter((g) => g.cases.length > 0)
-  }, [execCases, filter, runSearch])
+    return runRows.filter((row) => {
+      if (filter !== 'all' && row.status !== filter) return false
+      if (sq && !row.case.id.toLowerCase().includes(sq) && !row.case.title.toLowerCase().includes(sq)) return false
+      return true
+    })
+  }, [runRows, filter, runSearch])
+
+  const pctDone = summary.total ? Math.round(((summary.total - summary.notRun) / summary.total) * 100) : 0
+
+  useEffect(() => {
+    if (!currentRun.caseOrder.includes(activeCaseId)) {
+      setActiveCaseId(currentRun.caseOrder[0] ?? '')
+    }
+  }, [currentRun, activeCaseId])
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -123,54 +165,62 @@ export function RunsScreen() {
   }, [])
 
   const setResult = useCallback(
-    (result: ResultStatus) => {
-      if (result === 'not_run') return
-      updateExecCase(activeIdx, { status: result })
+    (result: ExecStatus) => {
+      if (result === 'Not run' || isRunSealed) return
+      updateExecution(activeCaseId, { status: result })
     },
-    [activeIdx, updateExecCase],
+    [activeCaseId, updateExecution, isRunSealed],
   )
 
   const clearResult = useCallback(() => {
-    updateExecCase(activeIdx, { status: 'not_run' })
-  }, [activeIdx, updateExecCase])
+    if (isRunSealed) return
+    updateExecution(activeCaseId, { status: 'Not run' })
+  }, [activeCaseId, updateExecution, isRunSealed])
 
   const setStepR = useCallback(
-    (caseIdx: number, stepIdx: number, result: ResultStatus) => {
-      const c = execCases[caseIdx]
-      const sr = [...c.sr]
-      sr[stepIdx] = result
-      updateExecCase(caseIdx, { sr })
+    (caseId: string, stepId: string, result: ExecStatus) => {
+      if (isRunSealed) return
+      const ex = currentRun.executions[caseId] ?? { status: 'Not run' as ExecStatus, stepResults: {} }
+      updateExecution(caseId, {
+        stepResults: { ...ex.stepResults, [stepId]: result },
+      })
     },
-    [execCases, updateExecCase],
+    [currentRun.executions, updateExecution, isRunSealed],
   )
 
   const linkDefect = useCallback(() => {
-    const c = execCases[activeIdx]
+    if (isRunSealed || !activeEx) return
     const newId = `TI-${4420 + Math.floor(Math.random() * 80)}`
-    updateExecCase(activeIdx, { defects: [...c.defects, newId] })
+    updateExecution(activeCaseId, { defects: [...(activeEx.defects ?? []), newId] })
     setEdTab('defects')
-  }, [activeIdx, execCases, updateExecCase])
+  }, [activeCaseId, activeEx, updateExecution, isRunSealed])
 
   const navCase = useCallback(
     (dir: number) => {
-      let next = activeIdx + dir
+      const idx = filteredRows.findIndex((r) => r.caseId === activeCaseId)
+      const base = idx >= 0 ? idx : runRows.findIndex((r) => r.caseId === activeCaseId)
+      const list = filter === 'all' && !runSearch.trim() ? runRows : filteredRows
+      const pos = list.findIndex((r) => r.caseId === activeCaseId)
+      const start = pos >= 0 ? pos : base
+      let next = start + dir
       if (next < 0) next = 0
-      if (next >= execCases.length) next = execCases.length - 1
-      setActiveIdx(next)
+      if (next >= list.length) next = list.length - 1
+      if (list[next]) setActiveCaseId(list[next].caseId)
       setEdVisible(true)
     },
-    [activeIdx, execCases.length],
+    [activeCaseId, filteredRows, runRows, filter, runSearch],
   )
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (isRunSealed) return
       const k = e.key.toLowerCase()
       if (k === '?') {
         openShortcuts()
         return
       }
-      const map: Record<string, ResultStatus> = { p: 'pass', f: 'fail', b: 'blocked', s: 'skip' }
+      const map: Record<string, ExecStatus> = { p: 'Passed', f: 'Failed', b: 'Blocked', s: 'Skipped' }
       if (map[k]) setResult(map[k])
       if (k === 'j') navCase(1)
       if (k === 'k') navCase(-1)
@@ -178,9 +228,11 @@ export function RunsScreen() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [linkDefect, navCase, openShortcuts, setResult])
+  }, [linkDefect, navCase, openShortcuts, setResult, isRunSealed])
 
   if (!active) return null
+
+  const runMeta = RUN_PICKER_LIST.find((r) => r.id === currentRun.id)
 
   return (
     <div className={`view runs-v12${priHidden ? ' pri-hidden' : ''}`}>
@@ -205,11 +257,6 @@ export function RunsScreen() {
                   {name}
                 </button>
               ))}
-              <div className="proj-divider" />
-              <div className="proj-action"><i className="ti ti-plus" style={{ fontSize: 13 }} />Create new project</div>
-              <div className="proj-action" style={{ color: 'var(--text2)' }}>
-                <i className="ti ti-settings" style={{ fontSize: 13, color: 'var(--text3)' }} />Project settings
-              </div>
             </div>
           ) : null}
         </div>
@@ -224,11 +271,7 @@ export function RunsScreen() {
         <div className="ta">
           <div className="autosave"><div className="as-dot" />Auto-saving</div>
           <div style={{ width: 1, height: 14, background: 'var(--border)' }} />
-          <div
-            className={`pri-toggle${priHidden ? ' off' : ' on'}`}
-            onClick={() => setPriHidden((v) => !v)}
-            title="Toggle priority labels"
-          >
+          <div className={`pri-toggle${priHidden ? ' off' : ' on'}`} onClick={() => setPriHidden((v) => !v)} title="Toggle priority labels">
             <div className="pri-toggle-dot" />
             <span>Priorities</span>
           </div>
@@ -243,20 +286,14 @@ export function RunsScreen() {
           <div className="run-sel-bar" ref={pickerRef}>
             <button type="button" className="run-sel-btn" onClick={() => setPickerOpen((v) => !v)}>
               <i className="ti ti-player-play" style={{ fontSize: 11, color: 'var(--accent)' }} />
-              <span className="run-sel-name">{state.currentRunName}</span>
+              <span className="run-sel-name">{currentRun.name}</span>
               <i className="ti ti-chevron-down" style={{ fontSize: 10, opacity: 0.5, flexShrink: 0 }} />
             </button>
             {pickerOpen ? (
               <div className="run-sel-dd open">
                 <div className="run-sel-search">
                   <i className="ti ti-search" />
-                  <input
-                    type="text"
-                    placeholder="Search runs…"
-                    value={pickerQuery}
-                    onChange={(e) => setPickerQuery(e.target.value)}
-                    autoFocus
-                  />
+                  <input type="text" placeholder="Search runs…" value={pickerQuery} onChange={(e) => setPickerQuery(e.target.value)} autoFocus />
                 </div>
                 <div className="run-sel-list">
                   {pickerRuns.map((r) => {
@@ -264,16 +301,14 @@ export function RunsScreen() {
                     return (
                       <div
                         key={r.id}
-                        className={`run-sel-item${r.id === state.currentRunId ? ' on' : ''}`}
+                        className={`run-sel-item${r.id === currentRun.id ? ' on' : ''}`}
                         onClick={() => {
-                          setCurrentRun(r.id, r.name)
+                          setCurrentRun(r.id)
                           setPickerOpen(false)
                           setPickerQuery('')
                         }}
                       >
-                        <span className={`pill ${pill.cls}`} style={{ fontSize: 9.5, padding: '1px 5px', flexShrink: 0 }}>
-                          {pill.lbl}
-                        </span>
+                        <span className={`pill ${pill.cls}`} style={{ fontSize: 9.5, padding: '1px 5px', flexShrink: 0 }}>{pill.lbl}</span>
                         <span className="rsi-name">{r.name}</span>
                         <span className="rsi-meta">{r.pct}% · {r.cases}</span>
                       </div>
@@ -284,73 +319,80 @@ export function RunsScreen() {
             ) : null}
           </div>
 
+          <div className="run-summary-row">
+            <div className="mc c-green run-mc">
+              <div className="mc-head"><div><div className="mv" style={{ color: '#2E7D32' }}>{summary.passed}</div><div className="ml">Passed</div></div></div>
+            </div>
+            <div className="mc c-red run-mc">
+              <div className="mc-head"><div><div className="mv" style={{ color: '#C62828' }}>{summary.failed}</div><div className="ml">Failed</div></div></div>
+            </div>
+            <div className="mc c-amber run-mc">
+              <div className="mc-head"><div><div className="mv" style={{ color: '#E65100' }}>{summary.blocked}</div><div className="ml">Blocked</div></div></div>
+            </div>
+            <div className="mc c-grey run-mc">
+              <div className="mc-head"><div><div className="mv">{summary.notRun}</div><div className="ml">Not run</div></div></div>
+            </div>
+          </div>
+
           <div className="ec-run-hd">
-            <div className="ec-rttl">{state.currentRunName}</div>
+            <div className="ec-rttl">{currentRun.name}</div>
             <div className="ec-rmt">
-              <span className="pill p-act" style={{ fontSize: 10, padding: '1px 5px' }}>Active</span>
-              <span>Due: {run.due}</span>
-              <span>Plan: {run.plan}</span>
+              <span className={`pill ${isRunSealed ? 'p-pass' : 'p-act'}`} style={{ fontSize: 10, padding: '1px 5px' }}>{isRunSealed ? 'Sealed' : 'Active'}</span>
+              {currentRun.due ? <span>Due: {currentRun.due}</span> : null}
+              {currentRun.planName ? <span>Plan: {currentRun.planName}</span> : null}
             </div>
             <div className="ec-rpg" style={{ marginBottom: 3 }}>
-              <span className="ec-rpt">{run.total - run.notrun} / {run.total}</span>
+              <span className="ec-rpt">{summary.total - summary.notRun} / {summary.total}</span>
               <div className="prog" style={{ flex: 1, height: 4 }}>
-                <div className="pg-p" style={{ width: `${passPct}%` }} />
-                <div className="pg-f" style={{ width: `${failPct}%` }} />
-                <div className="pg-b" style={{ width: `${blockPct}%` }} />
+                <div className="pg-p" style={{ width: `${summary.total ? (summary.passed / summary.total) * 100 : 0}%` }} />
+                <div className="pg-f" style={{ width: `${summary.total ? (summary.failed / summary.total) * 100 : 0}%` }} />
+                <div className="pg-b" style={{ width: `${summary.total ? (summary.blocked / summary.total) * 100 : 0}%` }} />
               </div>
               <span className="ec-rpt">{pctDone}%</span>
             </div>
             <div className="ec-rst">
-              <span className="rst rst-p" style={{ fontSize: 10 }}>✓ {run.pass}</span>
-              <span className="rst rst-f" style={{ fontSize: 10 }}>✗ {run.fail}</span>
-              <span className="rst rst-b" style={{ fontSize: 10 }}>⊘ {run.blocked}</span>
-              <span className="rst rst-n" style={{ fontSize: 10 }}>○ {run.notrun} Not run</span>
+              <span className="rst rst-p" style={{ fontSize: 10 }}>✓ {summary.passed}</span>
+              <span className="rst rst-f" style={{ fontSize: 10 }}>✗ {summary.failed}</span>
+              <span className="rst rst-b" style={{ fontSize: 10 }}>⊘ {summary.blocked}</span>
+              <span className="rst rst-n" style={{ fontSize: 10 }}>○ {summary.notRun} Not run</span>
             </div>
           </div>
 
           <div className="run-search-bar">
-            <input
-              className="run-search-input"
-              type="text"
-              placeholder="Search cases in this run…"
-              value={runSearch}
-              onChange={(e) => setRunSearch(e.target.value)}
-            />
+            <input className="run-search-input" type="text" placeholder="Search cases in this run…" value={runSearch} onChange={(e) => setRunSearch(e.target.value)} />
           </div>
 
           <div className="ec-ftab-bar">
-            {(['all', 'not_run', 'fail', 'blocked'] as const).map((f) => (
-              <div key={f} className={`ftab${filter === f ? ' on' : ''}`} onClick={() => setFilter(f)}>
-                {f === 'all' ? 'All' : f === 'not_run' ? 'Not run' : f.charAt(0).toUpperCase() + f.slice(1)}
+            {FILTER_TABS.map((f) => (
+              <div key={f.id} className={`ftab${filter === f.id ? ' on' : ''}`} onClick={() => setFilter(f.id)}>
+                {f.label}
               </div>
             ))}
-            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{run.total}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{runMeta?.cases ?? summary.total}</span>
           </div>
 
           <div className="ec-list">
-            {filteredGroups.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <div style={{ padding: 16, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>No cases match filter</div>
             ) : (
-              filteredGroups.map((g) => (
-                <div key={g.status}>
-                  <div className="divider-lbl">{GROUP_LABEL[g.status]}</div>
-                  {g.cases.map(({ c, i }) => (
-                    <div
-                      key={c.id}
-                      className={`ec-case${activeIdx === i ? ' on' : ''}`}
-                      onClick={() => { setActiveIdx(i); setEdVisible(true) }}
-                    >
-                      <div className={`ec-dot ${DOT_MAP[c.status]}`} />
-                      <div className="ec-info">
-                        <div className="ec-cid">{c.id}</div>
-                        <div className="ec-cnm">{c.title}</div>
-                        <div className="ec-cby">{c.by}</div>
-                      </div>
-                      <span className={`pri ec-pri ${PRI_MAP[c.pri]}`} style={{ fontSize: 9, padding: '1px 4px', marginTop: 3 }}>
-                        {c.pri.slice(0, 4)}
-                      </span>
-                    </div>
-                  ))}
+              filteredRows.map((row) => (
+                <div
+                  key={row.caseId}
+                  className={`ec-case${activeCaseId === row.caseId ? ' on' : ''}`}
+                  onClick={() => { setActiveCaseId(row.caseId); setEdVisible(true) }}
+                >
+                  <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
+                  <div className="ec-info">
+                    <div className="ec-cid">{row.case.id}</div>
+                    <div className="ec-cnm">{row.case.title}</div>
+                    <div className="ec-cby">{row.assignee}</div>
+                  </div>
+                  <div className="ec-case-right">
+                    {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
+                    <span className={`pill ec-status-pill ${EXEC_PILL_MAP[row.status]}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                      {EXEC_PILL_LABEL[row.status].replace(/^[✓✗⊘○→]\s*/, '')}
+                    </span>
+                  </div>
                 </div>
               ))
             )}
@@ -360,19 +402,22 @@ export function RunsScreen() {
         {edVisible ? (
           <div className={`ed-pane${edFullscreen ? ' fs' : ''}`}>
             <ExecDetailPane
-              c={active}
-              caseIdx={activeIdx}
+              caseData={active}
+              execution={activeEx}
               tab={edTab}
               onTab={setEdTab}
               onNav={navCase}
               onResult={setResult}
               onClear={clearResult}
-              onStepR={setStepR}
+              onStepR={(stepId, r) => setStepR(activeCaseId, stepId, r)}
+              onAddStepComment={(stepId, body) => addStepComment(activeCaseId, stepId, body)}
+              onAddGeneralComment={(body) => addGeneralComment(activeCaseId, body)}
               onLinkDefect={linkDefect}
               onOpenShortcuts={openShortcuts}
               onClose={() => setEdVisible(false)}
               onToggleFs={() => setEdFullscreen((v) => !v)}
               fullscreen={edFullscreen}
+              sealed={isRunSealed}
             />
           </div>
         ) : null}
@@ -382,38 +427,71 @@ export function RunsScreen() {
 }
 
 function ExecDetailPane({
-  c,
-  caseIdx,
+  caseData,
+  execution,
   tab,
   onTab,
   onNav,
   onResult,
   onClear,
   onStepR,
+  onAddStepComment,
+  onAddGeneralComment,
   onLinkDefect,
   onOpenShortcuts,
   onClose,
   onToggleFs,
   fullscreen,
+  sealed,
 }: {
-  c: ExecCase
-  caseIdx: number
+  caseData: Case
+  execution?: { status: ExecStatus; stepResults: Record<string, ExecStatus>; defects?: string[]; assignee?: string }
   tab: EdTab
   onTab: (t: EdTab) => void
   onNav: (dir: number) => void
-  onResult: (r: ResultStatus) => void
+  onResult: (r: ExecStatus) => void
   onClear: () => void
-  onStepR: (ci: number, si: number, r: ResultStatus) => void
+  onStepR: (stepId: string, r: ExecStatus) => void
+  onAddStepComment: (stepId: string, body: string) => void
+  onAddGeneralComment: (body: string) => void
   onLinkDefect: () => void
   onOpenShortcuts: () => void
   onClose: () => void
   onToggleFs: () => void
   fullscreen: boolean
+  sealed: boolean
 }) {
-  const statusClass = c.status === 'not_run' ? 'p-notrun' : PILL_MAP[c.status]
-  const statusLabel = c.status === 'not_run' ? 'Not run' : PILL_LABEL[c.status]
-  const lastLbl: Record<ResultStatus, string> = {
-    pass: 'Passed', fail: 'Failed', blocked: 'Blocked', not_run: 'Not run', skip: 'Skipped',
+  const status = execution?.status ?? 'Not run'
+  const statusClass = EXEC_PILL_MAP[status]
+  const statusLabel = EXEC_STATUS_LABEL[status]
+  const [generalDraft, setGeneralDraft] = useState('')
+  const [stepDrafts, setStepDrafts] = useState<Record<string, string>>({})
+
+  const allComments = useMemo(() => {
+    const items: { kind: 'step' | 'general'; stepNum?: number; stepTitle?: string; author: string; createdAt: string; body: string }[] = []
+    caseData.steps.forEach((s, i) => {
+      s.comments.forEach((c) => {
+        items.push({ kind: 'step', stepNum: i + 1, stepTitle: s.action, author: c.author, createdAt: c.createdAt, body: c.body })
+      })
+    })
+    caseData.generalComments.forEach((c) => {
+      items.push({ kind: 'general', author: c.author, createdAt: c.createdAt, body: c.body })
+    })
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [caseData])
+
+  function saveGeneralComment() {
+    const body = generalDraft.trim()
+    if (!body) return
+    onAddGeneralComment(body)
+    setGeneralDraft('')
+  }
+
+  function saveStepComment(stepId: string) {
+    const body = (stepDrafts[stepId] ?? '').trim()
+    if (!body) return
+    onAddStepComment(stepId, body)
+    setStepDrafts((d) => ({ ...d, [stepId]: '' }))
   }
 
   return (
@@ -421,8 +499,8 @@ function ExecDetailPane({
       <div className="ed-hd">
         <div className="ed-top">
           <div>
-            <div className="ed-id">{c.id}</div>
-            <div className="ed-ttl">{c.title}</div>
+            <div className="ed-id">{caseData.id}</div>
+            <div className="ed-ttl">{caseData.title}</div>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8, alignItems: 'center' }}>
             <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 7px' }} onClick={() => onNav(-1)}>
@@ -440,10 +518,9 @@ function ExecDetailPane({
           </div>
         </div>
         <div className="ed-mt">
-          <span className={`pri ${PRI_MAP[c.pri]}`}>{c.pri.charAt(0).toUpperCase() + c.pri.slice(1)}</span>
-          <span className="tag">ctms</span>
-          <span className="tag">role-mapping</span>
-          <span style={{ fontSize: 11, color: 'var(--text2)' }}>Assigned: <strong>{c.by}</strong></span>
+          <span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[caseData.priority]]}`}>{caseData.priority}</span>
+          {(caseData.tags ?? []).slice(0, 2).map((t) => <span key={t} className="tag">{t}</span>)}
+          <span style={{ fontSize: 11, color: 'var(--text2)' }}>Assigned: <strong>{execution?.assignee ?? caseData.assignee ?? '—'}</strong></span>
           <span style={{ marginLeft: 'auto' }}>
             <span className={`pill ${statusClass}`}><span className="pill-dot" />{statusLabel}</span>
           </span>
@@ -454,6 +531,7 @@ function ExecDetailPane({
         {ED_TABS.map((t) => (
           <div key={t.id} className={`ed-tab${tab === t.id ? ' on' : ''}`} onClick={() => onTab(t.id)}>
             {t.label}
+            {t.id === 'comments' && commentCount(caseData) > 0 ? <span className="ed-tab-badge">{commentCount(caseData)}</span> : null}
           </div>
         ))}
       </div>
@@ -461,35 +539,33 @@ function ExecDetailPane({
       <div className={`ed-tp${tab === 'details' ? ' on' : ''}`}>
         <div className="ed-precond">
           <div className="ed-sl">Preconditions</div>
-          <div className="ed-pt">{c.precond}</div>
+          <div className="ed-pt">{caseData.preconditions}</div>
         </div>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 5, padding: '8px 10px' }}>
           <div className="ed-sl" style={{ marginBottom: 7 }}>Metadata</div>
           <div className="ed-meta-grid">
-            <div><div className="ed-ml">Priority</div><div className="ed-mv"><span className={`pri ${PRI_MAP[c.pri]}`}>{c.pri}</span></div></div>
-            <div><div className="ed-ml">Type</div><div className="ed-mv">Functional</div></div>
-            <div><div className="ed-ml">Assigned to</div><div className="ed-mv">{c.by}</div></div>
-            <div><div className="ed-ml">Suite</div><div className="ed-mv">CTMS</div></div>
-            <div><div className="ed-ml">Automation</div><div className="ed-mv">Manual</div></div>
-            <div><div className="ed-ml">Last result</div><div className="ed-mv">{lastLbl[c.status]}</div></div>
+            <div><div className="ed-ml">Priority</div><div className="ed-mv"><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[caseData.priority]]}`}>{caseData.priority}</span></div></div>
+            <div><div className="ed-ml">Type</div><div className="ed-mv">{caseData.type}</div></div>
+            <div><div className="ed-ml">Assigned to</div><div className="ed-mv">{execution?.assignee ?? caseData.assignee}</div></div>
+            <div><div className="ed-ml">Last result</div><div className="ed-mv">{statusLabel}</div></div>
           </div>
         </div>
       </div>
 
       <div className={`ed-tp${tab === 'steps' ? ' on' : ''}`}>
-        {c.steps.map((s, n) => {
-          const sr = c.sr[n]
+        {caseData.steps.map((s, n) => {
+          const sr = execution?.stepResults[s.id] ?? 'Not run'
           return (
-            <div key={n} className="esc">
+            <div key={s.id} className="esc">
               <div className="esc-hd">
                 <span className="esc-n">Step {n + 1}</span>
-                <span className="esc-ttl">{s.a.length > 52 ? `${s.a.slice(0, 52)}…` : s.a}</span>
+                <span className="esc-ttl">{s.action.length > 52 ? `${s.action.slice(0, 52)}…` : s.action}</span>
                 <div className="esc-btns">
-                  {(['pass', 'fail', 'blocked', 'skip'] as const).map((r) => (
+                  {(['Passed', 'Failed', 'Blocked', 'Skipped'] as const).map((r) => (
                     <div
                       key={r}
-                      className={`srb srb-${r[0]}${sr === r ? ' on' : ''}`}
-                      onClick={() => onStepR(caseIdx, n, r)}
+                      className={`srb srb-${r[0].toLowerCase()}${sr === r ? ' on' : ''}${sealed ? ' disabled' : ''}`}
+                      onClick={() => !sealed && onStepR(s.id, r)}
                     >
                       {r[0].toUpperCase()}
                     </div>
@@ -497,14 +573,28 @@ function ExecDetailPane({
                 </div>
               </div>
               <div className="esc-body">
-                <div className="esc-act">{s.a}</div>
-                <div className="esc-exp">Expected: {s.e}</div>
-                <textarea
-                  className="esc-cmt"
-                  rows={1}
-                  placeholder="Step comment… (optional)"
-                  defaultValue={sr === 'fail' && n === 0 && caseIdx === 0 ? 'Viewer permission is saved on submit but reverts to previous value after profile reload.' : ''}
-                />
+                <div className="esc-act">{s.action}</div>
+                <div className="esc-exp">Expected: {s.expected}</div>
+                {s.comments.map((c) => (
+                  <div key={c.id} className="esc-cmt-item">
+                    <strong>{c.author}</strong>: {c.body}
+                    <span className="esc-cmt-time">{formatRelativeTime(c.createdAt)}</span>
+                  </div>
+                ))}
+                {!sealed ? (
+                  <div className="esc-cmt-add">
+                    <textarea
+                      className="esc-cmt"
+                      rows={1}
+                      placeholder="Add step comment…"
+                      value={stepDrafts[s.id] ?? ''}
+                      onChange={(e) => setStepDrafts((d) => ({ ...d, [s.id]: e.target.value }))}
+                    />
+                    <button type="button" className="btn btn-p" style={{ fontSize: 10, padding: '2px 6px', marginTop: 4 }} onClick={() => saveStepComment(s.id)}>
+                      Save
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </div>
           )
@@ -519,13 +609,6 @@ function ExecDetailPane({
             <div className="ed-act-time">Today at 14:32 · CTMS Regression — Sprint 44</div>
           </div>
         </div>
-        <div className="ed-act-item">
-          <div className="ed-act-av" style={{ background: '#2E7D32' }}>SS</div>
-          <div className="ed-act-body">
-            <strong>Shaun Sevume</strong> added comment: &ldquo;Reproduced on both UAT and staging. Role sync delay suspected.&rdquo;
-            <div className="ed-act-time">Today at 13:58</div>
-          </div>
-        </div>
       </div>
 
       <div className={`ed-tp${tab === 'history' ? ' on' : ''}`}>
@@ -536,76 +619,69 @@ function ExecDetailPane({
             <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>Sprint 44 · Aisha Rahman · Today</div>
           </div>
         </div>
-        <div className="ed-hist-item">
-          <div className="ed-hist-dot" style={{ background: 'var(--pass)' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Result: Passed</div>
-            <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>Sprint 43 · Marcus Webb · 16d ago</div>
-          </div>
-        </div>
       </div>
 
       <div className={`ed-tp${tab === 'comments' ? ' on' : ''}`}>
-        <div className="ed-act-item">
-          <div className="ed-act-av" style={{ background: '#2E7D32' }}>SS</div>
-          <div className="ed-act-body">
-            <strong>Shaun Sevume</strong>: &ldquo;Reproduced on both UAT and staging. Role sync delay suspected after the permission mapper update.&rdquo;
-            <div className="ed-act-time">Today at 13:58</div>
+        {allComments.length === 0 ? (
+          <div style={{ padding: 12, color: 'var(--text3)', fontSize: 12 }}>No comments yet.</div>
+        ) : (
+          allComments.map((c, i) => (
+            <div key={i} className="ed-act-item">
+              <div className="ed-act-av" style={{ background: '#2E7D32' }}>{c.author.slice(0, 2).toUpperCase()}</div>
+              <div className="ed-act-body">
+                {c.kind === 'step' ? (
+                  <div className="ed-cmt-step-lbl">Step {c.stepNum}: {c.stepTitle && c.stepTitle.length > 40 ? `${c.stepTitle.slice(0, 40)}…` : c.stepTitle}</div>
+                ) : (
+                  <div className="ed-cmt-step-lbl">General comment</div>
+                )}
+                <strong>{c.author}</strong>: {c.body}
+                <div className="ed-act-time">{formatRelativeTime(c.createdAt)}</div>
+              </div>
+            </div>
+          ))
+        )}
+        {!sealed ? (
+          <div style={{ marginTop: 8, padding: '0 4px' }}>
+            <textarea className="ed-comment-input" placeholder="Add a general comment…" value={generalDraft} onChange={(e) => setGeneralDraft(e.target.value)} />
+            <div style={{ marginTop: 4, textAlign: 'right' }}>
+              <button type="button" className="btn btn-p" style={{ fontSize: 11, padding: '2px 8px' }} onClick={saveGeneralComment}>Save comment</button>
+            </div>
           </div>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <textarea className="ed-comment-input" placeholder="Add a comment…" />
-          <div style={{ marginTop: 4, textAlign: 'right' }}>
-            <button type="button" className="btn btn-p" style={{ fontSize: 11, padding: '2px 8px' }}>Save comment</button>
-          </div>
-        </div>
+        ) : null}
       </div>
 
       <div className={`ed-tp${tab === 'defects' ? ' on' : ''}`}>
         <div className="ed-defects">
-          {c.defects.map((d) => (
+          {(execution?.defects ?? []).map((d) => (
             <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <span className="ed-dtag"><i className="ti ti-bug" style={{ fontSize: 10 }} />{d}</span>
               <span style={{ fontSize: 11, color: 'var(--text2)' }}>{DEFECT_NAMES[d] || 'Open defect'}</span>
             </div>
           ))}
-          <div className="ed-dlink" onClick={onLinkDefect}>
-            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Link defect <span className="kbd">D</span>
-          </div>
+          {!sealed ? (
+            <div className="ed-dlink" onClick={onLinkDefect}>
+              <i className="ti ti-plus" style={{ fontSize: 12 }} /> Link defect <span className="kbd">D</span>
+            </div>
+          ) : null}
         </div>
       </div>
 
       <div className="ed-foot">
         <span className="ed-rl">Result:</span>
         <div className="ed-rbs">
-          {(['pass', 'fail', 'blocked', 'skip'] as const).map((r) => (
+          {(['Passed', 'Failed', 'Blocked', 'Skipped'] as const).map((r) => (
             <div
               key={r}
-              className={`${RMB_CLASS[r]}${c.status === r ? ' on' : ''}`}
-              onClick={() => onResult(r)}
+              className={`${RMB_CLASS[r]}${status === r ? ' on' : ''}${sealed ? ' disabled' : ''}`}
+              onClick={() => !sealed && onResult(r)}
             >
-              {r[0].toUpperCase()} {r === 'pass' ? 'Pass' : r === 'fail' ? 'Fail' : r === 'blocked' ? 'Blocked' : 'Skip'}
+              {r[0].toUpperCase()} {r}
             </div>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={onClear}
-          style={{
-            padding: '3px 8px',
-            border: '1px solid var(--border)',
-            background: 'transparent',
-            borderRadius: 4,
-            fontSize: 11,
-            color: 'var(--text3)',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            marginLeft: 4,
-          }}
-          title="Reset to Not run"
-        >
-          ↩ Clear
-        </button>
+        {!sealed ? (
+          <button type="button" onClick={onClear} className="ed-clear-btn" title="Reset to Not run">↩ Clear</button>
+        ) : null}
       </div>
       <div className="sc-bar">
         <div className="sc-h"><span className="kbd">P</span>Pass</div>
@@ -615,7 +691,7 @@ function ExecDetailPane({
         <div className="sc-h"><span className="kbd">D</span>Defect</div>
         <div className="sc-h"><span className="kbd">J/K</span>Navigate</div>
         <div className="sc-h" style={{ marginLeft: 'auto' }}>
-          <span className="kbd" style={{ cursor: 'pointer' }} onClick={onOpenShortcuts}>?</span>&nbsp;Shortcuts
+          <span className="kbd sc-kbd-btn" onClick={onOpenShortcuts}>?</span>&nbsp;Shortcuts
         </div>
       </div>
     </>
