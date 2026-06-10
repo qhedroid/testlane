@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { useFresh } from '../data/FreshProvider'
-import type { Case, CasePriority, CaseStep, ExecStatus } from '../data/demo-model'
+import type { Case, CasePriority, CaseStep, ExecStatus, Folder } from '../data/demo-model'
 import {
   casesInFolder,
   EXEC_TO_LEGACY,
@@ -35,6 +35,120 @@ function caseLastStatus(state: { runs: { executions: Record<string, { status: Ex
     if (ex) return ex.status
   }
   return 'Not run'
+}
+
+function folderAncestorIds(folders: Folder[], folderId: string): string[] {
+  const ids: string[] = []
+  let cur = folders.find((f) => f.id === folderId)
+  while (cur?.parentId) {
+    ids.push(cur.parentId)
+    cur = folders.find((f) => f.id === cur!.parentId)
+  }
+  return ids
+}
+
+function FolderTreeNode({
+  folder,
+  depth,
+  cases,
+  folders,
+  childFolders,
+  openFolders,
+  selectedFolderId,
+  newFolderDraftParentId,
+  newFolderInputRef,
+  onToggleFolder,
+  onSelectFolder,
+  onCommitNewFolder,
+  onCancelNewFolder,
+}: {
+  folder: Folder
+  depth: number
+  cases: Case[]
+  folders: Folder[]
+  childFolders: (parentId: string) => Folder[]
+  openFolders: Set<string>
+  selectedFolderId: string | '__unfiled__'
+  newFolderDraftParentId: string | null | undefined
+  newFolderInputRef: RefObject<HTMLInputElement | null>
+  onToggleFolder: (id: string) => void
+  onSelectFolder: (id: string) => void
+  onCommitNewFolder: (name: string) => void
+  onCancelNewFolder: () => void
+}) {
+  const kids = childFolders(folder.id)
+  const hasKids = kids.length > 0
+  const isOpen = openFolders.has(folder.id)
+  const draftingHere = newFolderDraftParentId === folder.id
+  const showKids = isOpen && (hasKids || draftingHere)
+  const isRoot = depth === 0
+  const rowClass = isRoot
+    ? `st-root${selectedFolderId === folder.id ? ' on' : ''}`
+    : `st-sec${selectedFolderId === folder.id ? ' on' : ''}`
+  const rowStyle = !isRoot ? { paddingLeft: 10 + depth * 14 } : undefined
+
+  return (
+    <div>
+      <div
+        className={rowClass}
+        style={rowStyle}
+        onClick={() => {
+          if (hasKids && !isOpen) onToggleFolder(folder.id)
+          onSelectFolder(folder.id)
+        }}
+      >
+        {hasKids ? (
+          <span
+            className={`st-tog${isOpen ? ' open' : ''}`}
+            onClick={(e) => { e.stopPropagation(); onToggleFolder(folder.id) }}
+          >
+            ▶
+          </span>
+        ) : (
+          <span className="st-tog" style={{ visibility: 'hidden' }}>▶</span>
+        )}
+        {isRoot ? (
+          <i
+            className="ti ti-folder"
+            style={{ fontSize: 12, color: selectedFolderId === folder.id ? 'var(--accent)' : 'var(--text2)' }}
+          />
+        ) : null}
+        {folder.name}
+        <span className="st-ct" style={isRoot ? undefined : { marginLeft: 'auto' }}>
+          {casesInFolder(cases, folders, folder.id).length}
+        </span>
+      </div>
+      {showKids ? (
+        <div className="st-kids open">
+          {kids.map((child) => (
+            <FolderTreeNode
+              key={child.id}
+              folder={child}
+              depth={depth + 1}
+              cases={cases}
+              folders={folders}
+              childFolders={childFolders}
+              openFolders={openFolders}
+              selectedFolderId={selectedFolderId}
+              newFolderDraftParentId={newFolderDraftParentId}
+              newFolderInputRef={newFolderInputRef}
+              onToggleFolder={onToggleFolder}
+              onSelectFolder={onSelectFolder}
+              onCommitNewFolder={onCommitNewFolder}
+              onCancelNewFolder={onCancelNewFolder}
+            />
+          ))}
+          {draftingHere ? (
+            <NewFolderInput
+              inputRef={newFolderInputRef}
+              onCommit={onCommitNewFolder}
+              onCancel={onCancelNewFolder}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 export function CasesScreen() {
@@ -90,9 +204,13 @@ export function CasesScreen() {
     setDetailCaseId(null)
     setSelectedIds(new Set())
     if (id !== '__unfiled__') {
-      const folder = state.folders.find((f) => f.id === id)
-      if (folder?.parentId) {
-        setOpenFolders((prev) => new Set(prev).add(folder.parentId!))
+      const ancestors = folderAncestorIds(state.folders, id)
+      if (ancestors.length > 0) {
+        setOpenFolders((prev) => {
+          const next = new Set(prev)
+          ancestors.forEach((aid) => next.add(aid))
+          return next
+        })
       }
     }
   }
@@ -136,21 +254,18 @@ export function CasesScreen() {
     requestAnimationFrame(() => quickInputRef.current?.focus())
   }
 
-  const newFolderHostRootId = useMemo(() => {
-    if (!newFolderDraft) return null
-    if (!newFolderDraft.parentId) return '__root__'
-    const parent = state.folders.find((f) => f.id === newFolderDraft.parentId)
-    if (!parent) return '__root__'
-    if (!parent.parentId) return parent.id
-    return parent.parentId
-  }, [newFolderDraft, state.folders])
+  const newFolderDraftParentId = newFolderDraft?.parentId ?? null
 
   useEffect(() => {
     if (!newFolderDraft) return
     if (newFolderDraft.parentId) {
-      const parent = state.folders.find((f) => f.id === newFolderDraft.parentId)
-      const openId = parent?.parentId ?? newFolderDraft.parentId
-      setOpenFolders((prev) => new Set(prev).add(openId))
+      const ancestors = folderAncestorIds(state.folders, newFolderDraft.parentId)
+      setOpenFolders((prev) => {
+        const next = new Set(prev)
+        next.add(newFolderDraft.parentId!)
+        ancestors.forEach((aid) => next.add(aid))
+        return next
+      })
     }
     requestAnimationFrame(() => {
       const el = newFolderInputRef.current
@@ -177,11 +292,11 @@ export function CasesScreen() {
     const id = addFolder(trimmed, parentId)
     setNewFolderDraft(null)
     if (parentId) {
-      const parent = state.folders.find((f) => f.id === parentId)
+      const ancestors = folderAncestorIds(state.folders, parentId)
       setOpenFolders((prev) => {
         const next = new Set(prev)
         next.add(parentId)
-        if (parent?.parentId) next.add(parent.parentId)
+        ancestors.forEach((aid) => next.add(aid))
         return next
       })
     }
@@ -228,53 +343,25 @@ export function CasesScreen() {
               Unfiled
               <span className="st-ct" style={{ marginLeft: 'auto' }}>{unfiledCount}</span>
             </div>
-            {rootFolders.map((folder) => {
-              const kids = childFolders(folder.id)
-              const hasKids = kids.length > 0
-              const isOpen = openFolders.has(folder.id)
-              const draftingChildHere = newFolderDraft !== null && newFolderHostRootId === folder.id
-              const showKids = isOpen && (hasKids || draftingChildHere)
-              return (
-                <div key={folder.id}>
-                  <div
-                    className={`st-root${selectedFolderId === folder.id ? ' on' : ''}`}
-                    onClick={() => {
-                      if (hasKids && !isOpen) toggleFolder(folder.id)
-                      selectFolder(folder.id)
-                    }}
-                  >
-                    {hasKids ? (
-                      <span className={`st-tog${isOpen ? ' open' : ''}`} onClick={(e) => { e.stopPropagation(); toggleFolder(folder.id) }}>▶</span>
-                    ) : <span className="st-tog" style={{ visibility: 'hidden' }}>▶</span>}
-                    <i className="ti ti-folder" style={{ fontSize: 12, color: selectedFolderId === folder.id ? 'var(--accent)' : 'var(--text2)' }} />
-                    {folder.name}
-                    <span className="st-ct">{casesInFolder(state.cases, state.folders, folder.id).length}</span>
-                  </div>
-                  {showKids ? (
-                    <div className="st-kids open">
-                      {kids.map((child) => (
-                        <div
-                          key={child.id}
-                          className={`st-sec${selectedFolderId === child.id ? ' on' : ''}`}
-                          onClick={() => selectFolder(child.id)}
-                        >
-                          {child.name}
-                          <span className="st-ct" style={{ marginLeft: 'auto' }}>{casesInFolder(state.cases, state.folders, child.id).length}</span>
-                        </div>
-                      ))}
-                      {newFolderDraft && newFolderHostRootId === folder.id ? (
-                        <NewFolderInput
-                          inputRef={newFolderInputRef}
-                          onCommit={commitNewFolder}
-                          onCancel={cancelNewFolder}
-                        />
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              )
-            })}
-            {newFolderDraft && newFolderHostRootId === '__root__' ? (
+            {rootFolders.map((folder) => (
+              <FolderTreeNode
+                key={folder.id}
+                folder={folder}
+                depth={0}
+                cases={state.cases}
+                folders={state.folders}
+                childFolders={childFolders}
+                openFolders={openFolders}
+                selectedFolderId={selectedFolderId}
+                newFolderDraftParentId={newFolderDraftParentId}
+                newFolderInputRef={newFolderInputRef}
+                onToggleFolder={toggleFolder}
+                onSelectFolder={selectFolder}
+                onCommitNewFolder={commitNewFolder}
+                onCancelNewFolder={cancelNewFolder}
+              />
+            ))}
+            {newFolderDraft && newFolderDraftParentId === null ? (
               <NewFolderInput
                 inputRef={newFolderInputRef}
                 onCommit={commitNewFolder}
