@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "pnpm --filter @relay/web dev",
     "dev:reset": "bash scripts/reset-web-dev.sh",
+    "dev:clean": "RELAY_DEV_CLEAN=1 pnpm dev",
     "build": "pnpm --filter @relay/web build",
     "start": "pnpm --filter @relay/web start",
     "db:generate": "pnpm --filter @relay/db generate",

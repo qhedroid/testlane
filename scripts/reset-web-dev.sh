@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Stop anything on :3000 and clear the Next.js build cache (fixes vendor-chunk 500s).
+# Stop anything on :3000 and clear the Next.js build cache.
+# Use when dev shows: Cannot find module './923.js' (stale webpack chunks in .next).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
