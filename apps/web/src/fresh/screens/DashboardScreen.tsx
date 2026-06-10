@@ -22,6 +22,16 @@ export function DashboardScreen() {
     return RUN_CARDS
   }, [cardFilter])
 
+  const [leftRuns, rightRuns] = useMemo(() => {
+    const left: RunCard[] = []
+    const right: RunCard[] = []
+    filteredRuns.forEach((run, i) => {
+      if (i % 2 === 0) left.push(run)
+      else right.push(run)
+    })
+    return [left, right]
+  }, [filteredRuns])
+
   function toggleCard(id: string, e?: React.MouseEvent) {
     e?.stopPropagation()
     setExpanded((prev) => {
@@ -106,17 +116,31 @@ export function DashboardScreen() {
                 All runs <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
               </Link>
             </div>
-            <div className="run-cards-grid">
-              {filteredRuns.map((run) => (
-                <RunCardItem
-                  key={run.id}
-                  run={run}
-                  expanded={expanded.has(run.id)}
-                  tab={cardTabs[run.id] ?? 'overview'}
-                  onToggle={(e) => toggleCard(run.id, e)}
-                  onTab={(t) => setCardTabs((prev) => ({ ...prev, [run.id]: t }))}
-                />
-              ))}
+            <div className="run-cards-cols">
+              <div className="run-cards-col">
+                {leftRuns.map((run) => (
+                  <RunCardItem
+                    key={run.id}
+                    run={run}
+                    expanded={expanded.has(run.id)}
+                    tab={cardTabs[run.id] ?? 'overview'}
+                    onToggle={(e) => toggleCard(run.id, e)}
+                    onTab={(t) => setCardTabs((prev) => ({ ...prev, [run.id]: t }))}
+                  />
+                ))}
+              </div>
+              <div className="run-cards-col">
+                {rightRuns.map((run) => (
+                  <RunCardItem
+                    key={run.id}
+                    run={run}
+                    expanded={expanded.has(run.id)}
+                    tab={cardTabs[run.id] ?? 'overview'}
+                    onToggle={(e) => toggleCard(run.id, e)}
+                    onTab={(t) => setCardTabs((prev) => ({ ...prev, [run.id]: t }))}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
@@ -198,7 +222,7 @@ function RunCardItem({
   return (
     <div className={`run-card${run.stalled ? ' stalled' : ''}`}>
       <div className="rct" onClick={() => onToggle()}>
-        <RunStatusInfographic pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} size={96} />
+        <RunStatusInfographic pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} size={120} />
         <div className="rct-info">
           <div className="rct-name">{run.name}</div>
           <div className="rct-ctx">{run.plan} &nbsp;·&nbsp; {run.env}</div>
