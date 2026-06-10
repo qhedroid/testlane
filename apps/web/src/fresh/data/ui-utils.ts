@@ -1,4 +1,29 @@
+import type { ExecStatus } from './demo-model'
 import type { Priority, ResultStatus } from './types'
+
+export const EXEC_PILL_MAP: Record<ExecStatus, string> = {
+  'Not run': 'p-notrun',
+  Passed: 'p-pass',
+  Failed: 'p-fail',
+  Blocked: 'p-block',
+  Skipped: 'p-skip',
+}
+
+export const EXEC_PILL_LABEL: Record<ExecStatus, string> = {
+  'Not run': '○ Not run',
+  Passed: '✓ Passed',
+  Failed: '✗ Failed',
+  Blocked: '⊘ Blocked',
+  Skipped: '→ Skipped',
+}
+
+export const EXEC_DOT_MAP: Record<ExecStatus, string> = {
+  'Not run': 'd-n',
+  Passed: 'd-p',
+  Failed: 'd-f',
+  Blocked: 'd-b',
+  Skipped: 'd-s',
+}
 
 export const PRI_MAP: Record<Priority, string> = {
   critical: 'pr-crit',

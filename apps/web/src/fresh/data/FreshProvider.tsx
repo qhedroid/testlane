@@ -8,118 +8,242 @@ import {
   useReducer,
   type ReactNode,
 } from 'react'
-import { DEFAULT_RUN, INITIAL_CASES, INITIAL_EXEC_CASES } from './seed'
-import type { DemoCase, ExecCase, FreshAction, FreshState } from './types'
+import { buildInitialDemoState, getCurrentRun } from './demo-seed'
+import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus } from './demo-model'
+import { newId } from './demo-model'
 import { nextCaseId } from './ui-utils'
 
-const STORAGE_KEY = 'relay-fresh-cases'
+const STORAGE_KEY = 'relay-demo-v2'
 
-function loadCases(): DemoCase[] {
-  if (typeof window === 'undefined') return [...INITIAL_CASES]
+function loadState(): DemoState {
+  if (typeof window === 'undefined') return buildInitialDemoState()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    const extra: DemoCase[] = raw ? JSON.parse(raw) : []
-    return [...INITIAL_CASES, ...extra]
+    if (raw) return JSON.parse(raw) as DemoState
   } catch {
-    return [...INITIAL_CASES]
+    /* use seed */
   }
+  return buildInitialDemoState()
 }
 
-function persistExtraCases(cases: DemoCase[]) {
+function persistState(state: DemoState) {
   if (typeof window === 'undefined') return
-  const extra = cases.filter((c) => !INITIAL_CASES.some((ic) => ic.id === c.id))
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(extra))
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
-function reducer(state: FreshState, action: FreshAction): FreshState {
+export type FreshAction =
+  | { type: 'SET_MODULE'; module: string }
+  | { type: 'ADD_CASE'; case: Case }
+  | { type: 'UPDATE_CASE'; caseId: string; patch: Partial<Case> }
+  | { type: 'REPLACE_CASE'; case: Case }
+  | { type: 'UPDATE_RUN_EXECUTION'; runId: string; caseId: string; patch: Partial<CaseExecution> }
+  | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string }
+  | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
+  | { type: 'SEAL_RUN'; runId: string }
+  | { type: 'SET_CURRENT_RUN'; runId: string }
+  | { type: 'HYDRATE'; state: DemoState }
+
+function reducer(state: DemoState, action: FreshAction): DemoState {
+  let next: DemoState
   switch (action.type) {
+    case 'HYDRATE':
+      return action.state
     case 'SET_MODULE':
-      return { ...state, module: action.module }
-    case 'ADD_CASE': {
-      const cases = [...state.cases, action.case]
-      persistExtraCases(cases)
-      return { ...state, cases, nextCaseNum: state.nextCaseNum + 1 }
+      next = { ...state, module: action.module }
+      break
+    case 'ADD_CASE':
+      next = { ...state, cases: [...state.cases, action.case], nextCaseNum: state.nextCaseNum + 1 }
+      break
+    case 'UPDATE_CASE':
+      next = {
+        ...state,
+        cases: state.cases.map((c) =>
+          c.id === action.caseId ? { ...c, ...action.patch, updatedAt: new Date().toISOString() } : c,
+        ),
+      }
+      break
+    case 'REPLACE_CASE':
+      next = {
+        ...state,
+        cases: state.cases.map((c) => (c.id === action.case.id ? action.case : c)),
+      }
+      break
+    case 'UPDATE_RUN_EXECUTION': {
+      const runs = state.runs.map((r) => {
+        if (r.id !== action.runId) return r
+        const prev = r.executions[action.caseId] ?? { status: 'Not run' as ExecStatus, stepResults: {} }
+        return {
+          ...r,
+          executions: {
+            ...r.executions,
+            [action.caseId]: { ...prev, ...action.patch },
+          },
+        }
+      })
+      next = { ...state, runs }
+      break
     }
-    case 'SET_EXEC_CASES':
-      return { ...state, execCases: action.cases }
-    case 'UPDATE_EXEC_CASE': {
-      const execCases = state.execCases.map((c, i) =>
-        i === action.index ? { ...c, ...action.patch } : c,
-      )
-      return { ...state, execCases }
+    case 'ADD_STEP_COMMENT': {
+      const cases = state.cases.map((c) => {
+        if (c.id !== action.caseId) return c
+        return {
+          ...c,
+          updatedAt: new Date().toISOString(),
+          steps: c.steps.map((s) =>
+            s.id === action.stepId
+              ? {
+                  ...s,
+                  comments: [
+                    ...s.comments,
+                    { id: newId('cmt'), author: action.author, createdAt: new Date().toISOString(), body: action.body },
+                  ],
+                }
+              : s,
+          ),
+        }
+      })
+      next = { ...state, cases }
+      break
+    }
+    case 'ADD_GENERAL_COMMENT': {
+      const cases = state.cases.map((c) => {
+        if (c.id !== action.caseId) return c
+        return {
+          ...c,
+          updatedAt: new Date().toISOString(),
+          generalComments: [
+            ...c.generalComments,
+            { id: newId('gcmt'), author: action.author, createdAt: new Date().toISOString(), body: action.body },
+          ],
+        }
+      })
+      next = { ...state, cases }
+      break
     }
     case 'SEAL_RUN':
-      return {
+      next = {
         ...state,
-        sealedRunIds: state.sealedRunIds.includes(action.runId)
-          ? state.sealedRunIds
-          : [...state.sealedRunIds, action.runId],
+        runs: state.runs.map((r) => (r.id === action.runId ? { ...r, sealed: true } : r)),
       }
+      break
     case 'SET_CURRENT_RUN':
-      return { ...state, currentRunId: action.runId, currentRunName: action.name }
+      next = { ...state, currentRunId: action.runId }
+      break
     default:
       return state
   }
-}
-
-function initState(): FreshState {
-  return {
-    module: 'TI-Core Platform',
-    cases: loadCases(),
-    execCases: INITIAL_EXEC_CASES.map((c) => ({
-      ...c,
-      sr: [...c.sr],
-      defects: [...c.defects],
-    })),
-    sealedRunIds: [],
-    currentRunId: DEFAULT_RUN.id,
-    currentRunName: DEFAULT_RUN.name,
-    nextCaseNum: 13,
-  }
+  persistState(next)
+  return next
 }
 
 interface FreshContextValue {
-  state: FreshState
+  state: DemoState
   dispatch: React.Dispatch<FreshAction>
-  addCase: (data: Omit<DemoCase, 'id'>) => string
-  updateExecCase: (index: number, patch: Partial<ExecCase>) => void
+  currentRun: DemoRun
+  getCase: (caseId: string) => Case | undefined
+  addCase: (data: Omit<Case, 'id' | 'updatedAt'>) => string
+  updateCase: (caseId: string, patch: Partial<Case>) => void
+  replaceCase: (caseData: Case) => void
+  updateExecution: (caseId: string, patch: Partial<CaseExecution>) => void
+  addStepComment: (caseId: string, stepId: string, body: string, author?: string) => void
+  addGeneralComment: (caseId: string, body: string, author?: string) => void
   sealRun: () => void
-  setCurrentRun: (runId: string, name: string) => void
+  setCurrentRun: (runId: string) => void
   isRunSealed: boolean
 }
 
 const FreshContext = createContext<FreshContextValue | null>(null)
 
 export function FreshProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, initState)
+  const [state, dispatch] = useReducer(reducer, undefined, loadState)
+
+  const currentRun = useMemo(() => getCurrentRun(state), [state])
+
+  const getCase = useCallback(
+    (caseId: string) => state.cases.find((c) => c.id === caseId),
+    [state.cases],
+  )
 
   const addCase = useCallback(
-    (data: Omit<DemoCase, 'id'>) => {
+    (data: Omit<Case, 'id' | 'updatedAt'>) => {
       const id = nextCaseId(state.nextCaseNum)
-      const newCase: DemoCase = { ...data, id }
+      const newCase: Case = { ...data, id, updatedAt: new Date().toISOString() }
       dispatch({ type: 'ADD_CASE', case: newCase })
       return id
     },
     [state.nextCaseNum],
   )
 
-  const updateExecCase = useCallback((index: number, patch: Partial<ExecCase>) => {
-    dispatch({ type: 'UPDATE_EXEC_CASE', index, patch })
+  const updateCase = useCallback((caseId: string, patch: Partial<Case>) => {
+    dispatch({ type: 'UPDATE_CASE', caseId, patch })
   }, [])
+
+  const replaceCase = useCallback((caseItem: Case) => {
+    dispatch({ type: 'REPLACE_CASE', case: caseItem })
+  }, [])
+
+  const updateExecution = useCallback(
+    (caseId: string, patch: Partial<CaseExecution>) => {
+      dispatch({ type: 'UPDATE_RUN_EXECUTION', runId: state.currentRunId, caseId, patch })
+    },
+    [state.currentRunId],
+  )
+
+  const addStepComment = useCallback(
+    (caseId: string, stepId: string, body: string, author = 'You') => {
+      dispatch({ type: 'ADD_STEP_COMMENT', caseId, stepId, author, body })
+    },
+    [],
+  )
+
+  const addGeneralComment = useCallback(
+    (caseId: string, body: string, author = 'You') => {
+      dispatch({ type: 'ADD_GENERAL_COMMENT', caseId, author, body })
+    },
+    [],
+  )
 
   const sealRun = useCallback(() => {
     dispatch({ type: 'SEAL_RUN', runId: state.currentRunId })
   }, [state.currentRunId])
 
-  const setCurrentRun = useCallback((runId: string, name: string) => {
-    dispatch({ type: 'SET_CURRENT_RUN', runId, name })
+  const setCurrentRun = useCallback((runId: string) => {
+    dispatch({ type: 'SET_CURRENT_RUN', runId })
   }, [])
 
-  const isRunSealed = state.sealedRunIds.includes(state.currentRunId)
+  const isRunSealed = currentRun.sealed
 
   const value = useMemo(
-    () => ({ state, dispatch, addCase, updateExecCase, sealRun, setCurrentRun, isRunSealed }),
-    [state, dispatch, addCase, updateExecCase, sealRun, setCurrentRun, isRunSealed],
+    () => ({
+      state,
+      dispatch,
+      currentRun,
+      getCase,
+      addCase,
+      updateCase,
+      replaceCase,
+      updateExecution,
+      addStepComment,
+      addGeneralComment,
+      sealRun,
+      setCurrentRun,
+      isRunSealed,
+    }),
+    [
+      state,
+      dispatch,
+      currentRun,
+      getCase,
+      addCase,
+      updateCase,
+      replaceCase,
+      updateExecution,
+      addStepComment,
+      addGeneralComment,
+      sealRun,
+      setCurrentRun,
+      isRunSealed,
+    ],
   )
 
   return <FreshContext.Provider value={value}>{children}</FreshContext.Provider>
