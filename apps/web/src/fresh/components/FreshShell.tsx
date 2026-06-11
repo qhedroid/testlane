@@ -60,11 +60,11 @@ export function FreshShell({ children }: { children: ReactNode }) {
               <span className="sbi-text"> {item.label}</span>
             </Link>
           ))}
-          <div className="sbi disabled" title="Reports">
+          <Link href="/reports" className={`sbi${isOn('/reports') ? ' on' : ''}`} title="Reports (planned)">
             <i className="ti ti-chart-bar" />
             <span className="sbi-text"> Reports</span>
             <span className="soon">Planned</span>
-          </div>
+          </Link>
         </div>
 
         <div className="sb-sec">
@@ -91,19 +91,19 @@ export function FreshShell({ children }: { children: ReactNode }) {
             <i className="ti ti-history" />
             <span className="sbi-text"> Audit History</span>
           </Link>
-          <div className="sbi" title="Defects">
+          <Link href="/defects" className={`sbi${isOn('/defects') ? ' on' : ''}`} title="Defects">
             <i className="ti ti-bug" />
             <span className="sbi-text"> Defects</span>
-          </div>
-          <div className="sbi disabled" title="Integrations">
+          </Link>
+          <Link href="/integrations" className={`sbi${isOn('/integrations') ? ' on' : ''}`} title="Integrations (planned)">
             <i className="ti ti-plug" />
             <span className="sbi-text"> Integrations</span>
             <span className="soon">Planned</span>
-          </div>
-          <div className="sbi" title="Settings">
+          </Link>
+          <Link href="/settings" className={`sbi${isOn('/settings') ? ' on' : ''}`} title="Settings">
             <i className="ti ti-settings" />
             <span className="sbi-text"> Settings</span>
-          </div>
+          </Link>
         </div>
 
         <div className="sb-foot">

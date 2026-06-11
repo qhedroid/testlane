@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { FreshTopbar } from '../components/FreshTopbar'
+import { PrototypeBanner } from '../components/PrototypeBanner'
 import { ATTENTION_ITEMS, COVERAGE_ITEMS, DEFECT_NAMES, RUN_CARDS } from '../data/seed'
 import type { RunCard } from '../data/types'
 import { PRI_MAP } from '../data/ui-utils'
@@ -56,6 +57,7 @@ export function DashboardScreen() {
           </>
         }
       />
+      <PrototypeBanner />
       <div className="dash-wrap">
         <div className="met-row">
           <div className="mc c-blue">

@@ -1,0 +1,36 @@
+/* Map legacy --relay-* tokens to fresh design tokens inside API runs workspace */
+.api-runs-workspace {
+  --relay-navy: var(--navy);
+  --relay-accent: var(--accent);
+  --relay-tint: var(--accent-lt);
+  --relay-bg: var(--bg);
+  --relay-surface: var(--surface);
+  --relay-border: var(--border);
+  --relay-muted: var(--text3);
+  --relay-mono: var(--mono);
+  --relay-pass-bg: var(--pass-bg);
+  --relay-pass-text: var(--pass);
+  --relay-fail-bg: var(--fail-bg);
+  --relay-fail-text: var(--fail);
+  --relay-blocked-bg: var(--block-bg);
+  --relay-blocked-text: var(--block);
+  --relay-skip-bg: var(--skip-bg);
+  --relay-skip-text: var(--skip);
+  --relay-not-run-text: var(--text3);
+  --relay-active-bg: var(--accent-lt);
+  --relay-active-text: var(--accent);
+}
+
+.api-runs-workspace .tr-lay {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.api-runs-workspace .tr-empty-grow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
