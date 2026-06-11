@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
+import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
 import type { Case, CasePriority, CaseStep, ExecStatus, Folder } from '../data/demo-model'
 import {
@@ -328,6 +329,7 @@ export function CasesScreen() {
           </>
         }
       />
+      <PrototypeBanner />
       <div className={`tc-lay${detailMaximized ? ' dp-maximized' : ''}`}>
         <div className="suite-tree">
           <div className="st-hd">

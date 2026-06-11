@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
+import { PrototypeBanner } from '../components/PrototypeBanner'
 import { PLANS } from '../data/seed'
 import type { DemoPlan } from '../data/types'
 
@@ -58,6 +59,7 @@ export function PlansScreen() {
           <button type="button" className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New plan</button>
         }
       />
+      <PrototypeBanner />
       <div className="tp-lay">
         <div className="tp-list-pane">
           <div className="tpl-hd">
