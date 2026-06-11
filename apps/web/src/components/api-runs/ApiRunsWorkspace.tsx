@@ -243,8 +243,12 @@ export function ApiRunsWorkspace() {
       <div className="source-banner source-banner-api">
         <i className="ti ti-database" aria-hidden />
         <span>
-          <strong>API-backed.</strong> Run list and execution results load from MySQL via{' '}
-          <code>/api/runs</code>. Requires Docker and <code>pnpm db:seed</code>.
+          <strong>API-backed workspace.</strong> MySQL via <code>/api/runs</code> (requires Docker +
+          seed). Stakeholder demo UI:{' '}
+          <a href="/runs" style={{ color: 'inherit', fontWeight: 600 }}>
+            /runs
+          </a>
+          .
         </span>
       </div>
 

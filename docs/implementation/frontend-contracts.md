@@ -88,9 +88,33 @@ This document defines what each visible screen shows, what data powers it today,
 
 ---
 
-## Test Runs (execution workspace)
+## Test Runs (demo execution UI)
 
 **Route:** `/runs`
+
+**Current state:** Frontend prototype — **Shaun's v1.2 FRESH execution workspace** (primary demo route).
+
+**Real/API-backed, mock-backed, or placeholder:** Mock-backed (in-memory `FreshProvider`).
+
+**Implementation:** `apps/web/src/fresh/screens/RunsScreen.tsx`, `fresh/styles/prototype-runs.css`.
+
+**Data shown:** Run picker, header donuts, case list with filters, step results, keyboard shortcuts, tabs (details/steps/activity/history/comments/defects).
+
+**User actions:** Full demo execution flow per `DEMO.md` — in-memory only; resets on reload.
+
+**Future API contract:** Same as `/runs/api` — wire this UI to existing HTTP routes without replacing the layout.
+
+**Known backend dependency:** None for demo. Docker optional.
+
+**Out of scope:** Persisting results to MySQL from this route (use `/runs/api` until wired).
+
+**Notes:** **Do not swap this route back to the legacy three-pane UI.** Extend Shaun's screen toward API integration.
+
+---
+
+## Test Runs (API workspace)
+
+**Route:** `/runs/api`
 
 **Current state:** **API-backed** — MySQL via existing HTTP routes.
 
@@ -100,17 +124,13 @@ This document defines what each visible screen shows, what data powers it today,
 
 **Implementation:** `apps/web/src/components/api-runs/ApiRunsWorkspace.tsx`.
 
-**Data shown:** Run list with progress; run detail header; case list with filters/search; case detail with metadata, result buttons, execution comment.
+**Data shown:** Run list with progress; case list with filters/search; case detail with result buttons and execution comment.
 
-**User actions:** Create run (admin actor); select run/case; filter by status; search cases; update case result; save comment; prev/next case navigation.
+**User actions:** Create run; update case result; save comment (persisted).
 
-**Future API contract:** Existing routes (see `docs/implementation/api-contracts.md`). Step-level results, seal/reopen, defects linking not yet implemented.
+**Known backend dependency:** Docker MySQL, migrations, seed. Auth via `NEXT_PUBLIC_RELAY_USER_ID`.
 
-**Known backend dependency:** Docker MySQL, migrations, seed, dev server. Auth via `x-relay-user-id` header (client uses `NEXT_PUBLIC_RELAY_USER_ID`).
-
-**Out of scope:** Step-level execution API, keyboard shortcuts from FRESH mock, seal run UI, activity/history tabs, defects tab.
-
-**Notes for future backend implementation:** Preserve thin API routes; business logic stays in `packages/db/services/`.
+**Notes:** Preserved for `pnpm api:validate` and backend integration testing. Not the stakeholder demo surface.
 
 ---
 

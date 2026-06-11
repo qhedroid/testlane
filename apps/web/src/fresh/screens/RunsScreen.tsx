@@ -11,6 +11,7 @@ import { DEFECT_NAMES, MODULES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, normalizeAssigneeName, TEAM_USERS } from '../data/team-users'
+import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 type FilterTab = 'all' | ExecStatus
@@ -238,6 +239,14 @@ export function RunsScreen() {
 
   return (
     <div className={`view runs-v12${priHidden ? ' pri-hidden' : ''}`}>
+      <PrototypeBanner>
+        <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
+        (resets on reload). MySQL-backed workspace:{' '}
+        <Link href="/runs/api" className="bc-link">
+          /runs/api
+        </Link>
+        .
+      </PrototypeBanner>
       <div className="topbar">
         <div className="proj-switcher" ref={projRef}>
           <button type="button" className="proj-btn" onClick={() => setProjOpen((v) => !v)}>

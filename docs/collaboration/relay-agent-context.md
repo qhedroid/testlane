@@ -50,7 +50,7 @@ Companion docs:
 ## 4. Architectural rules (agents must follow)
 
 1. **Frontend-first is allowed; frontend-only without contracts is not.** Every screen must be documented in `frontend-contracts.md`.
-2. **Do not remove API-backed `/runs`.** Execution workspace uses MySQL via existing API routes.
+2. **Do not remove API-backed execution.** APIs stay at `/runs/api` until Shaun's `/runs` UI is wired to them. **Do not replace `/runs` with the legacy three-pane layout.**
 3. **Do not change backend services, schema, or migrations** unless explicitly required.
 4. **Do not add new real APIs** for prototype screens without a ticket.
 5. **Label mock and placeholder screens** in the UI (`PrototypeBanner`).
@@ -71,7 +71,8 @@ Companion docs:
 | `/test-cases` | Alias | — | Redirects to `/cases` |
 | `/plans` | Test Plans | **Mock** | `fresh/screens/PlansScreen.tsx` |
 | `/test-plans` | Alias | — | Redirects to `/plans` |
-| `/runs` | Test Runs | **API-backed** | `components/api-runs/ApiRunsWorkspace.tsx` |
+| `/runs` | Test Runs (demo) | **Mock** | `fresh/screens/RunsScreen.tsx` — Shaun v1.2 UI |
+| `/runs/api` | Test Runs (API) | **API-backed** | `components/api-runs/ApiRunsWorkspace.tsx` |
 | `/audit` | Audit History | **Mock** | `fresh/screens/AuditScreen.tsx` |
 | `/defects` | Defects | **Mock** | `fresh/screens/DefectsScreen.tsx` |
 | `/settings` | Settings | **Mock** | `fresh/screens/SettingsScreen.tsx` |
@@ -83,10 +84,10 @@ Companion docs:
 | Method | Path | Used by UI |
 |--------|------|------------|
 | GET | `/api/health` | Validation only |
-| GET | `/api/runs` | `/runs` |
-| POST | `/api/runs` | `/runs` |
-| GET | `/api/runs/:runId` | `/runs` |
-| POST | `/api/runs/:runId/cases/:runCaseId/result` | `/runs` |
+| GET | `/api/runs` | `/runs/api` |
+| POST | `/api/runs` | `/runs/api` |
+| GET | `/api/runs/:runId` | `/runs/api` |
+| POST | `/api/runs/:runId/cases/:runCaseId/result` | `/runs/api` |
 
 ---
 
@@ -119,19 +120,13 @@ docs/implementation/     # frontend-contracts.md, api-contracts.md, current-stat
 
 ---
 
-## 7. `/runs` — API-backed execution
+## 7. `/runs` — demo vs API split
 
-**Requires:** Docker MySQL, `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`.
+**`/runs` (primary demo):** Shaun's FRESH v1.2 `RunsScreen` — in-memory, full UX (donuts, run picker, shortcuts, step results). No Docker required.
 
-**Client:** `ApiRunsWorkspace` calls `lib/relay/api-client.ts`.
+**`/runs/api` (integration):** Legacy three-pane `ApiRunsWorkspace` — MySQL-backed, used for `pnpm api:validate`. Requires Docker + seed.
 
-**Auth:** `NEXT_PUBLIC_RELAY_USER_ID` (default: Priya contributor). Viewer ULID = read-only.
-
-**Works:** Run list, create run, case list filters/search, case result update, comment persistence, prev/next navigation.
-
-**Does not work / gaps:** Step-level execution API, seal run, keyboard shortcuts (FRESH mock had these), activity/history tabs, duplicate result controls (REL-002), rich v1.2 layout from Shaun's mock runs (replaced by API workspace).
-
-**Fresh mock `RunsScreen`** still exists in `fresh/screens/RunsScreen.tsx` but is **not routed** — kept for reference only.
+**Next slice:** Wire Shaun's `/runs` UI to `/api/runs` without changing the layout. Do not regress to swapping routes.
 
 ---
 
@@ -202,5 +197,5 @@ pnpm api:validate           # needs dev server + seeded DB
 ```
 You are working on Relay (branch demo/prototype-parity). Read docs/collaboration/relay-agent-context.md and docs/implementation/frontend-contracts.md first.
 
-Rules: preserve API-backed /runs; mock screens must stay labelled; no schema changes without explicit ask; centralise mock data; run pnpm build (+ api:validate if APIs touched); do not commit unless asked.
+Rules: `/runs` = Shaun demo UI; `/runs/api` = API workspace; pull latest branch before editing; mock screens labelled; run pnpm build (+ api:validate if APIs touched); do not commit unless asked.
 ```

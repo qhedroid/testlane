@@ -43,6 +43,19 @@ export const ROUTE_CONTRACTS: RouteContract[] = [
   {
     route: '/runs',
     label: 'Test Runs',
+    dataState: 'mock',
+    futureApis: [
+      'GET /api/runs',
+      'POST /api/runs',
+      'GET /api/runs/:runId',
+      'POST /api/runs/:runId/cases/:runCaseId/result',
+    ],
+    notes:
+      'Shaun v1.2 FRESH execution UI (in-memory). Wire to APIs in a later slice — do not replace with legacy layout.',
+  },
+  {
+    route: '/runs/api',
+    label: 'Test Runs (API workspace)',
     dataState: 'api',
     futureApis: [
       'GET /api/runs',
@@ -50,7 +63,7 @@ export const ROUTE_CONTRACTS: RouteContract[] = [
       'GET /api/runs/:runId',
       'POST /api/runs/:runId/cases/:runCaseId/result',
     ],
-    notes: 'Execution workspace — MySQL-backed via existing API routes.',
+    notes: 'Legacy three-pane UI — MySQL-backed. Preserved for api:validate and integration testing.',
   },
   {
     route: '/audit',

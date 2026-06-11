@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
-import '@/legacy/app-runs/runs.css'
-import '@/components/api-runs/api-runs-tokens.css'
 
+/** Shared runs segment — screen-specific styles live in page/layout children. */
 export default function RunsLayout({ children }: { children: ReactNode }) {
   return children
 }
