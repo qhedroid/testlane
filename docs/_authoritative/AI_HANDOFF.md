@@ -4,111 +4,145 @@
 
 ---
 
-## Purpose & constraints
+# Relay — AI handoff / bootstrap (paste into a new ChatGPT/Claude/Cursor chat)
 
-**Relay** is a QA test execution platform (clinical-trials-style workspace). Current delivery is a **frontend-only prototype** with mock data and browser persistence.
+You are stepping into an existing repo called **Relay**. Treat the **repo as ground truth**. When unsure, inspect code and cite file paths.
 
-- **Frontend-only:** No backend/DB/API/Docker changes unless the user explicitly requests a backend slice.
-- **No API wiring** for demo screens. Persistence = `FreshProvider` + `localStorage` only.
-- **Authoritative docs:** Use **only** `docs/_authoritative/**` for requirements. Other `docs/**` may be stale.
-- **UX invariants:** Do **not** change test run execution UX at `/:projectKey/testruns` (`RunsScreen`) unless asked. Do **not** replace with the legacy three-pane layout. Keep `/runs/api` isolated.
-- **Labelling:** `PrototypeBanner` on mock/placeholder screens. **Do not commit** unless asked.
+## 1. Purpose & constraints (non‑negotiable)
+- **Product:** Relay is a QA test execution platform (clinical-trials-style workspace).
+- **Phase:** **Frontend-only prototype**.
+  - Do **not** implement/modify backend, DB/schema, Docker, auth, or API routes unless explicitly asked.
+  - Do **not** wire demo screens to real APIs. Persistence is **client-side only** (FreshProvider + localStorage).
+- **Authoritative docs:** Only `docs/_authoritative/**` defines requirements/contracts. Ignore other `docs/**` unless explicitly requested.
+- **UX invariants:** Do not change test run execution UX at `/:projectKey/testruns` (RunsScreen) unless asked.
+  - Do not replace with legacy three-pane layout.
+  - Keep `/runs/api` isolated (API workspace).
+- **Workflow:** Do not create commits unless asked.
 
----
+## 2. Repo orientation (verify in repo)
+- **Stack:** Next.js App Router (apps/web), React, pnpm.
+- **Prototype UI root:** `apps/web/src/fresh/`
+- **Canonical store:** `apps/web/src/fresh/data/FreshProvider.tsx`
+- **State types:** `apps/web/src/fresh/data/demo-model.ts`
+- **Migration:** `apps/web/src/fresh/data/migrate-demo-state.ts`
+- **Selectors:** `apps/web/src/fresh/data/project-selectors.ts`
+- **Project switcher UI:** `apps/web/src/fresh/components/ProjectSwitcher.tsx` and `CreateProjectModal.tsx` (verify exact paths)
+- **Routing helpers / sync:** `ProjectRouteSync.tsx`, `LegacyRouteRedirect.tsx`, `lib/project-routes.ts`, `hooks/useProjectHref.ts` (verify)
+- **Canonical routes:** `apps/web/src/app/(app)/[projectKey]/*`
+- **App layout wiring:** `apps/web/src/app/(app)/layout.tsx` (FreshProvider + route sync)
+- **Primary demo execution screen:** `apps/web/src/fresh/screens/RunsScreen.tsx`
+- **API workspace (non-prefixed):** `apps/web/src/fresh/components/api-runs/ApiRunsWorkspace.tsx` at `/runs/api`
+- **Avoid:** `apps/web/src/legacy/**` unless explicitly requested.
 
-## Repo orientation
+Dev commands (typical):
+- `pnpm install`
+- `pnpm dev`
+- After changes: `pnpm build`
 
-| Item | Path |
-|------|------|
-| Stack | Next.js 15 App Router, React 19, pnpm (`apps/web`) |
-| Prototype UI | `apps/web/src/fresh/` |
-| **Canonical store** | `apps/web/src/fresh/data/FreshProvider.tsx` |
-| State types | `apps/web/src/fresh/data/demo-model.ts` |
-| Selectors / migration | `project-selectors.ts`, `migrate-demo-state.ts` |
-| **Project Switcher** | `components/ProjectSwitcher.tsx`, `CreateProjectModal.tsx` |
-| **Route sync / helpers** | `ProjectRouteSync.tsx`, `LegacyRouteRedirect.tsx`, `lib/project-routes.ts`, `hooks/useProjectHref.ts` |
-| **Canonical routes** | `apps/web/src/app/(app)/[projectKey]/*` |
-| App layout | `apps/web/src/app/(app)/layout.tsx` — `FreshProvider` + `ProjectRouteSync` |
-| Demo execution | `fresh/screens/RunsScreen.tsx` |
-| API workspace | `components/api-runs/ApiRunsWorkspace.tsx` at `/runs/api` |
+## 3. Current behavior (as-built; confirm via code + authoritative docs)
+### Multi-project model
+- Projects have: **name**, **key** (uppercase), **description** (optional).
+- Store has `projectsById` + `activeProjectId`.
+- All core entities are project-scoped via `projectId` (folders, cases, runs, executions).
+- Project CRUD exists via store/hooks: create/rename/delete/switch and **add demo project**.
 
-Do **not** import `apps/web/src/legacy/`. Dev: `pnpm install && pnpm dev`. After changes: `pnpm build`.
+### Routing (key-prefixed)
+- Canonical routes are `/:projectKey/<module>` e.g.:
+  - `/DP/dashboard`
+  - `/CTMS/testruns`
+- Module slugs live in `project-routes.ts` (verify constant name).
+- Root `/` redirects to `/DP/dashboard`.
+- Legacy routes like `/dashboard`, `/cases`, `/runs` redirect via `LegacyRouteRedirect` to the active project path.
+- `/runs/api` and `/api/*` are **not** project-prefixed.
 
----
+### URL ↔ store sync
+- `ProjectRouteSync` parses `projectKey` from the URL and sets active project.
+- Unknown `projectKey` redirects to same module under the active key (fallback `DP` if needed).
+- Project switcher updates both store and URL (helper like `switchProjectPath` / `useProjectHref`).
 
-## Current behavior (as-built)
+### Demo project semantics
+- Default seeded project:
+  - Name: **Demo Project**
+  - Key: **DP**
+  - Contains prefilled seed data
+  - Has a stable ID like `proj-ti-core` (verify in seed file)
+- **Add demo project**:
+  - Clones from an **immutable demo template** (e.g. `demo-template.ts`).
+  - Ignores any user edits in the current session.
+  - Keys increment: `DP1`, `DP2`, …
+  - Creates new IDs for all cloned entities.
+  - Navigates to `/:key/dashboard`.
 
-**Multi-project:** `projectsById` holds projects (`name`, `key`, `description?`, `seedTemplate?`). `activeProjectId` scopes folders, cases, runs (`projectId` on each). CRUD + `addDemoProject()` via `useFresh()`.
+### Dashboards
+- Dashboards are project-specific.
+- Demo-template projects show seeded metrics/content.
+- Non-demo projects show a placeholder (“Dashboard coming soon”) until implemented.
 
-**Routing:** Canonical `/:projectKey/:moduleSlug` — e.g. `/DP/dashboard`, `/CTMS/testruns`. Slugs in `MODULE_SLUGS` (`project-routes.ts`). Root `/` → `/DP/dashboard`. Legacy `/dashboard`, `/cases`, `/runs`, … redirect via `LegacyRouteRedirect`. **`/runs/api` and `/api/*` are not project-prefixed.**
+### Test runs (critical)
+- `/:projectKey/testruns` is the primary execution experience.
+- Supports steps/results/defects/comments, sealed run behavior, keyboard shortcuts.
+- Sealed runs must remain non-mutable.
 
-**URL ↔ store sync:** `ProjectRouteSync` parses URL key → `setActiveProject`. Unknown key → redirect to same module under active key (fallback `DP`). Switcher updates store + URL (`switchProjectPath`).
+## 4. Data model overview (practical)
+Typical `DemoState` (see `demo-model.ts`; verify exact shape):
+- `schemaVersion`
+- `projectsById`
+- `activeProjectId`
+- `folders[]`
+- `cases[]`
+- `runs[]`
+- `currentRunIdByProject: Record<projectId, runId>`
+- `nextCaseNumByProject: Record<projectId, number>`
 
-**Demo project:**
-- Seed: **Demo Project** / key **`DP`**, `seedTemplate: 'demo'`, id `proj-ti-core` — verify `demo-seed.ts`, `demo-model.ts`.
-- **Add demo project:** clones immutable template (`demo-template.ts`), never live store. Keys `DP1`, `DP2`, …; names `Demo Project N`; new entity ids; navigates to `/:key/dashboard`.
-- **Dashboard:** `seedTemplate === 'demo'` → seeded metrics; else placeholder (“Dashboard coming soon”). Verify `demo-project-utils.ts`.
+Relations/scoping:
+- Folder: `projectId`, tree via `parentId?`
+- Case: `projectId`, `folderId?`, `steps[]`
+- Run: `projectId`, `caseOrder[]`, `executions` keyed by caseId, `sealed`
+- Use selectors like `listActiveProject*` (always filter by `activeProjectId`)
 
-**Test runs:** `/:projectKey/testruns` = primary demo execution (steps, results, defects, sealed runs). Sealed runs block mutations.
+## 5. Persistence & migration (verify values in code)
+- localStorage key: `relay-demo-v2` (verify in FreshProvider)
+- schemaVersion: `DEMO_SCHEMA_VERSION` (value may be 2/3+; verify)
+- `migrateDemoState()` runs on load:
+  - Migrates legacy versions → current schemaVersion
+  - Handles legacy `DEMO` key → `DP` key change (if implemented)
+  - On migration failure: logs error and falls back to fresh seeded initial state
+- Reset for testing:
+  - `localStorage.removeItem('relay-demo-v2'); location.reload()`
 
----
+## 6. How to work (required process)
+Before implementing any task:
+1) Read relevant `docs/_authoritative/*` (start with `PROJECT_CONTEXT.md`, `AS_BUILT_SNAPSHOT.md`, `DOMAIN_MODEL.md`, `FRONTEND_CONTRACTS.md`).
+2) List planned file changes + what will remain unchanged.
+3) Make incremental changes; match existing code style.
+4) Update authoritative docs when model/contracts/routing change.
+5) Run `pnpm build` when UI/routing/store changes.
 
-## Data model overview
+Do not touch unless explicitly requested:
+- backend/db packages, API routes, `/runs/api` behavior, RunsScreen execution interactions, `legacy/`, introducing new state libraries.
 
-`DemoState` (`demo-model.ts`): `schemaVersion`, `projectsById`, `activeProjectId`, `folders[]`, `cases[]`, `runs[]`, `currentRunIdByProject{}`, `nextCaseNumByProject{}`.
+## 7. Manual test checklist (template)
+- `/DP/dashboard` shows demo dashboard content
+- Create blank project → placeholder dashboard; cases/runs empty + scoped
+- Switch projects → URL updates; data scopes correctly
+- Add demo project twice → `DP1`, `DP2` seeded from pristine template even if `DP` edited
+- `/:projectKey/testruns` execution UX unchanged
+- Legacy `/runs` redirects to `/${activeKey}/testruns`
+- `pnpm build` passes
 
-| Entity | Scoping / relations |
-|--------|---------------------|
-| Folder | `projectId`, `parentId?` tree → cases use `folderId` |
-| Case | `projectId`, `steps[]` → referenced in run `caseOrder[]` |
-| DemoRun | `projectId`, `caseOrder[]`, `executions{caseId→CaseExecution}`, `sealed` |
-| CaseExecution | `status`, `stepResults{}`, `defects?`, `assignee?` |
-| TestPlan | Static `seed.ts` only — not in `DemoState` |
+## 8. Quick links
+Authoritative docs:
+- `docs/_authoritative/README.md`
+- `PROJECT_CONTEXT.md`
+- `MVP_FRONTEND_ONLY_SCOPE.md`
+- `AS_BUILT_SNAPSHOT.md`
+- `FRONTEND_CONTRACTS.md`
+- `DOMAIN_MODEL.md`
 
-Use `listActiveProject*` selectors — always filter by `activeProjectId`.
+Core code:
+- `FreshProvider.tsx`, `demo-model.ts`, `migrate-demo-state.ts`, `project-selectors.ts`
+- `demo-template.ts`, `demo-project-utils.ts` (verify names/paths)
+- `project-routes.ts`, `ProjectRouteSync.tsx`, `ProjectSwitcher.tsx`, `RunsScreen.tsx`
+- `apps/web/src/app/(app)/[projectKey]/...`
 
----
-
-## Persistence & migration
-
-| Item | Value |
-|------|-------|
-| localStorage key | `relay-demo-v2` (`FreshProvider.tsx`) |
-| schemaVersion | `3` (`DEMO_SCHEMA_VERSION`) |
-| Migration | `migrateDemoState()` on load: v1/v2→v3; legacy `DEMO`→`DP`; `seedTemplate` on demo projects |
-| Failure | `console.error` → `buildInitialDemoState()` (Demo Project / `DP`) |
-| Reset | `localStorage.removeItem('relay-demo-v2'); location.reload()` |
-
----
-
-## How to work in this repo
-
-1. Read relevant `docs/_authoritative/*` (start: `PROJECT_CONTEXT.md`, `AS_BUILT_SNAPSHOT.md`, `FRONTEND_CONTRACTS.md`, `DOMAIN_MODEL.md`).
-2. List files to modify and what stays unchanged.
-3. Small incremental steps; match surrounding code style.
-4. Update `docs/_authoritative/*` when contracts/model/routing change.
-5. `pnpm build` after UI changes.
-
-**Do not touch (unless asked):** `packages/db/**`, API routes, `/runs/api` layout, `RunsScreen` execution interactions, `legacy/`, new state libraries.
-
----
-
-## Manual test checklist (template)
-
-- [ ] `/DP/dashboard` shows demo metrics
-- [ ] Blank project → placeholder dashboard; scoped empty cases/runs
-- [ ] Project switch → URL + data scoped correctly
-- [ ] Add demo project → `DP1`/`DP2` with pristine seed (even if `DP` edited)
-- [ ] `/:projectKey/testruns` execution UX unchanged
-- [ ] Legacy `/runs` → `/${activeKey}/testruns`
-- [ ] `pnpm build` passes
-
----
-
-## Quick links
-
-**Docs:** `docs/_authoritative/README.md`, `PROJECT_CONTEXT.md`, `MVP_FRONTEND_ONLY_SCOPE.md`, `AS_BUILT_SNAPSHOT.md`, `FRONTEND_CONTRACTS.md`, `DOMAIN_MODEL.md`
-
-**Code:** `FreshProvider.tsx`, `demo-model.ts`, `migrate-demo-state.ts`, `demo-template.ts`, `demo-project-utils.ts`, `project-selectors.ts`, `project-routes.ts`, `ProjectSwitcher.tsx`, `ProjectRouteSync.tsx`, `RunsScreen.tsx`, `DashboardScreen.tsx`, `app/(app)/[projectKey]/`
-
-*June 2026. Verify branch/commit in repo.*
+Date note: June 2026. Verify branch/commit in repo.
