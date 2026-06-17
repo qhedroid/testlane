@@ -1,3 +1,5 @@
+> **STALE / SUPERSEDED** — This document is no longer maintained. Use [`docs/_authoritative/AS_BUILT_SNAPSHOT.md`](../_authoritative/AS_BUILT_SNAPSHOT.md) instead.
+
 # Relay — Current Implementation State
 
 **Canonical engineering checkpoint.** Use this document to resume implementation work. Architecture philosophy and product intent remain in `docs/architecture/` and `docs/product/` — this file covers what is built, how to run it, and what comes next.

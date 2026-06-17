@@ -1,3 +1,5 @@
+> **STALE / SUPERSEDED** — This document is no longer maintained. Use [`docs/_authoritative/AS_BUILT_SNAPSHOT.md`](../_authoritative/AS_BUILT_SNAPSHOT.md) and [`docs/_authoritative/PROJECT_CONTEXT.md`](../_authoritative/PROJECT_CONTEXT.md) instead.
+
 # Relay — build context (forward to AI / collaborators)
 
 **Purpose:** Single reference for continuing Relay development without verbal handover. Paste or attach this file when working with ChatGPT, Cursor, or a new collaborator.

@@ -1,3 +1,5 @@
+> **STALE / SUPERSEDED** — This document is no longer maintained. Use [`docs/_authoritative/AS_BUILT_SNAPSHOT.md`](../_authoritative/AS_BUILT_SNAPSHOT.md) and [`docs/_authoritative/PROJECT_CONTEXT.md`](../_authoritative/PROJECT_CONTEXT.md) instead. For setup steps, see [`getting-started.md`](getting-started.md).
+
 # Handover — Relay for a technical collaborator
 
 Short context if you are joining to help on execution UX and v0.1 readiness. Read this first, then [`getting-started.md`](getting-started.md).
