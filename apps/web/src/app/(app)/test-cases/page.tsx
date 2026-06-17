@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import { LegacyRouteRedirect } from '@/fresh/components/LegacyRouteRedirect'
 
-export default function TestCasesAliasPage() {
-  redirect('/cases')
+export default function TestCasesPage() {
+  return <LegacyRouteRedirect module="cases" />
 }

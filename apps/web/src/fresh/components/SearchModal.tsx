@@ -4,13 +4,15 @@ import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import { folderLabel, PRIORITY_TO_LEGACY } from '../data/demo-model'
-import { PLANS, RUN_CARDS } from '../data/seed'
+import { PLANS } from '../data/seed'
 import { PRI_MAP } from '../data/ui-utils'
+import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 export function SearchModal() {
   const { searchOpen, closeSearch } = useFreshUI()
-  const { state } = useFresh()
+  const { activeFolders, activeCases, activeRuns } = useFresh()
+  const projectHref = useProjectHref()
   const router = useRouter()
   const [q, setQ] = useState('')
   const [focusIdx, setFocusIdx] = useState(-1)
@@ -19,27 +21,28 @@ export function SearchModal() {
     const ql = q.trim().toLowerCase()
     if (!ql) return []
     const items: { type: string; title: string; meta: string; href: string; priCls?: string; priLbl?: string }[] = []
-    state.cases
+    activeCases
       .filter((c) => c.id.toLowerCase().includes(ql) || c.title.toLowerCase().includes(ql))
       .slice(0, 5)
       .forEach((c) =>
         items.push({
           type: 'Test Case',
           title: c.title,
-          meta: `${c.id} · ${folderLabel(state.folders, c.folderId)} · ${c.type}`,
-          href: '/cases',
+          meta: `${c.id} · ${folderLabel(activeFolders, c.folderId)} · ${c.type}`,
+          href: projectHref('cases'),
           priCls: PRI_MAP[PRIORITY_TO_LEGACY[c.priority]],
           priLbl: c.priority,
         }),
       )
-    RUN_CARDS.filter((r) => r.name.toLowerCase().includes(ql))
+    activeRuns
+      .filter((r) => r.name.toLowerCase().includes(ql))
       .slice(0, 5)
-      .forEach((r) => items.push({ type: 'Test Run', title: r.name, meta: r.plan, href: '/runs' }))
+      .forEach((r) => items.push({ type: 'Test Run', title: r.name, meta: r.planName ?? '', href: projectHref('testruns') }))
     PLANS.filter((p) => p.title.toLowerCase().includes(ql))
       .slice(0, 5)
-      .forEach((p) => items.push({ type: 'Test Plan', title: p.title, meta: `${p.cases} cases`, href: '/plans' }))
+      .forEach((p) => items.push({ type: 'Test Plan', title: p.title, meta: `${p.cases} cases`, href: projectHref('plans') }))
     return items
-  }, [q, state.cases, state.folders])
+  }, [q, activeCases, activeFolders, activeRuns, projectHref])
 
   if (!searchOpen) return null
 

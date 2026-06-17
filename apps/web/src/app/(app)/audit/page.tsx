@@ -1,5 +1,5 @@
-import { AuditScreen } from '@/fresh/screens/AuditScreen'
+import { LegacyRouteRedirect } from '@/fresh/components/LegacyRouteRedirect'
 
 export default function AuditPage() {
-  return <AuditScreen />
+  return <LegacyRouteRedirect module="audit" />
 }

@@ -1,5 +1,5 @@
-import { DefectsScreen } from '@/fresh/screens/DefectsScreen'
+import { LegacyRouteRedirect } from '@/fresh/components/LegacyRouteRedirect'
 
 export default function DefectsPage() {
-  return <DefectsScreen />
+  return <LegacyRouteRedirect module="defects" />
 }

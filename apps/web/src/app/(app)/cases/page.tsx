@@ -1,5 +1,5 @@
-import { CasesScreen } from '@/fresh/screens/CasesScreen'
+import { LegacyRouteRedirect } from '@/fresh/components/LegacyRouteRedirect'
 
 export default function CasesPage() {
-  return <CasesScreen />
+  return <LegacyRouteRedirect module="cases" />
 }

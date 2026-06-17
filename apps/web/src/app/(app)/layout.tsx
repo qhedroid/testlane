@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { GlobalModals } from '@/fresh/components/GlobalModals'
 import { FreshShell } from '@/fresh/components/FreshShell'
+import { ProjectRouteSync } from '@/fresh/components/ProjectRouteSync'
 import { FreshProvider } from '@/fresh/data/FreshProvider'
 import { FreshUIProvider } from '@/fresh/hooks/useFreshUI'
 import '@/fresh/styles/fresh.css'
@@ -9,6 +10,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <FreshProvider>
       <FreshUIProvider>
+        <ProjectRouteSync />
         <FreshShell>{children}</FreshShell>
         <GlobalModals />
       </FreshUIProvider>

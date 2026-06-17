@@ -7,11 +7,13 @@ import type { Case, ExecStatus } from '../data/demo-model'
 import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
-import { DEFECT_NAMES, MODULES, RUN_PICKER_LIST } from '../data/seed'
+import { DEFECT_NAMES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, normalizeAssigneeName, TEAM_USERS } from '../data/team-users'
+import { ProjectSwitcher } from '../components/ProjectSwitcher'
 import { PrototypeBanner } from '../components/PrototypeBanner'
+import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 type FilterTab = 'all' | ExecStatus
@@ -70,7 +72,7 @@ interface RunCaseRow {
 
 export function RunsScreen() {
   const {
-    state,
+    activeRuns,
     currentRun,
     getCase,
     updateExecution,
@@ -80,23 +82,22 @@ export function RunsScreen() {
     isRunSealed,
   } = useFresh()
   const { openShortcuts } = useFreshUI()
-  const [module, setModule] = useState(state.module)
-  const [projOpen, setProjOpen] = useState(false)
+  const projectHref = useProjectHref()
   const [filter, setFilter] = useState<FilterTab>('all')
   const [runSearch, setRunSearch] = useState('')
-  const [activeCaseId, setActiveCaseId] = useState(currentRun.caseOrder[0] ?? '')
+  const [activeCaseId, setActiveCaseId] = useState(currentRun?.caseOrder[0] ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
   const [priHidden, setPriHidden] = useState(false)
   const [edTab, setEdTab] = useState<EdTab>('details')
   const [edVisible, setEdVisible] = useState(true)
   const [edFullscreen, setEdFullscreen] = useState(false)
-  const projRef = useRef<HTMLDivElement>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
 
-  const summary = useMemo(() => runSummary(currentRun), [currentRun])
+  const summary = useMemo(() => (currentRun ? runSummary(currentRun) : null), [currentRun])
 
   const runRows: RunCaseRow[] = useMemo(() => {
+    if (!currentRun) return []
     return currentRun.caseOrder
       .map((caseId) => {
         const caseData = getCase(caseId)
@@ -114,11 +115,11 @@ export function RunsScreen() {
   }, [currentRun, getCase])
 
   const active = getCase(activeCaseId)
-  const activeEx = currentRun.executions[activeCaseId]
+  const activeEx = currentRun?.executions[activeCaseId]
 
   const pickerRuns = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase()
-    return state.runs
+    return activeRuns
       .map((run) => {
         const meta = RUN_PICKER_LIST.find((r) => r.id === run.id)
         const s = runSummary(run)
@@ -132,7 +133,7 @@ export function RunsScreen() {
         }
       })
       .filter((r) => !q || r.name.toLowerCase().includes(q))
-  }, [state.runs, pickerQuery])
+  }, [activeRuns, pickerQuery])
 
   const filteredRows = useMemo(() => {
     const sq = runSearch.trim().toLowerCase()
@@ -144,20 +145,21 @@ export function RunsScreen() {
   }, [runRows, filter, runSearch])
 
   useEffect(() => {
+    if (!currentRun) return
     if (!currentRun.caseOrder.includes(activeCaseId)) {
       setActiveCaseId(currentRun.caseOrder[0] ?? '')
     }
   }, [currentRun, activeCaseId])
 
   useEffect(() => {
+    if (!currentRun) return
     setActiveCaseId(currentRun.caseOrder[0] ?? '')
     setFilter('all')
     setRunSearch('')
-  }, [currentRun.id])
+  }, [currentRun?.id])
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (projRef.current && !projRef.current.contains(e.target as Node)) setProjOpen(false)
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setPickerOpen(false)
         setPickerQuery('')
@@ -182,13 +184,13 @@ export function RunsScreen() {
 
   const setStepR = useCallback(
     (caseId: string, stepId: string, result: ExecStatus) => {
-      if (isRunSealed) return
+      if (isRunSealed || !currentRun) return
       const ex = currentRun.executions[caseId] ?? { status: 'Not run' as ExecStatus, stepResults: {} }
       updateExecution(caseId, {
         stepResults: { ...ex.stepResults, [stepId]: result },
       })
     },
-    [currentRun.executions, updateExecution, isRunSealed],
+    [currentRun, updateExecution, isRunSealed],
   )
 
   const linkDefect = useCallback(() => {
@@ -233,7 +235,35 @@ export function RunsScreen() {
     return () => window.removeEventListener('keydown', onKey)
   }, [linkDefect, navCase, openShortcuts, setResult, isRunSealed])
 
-  if (!active) return null
+  if (!currentRun) {
+    return (
+      <div className="view runs-v12">
+        <PrototypeBanner>
+          <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
+          (resets on reload). MySQL-backed workspace:{' '}
+          <Link href="/runs/api" className="bc-link">/runs/api</Link>.
+        </PrototypeBanner>
+        <div className="topbar">
+          <ProjectSwitcher />
+          <div className="proj-sep" />
+          <div className="bc">
+            <Link href={projectHref('dashboard')} className="bc-link">Dashboard</Link>
+            <span className="sep">/</span>
+            <span className="cur">Test runs</span>
+          </div>
+        </div>
+        <div className="empty-state on">
+          <div className="empty-card">
+            <i className="ti ti-player-play" />
+            <div className="empty-title">No runs in this project</div>
+            <div className="empty-copy">Switch to a project with runs, or create test cases and spawn a run from Test Plans.</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!active || !summary) return null
 
   const runMeta = RUN_PICKER_LIST.find((r) => r.id === currentRun.id)
 
@@ -248,32 +278,10 @@ export function RunsScreen() {
         .
       </PrototypeBanner>
       <div className="topbar">
-        <div className="proj-switcher" ref={projRef}>
-          <button type="button" className="proj-btn" onClick={() => setProjOpen((v) => !v)}>
-            <i className="ti ti-apps" style={{ fontSize: 14, color: 'var(--accent)' }} />
-            <span className="pn">{module}</span>
-            <i className="ti ti-chevron-down" style={{ fontSize: 10, opacity: 0.5 }} />
-          </button>
-          {projOpen ? (
-            <div className="proj-dd open">
-              <div className="proj-dd-hd">Switch project</div>
-              {MODULES.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  className={`proj-item${module === name ? ' active' : ''}`}
-                  onClick={() => { setModule(name); setProjOpen(false) }}
-                >
-                  <i className={`ti ${module === name ? 'ti-check' : 'ti-square'}`} />
-                  {name}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <ProjectSwitcher />
         <div className="proj-sep" />
         <div className="bc">
-          <Link href="/dashboard" className="bc-link">Dashboard</Link>
+          <Link href={projectHref('dashboard')} className="bc-link">Dashboard</Link>
           <span className="sep">/</span>
           <span style={{ color: 'var(--accent)', fontSize: 11.5 }}>TI Platform</span>
           <span className="sep">/</span>

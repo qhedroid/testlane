@@ -1,10 +1,21 @@
-import type { Case, CaseExecution, CasePriority, CaseStep, DemoRun, DemoState, ExecStatus, Folder } from './demo-model'
-import { LEGACY_TO_EXEC, LEGACY_TO_PRIORITY, newId } from './demo-model'
+import type { Case, CaseExecution, CasePriority, CaseStep, DemoRun, DemoState, ExecStatus, Folder, Project } from './demo-model'
+import {
+  DEFAULT_SEED_PROJECT_ID,
+  DEFAULT_SEED_PROJECT_KEY,
+  DEMO_SCHEMA_VERSION,
+  LEGACY_TO_EXEC,
+  LEGACY_TO_PRIORITY,
+  newId,
+} from './demo-model'
 import { INITIAL_CASES, INITIAL_EXEC_CASES, RUN_CARDS, RUN_PICKER_LIST } from './seed'
 import type { RunCard } from './types'
 import type { DemoCase, ExecCase, ResultStatus } from './types'
 
-export const SEED_FOLDERS: Folder[] = [
+import { getActiveProjectCurrentRunId, listActiveProjectRuns } from './project-selectors'
+
+const NOW = '2026-06-01T10:00:00.000Z'
+
+export const SEED_FOLDERS_TEMPLATE: Omit<Folder, 'projectId'>[] = [
   { id: 'f-ctms', name: 'CTMS', parentId: null },
   { id: 'f-rec', name: 'Record management', parentId: 'f-ctms' },
   { id: 'f-role', name: 'Role & permissions', parentId: 'f-ctms' },
@@ -18,6 +29,20 @@ export const SEED_FOLDERS: Folder[] = [
   { id: 'f-import', name: 'Import validation', parentId: null },
 ]
 
+export const SEED_FOLDERS: Folder[] = SEED_FOLDERS_TEMPLATE.map((f) => ({
+  ...f,
+  projectId: DEFAULT_SEED_PROJECT_ID,
+}))
+
+export const SEED_PROJECT: Project = {
+  id: DEFAULT_SEED_PROJECT_ID,
+  name: 'Demo Project',
+  key: DEFAULT_SEED_PROJECT_KEY,
+  description: 'Default demo workspace with seed cases, folders, and runs.',
+  seedTemplate: 'demo',
+  createdAt: NOW,
+}
+
 const FOLDER_BY_SUITE: Record<string, string> = {
   CTMS: 'f-rec',
   eTMF: 'f-upload',
@@ -26,8 +51,6 @@ const FOLDER_BY_SUITE: Record<string, string> = {
   GlobalLearn: 'f-rec',
   'SSO/IAM': 'f-role',
 }
-
-const NOW = '2026-06-01T10:00:00.000Z'
 
 function legacyStepToCaseStep(
   action: string,
@@ -45,9 +68,10 @@ function legacyStepToCaseStep(
   }
 }
 
-function legacyCaseToCase(c: DemoCase, folderId?: string | null): Case {
+function legacyCaseToCase(c: DemoCase, projectId: string, folderId?: string | null): Case {
   return {
     id: c.id,
+    projectId,
     title: c.title,
     folderId: folderId ?? FOLDER_BY_SUITE[c.suite] ?? null,
     priority: LEGACY_TO_PRIORITY[c.pri],
@@ -61,7 +85,7 @@ function legacyCaseToCase(c: DemoCase, folderId?: string | null): Case {
   }
 }
 
-function execCaseToCase(c: ExecCase): Case {
+function execCaseToCase(c: ExecCase, projectId: string): Case {
   const steps: CaseStep[] = c.steps.map((s, i) => {
     const seedComment =
       c.sr[i] === 'fail' && i === 0 && c.id === 'TC-2041'
@@ -87,6 +111,7 @@ function execCaseToCase(c: ExecCase): Case {
 
   return {
     id: c.id,
+    projectId,
     title: c.title,
     folderId: 'f-role',
     priority: LEGACY_TO_PRIORITY[c.pri],
@@ -164,7 +189,7 @@ function buildExecutionFromStatus(c: ExecCase, status: ExecStatus): CaseExecutio
   return { ...base, status, stepResults }
 }
 
-function buildRunFromCard(card: RunCard, sealed = false): DemoRun {
+function buildRunFromCard(card: RunCard, projectId: string, sealed = false): DemoRun {
   const caseOrder = INITIAL_EXEC_CASES.map((c) => c.id)
   const statuses = distributeStatuses(caseOrder.length, card.pass, card.fail, card.blocked, card.notrun)
   const executions: Record<string, CaseExecution> = {}
@@ -173,6 +198,7 @@ function buildRunFromCard(card: RunCard, sealed = false): DemoRun {
   })
   return {
     id: card.id,
+    projectId,
     name: card.name,
     planId: `plan-${card.id.toLowerCase()}`,
     planName: card.plan,
@@ -184,7 +210,7 @@ function buildRunFromCard(card: RunCard, sealed = false): DemoRun {
   }
 }
 
-function buildDefaultRun(): DemoRun {
+function buildDefaultRun(projectId: string): DemoRun {
   const card = RUN_CARDS[0]
   const caseOrder = INITIAL_EXEC_CASES.map((c) => c.id)
   const executions: Record<string, CaseExecution> = {}
@@ -193,6 +219,7 @@ function buildDefaultRun(): DemoRun {
   }
   return {
     id: card.id,
+    projectId,
     name: card.name,
     planId: 'plan-ctms',
     planName: card.plan,
@@ -204,12 +231,12 @@ function buildDefaultRun(): DemoRun {
   }
 }
 
-function buildAllRuns(): DemoRun[] {
+function buildAllRuns(projectId: string): DemoRun[] {
   return RUN_PICKER_LIST.map((picker) => {
     const card = RUN_CARDS.find((r) => r.id === picker.id)
     if (card) {
-      if (card.id === 'R1') return buildDefaultRun()
-      return buildRunFromCard(card, false)
+      if (card.id === 'R1') return buildDefaultRun(projectId)
+      return buildRunFromCard(card, projectId, false)
     }
     if (picker.id === 'R6') {
       const sealedCard: RunCard = {
@@ -228,25 +255,43 @@ function buildAllRuns(): DemoRun[] {
         env: 'UAT',
         defects: [],
       }
-      return buildRunFromCard(sealedCard, true)
+      return buildRunFromCard(sealedCard, projectId, true)
     }
-    return buildDefaultRun()
+    return buildDefaultRun(projectId)
   })
 }
 
 export function mergeSeedRuns(state: DemoState): DemoState {
-  const seedRuns = buildAllRuns()
-  const byId = new Map(state.runs.map((r) => [r.id, r]))
+  const seedRuns = buildAllRuns(DEFAULT_SEED_PROJECT_ID)
+  const projectRuns = state.runs.filter((r) => r.projectId === DEFAULT_SEED_PROJECT_ID)
+  const otherRuns = state.runs.filter((r) => r.projectId !== DEFAULT_SEED_PROJECT_ID)
+  const byId = new Map(projectRuns.map((r) => [r.id, r]))
   for (const run of seedRuns) {
     if (!byId.has(run.id)) byId.set(run.id, run)
   }
-  const currentRunId = byId.has(state.currentRunId) ? state.currentRunId : seedRuns[0]?.id ?? state.currentRunId
-  return { ...state, runs: Array.from(byId.values()), currentRunId }
+  const mergedProjectRuns = Array.from(byId.values())
+  const prevRunId = state.currentRunIdByProject[DEFAULT_SEED_PROJECT_ID] ?? ''
+  const nextRunId = byId.has(prevRunId) ? prevRunId : seedRuns[0]?.id ?? prevRunId
+  return {
+    ...state,
+    runs: [...otherRuns, ...mergedProjectRuns],
+    currentRunIdByProject: {
+      ...state.currentRunIdByProject,
+      [DEFAULT_SEED_PROJECT_ID]: nextRunId,
+    },
+  }
 }
 
-export function buildInitialDemoState(): DemoState {
-  const libraryCases = INITIAL_CASES.map((c) => legacyCaseToCase(c))
-  const runCases = INITIAL_EXEC_CASES.map((c) => execCaseToCase(c))
+export function buildDemoProjectEntities(projectId: string): {
+  folders: Folder[]
+  cases: Case[]
+  runs: DemoRun[]
+  defaultRunId: string
+  nextCaseNum: number
+} {
+  const folders: Folder[] = SEED_FOLDERS_TEMPLATE.map((f) => ({ ...f, projectId }))
+  const libraryCases = INITIAL_CASES.map((c) => legacyCaseToCase(c, projectId))
+  const runCases = INITIAL_EXEC_CASES.map((c) => execCaseToCase(c, projectId))
 
   const caseMap = new Map<string, Case>()
   for (const c of libraryCases) caseMap.set(c.id, c)
@@ -255,6 +300,7 @@ export function buildInitialDemoState(): DemoState {
   const unfiledCases: Case[] = [
     {
       id: 'TC-UF-01',
+      projectId,
       title: 'Ad-hoc smoke check for release candidate build',
       folderId: null,
       priority: 'Medium',
@@ -270,6 +316,7 @@ export function buildInitialDemoState(): DemoState {
     },
     {
       id: 'TC-UF-02',
+      projectId,
       title: 'Verify notification banner after maintenance window',
       folderId: null,
       priority: 'Low',
@@ -288,15 +335,29 @@ export function buildInitialDemoState(): DemoState {
 
   for (const c of unfiledCases) caseMap.set(c.id, c)
 
-  const defaultRun = buildDefaultRun()
+  const defaultRun = buildDefaultRun(projectId)
 
   return {
-    module: 'TI-Core Platform',
-    folders: SEED_FOLDERS,
+    folders,
     cases: Array.from(caseMap.values()),
-    runs: buildAllRuns(),
-    currentRunId: defaultRun.id,
+    runs: buildAllRuns(projectId),
+    defaultRunId: defaultRun.id,
     nextCaseNum: 13,
+  }
+}
+
+export function buildInitialDemoState(): DemoState {
+  const { folders, cases, runs, defaultRunId, nextCaseNum } = buildDemoProjectEntities(DEFAULT_SEED_PROJECT_ID)
+
+  return {
+    schemaVersion: DEMO_SCHEMA_VERSION,
+    projectsById: { [DEFAULT_SEED_PROJECT_ID]: SEED_PROJECT },
+    activeProjectId: DEFAULT_SEED_PROJECT_ID,
+    folders,
+    cases,
+    runs,
+    currentRunIdByProject: { [DEFAULT_SEED_PROJECT_ID]: defaultRunId },
+    nextCaseNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextCaseNum },
   }
 }
 
@@ -304,6 +365,8 @@ export function getCaseById(state: DemoState, caseId: string): Case | undefined 
   return state.cases.find((c) => c.id === caseId)
 }
 
-export function getCurrentRun(state: DemoState): DemoRun {
-  return state.runs.find((r) => r.id === state.currentRunId) ?? state.runs[0]
+export function getCurrentRun(state: DemoState): DemoRun | undefined {
+  const projectRuns = listActiveProjectRuns(state)
+  const runId = getActiveProjectCurrentRunId(state)
+  return projectRuns.find((r) => r.id === runId) ?? projectRuns[0]
 }

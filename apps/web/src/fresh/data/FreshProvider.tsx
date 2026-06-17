@@ -10,8 +10,20 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder } from './demo-model'
-import { newId } from './demo-model'
+import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project } from './demo-model'
+import { DEFAULT_SEED_PROJECT_KEY, newId } from './demo-model'
+import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
+import {
+  getActiveProject,
+  getActiveProjectCurrentRunId,
+  getActiveProjectNextCaseNum,
+  getProjectByKey,
+  isProjectKeyUnique,
+  listActiveProjectFolders,
+  listActiveProjectRuns,
+  listActiveProjectTestCases,
+  listProjects,
+} from './project-selectors'
 import { nextCaseId } from './ui-utils'
 
 const STORAGE_KEY = 'relay-demo-v2'
@@ -30,19 +42,38 @@ function loadState(): DemoState {
       }
       return migrated
     }
-  } catch {
-    /* use seed */
+  } catch (err) {
+    console.error('[relay-demo] Failed to load persisted state:', err)
   }
   return buildInitialDemoState()
 }
 
 function persistState(state: DemoState) {
   if (typeof window === 'undefined') return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch (err) {
+    console.error('[relay-demo] Failed to persist state:', err)
+  }
+}
+
+function makeDefaultProject(): Project {
+  return {
+    id: newId('proj'),
+    name: 'Demo Project',
+    key: DEFAULT_SEED_PROJECT_KEY,
+    description: 'Default demo workspace with seed cases, folders, and runs.',
+    seedTemplate: 'demo',
+    createdAt: new Date().toISOString(),
+  }
 }
 
 export type FreshAction =
-  | { type: 'SET_MODULE'; module: string }
+  | { type: 'ADD_DEMO_PROJECT' }
+  | { type: 'CREATE_PROJECT'; name: string; key: string; description?: string }
+  | { type: 'UPDATE_PROJECT'; projectId: string; patch: Partial<Pick<Project, 'name' | 'key' | 'description'>> }
+  | { type: 'DELETE_PROJECT'; projectId: string }
+  | { type: 'SET_ACTIVE_PROJECT'; projectId: string }
   | { type: 'ADD_CASE'; case: Case }
   | { type: 'UPDATE_CASE'; caseId: string; patch: Partial<Case> }
   | { type: 'REPLACE_CASE'; case: Case }
@@ -59,12 +90,90 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
   switch (action.type) {
     case 'HYDRATE':
       return action.state
-    case 'SET_MODULE':
-      next = { ...state, module: action.module }
+    case 'ADD_DEMO_PROJECT': {
+      const meta = buildClonedDemoProjectMeta(state)
+      next = appendClonedDemoProject(state, meta)
       break
-    case 'ADD_CASE':
-      next = { ...state, cases: [...state.cases, action.case], nextCaseNum: state.nextCaseNum + 1 }
+    }
+    case 'CREATE_PROJECT': {
+      const project: Project = {
+        id: newId('proj'),
+        name: action.name.trim() || 'Untitled project',
+        key: action.key.toUpperCase(),
+        description: action.description?.trim() || undefined,
+        createdAt: new Date().toISOString(),
+      }
+      next = {
+        ...state,
+        projectsById: { ...state.projectsById, [project.id]: project },
+        activeProjectId: project.id,
+        currentRunIdByProject: { ...state.currentRunIdByProject, [project.id]: '' },
+        nextCaseNumByProject: { ...state.nextCaseNumByProject, [project.id]: 1 },
+      }
       break
+    }
+    case 'UPDATE_PROJECT': {
+      const existing = state.projectsById[action.projectId]
+      if (!existing) return state
+      next = {
+        ...state,
+        projectsById: {
+          ...state.projectsById,
+          [action.projectId]: { ...existing, ...action.patch },
+        },
+      }
+      break
+    }
+    case 'DELETE_PROJECT': {
+      const { projectId } = action
+      const { [projectId]: _removed, ...restProjects } = state.projectsById
+      const { [projectId]: _run, ...restRunIds } = state.currentRunIdByProject
+      const { [projectId]: _num, ...restNums } = state.nextCaseNumByProject
+
+      let projectsById = restProjects
+      let activeProjectId = state.activeProjectId
+      let currentRunIdByProject = restRunIds
+      let nextCaseNumByProject = restNums
+
+      if (state.activeProjectId === projectId) {
+        const remaining = Object.keys(restProjects)
+        if (remaining.length > 0) {
+          activeProjectId = remaining[0]
+        } else {
+          const fallback = makeDefaultProject()
+          projectsById = { [fallback.id]: fallback }
+          activeProjectId = fallback.id
+          currentRunIdByProject = { [fallback.id]: '' }
+          nextCaseNumByProject = { [fallback.id]: 1 }
+        }
+      }
+
+      next = {
+        ...state,
+        projectsById,
+        activeProjectId,
+        folders: state.folders.filter((f) => f.projectId !== projectId),
+        cases: state.cases.filter((c) => c.projectId !== projectId),
+        runs: state.runs.filter((r) => r.projectId !== projectId),
+        currentRunIdByProject,
+        nextCaseNumByProject,
+      }
+      break
+    }
+    case 'SET_ACTIVE_PROJECT':
+      if (!state.projectsById[action.projectId]) return state
+      next = { ...state, activeProjectId: action.projectId }
+      break
+    case 'ADD_CASE': {
+      const projectId = state.activeProjectId
+      const num = getActiveProjectNextCaseNum(state)
+      next = {
+        ...state,
+        cases: [...state.cases, action.case],
+        nextCaseNumByProject: { ...state.nextCaseNumByProject, [projectId]: num + 1 },
+      }
+      break
+    }
     case 'UPDATE_CASE':
       next = {
         ...state,
@@ -138,7 +247,13 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     case 'SET_CURRENT_RUN':
-      next = { ...state, currentRunId: action.runId }
+      next = {
+        ...state,
+        currentRunIdByProject: {
+          ...state.currentRunIdByProject,
+          [state.activeProjectId]: action.runId,
+        },
+      }
       break
     case 'ADD_FOLDER':
       next = { ...state, folders: [...state.folders, action.folder] }
@@ -153,9 +268,26 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
 interface FreshContextValue {
   state: DemoState
   dispatch: React.Dispatch<FreshAction>
-  currentRun: DemoRun
+  activeProject: Project
+  projects: Project[]
+  activeFolders: Folder[]
+  activeCases: Case[]
+  activeRuns: DemoRun[]
+  currentRun: DemoRun | undefined
+  getActiveProject: () => Project | undefined
+  listProjects: () => Project[]
+  listActiveProjectFolders: () => Folder[]
+  listActiveProjectTestCases: () => Case[]
+  listActiveProjectRuns: () => DemoRun[]
+  getProjectByKey: (key: string) => Project | undefined
+  isProjectKeyUnique: (key: string, excludeProjectId?: string) => boolean
+  addDemoProject: () => { key: string; name: string }
+  createProject: (input: { name: string; key: string; description?: string }) => void
+  updateProject: (projectId: string, patch: Partial<Pick<Project, 'name' | 'key' | 'description'>>) => void
+  deleteProject: (projectId: string) => void
+  setActiveProject: (projectId: string) => void
   getCase: (caseId: string) => Case | undefined
-  addCase: (data: Omit<Case, 'id' | 'updatedAt'>) => string
+  addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => string
   updateCase: (caseId: string, patch: Partial<Case>) => void
   replaceCase: (caseData: Case) => void
   updateExecution: (caseId: string, patch: Partial<CaseExecution>) => void
@@ -172,21 +304,34 @@ const FreshContext = createContext<FreshContextValue | null>(null)
 export function FreshProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadState)
 
+  const activeProject = useMemo(
+    () => getActiveProject(state) ?? Object.values(state.projectsById)[0],
+    [state],
+  )
+  const projects = useMemo(() => listProjects(state), [state])
+  const activeFolders = useMemo(() => listActiveProjectFolders(state), [state])
+  const activeCases = useMemo(() => listActiveProjectTestCases(state), [state])
+  const activeRuns = useMemo(() => listActiveProjectRuns(state), [state])
   const currentRun = useMemo(() => getCurrentRun(state), [state])
 
   const getCase = useCallback(
-    (caseId: string) => state.cases.find((c) => c.id === caseId),
-    [state.cases],
+    (caseId: string) => activeCases.find((c) => c.id === caseId),
+    [activeCases],
   )
 
   const addCase = useCallback(
-    (data: Omit<Case, 'id' | 'updatedAt'>) => {
-      const id = nextCaseId(state.nextCaseNum)
-      const newCase: Case = { ...data, id, updatedAt: new Date().toISOString() }
+    (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => {
+      const id = nextCaseId(getActiveProjectNextCaseNum(state))
+      const newCase: Case = {
+        ...data,
+        id,
+        projectId: state.activeProjectId,
+        updatedAt: new Date().toISOString(),
+      }
       dispatch({ type: 'ADD_CASE', case: newCase })
       return id
     },
-    [state.nextCaseNum],
+    [state],
   )
 
   const updateCase = useCallback((caseId: string, patch: Partial<Case>) => {
@@ -199,9 +344,11 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const updateExecution = useCallback(
     (caseId: string, patch: Partial<CaseExecution>) => {
-      dispatch({ type: 'UPDATE_RUN_EXECUTION', runId: state.currentRunId, caseId, patch })
+      const runId = getActiveProjectCurrentRunId(state)
+      if (!runId) return
+      dispatch({ type: 'UPDATE_RUN_EXECUTION', runId, caseId, patch })
     },
-    [state.currentRunId],
+    [state],
   )
 
   const addStepComment = useCallback(
@@ -219,26 +366,82 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   )
 
   const sealRun = useCallback(() => {
-    dispatch({ type: 'SEAL_RUN', runId: state.currentRunId })
-  }, [state.currentRunId])
+    const runId = getActiveProjectCurrentRunId(state)
+    if (!runId) return
+    dispatch({ type: 'SEAL_RUN', runId })
+  }, [state])
 
   const setCurrentRun = useCallback((runId: string) => {
     dispatch({ type: 'SET_CURRENT_RUN', runId })
   }, [])
 
-  const addFolder = useCallback((name: string, parentId?: string | null) => {
-    const id = newId('folder')
-    dispatch({ type: 'ADD_FOLDER', folder: { id, name, parentId: parentId ?? null } })
-    return id
+  const addFolder = useCallback(
+    (name: string, parentId?: string | null) => {
+      const id = newId('folder')
+      dispatch({
+        type: 'ADD_FOLDER',
+        folder: { id, projectId: state.activeProjectId, name, parentId: parentId ?? null },
+      })
+      return id
+    },
+    [state.activeProjectId],
+  )
+
+  const addDemoProject = useCallback(() => {
+    const meta = buildClonedDemoProjectMeta(state)
+    dispatch({ type: 'ADD_DEMO_PROJECT' })
+    return { key: meta.key, name: meta.name }
+  }, [state])
+
+  const createProject = useCallback((input: { name: string; key: string; description?: string }) => {
+    dispatch({ type: 'CREATE_PROJECT', ...input })
   }, [])
 
-  const isRunSealed = currentRun.sealed
+  const updateProject = useCallback(
+    (projectId: string, patch: Partial<Pick<Project, 'name' | 'key' | 'description'>>) => {
+      dispatch({ type: 'UPDATE_PROJECT', projectId, patch })
+    },
+    [],
+  )
+
+  const getProjectByKeyFn = useCallback((key: string) => getProjectByKey(state, key), [state])
+  const isProjectKeyUniqueFn = useCallback(
+    (key: string, excludeProjectId?: string) => isProjectKeyUnique(state, key, excludeProjectId),
+    [state],
+  )
+
+  const deleteProject = useCallback((projectId: string) => {
+    dispatch({ type: 'DELETE_PROJECT', projectId })
+  }, [])
+
+  const setActiveProject = useCallback((projectId: string) => {
+    dispatch({ type: 'SET_ACTIVE_PROJECT', projectId })
+  }, [])
+
+  const isRunSealed = currentRun?.sealed ?? false
 
   const value = useMemo(
     () => ({
       state,
       dispatch,
+      activeProject,
+      projects,
+      activeFolders,
+      activeCases,
+      activeRuns,
       currentRun,
+      getActiveProject: () => getActiveProject(state),
+      listProjects: () => listProjects(state),
+      listActiveProjectFolders: () => listActiveProjectFolders(state),
+      listActiveProjectTestCases: () => listActiveProjectTestCases(state),
+      listActiveProjectRuns: () => listActiveProjectRuns(state),
+      getProjectByKey: getProjectByKeyFn,
+      isProjectKeyUnique: isProjectKeyUniqueFn,
+      createProject,
+      addDemoProject,
+      updateProject,
+      deleteProject,
+      setActiveProject,
       getCase,
       addCase,
       updateCase,
@@ -253,8 +456,19 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     }),
     [
       state,
-      dispatch,
+      activeProject,
+      projects,
+      activeFolders,
+      activeCases,
+      activeRuns,
       currentRun,
+      getProjectByKeyFn,
+      isProjectKeyUniqueFn,
+      createProject,
+      addDemoProject,
+      updateProject,
+      deleteProject,
+      setActiveProject,
       getCase,
       addCase,
       updateCase,
