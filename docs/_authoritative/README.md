@@ -48,6 +48,7 @@ The full-stack **target** is [`ARCHITECTURE_BASELINE.md`](ARCHITECTURE_BASELINE.
 | [`AS_BUILT_SNAPSHOT.md`](AS_BUILT_SNAPSHOT.md) | **As-built** — stack, routes, what works, commands |
 | [`FRONTEND_CONTRACTS.md`](FRONTEND_CONTRACTS.md) | **UI contracts** — per-route data, actions, future APIs |
 | [`DOMAIN_MODEL.md`](DOMAIN_MODEL.md) | **Domain model** — multi-project scoping, IDs, invariants |
+| [`AI_HANDOFF.md`](AI_HANDOFF.md) | **Portable bootstrap** — paste into new AI chats for context |
 | [`ARCHITECTURE_BASELINE.md`](ARCHITECTURE_BASELINE.md) | **Target architecture** (backend phase) — full MVP intent |
 
 Originals preserved at their source paths; `_authoritative/` copies are the maintained versions for frontend phase work.
