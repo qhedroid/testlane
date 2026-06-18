@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 3`, multi-project + key routing) |
+| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 4`, multi-project + key routing + run keys) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
 | Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
@@ -29,7 +29,8 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | `/:projectKey/dashboard` | mock | `DashboardScreen` | Full metrics when `seedTemplate === 'demo'`; placeholder for other projects |
 | `/:projectKey/cases` | mock + localStorage | `CasesScreen` | Scoped to active project |
 | `/:projectKey/plans` | mock | `PlansScreen` | Spawn → testruns |
-| **`/:projectKey/testruns`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX |
+| **`/:projectKey/testruns`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — run list; no run selected |
+| **`/:projectKey/testruns/tr/:runKey`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX for selected run |
 | **`/runs/api`** | **api** | **`ApiRunsWorkspace`** | MySQL; not project-prefixed |
 | `/:projectKey/audit` | mock | `AuditScreen` | Static seed |
 | `/:projectKey/defects` | mock | `DefectsScreen` | `MOCK_DEFECTS` |
@@ -54,9 +55,10 @@ Machine-readable contracts: `apps/web/src/lib/relay/prototype-contracts.ts`.
 1. Open `http://localhost:3000` → `/DP/dashboard` (demo metrics).
 2. Browse/create test cases (`/DP/cases`) — persists in localStorage; isolated per project.
 3. View plans (`/DP/plans`) — spawn link opens `/DP/testruns`.
-4. Execute runs (`/DP/testruns`) — full execution UX unchanged; scoped to active project.
-5. **Project switching** — switcher rewrites URL (`/DP/testruns` → `/CTMS/testruns`); create via modal (name/key/description); **Add demo project** clones template as `DP1`, `DP2`, …
-6. Cmd+K search over active project's cases + runs.
+4. Execute runs — open `/DP/testruns/tr/00001` (or pick a run); full execution UX; scoped to active project. Run keys are per-project (`00001` …).
+5. **Create / duplicate / delete runs** — modal create, More… menu duplicate/delete, topbar seal toggle.
+6. **Project switching** — switcher rewrites URL (`/DP/testruns/tr/00001` → `/CTMS/testruns`; run selection stripped); create via modal (name/key/description); **Add demo project** clones template as `DP1`, `DP2`, …
+7. Cmd+K search over active project's cases + runs.
 
 ### API path (Docker + seed)
 
@@ -125,7 +127,7 @@ pnpm api:validate                 # needs dev server + seeded DB
 
 Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-v2'); location.reload()`
 
-**Migration:** v1→v2 multi-project; v2→v3 adds required `key`, `description`, renames seed to Demo Project / `DP` (migrates legacy `DEMO` key). Failed migration resets to seed.
+**Migration:** v1→v2 multi-project; v2→v3 adds required `key`, `description`, renames seed to Demo Project / `DP`; v3→v4 adds `runKey`, `nextRunNumByProject`, URL run selection. Failed migration resets to seed.
 
 ---
 

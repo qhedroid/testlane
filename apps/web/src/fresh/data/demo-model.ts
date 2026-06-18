@@ -70,17 +70,27 @@ export interface CaseExecution {
 export interface DemoRun {
   id: string
   projectId: string
+  /** Project-scoped display id for URLs, e.g. "00001" */
+  runKey: string
   name: string
+  description?: string
   planId?: string
   planName?: string
   due?: string
   createdAt: string
   sealed: boolean
+  /** When set, run is hidden from the default picker list */
+  archivedAt?: string
   caseOrder: string[]
   executions: Record<string, CaseExecution>
 }
 
-export const DEMO_SCHEMA_VERSION = 3
+export const DEMO_SCHEMA_VERSION = 4
+
+/** Format a per-project run counter as a 5-digit key (00001 … 99999). */
+export function formatRunKey(n: number): string {
+  return n.toString().padStart(5, '0')
+}
 
 export const DEFAULT_SEED_PROJECT_ID = 'proj-ti-core'
 export const DEFAULT_SEED_PROJECT_KEY = 'DP'
@@ -101,6 +111,7 @@ export interface LegacyDemoState {
   activeProjectId?: string
   currentRunIdByProject?: Record<string, string>
   nextCaseNumByProject?: Record<string, number>
+  nextRunNumByProject?: Record<string, number>
 }
 
 export interface DemoState {
@@ -112,6 +123,7 @@ export interface DemoState {
   runs: DemoRun[]
   currentRunIdByProject: Record<string, string>
   nextCaseNumByProject: Record<string, number>
+  nextRunNumByProject: Record<string, number>
 }
 
 export interface RunSummary {

@@ -90,17 +90,30 @@ This document defines what each visible screen shows, what data powers it today,
 
 ## Test Runs (demo execution UI)
 
-**Route:** `/:projectKey/testruns` (legacy `/runs` → redirect)
+**Route:** `/:projectKey/testruns` (no run selected) · `/:projectKey/testruns/tr/:runKey` (run selected, e.g. `/DP/testruns/tr/00001`)
+
+Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 **Current state:** Frontend prototype — **Shaun's v1.2 FRESH execution workspace** (primary demo route).
 
 **Real/API-backed, mock-backed, or placeholder:** Mock-backed (in-memory `FreshProvider` + localStorage).
 
-**Implementation:** `apps/web/src/fresh/screens/RunsScreen.tsx`, `fresh/styles/prototype-runs.css`.
+**Implementation:** `apps/web/src/fresh/screens/RunsScreen.tsx`, `fresh/components/TestRunsTopbar.tsx`, `fresh/components/CreateRunModal.tsx`, `fresh/styles/prototype-runs.css`.
 
-**Data shown:** Run picker, header donuts, case list with filters, step results, keyboard shortcuts, tabs (details/steps/activity/history/comments/defects). Runs and cases are **active-project scoped**.
+**Run selection:** URL is the source of truth when `/tr/:runKey` is present. Without a run key, the page shows a “select a test run” state (or empty state when the project has no runs). Invalid `runKey` redirects to `/:projectKey/testruns`.
 
-**User actions:** Full demo execution flow per `DEMO.md` — in-memory/localStorage; sealed runs block mutations. **Project switcher** in top bar (same `ProjectSwitcher` as `/cases`).
+**Run keys:** Project-scoped 5-digit keys (`00001` … `99999`), stored on `DemoRun.runKey`. Seeded demo runs R1–R6 map to `00001`–`00006`. Counter: `nextRunNumByProject`.
+
+**Data shown:** Run picker (with run key), header donuts, case list with filters, step results, keyboard shortcuts, tabs (details/steps/activity/history/comments/defects). Runs and cases are **active-project scoped**. Archived runs (`archivedAt`) hidden from default picker.
+
+**User actions:**
+- **Create run** — modal (name required, description optional); assigns next `runKey`, snapshots active project case ids into `caseOrder`, navigates to `/tr/:runKey`.
+- **Duplicate run** — copies `caseOrder` only; fresh `executions`; new `runKey`; navigates to new run.
+- **Archive / delete run** — store actions; delete confirms via dialog; active run clears selection and navigates to `/testruns`.
+- **Close / re-open test run** — topbar seal toggle (`sealRun` / `unsealRun`); sealed runs block mutations in UI and reducer.
+- **More… menu** — Edit, Close/Re-open, Duplicate, Show history, Reset all results, Create report, Export CSV/Excel, Delete, Create new run… — mostly UI placeholders except seal toggle, duplicate, delete, and create run entry points.
+- Full demo execution flow per `DEMO.md` — in-memory/localStorage.
+- **Project switcher** in top bar (same `ProjectSwitcher` as `/cases`); switching projects strips run selection (per-project key namespace).
 
 **Future API contract:** Same as `/runs/api` — wire this UI to existing HTTP routes without replacing the layout.
 
@@ -306,7 +319,10 @@ This document defines what each visible screen shows, what data powers it today,
 | `apps/web/src/fresh/data/seed.ts` | Dashboard seed metrics (demo-template projects only) |
 | `apps/web/src/fresh/data/demo-template.ts` | Immutable demo template + clone helpers |
 | `apps/web/src/fresh/data/demo-project-utils.ts` | Dashboard scoping + demo project clone |
-| `apps/web/src/fresh/data/FreshProvider.tsx` | In-memory state (`relay-demo-v2`, schema v3) |
+| `apps/web/src/fresh/data/FreshProvider.tsx` | In-memory state (`relay-demo-v2`, schema v4) |
+| `apps/web/src/fresh/data/run-utils.ts` | Run key helpers, v4 migration |
+| `apps/web/src/fresh/components/TestRunsTopbar.tsx` | Seal, edit, report, More… menu |
+| `apps/web/src/fresh/components/CreateRunModal.tsx` | Create run form |
 | `apps/web/src/fresh/data/project-selectors.ts` | Active-project list helpers |
 | `apps/web/src/fresh/lib/project-routes.ts` | Key-prefixed path helpers |
 | `apps/web/src/fresh/components/ProjectSwitcher.tsx` | Top-bar project CRUD + switch |

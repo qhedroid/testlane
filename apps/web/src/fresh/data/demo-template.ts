@@ -11,6 +11,7 @@ export interface ImmutableDemoTemplate {
   runs: DemoRun[]
   defaultRunId: string
   nextCaseNum: number
+  nextRunNum: number
 }
 
 let cachedTemplate: ImmutableDemoTemplate | null = null
@@ -26,6 +27,7 @@ export function getImmutableDemoTemplate(): ImmutableDemoTemplate {
       runs: structuredClone(built.runs),
       defaultRunId: built.defaultRunId,
       nextCaseNum: built.nextCaseNum,
+      nextRunNum: built.nextRunNum,
     }
   }
   return cachedTemplate
@@ -40,6 +42,7 @@ export function cloneDemoTemplateEntities(
   runs: DemoRun[]
   defaultRunId: string
   nextCaseNum: number
+  nextRunNum: number
 } {
   const folderIdMap = new Map<string, string>()
   const folders: Folder[] = template.folders.map((f) => {
@@ -115,5 +118,6 @@ export function cloneDemoTemplateEntities(
     runs,
     defaultRunId,
     nextCaseNum: template.nextCaseNum,
+    nextRunNum: template.nextRunNum,
   }
 }

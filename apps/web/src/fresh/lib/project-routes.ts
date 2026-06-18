@@ -39,6 +39,21 @@ export function projectPath(projectKey: string, module: ModuleSlug = 'dashboard'
   return `/${projectKey}/${MODULE_SLUGS[module]}`
 }
 
+/** Canonical test run path — with or without selected run key. */
+export function testRunPath(projectKey: string, runKey?: string): string {
+  const base = projectPath(projectKey, 'testruns')
+  return runKey ? `${base}/tr/${runKey}` : base
+}
+
+/** Extract runKey from /:projectKey/testruns/tr/:runKey paths. */
+export function parseTestRunKey(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts.length === 4 && parts[1] === MODULE_SLUGS.testruns && parts[2] === 'tr') {
+    return parts[3]
+  }
+  return null
+}
+
 export function parseProjectPath(pathname: string): { projectKey: string; module: ModuleSlug } | null {
   if (pathname.startsWith('/runs/api')) return null
   const parts = pathname.split('/').filter(Boolean)
@@ -55,8 +70,9 @@ export function getModuleFromPathname(pathname: string): ModuleSlug | null {
   return LEGACY_PATH_TO_MODULE[pathname] ?? null
 }
 
-/** Keep current module when switching project keys */
+/** Keep current module when switching project keys. Strips test run selection (per-project namespace). */
 export function switchProjectPath(pathname: string, newProjectKey: string): string {
+  if (parseTestRunKey(pathname)) return projectPath(newProjectKey, 'testruns')
   const parsed = parseProjectPath(pathname)
   if (parsed) return projectPath(newProjectKey, parsed.module)
   const legacy = LEGACY_PATH_TO_MODULE[pathname]

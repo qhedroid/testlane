@@ -1,12 +1,15 @@
 'use client'
 
 import Link from 'next/link'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
-import type { Case, ExecStatus } from '../data/demo-model'
+import type { Case, DemoRun, ExecStatus } from '../data/demo-model'
 import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
+import { CreateRunModal } from '../components/CreateRunModal'
+import { TestRunsTopbar } from '../components/TestRunsTopbar'
 import { DEFECT_NAMES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
@@ -15,6 +18,7 @@ import { ProjectSwitcher } from '../components/ProjectSwitcher'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
+import { parseTestRunKey, testRunPath } from '../lib/project-routes'
 
 type FilterTab = 'all' | ExecStatus
 type EdTab = 'details' | 'steps' | 'activity' | 'history' | 'comments' | 'defects'
@@ -71,28 +75,80 @@ interface RunCaseRow {
 }
 
 export function RunsScreen() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const params = useParams()
   const {
+    activeProject,
     activeRuns,
-    currentRun,
     getCase,
     updateExecution,
     addStepComment,
     addGeneralComment,
     setCurrentRun,
     isRunSealed,
+    sealRun,
+    unsealRun,
+    duplicateRun,
+    deleteRun,
   } = useFresh()
   const { openShortcuts } = useFreshUI()
   const projectHref = useProjectHref()
+
+  const runKeyFromUrl = (params.runKey as string | undefined) ?? parseTestRunKey(pathname) ?? undefined
+  const currentRun: DemoRun | undefined = useMemo(() => {
+    if (!runKeyFromUrl) return undefined
+    return activeRuns.find((r) => r.runKey === runKeyFromUrl)
+  }, [activeRuns, runKeyFromUrl])
+
+  const [createOpen, setCreateOpen] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [runSearch, setRunSearch] = useState('')
   const [activeCaseId, setActiveCaseId] = useState(currentRun?.caseOrder[0] ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
-  const [priHidden, setPriHidden] = useState(false)
   const [edTab, setEdTab] = useState<EdTab>('details')
   const [edVisible, setEdVisible] = useState(true)
   const [edFullscreen, setEdFullscreen] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (runKeyFromUrl && !currentRun) {
+      router.replace(testRunPath(activeProject.key))
+    }
+  }, [runKeyFromUrl, currentRun, activeProject.key, router])
+
+  useEffect(() => {
+    if (currentRun) setCurrentRun(currentRun.id)
+  }, [currentRun?.id, setCurrentRun])
+
+  const handleSealToggle = useCallback(() => {
+    if (!currentRun) return
+    if (currentRun.sealed) unsealRun()
+    else sealRun()
+  }, [currentRun, sealRun, unsealRun])
+
+  const handleDuplicate = useCallback(() => {
+    if (!currentRun) return
+    const result = duplicateRun(currentRun.id)
+    if (result) router.push(testRunPath(activeProject.key, result.runKey))
+  }, [currentRun, duplicateRun, activeProject.key, router])
+
+  const handleDelete = useCallback(() => {
+    if (!currentRun) return
+    if (!window.confirm(`Delete "${currentRun.name}" permanently? This cannot be undone.`)) return
+    deleteRun(currentRun.id)
+    router.push(testRunPath(activeProject.key))
+  }, [currentRun, deleteRun, activeProject.key, router])
+
+  const handleSelectRun = useCallback(
+    (run: DemoRun) => {
+      router.push(testRunPath(activeProject.key, run.runKey))
+      setPickerOpen(false)
+      setPickerQuery('')
+    },
+    [activeProject.key, router],
+  )
 
   const summary = useMemo(() => (currentRun ? runSummary(currentRun) : null), [currentRun])
 
@@ -125,14 +181,15 @@ export function RunsScreen() {
         const s = runSummary(run)
         const pct = s.total ? Math.round(((s.total - s.notRun) / s.total) * 100) : 0
         return {
-          id: run.id,
+          run,
           name: run.name,
+          runKey: run.runKey,
           status: run.sealed ? 'sealed' as const : (meta?.status ?? 'act'),
           pct,
           cases: s.total,
         }
       })
-      .filter((r) => !q || r.name.toLowerCase().includes(q))
+      .filter((r) => !q || r.name.toLowerCase().includes(q) || r.runKey.includes(q))
   }, [activeRuns, pickerQuery])
 
   const filteredRows = useMemo(() => {
@@ -235,30 +292,134 @@ export function RunsScreen() {
     return () => window.removeEventListener('keydown', onKey)
   }, [linkDefect, navCase, openShortcuts, setResult, isRunSealed])
 
-  if (!currentRun) {
+  const prototypeBanner = (
+    <PrototypeBanner>
+      <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
+      (resets on reload). MySQL-backed workspace:{' '}
+      <Link href="/runs/api" className="bc-link">/runs/api</Link>.
+    </PrototypeBanner>
+  )
+
+  const breadcrumb = (
+    <div className="bc">
+      <Link href={projectHref('dashboard')} className="bc-link">Dashboard</Link>
+      <span className="sep">/</span>
+      <span style={{ color: 'var(--accent)', fontSize: 11.5 }}>{activeProject.name}</span>
+      <span className="sep">/</span>
+      <span className="cur">Test runs</span>
+      {currentRun ? (
+        <>
+          <span className="sep">/</span>
+          <span className="cur">{currentRun.runKey}</span>
+        </>
+      ) : null}
+    </div>
+  )
+
+  const runPicker = (
+    <div className="run-sel-bar" ref={pickerRef}>
+      <button type="button" className="run-sel-btn" onClick={() => setPickerOpen((v) => !v)}>
+        <i className="ti ti-player-play" style={{ fontSize: 11, color: 'var(--accent)' }} />
+        <span className="run-sel-name">{currentRun?.name ?? 'Select a test run…'}</span>
+        {currentRun ? (
+          <span className="run-sel-key">{currentRun.runKey}</span>
+        ) : null}
+        <i className="ti ti-chevron-down" style={{ fontSize: 10, opacity: 0.5, flexShrink: 0 }} />
+      </button>
+      {pickerOpen ? (
+        <div className="run-sel-dd open">
+          <div className="run-sel-search">
+            <i className="ti ti-search" />
+            <input type="text" placeholder="Search runs…" value={pickerQuery} onChange={(e) => setPickerQuery(e.target.value)} autoFocus />
+          </div>
+          <div className="run-sel-list">
+            {pickerRuns.map((r) => {
+              const pill = PICKER_PILL[r.status] ?? PICKER_PILL.act
+              return (
+                <div
+                  key={r.run.id}
+                  className={`run-sel-item${r.run.id === currentRun?.id ? ' on' : ''}`}
+                  onClick={() => handleSelectRun(r.run)}
+                >
+                  <span className={`pill ${pill.cls}`} style={{ fontSize: 9.5, padding: '1px 5px', flexShrink: 0 }}>{pill.lbl}</span>
+                  <span className="rsi-key">{r.runKey}</span>
+                  <span className="rsi-name">{r.name}</span>
+                  <span className="rsi-meta">{r.pct}% · {r.cases}</span>
+                </div>
+              )
+            })}
+          </div>
+          <button type="button" className="run-sel-create" onClick={() => { setPickerOpen(false); setCreateOpen(true) }}>
+            <i className="ti ti-plus" style={{ fontSize: 11 }} /> Create new run…
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+
+  if (activeRuns.length === 0) {
     return (
       <div className="view runs-v12">
-        <PrototypeBanner>
-          <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
-          (resets on reload). MySQL-backed workspace:{' '}
-          <Link href="/runs/api" className="bc-link">/runs/api</Link>.
-        </PrototypeBanner>
+        {prototypeBanner}
         <div className="topbar">
           <ProjectSwitcher />
           <div className="proj-sep" />
-          <div className="bc">
-            <Link href={projectHref('dashboard')} className="bc-link">Dashboard</Link>
-            <span className="sep">/</span>
-            <span className="cur">Test runs</span>
-          </div>
+          {breadcrumb}
+          <TestRunsTopbar
+            currentRun={undefined}
+            onSealToggle={handleSealToggle}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            onCreateRun={() => setCreateOpen(true)}
+          />
         </div>
         <div className="empty-state on">
           <div className="empty-card">
             <i className="ti ti-player-play" />
             <div className="empty-title">No runs in this project</div>
-            <div className="empty-copy">Switch to a project with runs, or create test cases and spawn a run from Test Plans.</div>
+            <div className="empty-copy">Create a test run to start executing cases in this project.</div>
+            <button type="button" className="btn btn-p" style={{ marginTop: 12 }} onClick={() => setCreateOpen(true)}>
+              <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
+            </button>
           </div>
         </div>
+        <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      </div>
+    )
+  }
+
+  if (!currentRun) {
+    return (
+      <div className="view runs-v12">
+        {prototypeBanner}
+        <div className="topbar">
+          <ProjectSwitcher />
+          <div className="proj-sep" />
+          {breadcrumb}
+          <TestRunsTopbar
+            currentRun={undefined}
+            onSealToggle={handleSealToggle}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            onCreateRun={() => setCreateOpen(true)}
+          />
+        </div>
+        <div className="tr-lay tr-lay-select">
+          <div className="ec-pane">
+            {runPicker}
+            <div className="empty-state on" style={{ position: 'relative', flex: 1 }}>
+              <div className="empty-card">
+                <i className="ti ti-list-check" />
+                <div className="empty-title">Select a test run</div>
+                <div className="empty-copy">Choose a run from the picker above, or create a new one.</div>
+                <button type="button" className="btn btn-p" style={{ marginTop: 12 }} onClick={() => setCreateOpen(true)}>
+                  <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
       </div>
     )
   }
@@ -268,78 +429,29 @@ export function RunsScreen() {
   const runMeta = RUN_PICKER_LIST.find((r) => r.id === currentRun.id)
 
   return (
-    <div className={`view runs-v12${priHidden ? ' pri-hidden' : ''}`}>
-      <PrototypeBanner>
-        <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
-        (resets on reload). MySQL-backed workspace:{' '}
-        <Link href="/runs/api" className="bc-link">
-          /runs/api
-        </Link>
-        .
-      </PrototypeBanner>
+    <div className="view runs-v12">
+      {prototypeBanner}
       <div className="topbar">
         <ProjectSwitcher />
         <div className="proj-sep" />
-        <div className="bc">
-          <Link href={projectHref('dashboard')} className="bc-link">Dashboard</Link>
-          <span className="sep">/</span>
-          <span style={{ color: 'var(--accent)', fontSize: 11.5 }}>TI Platform</span>
-          <span className="sep">/</span>
-          <span className="cur">Test runs</span>
-        </div>
-        <div className="ta">
-          <div className="autosave"><div className="as-dot" />Auto-saving</div>
-          <div style={{ width: 1, height: 14, background: 'var(--border)' }} />
-          <div className={`pri-toggle${priHidden ? ' off' : ' on'}`} onClick={() => setPriHidden((v) => !v)} title="Toggle priority labels">
-            <div className="pri-toggle-dot" />
-            <span>Priorities</span>
-          </div>
-          <button type="button" className="btn"><i className="ti ti-filter" style={{ fontSize: 12 }} /> Filter</button>
-          <button type="button" className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New run</button>
-        </div>
+        {breadcrumb}
+        <TestRunsTopbar
+          currentRun={currentRun}
+          onSealToggle={handleSealToggle}
+          onDuplicate={handleDuplicate}
+          onDelete={handleDelete}
+          onCreateRun={() => setCreateOpen(true)}
+        />
       </div>
 
       <div className="tr-lay">
         <div className="ec-pane">
-          <div className="run-sel-bar" ref={pickerRef}>
-            <button type="button" className="run-sel-btn" onClick={() => setPickerOpen((v) => !v)}>
-              <i className="ti ti-player-play" style={{ fontSize: 11, color: 'var(--accent)' }} />
-              <span className="run-sel-name">{currentRun.name}</span>
-              <i className="ti ti-chevron-down" style={{ fontSize: 10, opacity: 0.5, flexShrink: 0 }} />
-            </button>
-            {pickerOpen ? (
-              <div className="run-sel-dd open">
-                <div className="run-sel-search">
-                  <i className="ti ti-search" />
-                  <input type="text" placeholder="Search runs…" value={pickerQuery} onChange={(e) => setPickerQuery(e.target.value)} autoFocus />
-                </div>
-                <div className="run-sel-list">
-                  {pickerRuns.map((r) => {
-                    const pill = PICKER_PILL[r.status] ?? PICKER_PILL.act
-                    return (
-                      <div
-                        key={r.id}
-                        className={`run-sel-item${r.id === currentRun.id ? ' on' : ''}`}
-                        onClick={() => {
-                          setCurrentRun(r.id)
-                          setPickerOpen(false)
-                          setPickerQuery('')
-                        }}
-                      >
-                        <span className={`pill ${pill.cls}`} style={{ fontSize: 9.5, padding: '1px 5px', flexShrink: 0 }}>{pill.lbl}</span>
-                        <span className="rsi-name">{r.name}</span>
-                        <span className="rsi-meta">{r.pct}% · {r.cases}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : null}
-          </div>
+          {runPicker}
 
           <div className="ec-run-hd">
             <div className="ec-rttl">{currentRun.name}</div>
             <div className="ec-rmt">
+              <span className="ec-run-key">{currentRun.runKey}</span>
               <span className={`pill ${isRunSealed ? 'p-pass' : 'p-act'}`} style={{ fontSize: 10, padding: '1px 5px' }}>{isRunSealed ? 'Sealed' : 'Active'}</span>
               {currentRun.due ? <span>Due: {currentRun.due}</span> : null}
               {currentRun.planName ? <span>Plan: {currentRun.planName}</span> : null}
@@ -426,6 +538,7 @@ export function RunsScreen() {
           </div>
         ) : null}
       </div>
+      <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   )
 }

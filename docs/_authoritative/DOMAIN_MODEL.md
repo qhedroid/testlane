@@ -67,7 +67,7 @@ Roles (capability, not job title): `super_admin` > `admin` > `contributor` > `vi
 
 ## Prototype model (FRESH / localStorage)
 
-State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 3`).
+State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 4`).
 
 | Entity | Prototype type | Notes |
 |--------|----------------|-------|
@@ -75,7 +75,7 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 | **Folder** | `Folder { id, projectId, name, parentId? }` | Scoped to `projectId`. |
 | **TestCase** | `Case { id, projectId, title, folderId, priority, type, steps[], tags[], assignee, … }` | Steps embed comments. |
 | **TestPlan** | Static `PLANS` in seed | Not in `DemoState`; not linked to cases in state. |
-| **TestRun** | `DemoRun { id, projectId, name, planId, sealed, caseOrder[], executions }` | `executions` keyed by case id. `currentRunIdByProject` tracks picker per project. |
+| **TestRun** | `DemoRun { id, projectId, runKey, name, description?, planId, sealed, archivedAt?, caseOrder[], executions }` | `runKey` is project-scoped 5-digit display id for URLs. `executions` keyed by case id. `currentRunIdByProject` tracks picker per project (synced from URL when `/tr/:runKey` present). |
 | **Execution** | `CaseExecution { status, stepResults, defects[], assignee }` | Full step-level in demo `/runs`. |
 | **Defect** | String IDs on execution + `MOCK_DEFECTS` screen | Not a first-class entity in state. |
 
@@ -83,15 +83,18 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 
 1. **Multi-project isolation** — folders, cases, and runs carry `projectId`. Selectors (`listActiveProject*`) and `FreshProvider` scope `/cases` and `/testruns` to `activeProjectId`.
 2. **Key-based routing** — canonical URLs are `/:projectKey/:module` (e.g. `/DP/dashboard`, `/CTMS/testruns`). `ProjectRouteSync` sets `activeProjectId` from URL key; switcher navigates to same module under new key. Legacy unprefixed paths (`/runs`, `/cases`, …) redirect client-side to active project's prefixed path.
-3. **Active project persistence** — `activeProjectId` and `currentRunIdByProject` survive reload via `relay-demo-v2`.
-4. **Project keys** — unique across `projectsById`; stored uppercase; validated on create (`[A-Z0-9_-]`).
-5. **Project delete** — **cascade delete**: removing a project deletes its folders, cases, and runs. If the active project is deleted, the store activates another project or creates `"Demo Project"` / `DP` when none remain.
-6. **Dashboard scoping** — dashboard metrics (`RUN_CARDS`, attention/coverage panels) render only when `activeProject.seedTemplate === 'demo'`. Blank/user-created projects show a placeholder dashboard (zeroed summary cards + “Dashboard coming soon”).
-7. **Demo template cloning** — “Add demo project” clones from an **immutable in-code template** (`demo-template.ts`), never from live store state. Keys are incremental: `DP1`, `DP2`, … (base seed remains `DP`). All cloned entity ids are remapped for full project isolation.
-8. **Run case order** — `caseOrder[]` defines list order; executions map must align by case id.
-9. **Sealed run** — when `DemoRun.sealed === true`, result/step/defect mutations are blocked (`isRunSealed` in `RunsScreen`).
-10. **Folder tree** — `parentId` nullable; descendant filtering via `folderDescendantIds()`.
-11. **Status vocabulary** — case execution uses title-case (`Passed`, `Failed`, …); API uses lowercase enum (`pass`, `fail`, …) — mapping helpers in `demo-model.ts`.
+3. **Active project persistence** — `activeProjectId`, `currentRunIdByProject`, and `nextRunNumByProject` survive reload via `relay-demo-v2`.
+4. **Run URL routing** — selected run reflected at `/:projectKey/testruns/tr/:runKey` (5-digit `runKey`). No segment when no run selected. Invalid key → redirect to `/:projectKey/testruns`.
+5. **Project keys** — unique across `projectsById`; stored uppercase; validated on create (`[A-Z0-9_-]`).
+6. **Project delete** — **cascade delete**: removing a project deletes its folders, cases, and runs. If the active project is deleted, the store activates another project or creates `"Demo Project"` / `DP` when none remain.
+7. **Dashboard scoping** — dashboard metrics (`RUN_CARDS`, attention/coverage panels) render only when `activeProject.seedTemplate === 'demo'`. Blank/user-created projects show a placeholder dashboard (zeroed summary cards + “Dashboard coming soon”).
+8. **Demo template cloning** — “Add demo project” clones from an **immutable in-code template** (`demo-template.ts`), never from live store state. Keys are incremental: `DP1`, `DP2`, … (base seed remains `DP`). All cloned entity ids are remapped for full project isolation.
+9. **Run case order** — `caseOrder[]` defines list order; executions map must align by case id.
+10. **Run keys** — `runKey` assigned incrementally per project (`nextRunNumByProject`, starting at `00001`). Seeded R1–R6 → `00001`–`00006`.
+11. **Sealed run** — when `DemoRun.sealed === true`, result/step/defect/comment mutations blocked in UI and `UPDATE_RUN_EXECUTION` reducer. Topbar Close/Re-open toggles seal state.
+12. **Archived run** — when `archivedAt` set, run hidden from default picker list.
+13. **Folder tree** — `parentId` nullable; descendant filtering via `folderDescendantIds()`.
+14. **Status vocabulary** — case execution uses title-case (`Passed`, `Failed`, …); API uses lowercase enum (`pass`, `fail`, …) — mapping helpers in `demo-model.ts`.
 
 ### Schema migration (localStorage)
 
@@ -99,7 +102,8 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 |---------|-------|-----------|
 | *(none / 1)* | `module: string`, flat folders/cases/runs | → v2 multi-project blob |
 | **2** | Multi-project without required keys | → v3: seed renamed to Demo Project / `DP`; all projects get required `key`; optional `description`; legacy `DEMO` key migrated to `DP` |
-| **3** | `Project { name, key, description?, seedTemplate? }`, key-based URLs | Current. Assignee normalization still runs; `seedTemplate: 'demo'` set on seed and cloned demo projects. |
+| **3** | `Project { name, key, description?, seedTemplate? }`, key-based URLs | Current through early v4 work |
+| **4** | `DemoRun.runKey`, `description?`, `archivedAt?`, `nextRunNumByProject`, URL `/testruns/tr/:runKey` | **Current.** v3→v4 assigns run keys per project (seed R1–R6 → 00001–00006); initializes counters. |
 
 On migration failure: `console.error` and fall back to `buildInitialDemoState()` (seeded **Demo Project** / `DP`).
 
