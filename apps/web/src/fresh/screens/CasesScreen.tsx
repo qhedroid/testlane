@@ -16,6 +16,7 @@ import {
 } from '../data/demo-model'
 import { EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, TEAM_USERS } from '../data/team-users'
+import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
@@ -31,8 +32,8 @@ const STATUS_CHIPS: { label: string; value: StatusFilter }[] = [
 
 const PRI_OPTIONS: CasePriority[] = ['Critical', 'High', 'Medium', 'Low']
 
-function caseLastStatus(state: { runs: { executions: Record<string, { status: ExecStatus }> }[] }, caseId: string): ExecStatus {
-  for (const run of state.runs) {
+function caseLastStatus(runs: { executions: Record<string, { status: ExecStatus }> }[], caseId: string): ExecStatus {
+  for (const run of runs) {
     const ex = run.executions[caseId]
     if (ex) return ex.status
   }
@@ -154,8 +155,9 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { state, addCase, replaceCase, addFolder } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, addCase, replaceCase, addFolder } = useFresh()
   const { openCreateCase } = useFreshUI()
+  const projectHref = useProjectHref()
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
   const [selectedFolderId, setSelectedFolderId] = useState<string | '__unfiled__'>('f-rec')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -170,27 +172,36 @@ export function CasesScreen() {
   const [newFolderDraft, setNewFolderDraft] = useState<{ parentId: string | null } | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
+  useEffect(() => {
+    const roots = activeFolders.filter((f) => !f.parentId)
+    const firstFolder = roots[0]?.id ?? '__unfiled__'
+    setSelectedFolderId(firstFolder)
+    setSelectedIds(new Set())
+    setDetailCaseId(null)
+    setOpenFolders(new Set(roots.map((f) => f.id)))
+  }, [activeProject.id])
+
   const rootFolders = useMemo(
-    () => state.folders.filter((f) => !f.parentId).sort((a, b) => a.name.localeCompare(b.name)),
-    [state.folders],
+    () => activeFolders.filter((f) => !f.parentId).sort((a, b) => a.name.localeCompare(b.name)),
+    [activeFolders],
   )
   const childFolders = useCallback(
     (parentId: string) =>
-      state.folders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name)),
-    [state.folders],
+      activeFolders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name)),
+    [activeFolders],
   )
 
   const folderCases = useMemo(
-    () => casesInFolder(state.cases, state.folders, selectedFolderId),
-    [state.cases, state.folders, selectedFolderId],
+    () => casesInFolder(activeCases, activeFolders, selectedFolderId),
+    [activeCases, activeFolders, selectedFolderId],
   )
 
   const displayedCases = useMemo(() => {
     if (statusFilter === 'all') return folderCases
-    return folderCases.filter((c) => EXEC_TO_LEGACY[caseLastStatus(state, c.id)] === statusFilter)
-  }, [folderCases, statusFilter, state])
+    return folderCases.filter((c) => EXEC_TO_LEGACY[caseLastStatus(activeRuns, c.id)] === statusFilter)
+  }, [folderCases, statusFilter, activeRuns])
 
-  const detail = detailCaseId ? state.cases.find((c) => c.id === detailCaseId) ?? null : null
+  const detail = detailCaseId ? activeCases.find((c) => c.id === detailCaseId) ?? null : null
 
   function toggleFolder(id: string) {
     setOpenFolders((prev) => {
@@ -206,7 +217,7 @@ export function CasesScreen() {
     setDetailCaseId(null)
     setSelectedIds(new Set())
     if (id !== '__unfiled__') {
-      const ancestors = folderAncestorIds(state.folders, id)
+      const ancestors = folderAncestorIds(activeFolders, id)
       if (ancestors.length > 0) {
         setOpenFolders((prev) => {
           const next = new Set(prev)
@@ -261,7 +272,7 @@ export function CasesScreen() {
   useEffect(() => {
     if (!newFolderDraft) return
     if (newFolderDraft.parentId) {
-      const ancestors = folderAncestorIds(state.folders, newFolderDraft.parentId)
+      const ancestors = folderAncestorIds(activeFolders, newFolderDraft.parentId)
       setOpenFolders((prev) => {
         const next = new Set(prev)
         next.add(newFolderDraft.parentId!)
@@ -276,7 +287,7 @@ export function CasesScreen() {
         el.select()
       }
     })
-  }, [newFolderDraft, state.folders])
+  }, [newFolderDraft, activeFolders])
 
   function startCreateFolder() {
     const parentId = selectedFolderId === '__unfiled__' ? null : selectedFolderId
@@ -294,7 +305,7 @@ export function CasesScreen() {
     const id = addFolder(trimmed, parentId)
     setNewFolderDraft(null)
     if (parentId) {
-      const ancestors = folderAncestorIds(state.folders, parentId)
+      const ancestors = folderAncestorIds(activeFolders, parentId)
       setOpenFolders((prev) => {
         const next = new Set(prev)
         next.add(parentId)
@@ -309,14 +320,14 @@ export function CasesScreen() {
     setNewFolderDraft(null)
   }
 
-  const unfiledCount = state.cases.filter((c) => !c.folderId).length
+  const unfiledCount = activeCases.filter((c) => !c.folderId).length
 
   return (
     <div className="view">
       <FreshTopbar
         breadcrumbs={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'TI-Core Platform' },
+          { label: 'Dashboard', href: projectHref('dashboard') },
+          { label: activeProject.name },
           { label: 'Test cases' },
         ]}
         searchPlaceholder="Search cases…"
@@ -351,8 +362,8 @@ export function CasesScreen() {
                 key={folder.id}
                 folder={folder}
                 depth={0}
-                cases={state.cases}
-                folders={state.folders}
+                cases={activeCases}
+                folders={activeFolders}
                 childFolders={childFolders}
                 openFolders={openFolders}
                 selectedFolderId={selectedFolderId}
@@ -447,7 +458,7 @@ export function CasesScreen() {
                 </thead>
                 <tbody>
                   {displayedCases.map((c) => {
-                    const last = caseLastStatus(state, c.id)
+                    const last = caseLastStatus(activeRuns, c.id)
                     return (
                       <tr
                         key={c.id}
@@ -469,7 +480,7 @@ export function CasesScreen() {
                         <td className="tmono">{c.id}</td>
                         <td className="title-cell" style={{ maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</td>
                         <td><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></td>
-                        <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{folderLabel(state.folders, c.folderId)}</td>
+                        <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{folderLabel(activeFolders, c.folderId)}</td>
                         <td style={{ color: 'var(--text2)' }}>{c.type}</td>
                         <td><span className={`pill ${EXEC_PILL_MAP[last]}`}>{EXEC_PILL_LABEL[last]}</span></td>
                         <td style={{ color: 'var(--text2)' }}>{displayAssigneeName(c.assignee)}</td>
@@ -501,7 +512,7 @@ export function CasesScreen() {
           {detail ? (
             <CaseDetail
               caseData={detail}
-              folders={state.folders}
+              folders={activeFolders}
               tab={detailTab}
               onTab={setDetailTab}
               onClose={() => setDetailCaseId(null)}
@@ -569,7 +580,7 @@ function CaseDetail({
   onToggleMaximize,
 }: {
   caseData: Case
-  folders: { id: string; name: string; parentId?: string | null }[]
+  folders: Folder[]
   tab: DetailTab
   onTab: (t: DetailTab) => void
   onClose: () => void

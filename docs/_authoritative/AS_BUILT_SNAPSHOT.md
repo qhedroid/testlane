@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` |
+| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 3`, multi-project + key routing) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
 | Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
@@ -22,20 +22,26 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 
 ## Routes
 
+**Canonical pattern:** `/:projectKey/:module` — e.g. `/DP/dashboard`, `/CTMS/testruns`.
+
 | Route | Data state | Component | Notes |
 |-------|------------|-----------|-------|
-| `/dashboard` | mock | `DashboardScreen` | Static seed |
-| `/cases` | mock + localStorage | `CasesScreen` | User cases persist in browser |
-| `/plans` | mock | `PlansScreen` | Spawn → `/runs`, no API |
-| **`/runs`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX |
-| **`/runs/api`** | **api** | **`ApiRunsWorkspace`** | MySQL; not in sidebar |
-| `/audit` | mock | `AuditScreen` | Static seed timeline |
-| `/defects` | mock | `DefectsScreen` | `MOCK_DEFECTS` |
-| `/settings` | mock | `SettingsScreen` | Read-only preview |
-| `/reports` | placeholder | `PlaceholderScreen` | |
-| `/integrations` | placeholder | `PlaceholderScreen` | |
+| `/:projectKey/dashboard` | mock | `DashboardScreen` | Full metrics when `seedTemplate === 'demo'`; placeholder for other projects |
+| `/:projectKey/cases` | mock + localStorage | `CasesScreen` | Scoped to active project |
+| `/:projectKey/plans` | mock | `PlansScreen` | Spawn → testruns |
+| **`/:projectKey/testruns`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX |
+| **`/runs/api`** | **api** | **`ApiRunsWorkspace`** | MySQL; not project-prefixed |
+| `/:projectKey/audit` | mock | `AuditScreen` | Static seed |
+| `/:projectKey/defects` | mock | `DefectsScreen` | `MOCK_DEFECTS` |
+| `/:projectKey/settings` | mock | `SettingsScreen` | Read-only preview |
+| `/:projectKey/reports` | placeholder | `PlaceholderScreen` | |
+| `/:projectKey/integrations` | placeholder | `PlaceholderScreen` | |
 
-Aliases: `/test-cases` → `/cases`, `/test-plans` → `/plans`, `/` → `/dashboard`.
+**Legacy redirects** (client-side, via `LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/${activeProjectKey}/…`. Root `/` → `/DP/dashboard`.
+
+**Seed project:** Demo Project (`key: DP`, `seedTemplate: 'demo'`) holds default dummy data. Cloned demo projects use keys `DP1`, `DP2`, … via “Add demo project”.
+
+Aliases: `/test-cases` → cases module, `/test-plans` → plans module.
 
 Machine-readable contracts: `apps/web/src/lib/relay/prototype-contracts.ts`.
 
@@ -45,11 +51,12 @@ Machine-readable contracts: `apps/web/src/lib/relay/prototype-contracts.ts`.
 
 ### Demo path (no Docker)
 
-1. Open `http://localhost:3000` → dashboard.
-2. Browse/create test cases (`/cases`) — persists in localStorage.
-3. View plans (`/plans`) — spawn link opens `/runs`.
-4. Execute runs (`/runs`) — case + step results, defect IDs, comments, sealed-run read-only; keyboard shortcuts P/F/B/S/D.
-5. Cmd+K search over in-memory cases + seed runs/plans.
+1. Open `http://localhost:3000` → `/DP/dashboard` (demo metrics).
+2. Browse/create test cases (`/DP/cases`) — persists in localStorage; isolated per project.
+3. View plans (`/DP/plans`) — spawn link opens `/DP/testruns`.
+4. Execute runs (`/DP/testruns`) — full execution UX unchanged; scoped to active project.
+5. **Project switching** — switcher rewrites URL (`/DP/testruns` → `/CTMS/testruns`); create via modal (name/key/description); **Add demo project** clones template as `DP1`, `DP2`, …
+6. Cmd+K search over active project's cases + runs.
 
 ### API path (Docker + seed)
 
@@ -97,7 +104,8 @@ MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/sche
 | OpenSearch in app | No-op stub |
 | Audit read API | Writes only; UI is mock seed |
 | Defects screen create | Disabled |
-| Real multi-project switching | Module label is local state only |
+| Real multi-project switching | **Implemented** — key-prefixed URLs + `ProjectSwitcher` + create modal + add demo project |
+| Project settings screen | Disabled menu item only (coming soon) |
 
 ---
 
@@ -117,12 +125,18 @@ pnpm api:validate                 # needs dev server + seeded DB
 
 Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-v2'); location.reload()`
 
+**Migration:** v1→v2 multi-project; v2→v3 adds required `key`, `description`, renames seed to Demo Project / `DP` (migrates legacy `DEMO` key). Failed migration resets to seed.
+
 ---
 
 ## Key paths
 
 ```
-apps/web/src/fresh/              # Demo UI (screens, seed, FreshProvider)
+apps/web/src/fresh/              # Demo UI (screens, seed, FreshProvider, ProjectSwitcher)
+apps/web/src/fresh/lib/project-routes.ts  # Key-prefixed URL helpers
+apps/web/src/fresh/data/demo-template.ts   # Immutable demo template clone
+apps/web/src/fresh/data/demo-project-utils.ts  # Dashboard scoping + demo clone
+apps/web/src/app/(app)/[projectKey]/    # Canonical routed pages
 apps/web/src/components/api-runs/ # API workspace
 apps/web/src/lib/relay/          # contracts, mock-data, api-client, config
 packages/db/                     # schema, services, seed

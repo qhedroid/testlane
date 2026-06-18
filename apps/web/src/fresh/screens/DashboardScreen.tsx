@@ -6,6 +6,9 @@ import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
+import { useProjectHref } from '../hooks/useProjectHref'
+import { useFresh } from '../data/FreshProvider'
+import { projectHasDemoDashboard } from '../data/demo-project-utils'
 import { ATTENTION_ITEMS, COVERAGE_ITEMS, DEFECT_NAMES, RUN_CARDS } from '../data/seed'
 import type { RunCard } from '../data/types'
 import { PRI_MAP } from '../data/ui-utils'
@@ -14,6 +17,96 @@ type CardFilter = 'all' | 'critical' | 'stalled'
 type CardTab = 'overview' | 'assignees' | 'defects'
 
 export function DashboardScreen() {
+  const { activeProject } = useFresh()
+  const showDemoDashboard = projectHasDemoDashboard(activeProject)
+
+  if (!showDemoDashboard) {
+    return <DashboardPlaceholder projectName={activeProject?.name ?? 'Project'} />
+  }
+
+  return <DemoDashboardView />
+}
+
+function DashboardPlaceholder({ projectName }: { projectName: string }) {
+  const projectHref = useProjectHref()
+
+  return (
+    <div className="view">
+      <FreshTopbar
+        breadcrumbs={[{ label: 'Dashboard' }]}
+        subtitle={projectName}
+        searchPlaceholder="Search everything…"
+        actions={
+          <Link href={projectHref('testruns')} className="btn btn-p">
+            <i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run
+          </Link>
+        }
+      />
+      <PrototypeBanner />
+      <div className="dash-wrap">
+        <div className="met-row">
+          <div className="mc c-blue">
+            <div className="mc-head">
+              <div><div className="mv" style={{ color: 'var(--accent)' }}>0</div><div className="ml">Active Runs</div></div>
+              <div className="mc-ic"><i className="ti ti-player-play" /></div>
+            </div>
+            <div className="mt">No active runs yet</div>
+          </div>
+          <div className="mc c-green">
+            <div className="mc-head">
+              <div><div className="mv" style={{ color: '#2E7D32' }}>—</div><div className="ml">Pass Rate</div></div>
+              <div className="mc-ic"><i className="ti ti-trending-up" /></div>
+            </div>
+            <div className="mt">No execution data</div>
+          </div>
+          <div className="mc c-red">
+            <div className="mc-head">
+              <div><div className="mv" style={{ color: '#C62828' }}>0</div><div className="ml">Open Failures</div></div>
+              <div className="mc-ic"><i className="ti ti-alert-circle" /></div>
+            </div>
+            <div className="mt">No failures recorded</div>
+          </div>
+          <div className="mc c-amber">
+            <div className="mc-head">
+              <div><div className="mv" style={{ color: '#E65100' }}>0</div><div className="ml">Blocked Cases</div></div>
+              <div className="mc-ic"><i className="ti ti-ban" /></div>
+            </div>
+            <div className="mt">No blocked cases</div>
+          </div>
+          <div className="mc c-grey">
+            <div className="mc-head">
+              <div><div className="mv">0%</div><div className="ml">Run Coverage</div></div>
+              <div className="mc-ic"><i className="ti ti-chart-donut" /></div>
+            </div>
+            <div className="mt">0 cases executed</div>
+          </div>
+        </div>
+
+        <div
+          className="panel"
+          style={{
+            marginTop: 16,
+            padding: '48px 24px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <i className="ti ti-layout-dashboard" style={{ fontSize: 32, color: 'var(--text3)', opacity: 0.6 }} />
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Dashboard coming soon</div>
+          <div style={{ fontSize: 12.5, color: 'var(--text3)', maxWidth: 360 }}>
+            Metrics and run insights for {projectName} will appear here once dashboard features are available.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DemoDashboardView() {
+  const projectHref = useProjectHref()
   const [cardFilter, setCardFilter] = useState<CardFilter>('all')
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [cardTabs, setCardTabs] = useState<Record<string, CardTab>>({})
@@ -53,7 +146,7 @@ export function DashboardScreen() {
         actions={
           <>
             <button type="button" className="btn"><i className="ti ti-download" style={{ fontSize: 12 }} /> Export</button>
-            <Link href="/runs" className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run</Link>
+            <Link href={projectHref('testruns')} className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run</Link>
           </>
         }
       />
@@ -115,7 +208,7 @@ export function DashboardScreen() {
                   </button>
                 ))}
               </div>
-              <Link href="/runs" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', marginLeft: 'auto' }}>
+              <Link href={projectHref('testruns')} className="btn" style={{ fontSize: 10.5, padding: '2px 7px', marginLeft: 'auto' }}>
                 All runs <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
               </Link>
             </div>
@@ -157,7 +250,7 @@ export function DashboardScreen() {
               </div>
               <div className="pnl-body" style={{ flex: 1 }}>
                 {ATTENTION_ITEMS.map((item) => (
-                  <Link key={item.title} href="/runs" className="att-item">
+                  <Link key={item.title} href={projectHref('testruns')} className="att-item">
                     <div className={`att-item-stripe ${item.stripe}`} />
                     <div className="att-item-body">
                       <div className="att-title">{item.title}</div>
@@ -177,7 +270,7 @@ export function DashboardScreen() {
                   </Link>
                 ))}
               </div>
-              <div className="att-footer"><Link href="/runs">View all 11 failures →</Link></div>
+              <div className="att-footer"><Link href={projectHref('testruns')}>View all 11 failures →</Link></div>
             </div>
 
             <div className="panel" style={{ flexShrink: 0 }}>

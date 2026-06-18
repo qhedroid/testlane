@@ -1,6 +1,9 @@
+'use client'
+
 import Link from 'next/link'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { FreshTopbar } from '../components/FreshTopbar'
+import { useProjectHref } from '../hooks/useProjectHref'
 
 interface PlaceholderScreenProps {
   title: string
@@ -13,11 +16,13 @@ export function PlaceholderScreen({
   description,
   futureApis = [],
 }: PlaceholderScreenProps) {
+  const projectHref = useProjectHref()
+
   return (
     <div className="view">
       <FreshTopbar
         breadcrumbs={[
-          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Dashboard', href: projectHref('dashboard') },
           { label: title },
         ]}
         showSearch={false}
@@ -41,7 +46,7 @@ export function PlaceholderScreen({
               </ul>
             </div>
           ) : null}
-          <Link href="/dashboard" className="btn">
+          <Link href={projectHref('dashboard')} className="btn">
             Back to dashboard
           </Link>
         </div>

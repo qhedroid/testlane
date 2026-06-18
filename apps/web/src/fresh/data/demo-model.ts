@@ -28,8 +28,19 @@ export interface CaseComment {
   body: string
 }
 
+export interface Project {
+  id: string
+  name: string
+  key: string
+  description?: string
+  /** When `'demo'`, project shows seeded dashboard UI and was created from the immutable demo template. */
+  seedTemplate?: 'demo'
+  createdAt: string
+}
+
 export interface Case {
   id: string
+  projectId: string
   title: string
   folderId?: string | null
   priority: CasePriority
@@ -44,6 +55,7 @@ export interface Case {
 
 export interface Folder {
   id: string
+  projectId: string
   name: string
   parentId?: string | null
 }
@@ -57,6 +69,7 @@ export interface CaseExecution {
 
 export interface DemoRun {
   id: string
+  projectId: string
   name: string
   planId?: string
   planName?: string
@@ -67,13 +80,38 @@ export interface DemoRun {
   executions: Record<string, CaseExecution>
 }
 
-export interface DemoState {
-  module: string
+export const DEMO_SCHEMA_VERSION = 3
+
+export const DEFAULT_SEED_PROJECT_ID = 'proj-ti-core'
+export const DEFAULT_SEED_PROJECT_KEY = 'DP'
+
+/** Prefix for cloned demo projects (DP1, DP2, …). Initial seed uses `DP` exactly. */
+export const CLONED_DEMO_KEY_PREFIX = 'DP'
+
+/** @deprecated Pre-v2 shape; used only during migration */
+export interface LegacyDemoState {
+  module?: string
   folders: Folder[]
   cases: Case[]
   runs: DemoRun[]
-  currentRunId: string
-  nextCaseNum: number
+  currentRunId?: string
+  nextCaseNum?: number
+  schemaVersion?: number
+  projectsById?: Record<string, Project>
+  activeProjectId?: string
+  currentRunIdByProject?: Record<string, string>
+  nextCaseNumByProject?: Record<string, number>
+}
+
+export interface DemoState {
+  schemaVersion: number
+  projectsById: Record<string, Project>
+  activeProjectId: string
+  folders: Folder[]
+  cases: Case[]
+  runs: DemoRun[]
+  currentRunIdByProject: Record<string, string>
+  nextCaseNumByProject: Record<string, number>
 }
 
 export interface RunSummary {

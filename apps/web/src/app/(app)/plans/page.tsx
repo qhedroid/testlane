@@ -1,5 +1,5 @@
-import { PlansScreen } from '@/fresh/screens/PlansScreen'
+import { LegacyRouteRedirect } from '@/fresh/components/LegacyRouteRedirect'
 
 export default function PlansPage() {
-  return <PlansScreen />
+  return <LegacyRouteRedirect module="plans" />
 }

@@ -4,23 +4,29 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { RelayMark } from '../assets/RelayMark'
+import { useProjectHref } from '../hooks/useProjectHref'
 import { useResizablePanes } from '../hooks/useResizablePanes'
+import { useFresh } from '../data/FreshProvider'
+import { getModuleFromPathname } from '../lib/project-routes'
+import type { ModuleSlug } from '../lib/project-routes'
 
-const NAV = [
-  { href: '/dashboard', id: 'dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard', section: 'workspace' },
-  { href: '/cases', id: 'cases', label: 'Test Cases', icon: 'ti-file-description', section: 'platform' },
-  { href: '/plans', id: 'plans', label: 'Test Plans', icon: 'ti-clipboard-list', section: 'platform' },
-  { href: '/runs', id: 'runs', label: 'Test Runs', icon: 'ti-player-play', section: 'platform' },
-  { href: '/audit', id: 'audit', label: 'Audit History', icon: 'ti-history', section: 'footer' },
-] as const
+const PLATFORM_NAV: { module: ModuleSlug; label: string; icon: string }[] = [
+  { module: 'cases', label: 'Test Cases', icon: 'ti-file-description' },
+  { module: 'plans', label: 'Test Plans', icon: 'ti-clipboard-list' },
+  { module: 'testruns', label: 'Test Runs', icon: 'ti-player-play' },
+]
 
 export function FreshShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const projectHref = useProjectHref()
+  const { activeProject } = useFresh()
   const [collapsed, setCollapsed] = useState(false)
   useResizablePanes()
 
-  function isOn(href: string) {
-    return pathname === href || pathname.startsWith(`${href}/`)
+  const currentModule = getModuleFromPathname(pathname)
+
+  function isOn(module: ModuleSlug) {
+    return currentModule === module
   }
 
   return (
@@ -46,21 +52,21 @@ export function FreshShell({ children }: { children: ReactNode }) {
 
         <div className="sb-sec">
           <div className="sb-lbl">Workspace</div>
-          <Link href="/dashboard" className={`sbi${isOn('/dashboard') ? ' on' : ''}`} title="Dashboard">
+          <Link href={projectHref('dashboard')} className={`sbi${isOn('dashboard') ? ' on' : ''}`} title="Dashboard">
             <i className="ti ti-layout-dashboard" />
             <span className="sbi-text"> Dashboard</span>
           </Link>
         </div>
 
         <div className="sb-sec">
-          <div className="sb-lbl">TI-Core Platform</div>
-          {NAV.filter((n) => n.section === 'platform').map((item) => (
-            <Link key={item.href} href={item.href} className={`sbi${isOn(item.href) ? ' on' : ''}`} title={item.label}>
+          <div className="sb-lbl">{activeProject.name}</div>
+          {PLATFORM_NAV.map((item) => (
+            <Link key={item.module} href={projectHref(item.module)} className={`sbi${isOn(item.module) ? ' on' : ''}`} title={item.label}>
               <i className={`ti ${item.icon}`} />
               <span className="sbi-text"> {item.label}</span>
             </Link>
           ))}
-          <Link href="/reports" className={`sbi${isOn('/reports') ? ' on' : ''}`} title="Reports (planned)">
+          <Link href={projectHref('reports')} className={`sbi${isOn('reports') ? ' on' : ''}`} title="Reports (planned)">
             <i className="ti ti-chart-bar" />
             <span className="sbi-text"> Reports</span>
             <span className="soon">Planned</span>
@@ -87,20 +93,20 @@ export function FreshShell({ children }: { children: ReactNode }) {
         <div className="sb-div" />
 
         <div className="sb-sec" style={{ paddingBottom: 0 }}>
-          <Link href="/audit" className={`sbi${isOn('/audit') ? ' on' : ''}`} title="Audit History">
+          <Link href={projectHref('audit')} className={`sbi${isOn('audit') ? ' on' : ''}`} title="Audit History">
             <i className="ti ti-history" />
             <span className="sbi-text"> Audit History</span>
           </Link>
-          <Link href="/defects" className={`sbi${isOn('/defects') ? ' on' : ''}`} title="Defects">
+          <Link href={projectHref('defects')} className={`sbi${isOn('defects') ? ' on' : ''}`} title="Defects">
             <i className="ti ti-bug" />
             <span className="sbi-text"> Defects</span>
           </Link>
-          <Link href="/integrations" className={`sbi${isOn('/integrations') ? ' on' : ''}`} title="Integrations (planned)">
+          <Link href={projectHref('integrations')} className={`sbi${isOn('integrations') ? ' on' : ''}`} title="Integrations (planned)">
             <i className="ti ti-plug" />
             <span className="sbi-text"> Integrations</span>
             <span className="soon">Planned</span>
           </Link>
-          <Link href="/settings" className={`sbi${isOn('/settings') ? ' on' : ''}`} title="Settings">
+          <Link href={projectHref('settings')} className={`sbi${isOn('settings') ? ' on' : ''}`} title="Settings">
             <i className="ti ti-settings" />
             <span className="sbi-text"> Settings</span>
           </Link>

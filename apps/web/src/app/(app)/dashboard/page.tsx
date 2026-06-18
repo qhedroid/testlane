@@ -1,5 +1,5 @@
-import { DashboardScreen } from '@/fresh/screens/DashboardScreen'
+import { LegacyRouteRedirect } from '@/fresh/components/LegacyRouteRedirect'
 
 export default function DashboardPage() {
-  return <DashboardScreen />
+  return <LegacyRouteRedirect module="dashboard" />
 }

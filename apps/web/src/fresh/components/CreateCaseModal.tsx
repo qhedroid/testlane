@@ -14,7 +14,7 @@ interface StepDraft {
 
 export function CreateCaseModal() {
   const { createCaseOpen, closeCreateCase } = useFreshUI()
-  const { state, addCase } = useFresh()
+  const { activeFolders, addCase } = useFresh()
   const [title, setTitle] = useState('')
   const [folderId, setFolderId] = useState<string>('')
   const [pri, setPri] = useState<CasePriority>('Medium')
@@ -74,7 +74,7 @@ export function CreateCaseModal() {
     closeCreateCase()
   }
 
-  const folderOptions = state.folders
+  const folderOptions = activeFolders
 
   return (
     <div className="modal-backdrop" onClick={closeCreateCase}>

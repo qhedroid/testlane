@@ -1,6 +1,5 @@
-import '@/fresh/styles/prototype-runs.css'
-import { RunsScreen } from '@/fresh/screens/RunsScreen'
+import { LegacyRouteRedirect } from '@/fresh/components/LegacyRouteRedirect'
 
 export default function RunsPage() {
-  return <RunsScreen />
+  return <LegacyRouteRedirect module="testruns" />
 }

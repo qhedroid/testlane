@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
+import { useProjectHref } from '../hooks/useProjectHref'
 import { PLANS } from '../data/seed'
 import type { DemoPlan } from '../data/types'
 
@@ -21,6 +22,7 @@ function avgPass(modules: DemoPlan['modules']) {
 }
 
 export function PlansScreen() {
+  const projectHref = useProjectHref()
   const [selIdx, setSelIdx] = useState(0)
   const [tab, setTab] = useState<PlanTab>('overview')
   const plan = PLANS[selIdx]
@@ -210,7 +212,7 @@ export function PlansScreen() {
                     <span className="tp-run-name">{r.name}</span>
                     <span className="tp-run-date">{r.meta}</span>
                     {r.status === 'act' ? (
-                      <Link href="/runs" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Open →</Link>
+                      <Link href={projectHref('testruns')} className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Open →</Link>
                     ) : null}
                   </div>
                 ))}
@@ -219,7 +221,7 @@ export function PlansScreen() {
           </div>
 
           <div className="tpd-cta">
-            <Link href="/runs" className="btn btn-p"><i className="ti ti-player-play" style={{ fontSize: 13 }} /> Spawn new run from this plan</Link>
+            <Link href={projectHref('testruns')} className="btn btn-p"><i className="ti ti-player-play" style={{ fontSize: 13 }} /> Spawn new run from this plan</Link>
             <button type="button" className="btn"><i className="ti ti-edit" style={{ fontSize: 12 }} /> Edit plan</button>
             <button type="button" className="btn"><i className="ti ti-copy" style={{ fontSize: 12 }} /> Clone plan</button>
           </div>

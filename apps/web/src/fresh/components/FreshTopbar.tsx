@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { type ReactNode } from 'react'
 import { useFreshUI } from '../hooks/useFreshUI'
-import { ModuleSwitcher } from './ModuleSwitcher'
+import { ProjectSwitcher } from './ProjectSwitcher'
 
 export interface Breadcrumb {
   label: string
@@ -31,7 +31,7 @@ export function FreshTopbar({
 
   return (
     <div className="topbar">
-      <ModuleSwitcher />
+      <ProjectSwitcher />
       <div className="bc">
         {breadcrumbs.map((crumb, i) => (
           <span key={`${crumb.label}-${i}`} style={{ display: 'contents' }}>

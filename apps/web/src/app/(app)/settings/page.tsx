@@ -1,5 +1,5 @@
-import { SettingsScreen } from '@/fresh/screens/SettingsScreen'
+import { LegacyRouteRedirect } from '@/fresh/components/LegacyRouteRedirect'
 
 export default function SettingsPage() {
-  return <SettingsScreen />
+  return <LegacyRouteRedirect module="settings" />
 }

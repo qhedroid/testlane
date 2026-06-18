@@ -8,17 +8,17 @@ This document defines what each visible screen shows, what data powers it today,
 
 ## Dashboard
 
-**Route:** `/dashboard`
+**Route:** `/:projectKey/dashboard` (legacy `/dashboard` → redirect)
 
 **Current state:** Frontend prototype only.
 
 **Real/API-backed, mock-backed, or placeholder:** Mock-backed.
 
-**Data source:** `apps/web/src/fresh/data/seed.ts` (`RUN_CARDS`, `ATTENTION_ITEMS`, `COVERAGE_ITEMS`).
+**Data source:** `apps/web/src/fresh/data/seed.ts` (`RUN_CARDS`, `ATTENTION_ITEMS`, `COVERAGE_ITEMS`) — rendered only when `activeProject.seedTemplate === 'demo'` (`projectHasDemoDashboard` in `demo-project-utils.ts`).
 
-**Data shown:** Active run count cards, sprint subtitle, expandable run cards (overview/assignees/defects tabs), needs-attention list, module coverage bars.
+**Data shown:** When demo template: active run count cards, sprint subtitle, expandable run cards (overview/assignees/defects tabs), needs-attention list, module coverage bars. **Non-demo projects:** zeroed summary metric cards + “Dashboard coming soon” placeholder (no seeded metrics).
 
-**User actions:** Expand/collapse run cards; switch card tabs; navigate to `/runs` via New Run / attention links; export button (visual only).
+**User actions:** Expand/collapse run cards; switch card tabs; navigate to `/:projectKey/testruns` via New Run / attention links; export button (visual only).
 
 **Future API contract:**
 - `GET /api/dashboard/summary` — metric cards
@@ -35,17 +35,17 @@ This document defines what each visible screen shows, what data powers it today,
 
 ## Test Cases Library
 
-**Route:** `/cases` (alias: `/test-cases` → redirect)
+**Route:** `/:projectKey/cases` (legacy `/cases`, `/test-cases` → redirect)
 
 **Current state:** Frontend prototype only.
 
 **Real/API-backed, mock-backed, or placeholder:** Mock-backed (`localStorage` for user-created cases).
 
-**Data source:** `fresh/data/seed.ts` + `FreshProvider` + localStorage key `relay-demo-v2`.
+**Data source:** `fresh/data/seed.ts` + `FreshProvider` + localStorage key `relay-demo-v2`. Cases and folders are filtered to **active project** via `listActiveProjectTestCases()` / `listActiveProjectFolders()`.
 
-**Data shown:** Suite/folder tree, case table (ref, title, priority, type, last result, owner, steps), detail panel (details/history/activity), bulk selection bar.
+**Data shown:** Suite/folder tree, case table (ref, title, priority, type, last result, owner, steps), detail panel (details/history/activity), bulk selection bar. Breadcrumb uses active project name.
 
-**User actions:** Folder navigation; status filter chips; search (toolbar); quick create; new case modal; row select / bulk bar; import shows empty state only.
+**User actions:** Folder navigation; status filter chips; search (toolbar); quick create; new case modal; row select / bulk bar; import shows empty state only. **Project switcher** in top bar (shared `ProjectSwitcher` component).
 
 **Future API contract:**
 - `GET /api/test-cases`
@@ -65,7 +65,7 @@ This document defines what each visible screen shows, what data powers it today,
 
 ## Test Plans
 
-**Route:** `/plans` (alias: `/test-plans` → redirect)
+**Route:** `/:projectKey/plans` (legacy `/plans`, `/test-plans` → redirect)
 
 **Current state:** Frontend prototype only.
 
@@ -75,7 +75,7 @@ This document defines what each visible screen shows, what data powers it today,
 
 **Data shown:** Plan list (active/draft), status pill, case count, owner, last updated, detail tabs (overview, included suites, run history).
 
-**User actions:** Select plan; switch tabs; spawn run link navigates to `/runs` (does **not** call `POST /api/runs`).
+**User actions:** Select plan; switch tabs; spawn run link navigates to `/:projectKey/testruns` (does **not** call `POST /api/runs`).
 
 **Future API contract:**
 - `GET /api/test-plans`
@@ -90,7 +90,7 @@ This document defines what each visible screen shows, what data powers it today,
 
 ## Test Runs (demo execution UI)
 
-**Route:** `/runs`
+**Route:** `/:projectKey/testruns` (legacy `/runs` → redirect)
 
 **Current state:** Frontend prototype — **Shaun's v1.2 FRESH execution workspace** (primary demo route).
 
@@ -98,9 +98,9 @@ This document defines what each visible screen shows, what data powers it today,
 
 **Implementation:** `apps/web/src/fresh/screens/RunsScreen.tsx`, `fresh/styles/prototype-runs.css`.
 
-**Data shown:** Run picker, header donuts, case list with filters, step results, keyboard shortcuts, tabs (details/steps/activity/history/comments/defects).
+**Data shown:** Run picker, header donuts, case list with filters, step results, keyboard shortcuts, tabs (details/steps/activity/history/comments/defects). Runs and cases are **active-project scoped**.
 
-**User actions:** Full demo execution flow per `DEMO.md` — in-memory/localStorage; sealed runs block mutations.
+**User actions:** Full demo execution flow per `DEMO.md` — in-memory/localStorage; sealed runs block mutations. **Project switcher** in top bar (same `ProjectSwitcher` as `/cases`).
 
 **Future API contract:** Same as `/runs/api` — wire this UI to existing HTTP routes without replacing the layout.
 
@@ -244,14 +244,73 @@ This document defines what each visible screen shows, what data powers it today,
 
 ---
 
+## Shared: URL routing (project key prefix)
+
+**Pattern:** `/:projectKey/:moduleSlug`
+
+| Module slug | Screen | Legacy redirect |
+|-------------|--------|-----------------|
+| `dashboard` | Dashboard | `/dashboard` |
+| `cases` | Test Cases | `/cases`, `/test-cases` |
+| `testruns` | Test Runs (demo execution) | `/runs` |
+| `plans` | Test Plans | `/plans`, `/test-plans` |
+| `audit` | Audit History | `/audit` |
+| `defects` | Defects | `/defects` |
+| `settings` | Settings | `/settings` |
+| `reports` | Reports (placeholder) | `/reports` |
+| `integrations` | Integrations (placeholder) | `/integrations` |
+
+**Sync:** `ProjectRouteSync` (in app layout) parses URL key → `setActiveProject`. Unknown key → redirect to `/${activeProjectKey}/${module}` or `/DP/dashboard`.
+
+**Helpers:** `apps/web/src/fresh/lib/project-routes.ts`, `useProjectHref()` hook.
+
+**Exceptions:** `/runs/api` and `/api/*` are **not** project-prefixed. Root `/` redirects to `/DP/dashboard`.
+
+---
+
+## Shared: Project switcher (top bar)
+
+**Component:** `apps/web/src/fresh/components/ProjectSwitcher.tsx`, `CreateProjectModal.tsx`
+
+**Used on:** `/:projectKey/cases` (via `FreshTopbar`), `/:projectKey/testruns` (inline in `RunsScreen` top bar)
+
+**Current state:** Frontend prototype — **fully functional** multi-project workspace with URL sync.
+
+**Data source:** `FreshProvider` (`projectsById`, `activeProjectId`, project-scoped entities).
+
+**Behavior:**
+- Button always shows **active project name** (from store, synced with URL).
+- Dropdown lists all projects; click selects, sets `activeProjectId`, and navigates to same module under new key.
+- **Create project…** — opens modal (`CreateProjectModal`) with Name, Key (auto-uppercase, `[A-Z0-9_-]`, unique), Description (optional). On submit: create project, activate, navigate to `/:key/dashboard`. New projects have **no** `seedTemplate` (blank dashboard placeholder).
+- **Add demo project** — clones the immutable demo template (`demo-template.ts`); assigns next available key `DP1`, `DP2`, …; name `Demo Project N`; sets `seedTemplate: 'demo'`; activates project; navigates to `/:key/dashboard`. Always uses pristine template, ignoring edits to existing demo projects in session.
+- **Project settings** — menu item present, **disabled** (coming soon).
+- **Rename** — pencil icon per row; inline save (name only).
+- **Delete** — trash icon; `window.confirm`; **cascade delete**. Deleting active project activates another or creates Demo Project / `DP`.
+
+**Selectors exposed on `useFresh()`:** `getActiveProject`, `getProjectByKey`, `isProjectKeyUnique`, `listProjects`, `listActiveProjectFolders`, `listActiveProjectTestCases`, `listActiveProjectRuns`, `addDemoProject`.
+
+**Future API contract:**
+- `GET /api/projects`
+- `POST /api/projects`
+- `PATCH /api/projects/:projectId`
+- `DELETE /api/projects/:projectId`
+
+---
+
 ## Shared mock data locations
 
 | File | Purpose |
 |------|---------|
 | `apps/web/src/lib/relay/mock-data.ts` | Central mock exports + defects/settings data |
 | `apps/web/src/lib/relay/prototype-contracts.ts` | Route metadata for agents |
-| `apps/web/src/fresh/data/seed.ts` | Dashboard, cases, plans, audit seed |
-| `apps/web/src/fresh/data/FreshProvider.tsx` | In-memory state for cases + runs (`relay-demo-v2`) |
+| `apps/web/src/fresh/data/seed.ts` | Dashboard seed metrics (demo-template projects only) |
+| `apps/web/src/fresh/data/demo-template.ts` | Immutable demo template + clone helpers |
+| `apps/web/src/fresh/data/demo-project-utils.ts` | Dashboard scoping + demo project clone |
+| `apps/web/src/fresh/data/FreshProvider.tsx` | In-memory state (`relay-demo-v2`, schema v3) |
+| `apps/web/src/fresh/data/project-selectors.ts` | Active-project list helpers |
+| `apps/web/src/fresh/lib/project-routes.ts` | Key-prefixed path helpers |
+| `apps/web/src/fresh/components/ProjectSwitcher.tsx` | Top-bar project CRUD + switch |
+| `apps/web/src/fresh/components/CreateProjectModal.tsx` | Create project form + validation |
 
 ---
 
