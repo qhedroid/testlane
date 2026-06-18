@@ -1,9 +1,5 @@
-import { AdminPageShell } from '@/fresh/components/admin/AdminPageShell'
+import { AdminProjectsPageContent } from '@/fresh/components/admin/pages/AdminProjectsPageContent'
 
 export default function AdminProjectsPage() {
-  return (
-    <AdminPageShell title="Projects">
-      <p className="admin-muted">Coming soon.</p>
-    </AdminPageShell>
-  )
+  return <AdminProjectsPageContent />
 }

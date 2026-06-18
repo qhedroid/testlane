@@ -1,9 +1,5 @@
-import { AdminPageShell } from '@/fresh/components/admin/AdminPageShell'
+import { AdminCustomFieldsPageContent } from '@/fresh/components/admin/pages/AdminCustomFieldsPageContent'
 
 export default function AdminCustomFieldsPage() {
-  return (
-    <AdminPageShell title="Custom fields">
-      <p className="admin-muted">Coming soon.</p>
-    </AdminPageShell>
-  )
+  return <AdminCustomFieldsPageContent />
 }

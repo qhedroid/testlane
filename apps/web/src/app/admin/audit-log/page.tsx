@@ -1,9 +1,5 @@
-import { AdminPageShell } from '@/fresh/components/admin/AdminPageShell'
+import { AdminAuditLogPageContent } from '@/fresh/components/admin/pages/AdminAuditLogPageContent'
 
 export default function AdminAuditLogPage() {
-  return (
-    <AdminPageShell title="Audit log">
-      <p className="admin-muted">Coming soon.</p>
-    </AdminPageShell>
-  )
+  return <AdminAuditLogPageContent />
 }

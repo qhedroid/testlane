@@ -1,9 +1,5 @@
-import { AdminPageShell } from '@/fresh/components/admin/AdminPageShell'
+import { AdminProfilePageContent } from '@/fresh/components/admin/pages/AdminProfilePageContent'
 
 export default function AdminProfilePage() {
-  return (
-    <AdminPageShell title="My profile">
-      <p className="admin-muted">Coming soon.</p>
-    </AdminPageShell>
-  )
+  return <AdminProfilePageContent />
 }

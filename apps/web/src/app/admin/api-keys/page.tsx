@@ -1,9 +1,5 @@
-import { AdminPageShell } from '@/fresh/components/admin/AdminPageShell'
+import { AdminApiKeysPageContent } from '@/fresh/components/admin/pages/AdminApiKeysPageContent'
 
 export default function AdminApiKeysPage() {
-  return (
-    <AdminPageShell title="API keys">
-      <p className="admin-muted">Coming soon.</p>
-    </AdminPageShell>
-  )
+  return <AdminApiKeysPageContent />
 }

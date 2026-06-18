@@ -1,9 +1,5 @@
-import { AdminPageShell } from '@/fresh/components/admin/AdminPageShell'
+import { AdminRolesPageContent } from '@/fresh/components/admin/pages/AdminRolesPageContent'
 
 export default function AdminRolesPage() {
-  return (
-    <AdminPageShell title="Role management">
-      <p className="admin-muted">Coming soon.</p>
-    </AdminPageShell>
-  )
+  return <AdminRolesPageContent />
 }

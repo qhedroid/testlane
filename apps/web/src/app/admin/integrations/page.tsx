@@ -1,9 +1,5 @@
-import { AdminPageShell } from '@/fresh/components/admin/AdminPageShell'
+import { AdminIntegrationsPageContent } from '@/fresh/components/admin/pages/AdminIntegrationsPageContent'
 
 export default function AdminIntegrationsPage() {
-  return (
-    <AdminPageShell title="Integrations">
-      <p className="admin-muted">Coming soon.</p>
-    </AdminPageShell>
-  )
+  return <AdminIntegrationsPageContent />
 }
