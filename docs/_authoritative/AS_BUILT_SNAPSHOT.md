@@ -37,6 +37,8 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | `/:projectKey/settings` | mock | `SettingsScreen` | Read-only preview |
 | `/:projectKey/reports` | placeholder | `PlaceholderScreen` | |
 | `/:projectKey/integrations` | placeholder | `PlaceholderScreen` | |
+| **`/admin`** | **placeholder** | **`AdminShell`** | **Global admin panel** — redirects to `/admin/profile`; not project-prefixed |
+| **`/admin/profile`** … **`/admin/audit-log`** | **placeholder** | **`AdminPageShell`** | 11 section placeholders (profile, account, API keys, org, projects, users, roles, integrations, custom fields, automation, audit log) |
 
 **Legacy redirects** (client-side, via `LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/${activeProjectKey}/…`. Root `/` → `/DP/dashboard`.
 
@@ -108,6 +110,7 @@ MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/sche
 | Defects screen create | Disabled |
 | Real multi-project switching | **Implemented** — key-prefixed URLs + `ProjectSwitcher` + create modal + add demo project |
 | Project settings screen | Disabled menu item only (coming soon) |
+| Admin panel (`/admin`) | **Shell implemented** — global route group with sidebar nav; section pages are placeholders |
 
 ---
 
@@ -135,6 +138,8 @@ Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-
 
 ```
 apps/web/src/fresh/              # Demo UI (screens, seed, FreshProvider, ProjectSwitcher)
+apps/web/src/fresh/components/admin/  # Admin panel shell (AdminShell, sidebar, page wrapper)
+apps/web/src/app/admin/          # Global /admin route group (not project-prefixed)
 apps/web/src/fresh/lib/project-routes.ts  # Key-prefixed URL helpers
 apps/web/src/fresh/data/demo-template.ts   # Immutable demo template clone
 apps/web/src/fresh/data/demo-project-utils.ts  # Dashboard scoping + demo clone

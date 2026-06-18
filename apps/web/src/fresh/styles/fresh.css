@@ -20,6 +20,7 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 .sb-sec{padding:10px 0 2px}
 .sb-lbl{padding:0 13px 3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(168,196,224,.45)}
 .sbi{display:flex;align-items:center;gap:7px;padding:5px 13px;color:#A8C4E0;cursor:pointer;font-size:12.5px;border-left:2px solid transparent;user-select:none;transition:background .1s}
+.sbi-icon-lucide{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:15px;height:15px}
 .sbi:hover{background:rgba(255,255,255,.06);color:#fff}
 .sbi.on{background:rgba(31,106,172,.35);color:#fff;border-left-color:#5BA3E0;font-weight:500}
 .sbi.disabled{opacity:.42;cursor:not-allowed}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ShieldCheck } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { RelayMark } from '../assets/RelayMark'
 import { useProjectHref } from '../hooks/useProjectHref'
@@ -28,6 +29,8 @@ export function FreshShell({ children }: { children: ReactNode }) {
   function isOn(module: ModuleSlug) {
     return currentModule === module
   }
+
+  const isAdmin = pathname.startsWith('/admin')
 
   return (
     <div id="app">
@@ -109,6 +112,12 @@ export function FreshShell({ children }: { children: ReactNode }) {
           <Link href={projectHref('settings')} className={`sbi${isOn('settings') ? ' on' : ''}`} title="Settings">
             <i className="ti ti-settings" />
             <span className="sbi-text"> Settings</span>
+          </Link>
+          <Link href="/admin" className={`sbi${isAdmin ? ' on' : ''}`} title="Admin">
+            <span className="sbi-icon-lucide">
+              <ShieldCheck size={15} strokeWidth={2} />
+            </span>
+            <span className="sbi-text"> Admin</span>
           </Link>
         </div>
 
