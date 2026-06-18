@@ -1,36 +1,54 @@
 'use client'
 
-import { Bot, Database, List } from 'lucide-react'
+import { Bot, Database, List, Pencil, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import type { AdminAutomationField, AdminAutomationSource } from '@/fresh/data/demo-model'
+import { useFresh } from '@/fresh/data/FreshProvider'
 import { AdminPageShell } from '../AdminPageShell'
-import { ADMIN_AUTOMATION_FIELDS, ADMIN_AUTOMATION_SOURCES } from '../admin-seed'
 import {
-  AdminRowActions,
+  AdminModal,
   AdminSearchInput,
   AdminSection,
   AdminTable,
   AdminTableFooter,
   AdminToolbar,
+  useSavedFeedback,
 } from '../admin-ui'
 
 export function AdminAutomationPageContent() {
-  const [retention, setRetention] = useState('90')
+  const {
+    adminSettings,
+    saveAdminAutomationRetention,
+    updateAdminAutomationSource,
+    deleteAdminAutomationSource,
+    updateAdminAutomationField,
+    deleteAdminAutomationField,
+  } = useFresh()
+  const { saved, showSaved } = useSavedFeedback()
+  const [retention, setRetention] = useState(adminSettings.automation.retentionPeriod)
   const [sourceSearch, setSourceSearch] = useState('')
   const [fieldSearch, setFieldSearch] = useState('')
+  const [editSource, setEditSource] = useState<AdminAutomationSource | null>(null)
+  const [editField, setEditField] = useState<AdminAutomationField | null>(null)
 
   const sources = useMemo(() => {
     const q = sourceSearch.trim().toLowerCase()
-    if (!q) return ADMIN_AUTOMATION_SOURCES
-    return ADMIN_AUTOMATION_SOURCES.filter((s) => s.name.toLowerCase().includes(q))
-  }, [sourceSearch])
+    if (!q) return adminSettings.automation.sources
+    return adminSettings.automation.sources.filter((s) => s.name.toLowerCase().includes(q))
+  }, [adminSettings.automation.sources, sourceSearch])
 
   const fields = useMemo(() => {
     const q = fieldSearch.trim().toLowerCase()
-    if (!q) return ADMIN_AUTOMATION_FIELDS
-    return ADMIN_AUTOMATION_FIELDS.filter(
+    if (!q) return adminSettings.automation.fields
+    return adminSettings.automation.fields.filter(
       (f) => f.name.toLowerCase().includes(q) || f.displayName.toLowerCase().includes(q),
     )
-  }, [fieldSearch])
+  }, [adminSettings.automation.fields, fieldSearch])
+
+  function handleSaveRetention() {
+    saveAdminAutomationRetention(retention)
+    showSaved()
+  }
 
   return (
     <AdminPageShell title="Automation">
@@ -40,16 +58,17 @@ export function AdminAutomationPageContent() {
         </p>
         <div className="admin-select-field">
           <span className="admin-select-lbl">Retention period</span>
-          <select className="admin-select" value={retention} onChange={(e) => setRetention(e.target.value)}>
-            <option value="30">30 days</option>
-            <option value="60">60 days</option>
-            <option value="90">90 days</option>
-            <option value="365">1 year</option>
+          <select className="admin-select admin-select-fixed" value={retention} onChange={(e) => setRetention(e.target.value)}>
+            <option>30 days</option>
+            <option>60 days</option>
+            <option>90 days</option>
+            <option>1 year</option>
           </select>
         </div>
         <div className="admin-inline-actions">
-          <button type="button" className="btn btn-p">Save</button>
-          <button type="button" className="btn">Cancel</button>
+          {saved ? <span className="admin-saved">Saved</span> : null}
+          <button type="button" className="btn btn-p admin-btn-fit" onClick={handleSaveRetention}>Save</button>
+          <button type="button" className="btn admin-btn-fit" onClick={() => setRetention(adminSettings.automation.retentionPeriod)}>Cancel</button>
         </div>
       </AdminSection>
 
@@ -59,7 +78,7 @@ export function AdminAutomationPageContent() {
           right={
             <>
               <AdminSearchInput value={sourceSearch} onChange={setSourceSearch} placeholder="Search" />
-              <button type="button" className="btn">Filter</button>
+              <button type="button" className="btn admin-btn-fit">Filter</button>
             </>
           }
         />
@@ -75,12 +94,28 @@ export function AdminAutomationPageContent() {
           </thead>
           <tbody>
             {sources.map((row) => (
-              <tr key={row.name}>
+              <tr key={row.id}>
                 <td>{row.name}</td>
                 <td>{row.displayName || '—'}</td>
                 <td>{row.project}</td>
-                <td>{row.retention}</td>
-                <td><AdminRowActions /></td>
+                <td>{row.retentionPeriod}</td>
+                <td>
+                  <span className="admin-row-actions">
+                    <button type="button" className="admin-icon-btn" title="Edit" onClick={() => setEditSource({ ...row })}>
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-icon-btn"
+                      title="Delete"
+                      onClick={() => {
+                        if (window.confirm(`Delete automation source "${row.name}"?`)) deleteAdminAutomationSource(row.id)
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -94,7 +129,7 @@ export function AdminAutomationPageContent() {
           right={
             <>
               <AdminSearchInput value={fieldSearch} onChange={setFieldSearch} placeholder="Search" />
-              <button type="button" className="btn">Filter</button>
+              <button type="button" className="btn admin-btn-fit">Filter</button>
             </>
           }
         />
@@ -109,17 +144,110 @@ export function AdminAutomationPageContent() {
           </thead>
           <tbody>
             {fields.map((row) => (
-              <tr key={row.name}>
+              <tr key={row.id}>
                 <td>{row.name}</td>
                 <td>{row.displayName}</td>
                 <td>{row.projects}</td>
-                <td><AdminRowActions /></td>
+                <td>
+                  <span className="admin-row-actions">
+                    <button type="button" className="admin-icon-btn" title="Edit" onClick={() => setEditField({ ...row })}>
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-icon-btn"
+                      title="Delete"
+                      onClick={() => {
+                        if (window.confirm(`Delete automation field "${row.name}"?`)) deleteAdminAutomationField(row.id)
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
         </AdminTable>
         <AdminTableFooter total={fields.length} page={1} pageSize={fields.length} showPerPage />
       </AdminSection>
+
+      <AdminModal
+        open={!!editSource}
+        title="Edit automation source"
+        onClose={() => setEditSource(null)}
+        footer={
+          <>
+            <button type="button" className="btn" onClick={() => setEditSource(null)}>Cancel</button>
+            <button
+              type="button"
+              className="btn btn-p"
+              onClick={() => {
+                if (editSource) updateAdminAutomationSource(editSource)
+                setEditSource(null)
+              }}
+            >
+              Save
+            </button>
+          </>
+        }
+      >
+        {editSource ? (
+          <>
+            <div className="form-field">
+              <label>Display name</label>
+              <input
+                className="admin-inp"
+                style={{ width: '100%' }}
+                value={editSource.displayName}
+                onChange={(e) => setEditSource({ ...editSource, displayName: e.target.value })}
+              />
+            </div>
+            <div className="form-field">
+              <label>Retention period</label>
+              <input
+                className="admin-inp"
+                style={{ width: '100%' }}
+                value={editSource.retentionPeriod}
+                onChange={(e) => setEditSource({ ...editSource, retentionPeriod: e.target.value })}
+              />
+            </div>
+          </>
+        ) : null}
+      </AdminModal>
+
+      <AdminModal
+        open={!!editField}
+        title="Edit automation field"
+        onClose={() => setEditField(null)}
+        footer={
+          <>
+            <button type="button" className="btn" onClick={() => setEditField(null)}>Cancel</button>
+            <button
+              type="button"
+              className="btn btn-p"
+              onClick={() => {
+                if (editField) updateAdminAutomationField(editField)
+                setEditField(null)
+              }}
+            >
+              Save
+            </button>
+          </>
+        }
+      >
+        {editField ? (
+          <div className="form-field">
+            <label>Display name</label>
+            <input
+              className="admin-inp"
+              style={{ width: '100%' }}
+              value={editField.displayName}
+              onChange={(e) => setEditField({ ...editField, displayName: e.target.value })}
+            />
+          </div>
+        ) : null}
+      </AdminModal>
     </AdminPageShell>
   )
 }

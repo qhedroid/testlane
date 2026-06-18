@@ -1,23 +1,41 @@
 'use client'
 
 import { Globe, Image, Palette, User } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useFresh } from '@/fresh/data/FreshProvider'
 import { AdminPageShell } from '../AdminPageShell'
 import {
   AdminFormRow,
   AdminPageFooter,
   AdminSection,
   getSampleFormats,
+  useSavedFeedback,
   type Language,
   type RegionalFormat,
 } from '../admin-ui'
 
 export function AdminProfilePageContent() {
-  const [displayName, setDisplayName] = useState('Demo User')
-  const [language, setLanguage] = useState<Language>('English')
-  const [regional, setRegional] = useState<RegionalFormat>('Standard')
-  const [theme, setTheme] = useState('Light')
-  const samples = getSampleFormats(language, regional)
+  const { adminSettings, saveAdminProfile } = useFresh()
+  const { saved, showSaved } = useSavedFeedback()
+  const [draft, setDraft] = useState(adminSettings.profile)
+
+  useEffect(() => {
+    setDraft(adminSettings.profile)
+  }, [adminSettings.profile])
+
+  const samples = getSampleFormats(
+    draft.language as Language,
+    draft.regionalFormat as RegionalFormat,
+  )
+
+  function handleCancel() {
+    setDraft(adminSettings.profile)
+  }
+
+  function handleSave() {
+    saveAdminProfile(draft)
+    showSaved()
+  }
 
   return (
     <AdminPageShell title="My profile">
@@ -26,7 +44,7 @@ export function AdminProfilePageContent() {
           <div className="admin-avatar-row">
             <div className="admin-avatar"><User size={32} /></div>
             <div>
-              <label className="btn" style={{ cursor: 'pointer' }}>
+              <label className="btn admin-btn-fit" style={{ cursor: 'pointer' }}>
                 Upload
                 <input type="file" accept="image/*" hidden />
               </label>
@@ -38,15 +56,12 @@ export function AdminProfilePageContent() {
         </AdminSection>
 
         <AdminSection icon={<User size={16} />} title="Display name">
-          <AdminFormRow
-            label="Display name"
-            description="Change your display name within this organization."
-          >
+          <AdminFormRow label="Display name" description="Change your display name within this organization.">
             <input
               className="admin-inp"
               type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              value={draft.displayName}
+              onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
             />
           </AdminFormRow>
         </AdminSection>
@@ -56,7 +71,11 @@ export function AdminProfilePageContent() {
           <div className="admin-select-row">
             <div className="admin-select-field">
               <span className="admin-select-lbl">Language</span>
-              <select className="admin-select" value={language} onChange={(e) => setLanguage(e.target.value as Language)}>
+              <select
+                className="admin-select admin-select-fixed"
+                value={draft.language}
+                onChange={(e) => setDraft({ ...draft, language: e.target.value })}
+              >
                 <option>English</option>
                 <option>French</option>
                 <option>German</option>
@@ -65,7 +84,11 @@ export function AdminProfilePageContent() {
             </div>
             <div className="admin-select-field">
               <span className="admin-select-lbl">Regional format</span>
-              <select className="admin-select" value={regional} onChange={(e) => setRegional(e.target.value as RegionalFormat)}>
+              <select
+                className="admin-select admin-select-fixed"
+                value={draft.regionalFormat}
+                onChange={(e) => setDraft({ ...draft, regionalFormat: e.target.value })}
+              >
                 <option>Standard</option>
                 <option>ISO</option>
               </select>
@@ -83,7 +106,11 @@ export function AdminProfilePageContent() {
         <AdminSection icon={<Palette size={16} />} title="UI theme">
           <div className="admin-select-field">
             <span className="admin-select-lbl">Theme</span>
-            <select className="admin-select" value={theme} onChange={(e) => setTheme(e.target.value)}>
+            <select
+              className="admin-select admin-select-fixed"
+              value={draft.theme}
+              onChange={(e) => setDraft({ ...draft, theme: e.target.value as typeof draft.theme })}
+            >
               <option>Light</option>
               <option>Dark</option>
               <option>System</option>
@@ -92,8 +119,9 @@ export function AdminProfilePageContent() {
         </AdminSection>
 
         <AdminPageFooter>
-          <button type="button" className="btn">Cancel</button>
-          <button type="button" className="btn btn-p">Save</button>
+          {saved ? <span className="admin-saved">Saved</span> : null}
+          <button type="button" className="btn" onClick={handleCancel}>Cancel</button>
+          <button type="button" className="btn btn-p" onClick={handleSave}>Save</button>
         </AdminPageFooter>
       </div>
     </AdminPageShell>

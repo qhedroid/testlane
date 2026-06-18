@@ -237,6 +237,45 @@ export function usePaginatedSearch<T>(
   return { filtered, pageItems, page, setPage, total: filtered.length, resetPage }
 }
 
+export function useSavedFeedback() {
+  const [saved, setSaved] = useState(false)
+  const showSaved = () => {
+    setSaved(true)
+    window.setTimeout(() => setSaved(false), 2000)
+  }
+  return { saved, showSaved }
+}
+
+export function AdminModal({
+  open,
+  title,
+  onClose,
+  children,
+  footer,
+}: {
+  open: boolean
+  title: string
+  onClose: () => void
+  children: ReactNode
+  footer?: ReactNode
+}) {
+  if (!open) return null
+  return (
+    <div className="admin-modal-backdrop" onClick={onClose}>
+      <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-hd">
+          <div className="admin-modal-title">{title}</div>
+          <button type="button" className="btn" style={{ padding: '2px 6px' }} onClick={onClose}>×</button>
+        </div>
+        <div className="admin-modal-body">{children}</div>
+        {footer ? <div className="admin-modal-foot">{footer}</div> : null}
+      </div>
+    </div>
+  )
+}
+
+export { formatRelativeTimestamp, formatUserLastLogin } from '@/fresh/data/admin-utils'
+
 export function formatTodayKey() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`

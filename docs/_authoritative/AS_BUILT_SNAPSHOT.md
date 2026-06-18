@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 4`, multi-project + key routing + run keys) |
+| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 5`, multi-project + key routing + run keys + admin settings) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
 | Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
@@ -37,8 +37,8 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | `/:projectKey/settings` | mock | `SettingsScreen` | Read-only preview |
 | `/:projectKey/reports` | placeholder | `PlaceholderScreen` | |
 | `/:projectKey/integrations` | placeholder | `PlaceholderScreen` | |
-| **`/admin`** | **placeholder** | **`AdminShell`** | **Global admin panel** — redirects to `/admin/profile`; not project-prefixed |
-| **`/admin/profile`** … **`/admin/audit-log`** | **placeholder** | **`AdminPageShell`** | 11 section placeholders (profile, account, API keys, org, projects, users, roles, integrations, custom fields, automation, audit log) |
+| **`/admin`** | **mock + localStorage** | **`AdminShell`** | **Global admin panel** — redirects to `/admin/profile`; not project-prefixed |
+| **`/admin/profile`** … **`/admin/audit-log`** | **mock + localStorage** | **`Admin*PageContent`** | 11 admin sections backed by `DemoState.adminSettings` |
 
 **Legacy redirects** (client-side, via `LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/${activeProjectKey}/…`. Root `/` → `/DP/dashboard`.
 
@@ -110,7 +110,7 @@ MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/sche
 | Defects screen create | Disabled |
 | Real multi-project switching | **Implemented** — key-prefixed URLs + `ProjectSwitcher` + create modal + add demo project |
 | Project settings screen | Disabled menu item only (coming soon) |
-| Admin panel (`/admin`) | **Shell implemented** — global route group with sidebar nav; section pages are placeholders |
+| Admin panel (`/admin`) | **Implemented** — global route group with sidebar nav; 11 section pages wired to `DemoState.adminSettings` via FreshProvider `admin/*` actions; audit log tracks admin mutations |
 
 ---
 
@@ -130,7 +130,7 @@ pnpm api:validate                 # needs dev server + seeded DB
 
 Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-v2'); location.reload()`
 
-**Migration:** v1→v2 multi-project; v2→v3 adds required `key`, `description`, renames seed to Demo Project / `DP`; v3→v4 adds `runKey`, `nextRunNumByProject`, URL run selection. Failed migration resets to seed.
+**Migration:** v1→v2 multi-project; v2→v3 adds required `key`, `description`, renames seed to Demo Project / `DP`; v3→v4 adds `runKey`, `nextRunNumByProject`, URL run selection; v4→v5 adds `adminSettings` (global admin panel state). Failed migration resets to seed.
 
 ---
 
@@ -138,7 +138,9 @@ Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-
 
 ```
 apps/web/src/fresh/              # Demo UI (screens, seed, FreshProvider, ProjectSwitcher)
-apps/web/src/fresh/components/admin/  # Admin panel shell (AdminShell, sidebar, page wrapper)
+apps/web/src/fresh/data/admin-initial-settings.ts  # AdminSettings seed data
+apps/web/src/fresh/data/admin-reducer.ts     # admin/* reducer actions
+apps/web/src/fresh/components/admin/  # Admin panel shell + page content components
 apps/web/src/app/admin/          # Global /admin route group (not project-prefixed)
 apps/web/src/fresh/lib/project-routes.ts  # Key-prefixed URL helpers
 apps/web/src/fresh/data/demo-template.ts   # Immutable demo template clone

@@ -9,9 +9,10 @@ import { projectPath } from '../lib/project-routes'
 interface CreateProjectModalProps {
   open: boolean
   onClose: () => void
+  redirectOnCreate?: boolean
 }
 
-export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
+export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: CreateProjectModalProps) {
   const router = useRouter()
   const { createProject, isProjectKeyUnique } = useFresh()
   const [name, setName] = useState('')
@@ -52,7 +53,9 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
       description: trimmedDescription || undefined,
     })
     handleClose()
-    router.push(projectPath(trimmedKey, 'dashboard'))
+    if (redirectOnCreate) {
+      router.push(projectPath(trimmedKey, 'dashboard'))
+    }
   }
 
   return (

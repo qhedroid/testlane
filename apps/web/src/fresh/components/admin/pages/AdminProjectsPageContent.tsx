@@ -38,7 +38,7 @@ export function AdminProjectsPageContent() {
     <AdminPageShell title="Projects">
       <AdminToolbar
         left={
-          <button type="button" className="btn btn-p" onClick={() => setCreateOpen(true)}>
+          <button type="button" className="btn btn-p admin-btn-fit" onClick={() => setCreateOpen(true)}>
             + Create a new project
           </button>
         }
@@ -66,14 +66,9 @@ export function AdminProjectsPageContent() {
         </tbody>
       </AdminTable>
 
-      <AdminTableFooter
-        total={filtered.length}
-        page={page}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
-      />
+      <AdminTableFooter total={filtered.length} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} />
 
-      <CreateProjectModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateProjectModal open={createOpen} onClose={() => setCreateOpen(false)} redirectOnCreate={false} />
     </AdminPageShell>
   )
 }

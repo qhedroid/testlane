@@ -67,7 +67,7 @@ Roles (capability, not job title): `super_admin` > `admin` > `contributor` > `vi
 
 ## Prototype model (FRESH / localStorage)
 
-State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 4`).
+State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 5`).
 
 | Entity | Prototype type | Notes |
 |--------|----------------|-------|
@@ -78,6 +78,21 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 | **TestRun** | `DemoRun { id, projectId, runKey, name, description?, planId, sealed, archivedAt?, caseOrder[], executions }` | `runKey` is project-scoped 5-digit display id for URLs. `executions` keyed by case id. `currentRunIdByProject` tracks picker per project (synced from URL when `/tr/:runKey` present). |
 | **Execution** | `CaseExecution { status, stepResults, defects[], assignee }` | Full step-level in demo `/runs`. |
 | **Defect** | String IDs on execution + `MOCK_DEFECTS` screen | Not a first-class entity in state. |
+| **AdminSettings** | `AdminSettings` on `DemoState.adminSettings` | Global org admin panel state (profile, account, organization, API keys, users, roles, custom fields, automation, audit log). Persisted in `relay-demo-v2`. Seed: `admin-initial-settings.ts`. Mutations via `admin/*` actions in `FreshProvider`; audit log auto-appended on data mutations. |
+
+### AdminSettings structure (prototype)
+
+| Nested field | Type | Notes |
+|--------------|------|-------|
+| `profile` | displayName, language, regionalFormat, theme | Saved via `admin/saveProfile` |
+| `account` | firstName, lastName, twoFactorMethods[] | Saved via `admin/saveAccount`; 2FA toggled via `admin/toggle2FA` |
+| `organization` | fullName, reopen/edit policies, oauthEnabled | Saved via `admin/saveOrganization` (+ audit entry) |
+| `apiKeys` | `AdminApiKey[]` | Created/deleted via admin actions; sorted by `createdAt` |
+| `users` | `AdminUser[]` | Seed users + invited users (`admin-user-inv-*` ids) |
+| `roles` | `AdminRole[]` | Built-in + custom roles |
+| `customFields` | `AdminCustomField[]` | Seed + session-added fields |
+| `automation` | retentionPeriod, sources[], fields[] | CRUD via admin actions |
+| `auditLog` | `AuditLogEntry[]` | Append-only; numeric `timestamp`; relative display in UI |
 
 ### Prototype invariants (enforced in UI code)
 
@@ -103,7 +118,8 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 | *(none / 1)* | `module: string`, flat folders/cases/runs | → v2 multi-project blob |
 | **2** | Multi-project without required keys | → v3: seed renamed to Demo Project / `DP`; all projects get required `key`; optional `description`; legacy `DEMO` key migrated to `DP` |
 | **3** | `Project { name, key, description?, seedTemplate? }`, key-based URLs | Current through early v4 work |
-| **4** | `DemoRun.runKey`, `description?`, `archivedAt?`, `nextRunNumByProject`, URL `/testruns/tr/:runKey` | **Current.** v3→v4 assigns run keys per project (seed R1–R6 → 00001–00006); initializes counters. |
+| **4** | `DemoRun.runKey`, `description?`, `archivedAt?`, `nextRunNumByProject`, URL `/testruns/tr/:runKey` | v3→v4 assigns run keys per project (seed R1–R6 → 00001–00006); initializes counters. |
+| **5** | `DemoState.adminSettings: AdminSettings` | **Current.** v4→v5 adds global admin panel state from `initialAdminSettings`; existing localStorage blobs without `adminSettings` receive seed on load. |
 
 On migration failure: `console.error` and fall back to `buildInitialDemoState()` (seeded **Demo Project** / `DP`).
 

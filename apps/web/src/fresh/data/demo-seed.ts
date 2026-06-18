@@ -8,6 +8,7 @@ import {
   LEGACY_TO_PRIORITY,
   newId,
 } from './demo-model'
+import { initialAdminSettings } from './admin-initial-settings'
 import { INITIAL_CASES, INITIAL_EXEC_CASES, RUN_CARDS, RUN_PICKER_LIST } from './seed'
 import type { RunCard } from './types'
 import type { DemoCase, ExecCase, ResultStatus } from './types'
@@ -366,6 +367,7 @@ export function buildInitialDemoState(): DemoState {
     currentRunIdByProject: { [DEFAULT_SEED_PROJECT_ID]: defaultRunId },
     nextCaseNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextCaseNum },
     nextRunNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextRunNum },
+    adminSettings: initialAdminSettings,
   }
 }
 

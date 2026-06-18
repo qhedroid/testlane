@@ -11,6 +11,7 @@ import {
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
 import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project } from './demo-model'
+import { isAdminAction, reduceAdminState, type AdminAction } from './admin-reducer'
 import {
   getActiveProject,
   getActiveProjectCurrentRunId,
@@ -76,6 +77,7 @@ function makeDefaultProject(): Project {
 }
 
 export type FreshAction =
+  | AdminAction
   | { type: 'ADD_DEMO_PROJECT' }
   | { type: 'CREATE_PROJECT'; name: string; key: string; description?: string }
   | { type: 'UPDATE_PROJECT'; projectId: string; patch: Partial<Pick<Project, 'name' | 'key' | 'description'>> }
@@ -98,6 +100,11 @@ export type FreshAction =
   | { type: 'HYDRATE'; state: DemoState }
 
 function reducer(state: DemoState, action: FreshAction): DemoState {
+  if (isAdminAction(action)) {
+    const next = reduceAdminState(state, action)
+    persistState(next)
+    return next
+  }
   let next: DemoState
   switch (action.type) {
     case 'HYDRATE':
@@ -385,6 +392,23 @@ interface FreshContextValue {
   getProjectByKey: (key: string) => Project | undefined
   isProjectKeyUnique: (key: string, excludeProjectId?: string) => boolean
   addDemoProject: () => { key: string; name: string }
+  adminSettings: DemoState['adminSettings']
+  saveAdminProfile: (payload: Partial<DemoState['adminSettings']['profile']>) => void
+  saveAdminAccount: (payload: Partial<DemoState['adminSettings']['account']>) => void
+  toggleAdmin2FA: (method: string) => void
+  saveAdminOrganization: (payload: Partial<DemoState['adminSettings']['organization']>) => void
+  createAdminApiKey: (payload: Omit<DemoState['adminSettings']['apiKeys'][number], 'id' | 'createdAt' | 'maskedKey' | 'userId'>) => void
+  deleteAdminApiKey: (id: string) => void
+  inviteAdminUser: (payload: Omit<DemoState['adminSettings']['users'][number], 'id' | 'lastLoginAt' | 'twoFa' | 'status'>) => void
+  updateAdminUserRole: (id: string, role: DemoState['adminSettings']['users'][number]['role']) => void
+  createAdminRole: (payload: Omit<DemoState['adminSettings']['roles'][number], 'id' | 'userCount' | 'isBuiltIn'>) => void
+  addAdminCustomField: (payload: Omit<DemoState['adminSettings']['customFields'][number], 'id'>) => void
+  deleteAdminCustomField: (id: string) => void
+  saveAdminAutomationRetention: (retentionPeriod: string) => void
+  updateAdminAutomationSource: (source: DemoState['adminSettings']['automation']['sources'][number]) => void
+  deleteAdminAutomationSource: (id: string) => void
+  updateAdminAutomationField: (field: DemoState['adminSettings']['automation']['fields'][number]) => void
+  deleteAdminAutomationField: (id: string) => void
   createProject: (input: { name: string; key: string; description?: string }) => void
   updateProject: (projectId: string, patch: Partial<Pick<Project, 'name' | 'key' | 'description'>>) => void
   deleteProject: (projectId: string) => void
@@ -545,6 +569,88 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'CREATE_PROJECT', ...input })
   }, [])
 
+  const saveAdminProfile = useCallback((payload: Partial<DemoState['adminSettings']['profile']>) => {
+    dispatch({ type: 'admin/saveProfile', payload })
+  }, [])
+
+  const saveAdminAccount = useCallback((payload: Partial<DemoState['adminSettings']['account']>) => {
+    dispatch({ type: 'admin/saveAccount', payload })
+  }, [])
+
+  const toggleAdmin2FA = useCallback((method: string) => {
+    dispatch({ type: 'admin/toggle2FA', payload: { method } })
+  }, [])
+
+  const saveAdminOrganization = useCallback((payload: Partial<DemoState['adminSettings']['organization']>) => {
+    dispatch({ type: 'admin/saveOrganization', payload })
+  }, [])
+
+  const createAdminApiKey = useCallback(
+    (payload: Omit<DemoState['adminSettings']['apiKeys'][number], 'id' | 'createdAt' | 'maskedKey' | 'userId'>) => {
+      dispatch({ type: 'admin/createApiKey', payload })
+    },
+    [],
+  )
+
+  const deleteAdminApiKey = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteApiKey', payload: { id } })
+  }, [])
+
+  const inviteAdminUser = useCallback(
+    (payload: Omit<DemoState['adminSettings']['users'][number], 'id' | 'lastLoginAt' | 'twoFa' | 'status'>) => {
+      dispatch({ type: 'admin/inviteUser', payload })
+    },
+    [],
+  )
+
+  const updateAdminUserRole = useCallback((id: string, role: DemoState['adminSettings']['users'][number]['role']) => {
+    dispatch({ type: 'admin/updateUserRole', payload: { id, role } })
+  }, [])
+
+  const createAdminRole = useCallback(
+    (payload: Omit<DemoState['adminSettings']['roles'][number], 'id' | 'userCount' | 'isBuiltIn'>) => {
+      dispatch({ type: 'admin/createRole', payload })
+    },
+    [],
+  )
+
+  const addAdminCustomField = useCallback(
+    (payload: Omit<DemoState['adminSettings']['customFields'][number], 'id'>) => {
+      dispatch({ type: 'admin/addCustomField', payload })
+    },
+    [],
+  )
+
+  const deleteAdminCustomField = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteCustomField', payload: { id } })
+  }, [])
+
+  const saveAdminAutomationRetention = useCallback((retentionPeriod: string) => {
+    dispatch({ type: 'admin/saveAutomationRetention', payload: { retentionPeriod } })
+  }, [])
+
+  const updateAdminAutomationSource = useCallback(
+    (source: DemoState['adminSettings']['automation']['sources'][number]) => {
+      dispatch({ type: 'admin/updateAutomationSource', payload: source })
+    },
+    [],
+  )
+
+  const deleteAdminAutomationSource = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteAutomationSource', payload: { id } })
+  }, [])
+
+  const updateAdminAutomationField = useCallback(
+    (field: DemoState['adminSettings']['automation']['fields'][number]) => {
+      dispatch({ type: 'admin/updateAutomationField', payload: field })
+    },
+    [],
+  )
+
+  const deleteAdminAutomationField = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteAutomationField', payload: { id } })
+  }, [])
+
   const updateProject = useCallback(
     (projectId: string, patch: Partial<Pick<Project, 'name' | 'key' | 'description'>>) => {
       dispatch({ type: 'UPDATE_PROJECT', projectId, patch })
@@ -585,6 +691,23 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       listActiveProjectRuns: () => listActiveProjectRuns(state),
       getProjectByKey: getProjectByKeyFn,
       isProjectKeyUnique: isProjectKeyUniqueFn,
+      adminSettings: state.adminSettings,
+      saveAdminProfile,
+      saveAdminAccount,
+      toggleAdmin2FA,
+      saveAdminOrganization,
+      createAdminApiKey,
+      deleteAdminApiKey,
+      inviteAdminUser,
+      updateAdminUserRole,
+      createAdminRole,
+      addAdminCustomField,
+      deleteAdminCustomField,
+      saveAdminAutomationRetention,
+      updateAdminAutomationSource,
+      deleteAdminAutomationSource,
+      updateAdminAutomationField,
+      deleteAdminAutomationField,
       createProject,
       addDemoProject,
       updateProject,
@@ -617,6 +740,22 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       currentRun,
       getProjectByKeyFn,
       isProjectKeyUniqueFn,
+      saveAdminProfile,
+      saveAdminAccount,
+      toggleAdmin2FA,
+      saveAdminOrganization,
+      createAdminApiKey,
+      deleteAdminApiKey,
+      inviteAdminUser,
+      updateAdminUserRole,
+      createAdminRole,
+      addAdminCustomField,
+      deleteAdminCustomField,
+      saveAdminAutomationRetention,
+      updateAdminAutomationSource,
+      deleteAdminAutomationSource,
+      updateAdminAutomationField,
+      deleteAdminAutomationField,
       createProject,
       addDemoProject,
       updateProject,

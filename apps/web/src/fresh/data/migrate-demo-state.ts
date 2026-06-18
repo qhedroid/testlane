@@ -1,3 +1,4 @@
+import { initialAdminSettings } from './admin-initial-settings'
 import { buildInitialDemoState } from './demo-seed'
 import type { Case, DemoRun, DemoState, Folder, LegacyDemoState, Project } from './demo-model'
 import {
@@ -101,6 +102,7 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     currentRunIdByProject: { [projectId]: legacyRunId },
     nextCaseNumByProject: { [projectId]: legacyNextCaseNum },
     nextRunNumByProject: { [projectId]: 1 },
+    adminSettings: initialAdminSettings,
   }
 }
 
@@ -184,11 +186,20 @@ function ensureEntityProjectIds(state: DemoState): DemoState {
   return { ...state, folders, cases, runs }
 }
 
+function migrateAdminSettings(state: DemoState): DemoState {
+  if (state.adminSettings) return state
+  return {
+    ...state,
+    adminSettings: initialAdminSettings,
+    schemaVersion: DEMO_SCHEMA_VERSION,
+  }
+}
+
 /** Migrate persisted localStorage state to the current schema. Never throws. */
 export function migrateDemoState(raw: unknown): DemoState {
   try {
     const legacy = raw as LegacyDemoState
-    let state: DemoState = hasMultiProjectShape(legacy) ? legacy : migrateToMultiProject(legacy)
+    let state: DemoState = hasMultiProjectShape(legacy) ? (legacy as DemoState) : migrateToMultiProject(legacy)
     state = migrateAssignees(state)
     state = migrateProjectProperties(state)
     state = ensureEntityProjectIds(state)
@@ -196,6 +207,9 @@ export function migrateDemoState(raw: unknown): DemoState {
     state = ensureNextRunNumByProject(state)
     if (state.schemaVersion < DEMO_SCHEMA_VERSION || state.runs.some((r) => !r.runKey)) {
       state = migrateRunKeys(state)
+    }
+    state = migrateAdminSettings(state)
+    if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }
     return state
