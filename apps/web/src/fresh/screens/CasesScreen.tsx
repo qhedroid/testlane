@@ -32,12 +32,58 @@ const STATUS_CHIPS: { label: string; value: StatusFilter }[] = [
 
 const PRI_OPTIONS: CasePriority[] = ['Critical', 'High', 'Medium', 'Low']
 
+const EXEC_COLOR: Record<ExecStatus, string> = {
+  Passed:  'var(--pass)',
+  Failed:  'var(--fail)',
+  Blocked: 'var(--block)',
+  Skipped: 'var(--text3)',
+  'Not run': 'var(--text3)',
+}
+
+type FilterField = 'title' | 'priority' | 'type' | 'assignee' | 'status'
+type FilterOperator = 'contains' | 'is'
+
+interface FilterCondition {
+  id: string
+  field: FilterField
+  operator: FilterOperator
+  value: string
+}
+
+const FILTER_OPERATORS: Record<FilterField, FilterOperator[]> = {
+  title:    ['contains'],
+  priority: ['is'],
+  type:     ['is'],
+  assignee: ['contains'],
+  status:   ['is'],
+}
+
+const FILTER_VALUE_OPTIONS: Partial<Record<FilterField, string[]>> = {
+  priority: ['Critical', 'High', 'Medium', 'Low'],
+  status:   ['pass', 'fail', 'blocked', 'not_run', 'skip'],
+}
+
 function caseLastStatus(runs: { executions: Record<string, { status: ExecStatus }> }[], caseId: string): ExecStatus {
   for (const run of runs) {
     const ex = run.executions[caseId]
     if (ex) return ex.status
   }
   return 'Not run'
+}
+
+/** Returns the last N execution statuses for a case, most recent first. */
+function caseRecentStatuses(
+  runs: { executions: Record<string, { status: ExecStatus }> }[],
+  caseId: string,
+  n = 5,
+): ExecStatus[] {
+  const results: ExecStatus[] = []
+  for (let i = runs.length - 1; i >= 0; i--) {
+    if (results.length >= n) break
+    const ex = runs[i].executions[caseId]
+    if (ex) results.push(ex.status)
+  }
+  return results
 }
 
 function folderAncestorIds(folders: Folder[], folderId: string): string[] {
@@ -171,9 +217,28 @@ export function CasesScreen() {
   const newFolderInputRef = useRef<HTMLInputElement>(null)
   const [newFolderDraft, setNewFolderDraft] = useState<{ parentId: string | null } | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([])
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false)
+  const [draftFilter, setDraftFilter] = useState<{ field: FilterField; operator: FilterOperator; value: string }>({
+    field: 'title',
+    operator: 'contains',
+    value: '',
+  })
+  const filterPanelRef = useRef<HTMLDivElement>(null)
   const [contextMenu, setContextMenu] = useState<{ caseId: string; x: number; y: number } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const pendingEditRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!filterPanelOpen) return
+    function handleClick(e: MouseEvent) {
+      if (filterPanelRef.current && !filterPanelRef.current.contains(e.target as Node)) {
+        setFilterPanelOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [filterPanelOpen])
 
   useEffect(() => {
     if (!contextMenu) return
@@ -215,9 +280,37 @@ export function CasesScreen() {
   )
 
   const displayedCases = useMemo(() => {
-    if (statusFilter === 'all') return folderCases
-    return folderCases.filter((c) => EXEC_TO_LEGACY[caseLastStatus(activeRuns, c.id)] === statusFilter)
-  }, [folderCases, statusFilter, activeRuns])
+    let result = folderCases
+
+    // Legacy status chip filter
+    if (statusFilter !== 'all') {
+      result = result.filter((c) => EXEC_TO_LEGACY[caseLastStatus(activeRuns, c.id)] === statusFilter)
+    }
+
+    // Advanced filter conditions
+    for (const cond of filterConditions) {
+      result = result.filter((c) => {
+        switch (cond.field) {
+          case 'title':
+            return c.title.toLowerCase().includes(cond.value.toLowerCase())
+          case 'priority':
+            return c.priority.toLowerCase() === cond.value.toLowerCase()
+          case 'type':
+            return c.type.toLowerCase() === cond.value.toLowerCase()
+          case 'assignee':
+            return (c.assignee ?? '').toLowerCase().includes(cond.value.toLowerCase())
+          case 'status': {
+            const last = EXEC_TO_LEGACY[caseLastStatus(activeRuns, c.id)]
+            return last === cond.value
+          }
+          default:
+            return true
+        }
+      })
+    }
+
+    return result
+  }, [folderCases, statusFilter, activeRuns, filterConditions])
 
   const detail = detailCaseId ? activeCases.find((c) => c.id === detailCaseId) ?? null : null
 
@@ -416,11 +509,137 @@ export function CasesScreen() {
                 {label}
               </span>
             ))}
+
             <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px' }} />
-            <span className="chip">Priority <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
-            <span className="chip">Assignee <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
-            <span className="chip">Type <i className="ti ti-chevron-down" style={{ fontSize: 10 }} /></span>
-            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{displayedCases.length} cases</span>
+
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className={`chip${filterConditions.length > 0 ? ' on' : ''}`}
+                onClick={() => setFilterPanelOpen((v) => !v)}
+              >
+                <i className="ti ti-filter" style={{ fontSize: 11 }} /> Filter
+                {filterConditions.length > 0 ? (
+                  <span style={{
+                    marginLeft: 4,
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    borderRadius: 8,
+                    padding: '0 5px',
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}>
+                    {filterConditions.length}
+                  </span>
+                ) : null}
+              </button>
+
+              {filterPanelOpen ? (
+                <div
+                  ref={filterPanelRef}
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    zIndex: 200,
+                    marginTop: 4,
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    boxShadow: '0 4px 16px rgba(0,0,0,.18)',
+                    padding: 10,
+                    minWidth: 360,
+                  }}
+                >
+                  {filterConditions.length > 0 ? (
+                    <div style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {filterConditions.map((cond) => (
+                        <div key={cond.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                          <span style={{ color: 'var(--text2)', minWidth: 60 }}>{cond.field}</span>
+                          <span style={{ color: 'var(--text3)' }}>{cond.operator}</span>
+                          <span style={{ fontWeight: 600 }}>{cond.value}</span>
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{ padding: '1px 5px', marginLeft: 'auto', fontSize: 11 }}
+                            onClick={() => setFilterConditions((prev) => prev.filter((c) => c.id !== cond.id))}
+                          >
+                            <i className="ti ti-x" style={{ fontSize: 10 }} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', textAlign: 'left', padding: 0, marginTop: 2 }}
+                        onClick={() => setFilterConditions([])}
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <select
+                      style={{ fontSize: 12, flex: '0 0 auto' }}
+                      value={draftFilter.field}
+                      onChange={(e) => {
+                        const field = e.target.value as FilterField
+                        const op = FILTER_OPERATORS[field][0]
+                        setDraftFilter({ field, operator: op, value: '' })
+                      }}
+                    >
+                      <option value="title">Title</option>
+                      <option value="priority">Priority</option>
+                      <option value="type">Type</option>
+                      <option value="assignee">Assignee</option>
+                      <option value="status">Status</option>
+                    </select>
+                    <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>{draftFilter.operator}</span>
+                    {FILTER_VALUE_OPTIONS[draftFilter.field] ? (
+                      <select
+                        style={{ fontSize: 12, flex: 1 }}
+                        value={draftFilter.value}
+                        onChange={(e) => setDraftFilter((d) => ({ ...d, value: e.target.value }))}
+                      >
+                        <option value="">Select…</option>
+                        {FILTER_VALUE_OPTIONS[draftFilter.field]!.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        style={{ fontSize: 12, flex: 1 }}
+                        placeholder={`Filter by ${draftFilter.field}…`}
+                        value={draftFilter.value}
+                        onChange={(e) => setDraftFilter((d) => ({ ...d, value: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && draftFilter.value.trim()) {
+                            setFilterConditions((prev) => [...prev, { ...draftFilter, id: newId('filter'), value: draftFilter.value.trim() }])
+                            setDraftFilter((d) => ({ ...d, value: '' }))
+                          }
+                        }}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-p"
+                      style={{ fontSize: 12, padding: '2px 8px', flexShrink: 0 }}
+                      disabled={!draftFilter.value.trim()}
+                      onClick={() => {
+                        if (!draftFilter.value.trim()) return
+                        setFilterConditions((prev) => [...prev, { ...draftFilter, id: newId('filter'), value: draftFilter.value.trim() }])
+                        setDraftFilter((d) => ({ ...d, value: '' }))
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+              {displayedCases.length} cases
+            </span>
           </div>
 
           <div className={`bulk${selectedIds.size > 0 ? ' on' : ''}`}>
@@ -468,7 +687,7 @@ export function CasesScreen() {
                     <th style={{ width: 72 }}>Priority</th>
                     <th style={{ width: 100 }}>Folder</th>
                     <th style={{ width: 88 }}>Type</th>
-                    <th style={{ width: 80 }}>Last run</th>
+                    <th style={{ width: 120 }}>Last results</th>
                     <th style={{ width: 100 }}>Assigned</th>
                     <th style={{ width: 50, textAlign: 'center' }}>Steps</th>
                     <th style={{ width: 70 }}>Updated</th>
@@ -477,7 +696,6 @@ export function CasesScreen() {
                 </thead>
                 <tbody>
                   {displayedCases.map((c) => {
-                    const last = caseLastStatus(activeRuns, c.id)
                     return (
                       <tr
                         key={c.id}
@@ -501,7 +719,42 @@ export function CasesScreen() {
                         <td><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></td>
                         <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{folderLabel(activeFolders, c.folderId)}</td>
                         <td style={{ color: 'var(--text2)' }}>{c.type}</td>
-                        <td><span className={`pill ${EXEC_PILL_MAP[last]}`}>{EXEC_PILL_LABEL[last]}</span></td>
+                        <td>
+                          {(() => {
+                            const last = caseLastStatus(activeRuns, c.id)
+                            const recent = caseRecentStatuses(activeRuns, c.id, 5)
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{
+                                  display: 'inline-block',
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: '50%',
+                                  background: EXEC_COLOR[last],
+                                  flexShrink: 0,
+                                }} title={last} />
+                                <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                                  {Array.from({ length: 5 }).map((_, i) => {
+                                    const s = recent[i]
+                                    return (
+                                      <div
+                                        key={i}
+                                        title={s ?? 'No data'}
+                                        style={{
+                                          width: 4,
+                                          height: s ? 10 : 4,
+                                          borderRadius: 1,
+                                          background: s ? EXEC_COLOR[s] : 'var(--border)',
+                                          opacity: s ? 1 : 0.4,
+                                        }}
+                                      />
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })()}
+                        </td>
                         <td style={{ color: 'var(--text2)' }}>{displayAssigneeName(c.assignee)}</td>
                         <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{c.steps.length}</td>
                         <td style={{ color: 'var(--text3)' }}>{formatRelativeTime(c.updatedAt)}</td>
