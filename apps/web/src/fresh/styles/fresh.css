@@ -143,6 +143,7 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 .dp-id{font-family:var(--mono);font-size:10px;color:var(--text3);display:block;margin-bottom:2px}
 .dp-ttl{font-size:12.5px;font-weight:600;line-height:1.3;flex:1}
 .dp-body{flex:1;overflow-y:auto}
+.dp-empty-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center;flex:1}
 .dp-sec{padding:8px 10px;border-bottom:1px solid var(--border)}
 .dp-sl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:7px}
 .dp-mg{display:grid;grid-template-columns:1fr 1fr;gap:7px}

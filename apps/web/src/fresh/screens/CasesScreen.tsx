@@ -20,7 +20,7 @@ import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
-type DetailTab = 'details' | 'history' | 'activity'
+type DetailTab = 'details' | 'attachments' | 'defects' | 'requirements' | 'runs' | 'history' | 'activity'
 
 const STATUS_CHIPS: { label: string; value: StatusFilter }[] = [
   { label: 'All status', value: 'all' },
@@ -665,8 +665,10 @@ function CaseDetail({
         </button>
       </div>
       <div className="nav-tab-bar">
-        {(['details', 'history', 'activity'] as const).map((t) => (
-          <div key={t} className={`nav-tab${tab === t ? ' on' : ''}`} onClick={() => onTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</div>
+        {(['details', 'attachments', 'defects', 'requirements', 'runs', 'history', 'activity'] as const).map((t) => (
+          <div key={t} className={`nav-tab${tab === t ? ' on' : ''}`} onClick={() => onTab(t)}>
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </div>
         ))}
       </div>
       <div className="dp-body">
@@ -794,6 +796,75 @@ function CaseDetail({
               )}
             </div>
           </>
+        ) : null}
+        {tab === 'attachments' ? (
+          <div className="dp-empty-tab">
+            <i className="ti ti-paperclip" style={{ fontSize: 28, color: 'var(--text3)', marginBottom: 8 }} />
+            <div style={{ fontWeight: 600, fontSize: 13 }}>No attachments</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+              Drag and drop files here, or click to upload.
+            </div>
+            <button type="button" className="btn" style={{ marginTop: 10, fontSize: 12 }}>
+              <i className="ti ti-upload" style={{ fontSize: 12 }} /> Add attachment
+            </button>
+          </div>
+        ) : null}
+        {tab === 'defects' ? (
+          <div className="dp-empty-tab">
+            <i className="ti ti-bug" style={{ fontSize: 28, color: 'var(--text3)', marginBottom: 8 }} />
+            <div style={{ fontWeight: 600, fontSize: 13 }}>No defects linked</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+              No defects have yet been linked to this test case in a test run.
+            </div>
+          </div>
+        ) : null}
+        {tab === 'requirements' ? (
+          <div className="dp-empty-tab">
+            <i className="ti ti-list-check" style={{ fontSize: 28, color: 'var(--text3)', marginBottom: 8 }} />
+            <div style={{ fontWeight: 600, fontSize: 13 }}>No requirements linked</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+              Link this test case to a requirement to track coverage.
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+              <button type="button" className="btn btn-p" style={{ fontSize: 12 }}>
+                <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create requirement
+              </button>
+              <button type="button" className="btn" style={{ fontSize: 12 }}>
+                <i className="ti ti-link" style={{ fontSize: 12 }} /> Link requirement
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {tab === 'runs' ? (
+          <div style={{ padding: '10px 12px' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              Recent results
+            </div>
+            <table className="tbl" style={{ fontSize: 11.5 }}>
+              <thead>
+                <tr>
+                  <th>Run</th>
+                  <th style={{ width: 80 }}>By</th>
+                  <th style={{ width: 90 }}>At</th>
+                  <th style={{ width: 72, textAlign: 'center' }}>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ color: 'var(--accent)' }}>Sprint 44 Regression</td>
+                  <td style={{ color: 'var(--text2)' }}>Nadim Sharif</td>
+                  <td style={{ color: 'var(--text3)' }}>2d ago</td>
+                  <td style={{ textAlign: 'center' }}><span className="pill pill-pass">Passed</span></td>
+                </tr>
+                <tr>
+                  <td style={{ color: 'var(--accent)' }}>Sprint 43 Smoke</td>
+                  <td style={{ color: 'var(--text2)' }}>Jamil Khan</td>
+                  <td style={{ color: 'var(--text3)' }}>15d ago</td>
+                  <td style={{ textAlign: 'center' }}><span className="pill pill-fail">Failed</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         ) : null}
         {tab === 'history' ? (
           <>
