@@ -5,6 +5,16 @@
 
 ---
 
+## Claude's role (read this first)
+Claude is a **planning and prompt-drafting assistant**. It does not implement changes to project source files.
+
+- Feature work → draft a Cursor agent prompt in `docs/cursor-prompts/`, then hand it to the user to run in Cursor.
+- The only files Claude writes freely are `docs/claude/**` and `docs/cursor-prompts/**`.
+- All actual code/config changes are made by Cursor agents working from those prompts.
+- If explicitly asked to make a specific file change, that's the exception — not the default.
+
+---
+
 ## Active branch
 `mvp-test-cases` (branched from `mvp-main`)
 
@@ -54,13 +64,13 @@ All saved to `docs/cursor-prompts/`. Ready to hand to Cursor agents one at a tim
 - **Always run `pnpm build` before committing.** Zero TS errors required.
 - **Dev server restart command:** `cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev`
 - **Commit after each task** as a checkpoint for easy rollback.
-- **No backend work.** If a task appears to require it, stop and ask Jamil for confirmation.
+- **No backend work.** If a task appears to require it, stop and ask for confirmation.
 
 ---
 
 ## Gotchas encountered
 
-- **Git amend broke the merge commit** when run from the sandbox (set Jamil Khan as committer, caused 57 files to appear unstaged). Fix: `git reset --hard origin/mvp-main` from the user's terminal, then re-amend with `GIT_COMMITTER_NAME="CrimsonDelta"` env var.
+- **Git amend broke the merge commit** when run from the sandbox (set the wrong committer, caused 57 files to appear unstaged). Fix: `git reset --hard origin/mvp-main` from the user's terminal, then re-amend with the correct `GIT_COMMITTER_NAME` env var.
 - **`.git/HEAD.lock`** blocked amend from the sandbox — user had to remove it manually from their terminal.
 - **`adminSettings` is not in the default `useFresh()` destructure** in CasesScreen. When Task 03 is executed, Cursor will need to add it explicitly.
 - **`formatRunKey` exists in `demo-model.ts`** — Task 06's `formatCaseKey` should follow the exact same pattern and live next to it.
@@ -78,5 +88,5 @@ All saved to `docs/cursor-prompts/`. Ready to hand to Cursor agents one at a tim
 ## What to do at the start of a new session
 
 1. Read this file.
-2. Ask Jamil which task Cursor has just finished (or is about to start) to calibrate the current state.
+2. Ask the user which task Cursor has just finished (or is about to start) to calibrate the current state.
 3. Update the "Completed work" and "Schema version" sections if tasks have been executed since this was last written.

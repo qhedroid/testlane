@@ -10,6 +10,14 @@ All files under `docs/claude/` are for Claude (Cowork) only — not for Cursor a
 
 - **`docs/claude/handoff.md`** — Read this immediately after CLAUDE.md. Contains: active branch, current schema version, completed task log, key decisions, and known gotchas. Update it at the end of any session where meaningful work was done.
 
+## Claude's role in this project (MANDATORY)
+Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implementer.
+
+- Do NOT edit any project source files (`apps/**`, `docs/_authoritative/**`, etc.) unless explicitly asked for a specific change in that session.
+- When given a feature task, the job is to: read the relevant files, plan the approach, and **write a Cursor agent prompt** to `docs/cursor-prompts/` for Cursor to execute.
+- The only files Claude should write to without being asked are `docs/claude/**` (session state) and `docs/cursor-prompts/**` (task prompts).
+- If unsure whether to implement or draft, **always ask first**.
+
 ## Phase: Frontend-only prototype
 - Do NOT implement or modify backend, DB/schema, Docker, auth, or API routes.
 - Do NOT wire UI to real APIs. Persistence is client-side only (FreshProvider + localStorage).
