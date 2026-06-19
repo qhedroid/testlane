@@ -153,11 +153,15 @@
 .admin-inline-actions{display:flex;gap:8px;margin-top:10px}
 
 /* ── Projects page + detail panel ── */
-.admin-projects-layout{display:flex;gap:0;align-items:stretch;min-height:0}
-.admin-projects-main{flex:1;min-width:0}
-.admin-projects-layout.panel-open .admin-projects-main{flex:1}
-.admin-project-panel{width:520px;flex-shrink:0;display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);box-shadow:-4px 0 16px rgba(4,44,83,.06);overflow:hidden;max-height:calc(100vh - 120px);position:sticky;top:0}
-.admin-projects-layout.panel-maximized .admin-project-panel{width:auto;flex:1}
+.admin-main:has(.admin-projects-layout){overflow:hidden;display:flex;flex-direction:column}
+.admin-page:has(.admin-projects-layout){display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box}
+.admin-page:has(.admin-projects-layout) .admin-page-title{flex-shrink:0;margin-bottom:16px}
+.admin-projects-layout{display:flex;flex-direction:row;gap:0;flex:1;min-height:0;height:100%}
+.admin-projects-main{flex:1;min-width:0;overflow:auto}
+.admin-projects-layout.panel-maximized .admin-projects-main{display:none}
+.admin-project-panel{width:420px;flex-shrink:0;height:100%;display:flex;flex-direction:column;background:#fff;border-left:1px solid var(--border);overflow:hidden;min-height:0}
+.admin-projects-layout.panel-maximized .admin-project-panel,
+.admin-project-panel.maximized{flex:1;width:100%}
 .admin-project-panel-hd{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
 .admin-project-panel-title{flex:1;min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden}
 .admin-project-key-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;background:#E0F2F1;color:#00796B;font-size:11px;font-weight:700;font-family:var(--mono);flex-shrink:0}
