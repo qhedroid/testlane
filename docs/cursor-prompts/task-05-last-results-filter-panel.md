@@ -436,13 +436,14 @@ Adjust the message to match reality, then commit.
 ```
 Test cases: sparkline last-results column and advanced filter panel
 
-- Add caseRecentStatuses() helper returning last N ExecStatus values for a case
-- Add EXEC_COLOR map (ExecStatus → CSS variable) for status dot and sparkline bar colors
-- Replace Last run pill column with: colored 8px status dot + 5-bar sparkline (bars sized and colored by result, grey stubs for no-data slots); rename column header to "Last results"
-- Remove non-functional Priority/Assignee/Type filter chips from tc-bar
-- Add FilterCondition type (field, operator, value) and filterConditions state array
-- Add Filter button with active-count badge; click opens a panel with add-condition row and active conditions list with per-condition remove and Clear all
-- displayedCases memo applies both legacy status chip filter and all active FilterConditions (AND logic); supports title contains, priority/type/status is, assignee contains
+`CasesScreen.tsx`
+* Added `caseRecentStatuses()` helper returning last N ExecStatus values for a case
+* Added `EXEC_COLOR` map (ExecStatus → CSS variable) for status dot and sparkline colors
+* Replaced Last run pill with colored 8px status dot + 5-bar sparkline; renamed column header to "Last results"
+* Removed non-functional Priority/Assignee/Type filter chips from tc-bar
+* Added `FilterCondition` type, `filterConditions` state, and `filterPanelOpen` state
+* Filter button with active-count badge opens a panel with add-condition row, per-condition remove, and Clear all
+* `displayedCases` memo applies status chip filter and all active FilterConditions (AND logic); supports title contains, priority/type/status is, assignee contains
 ```
 
 ---

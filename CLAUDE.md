@@ -48,6 +48,9 @@ Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implemen
 - Do not introduce new state management libraries without approval.
 - Do not create commits unless asked.
 
+## After editing any markdown files
+Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit.
+
 ## localStorage
 - Key: `relay-demo-v2`
 - Always add a migration step in `migrate-demo-state.ts` when bumping the schema version.
@@ -56,8 +59,17 @@ Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implemen
 ## Commit message format
 Subject: `<Scope>: <short imperative summary>` (≤72 chars, sentence case, no trailing period)
 
-Body: one bullet per logical change. Be specific — name components, routes, and behaviours.
-Mention: schema/model changes, new routes/components, store actions, functional behaviours, docs updated.
+Body: group bullets by file. Each file gets its name on its own line (in backticks), followed by bullet points for every change made to that file. Use natural language — prefer "Added X", "Replaced Y with Z", "Fixed N" over terse noun phrases. Be specific — name components, functions, actions, and behaviours.
+
+Example:
+```
+`FreshProvider.tsx`
+* Added `DELETE_CASE` action and `deleteCase(caseId)` on `useFresh()`
+
+`CasesScreen.tsx`
+* Row "..." button (visible on hover) with fixed-position context menu
+* Duplicate — copies via `addCase`, opens in detail panel
+```
 
 ## Merge request description format
 - **Header:** one-paragraph summary of the feature and its UI entry point

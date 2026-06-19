@@ -336,13 +336,23 @@ Adjust the message to match reality, then commit.
 ```
 Test cases: human-readable case IDs, pagination footer, folder search
 
-- Add formatCaseKey() to demo-model.ts; add caseKey?: string to Case interface
-- Bump DEMO_SCHEMA_VERSION to 8; v7→v8 migration backfills caseKey on existing cases using nextCaseNumByProject
-- ADD_CASE reducer in FreshProvider assigns caseKey from nextCaseNumByProject and increments counter
-- Case table ID column and detail panel dp-id header show caseKey (falls back to c.id for very old data)
-- Add pagination footer: page-size selector (10/25/50/All), X–Y of Z label, Prev/Next buttons; currentPage resets on folder change or filter change
-- Add folder search input above folder tree; filters visible nodes to name-matching folders and their ancestors; FolderTreeNode accepts visibleFolderIds: Set<string> | null and returns null when excluded
-- Update DOMAIN_MODEL.md for schema v8 and caseKey
+`demo-model.ts`
+* Added `formatCaseKey()` utility; added `caseKey?: string` to `Case` interface
+* Bumped `DEMO_SCHEMA_VERSION` to 8
+
+`migrate-demo-state.ts`
+* Added v7→v8 migration — backfills `caseKey` on existing cases using `nextCaseNumByProject`
+
+`FreshProvider.tsx`
+* `ADD_CASE` reducer now assigns `caseKey` from `nextCaseNumByProject` and increments the counter
+
+`CasesScreen.tsx`
+* Case table ID column and detail panel header show `caseKey` (falls back to `c.id` for legacy data)
+* Added pagination footer: page-size selector (10/25/50/All), X–Y of Z label, Prev/Next buttons; resets to page 1 on folder or filter change
+* Added folder search input above folder tree; filters visible nodes to name-matching folders and their ancestors; `FolderTreeNode` accepts `visibleFolderIds: Set<string> | null`
+
+`DOMAIN_MODEL.md`
+* Updated for schema v8, `caseKey` field, and `formatCaseKey` utility
 ```
 
 ---
