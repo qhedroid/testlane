@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
-import type { Case, CasePriority, CaseStep, ExecStatus, Folder } from '../data/demo-model'
+import type { AdminCustomField, Case, CasePriority, CaseStep, ExecStatus, Folder } from '../data/demo-model'
 import {
   casesInFolder,
   EXEC_TO_LEGACY,
@@ -155,7 +155,7 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, addCase, replaceCase, addFolder } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, addFolder } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
@@ -519,6 +519,8 @@ export function CasesScreen() {
               onSave={replaceCase}
               maximized={detailMaximized}
               onToggleMaximize={toggleMaximize}
+              activeCustomFieldIds={activeProject.activeCustomFieldIds}
+              allCustomFields={adminSettings.customFields}
             />
           ) : null}
         </div>
@@ -578,6 +580,8 @@ function CaseDetail({
   onSave,
   maximized,
   onToggleMaximize,
+  activeCustomFieldIds,
+  allCustomFields,
 }: {
   caseData: Case
   folders: Folder[]
@@ -587,6 +591,8 @@ function CaseDetail({
   onSave: (c: Case) => void
   maximized: boolean
   onToggleMaximize: () => void
+  activeCustomFieldIds: string[]
+  allCustomFields: AdminCustomField[]
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(caseData)
@@ -712,6 +718,34 @@ function CaseDetail({
                       ))}
                     </select>
                   </div>
+                  <div className="form-field" style={{ gridColumn: 'span 2' }}>
+                    <label>Summary</label>
+                    <input
+                      type="text"
+                      value={draft.summary ?? ''}
+                      onChange={(e) => setDraft((d) => ({ ...d, summary: e.target.value }))}
+                      placeholder="One-line summary…"
+                    />
+                  </div>
+                  <div className="form-field" style={{ gridColumn: 'span 2' }}>
+                    <label>References</label>
+                    <input
+                      type="text"
+                      value={draft.references ?? ''}
+                      onChange={(e) => setDraft((d) => ({ ...d, references: e.target.value }))}
+                      placeholder="e.g. JIRA-123, https://…"
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Template</label>
+                    <select
+                      value={draft.template ?? 'text'}
+                      onChange={(e) => setDraft((d) => ({ ...d, template: e.target.value as 'text' | 'bdd' }))}
+                    >
+                      <option value="text">Text (Action / Expected)</option>
+                      <option value="bdd">BDD (Given / When / Then)</option>
+                    </select>
+                  </div>
                 </div>
               ) : (
                 <div className="dp-mg">
@@ -721,6 +755,22 @@ function CaseDetail({
                   <div><div className="dp-ml">Folder</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
                   <div><div className="dp-ml">Suite</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
                   <div><div className="dp-ml">Automation</div><div className="dp-mv">Manual</div></div>
+                  {c.summary ? (
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <div className="dp-ml">Summary</div>
+                      <div className="dp-mv" style={{ whiteSpace: 'pre-wrap' }}>{c.summary}</div>
+                    </div>
+                  ) : null}
+                  {c.references ? (
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <div className="dp-ml">References</div>
+                      <div className="dp-mv" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{c.references}</div>
+                    </div>
+                  ) : null}
+                  <div>
+                    <div className="dp-ml">Template</div>
+                    <div className="dp-mv">{c.template === 'bdd' ? 'BDD (Given/When/Then)' : 'Text (Action/Expected)'}</div>
+                  </div>
                 </div>
               )}
             </div>
@@ -759,7 +809,7 @@ function CaseDetail({
                 <button type="button" className="add-step-btn" onClick={addStep}><i className="ti ti-plus" style={{ fontSize: 12 }} /> Add Step</button>
               ) : null}
             </div>
-            <div className="dp-sec" style={{ borderBottom: 'none' }}>
+            <div className="dp-sec">
               <div className="dp-sl">Tags</div>
               {editing ? (
                 <div className="tag-chip-field">
@@ -795,6 +845,72 @@ function CaseDetail({
                 </div>
               )}
             </div>
+            {(() => {
+              const activeFields = allCustomFields.filter((f) => activeCustomFieldIds.includes(f.id) && f.enabled)
+              if (activeFields.length === 0) return null
+              return (
+                <div className="dp-sec" style={{ borderBottom: 'none' }}>
+                  <div className="dp-sl">Custom fields</div>
+                  {editing ? (
+                    <div className="dp-edit-grid">
+                      {activeFields.map((field) => (
+                        <div key={field.id} className="form-field" style={{ gridColumn: field.type === 'Multi-Line Text' ? 'span 2' : undefined }}>
+                          <label>{field.name}{field.required ? ' *' : ''}</label>
+                          {field.type === 'Boolean' ? (
+                            <select
+                              value={String(draft.customFieldValues?.[field.id] ?? false)}
+                              onChange={(e) => setDraft((d) => ({
+                                ...d,
+                                customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value === 'true' },
+                              }))}
+                            >
+                              <option value="false">No</option>
+                              <option value="true">Yes</option>
+                            </select>
+                          ) : field.type === 'Multi-Line Text' ? (
+                            <textarea
+                              rows={3}
+                              className="dp-edit-area"
+                              value={String(draft.customFieldValues?.[field.id] ?? '')}
+                              onChange={(e) => setDraft((d) => ({
+                                ...d,
+                                customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value },
+                              }))}
+                            />
+                          ) : (
+                            <input
+                              type={field.type === 'Number (integer)' ? 'number' : 'text'}
+                              value={String(draft.customFieldValues?.[field.id] ?? '')}
+                              onChange={(e) => setDraft((d) => ({
+                                ...d,
+                                customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value },
+                              }))}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="dp-mg">
+                      {activeFields.map((field) => {
+                        const val = c.customFieldValues?.[field.id]
+                        const display = val === undefined || val === '' || val === null
+                          ? <span style={{ color: 'var(--text3)' }}>—</span>
+                          : field.type === 'Boolean'
+                          ? (val ? 'Yes' : 'No')
+                          : String(val)
+                        return (
+                          <div key={field.id} style={field.type === 'Multi-Line Text' ? { gridColumn: 'span 2' } : undefined}>
+                            <div className="dp-ml">{field.name}</div>
+                            <div className="dp-mv">{display}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </>
         ) : null}
         {tab === 'attachments' ? (

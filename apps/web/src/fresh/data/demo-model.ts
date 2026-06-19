@@ -72,6 +72,14 @@ export interface Case {
   tags?: string[]
   updatedAt: string
   assignee?: string
+  /** Step template format. Defaults to 'text'. */
+  template?: 'text' | 'bdd'
+  /** Free-text references (issue links, doc links, etc.). */
+  references?: string
+  /** One-line summary / description. */
+  summary?: string
+  /** Values for active custom fields. Key = AdminCustomField.id */
+  customFieldValues?: Record<string, string | boolean | string[]>
 }
 
 export interface Folder {
@@ -106,7 +114,7 @@ export interface DemoRun {
   executions: Record<string, CaseExecution>
 }
 
-export const DEMO_SCHEMA_VERSION = 6
+export const DEMO_SCHEMA_VERSION = 7
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {

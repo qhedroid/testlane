@@ -204,7 +204,7 @@ function migrateProjectCustomFields(state: DemoState): DemoState {
       activeCustomFieldIds: project.activeCustomFieldIds ?? [],
     }
   }
-  return { ...state, projectsById, schemaVersion: DEMO_SCHEMA_VERSION }
+  return { ...state, projectsById, schemaVersion: 6 }
 }
 
 /** Migrate persisted localStorage state to the current schema. Never throws. */
@@ -223,6 +223,20 @@ export function migrateDemoState(raw: unknown): DemoState {
     state = migrateAdminSettings(state)
     if (state.schemaVersion < 6) {
       state = migrateProjectCustomFields(state)
+    }
+    // v6 → v7: add template, references, summary, customFieldValues to existing cases
+    if (state.schemaVersion < 7) {
+      state = {
+        ...state,
+        cases: state.cases.map((c) => ({
+          ...c,
+          template: c.template ?? 'text',
+          references: c.references ?? '',
+          summary: c.summary ?? '',
+          customFieldValues: c.customFieldValues ?? {},
+        })),
+        schemaVersion: 7,
+      }
     }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
