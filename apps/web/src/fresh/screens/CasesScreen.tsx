@@ -507,7 +507,7 @@ export function CasesScreen() {
           </div>
         </div>
 
-        <div className="resizer-v detail-resizer" data-resize="case-detail" data-min="300" data-max="540" />
+        <div className="resizer-v detail-resizer" data-resize="case-detail" data-min="540" data-max="720" />
         <div className={`dp${detail ? ' open' : ''}${detailMaximized ? ' maximized' : ''}`}>
           {detail ? (
             <CaseDetail

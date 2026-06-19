@@ -518,7 +518,7 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 .resizer-v{width:6px;flex:0 0 6px;background:var(--bg);border-left:1px solid var(--border);border-right:1px solid var(--border);cursor:col-resize;position:relative}
 .resizer-v::after{content:'';position:absolute;top:50%;left:2px;width:2px;height:34px;border-radius:2px;background:var(--border2);transform:translateY(-50%)}
 .resizer-v:hover::after{background:var(--accent)}
-.dp.open{width:var(--case-detail-width,360px)}
+.dp.open{width:var(--case-detail-width,540px)}
 .detail-resizer{display:none}
 .tc-main:has(+ .detail-resizer + .dp.open) + .detail-resizer{display:block}
 .suite-tree{width:var(--suite-tree-width,210px)}
