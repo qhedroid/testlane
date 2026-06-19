@@ -78,41 +78,62 @@ After the v6→v7 block, add:
 
 ```ts
 // v7 → v8: assign caseKey to cases that are missing it
-if (s.schemaVersion < 8) {
-  const counterByProject: Record<string, number> = { ...(s.nextCaseNumByProject ?? {}) }
-  s.cases = s.cases.map((c: Case) => {
-    if (c.caseKey) return c
-    const num = (counterByProject[c.projectId] ?? 1)
-    counterByProject[c.projectId] = num + 1
-    return { ...c, caseKey: formatCaseKey(num) }
-  })
-  s.nextCaseNumByProject = counterByProject
-  s.schemaVersion = 8
+if (state.schemaVersion < 8) {
+  const counterByProject: Record<string, number> = { ...state.nextCaseNumByProject }
+  state = {
+    ...state,
+    cases: state.cases.map((c) => {
+      if (c.caseKey) return c
+      const num = counterByProject[c.projectId] ?? 1
+      counterByProject[c.projectId] = num + 1
+      return { ...c, caseKey: formatCaseKey(num) }
+    }),
+    nextCaseNumByProject: counterByProject,
+    schemaVersion: 8,
+  }
 }
 ```
 
-Import `formatCaseKey` from `demo-model` if not already imported.
+`migrate-demo-state.ts` already has `import type { Case, ... }` at the top — that is a type-only import and cannot include `formatCaseKey`. Add a separate value import on its own line:
+
+```ts
+import { formatCaseKey } from './demo-model'
+```
 
 ### A3 — `FreshProvider.tsx` — assign `caseKey` in `ADD_CASE`
 
-Find the `ADD_CASE` reducer case. It currently increments `nextRunNumByProject` (or similar). It should also consume `nextCaseNumByProject`.
+Find the `ADD_CASE` reducer case. It currently looks like:
 
-Inside the `ADD_CASE` case, before creating the new case object:
 ```ts
-const projectId = state.activeProjectId
-const caseNum = (state.nextCaseNumByProject[projectId] ?? 1)
-const caseKey = formatCaseKey(caseNum)
-```
-
-Add `caseKey` to the new case object, and increment in the returned state:
-```ts
-nextCaseNumByProject: {
-  ...state.nextCaseNumByProject,
-  [projectId]: caseNum + 1,
+case 'ADD_CASE': {
+  const projectId = state.activeProjectId
+  const num = getActiveProjectNextCaseNum(state)
+  next = {
+    ...state,
+    cases: [...state.cases, action.case],
+    nextCaseNumByProject: { ...state.nextCaseNumByProject, [projectId]: num + 1 },
+  }
+  break
 }
 ```
 
-Import `formatCaseKey` from `demo-model`.
+The case object (`action.case`) is pre-built before it reaches the reducer, so `caseKey` must be stamped on it here. Add `const caseKey = formatCaseKey(num)` and spread it when appending:
+
+```ts
+case 'ADD_CASE': {
+  const projectId = state.activeProjectId
+  const num = getActiveProjectNextCaseNum(state)
+  const caseKey = formatCaseKey(num)
+  next = {
+    ...state,
+    cases: [...state.cases, { ...action.case, caseKey }],
+    nextCaseNumByProject: { ...state.nextCaseNumByProject, [projectId]: num + 1 },
+  }
+  break
+}
+```
+
+Add `formatCaseKey` to the existing import from `'./demo-model'` at the top of `FreshProvider.tsx`.
 
 ### A4 — `CasesScreen.tsx` — display `caseKey`
 
@@ -292,7 +313,7 @@ In the `suite-tree` sidebar, just below the `.st-hd` header div and above `.st-b
 
 ---
 
-## Step 2 — Update DOMAIN_MODEL.md
+## Step 2 — Update `docs/_authoritative/DOMAIN_MODEL.md`
 
 Add notes for:
 - `caseKey` field on `Case` and `formatCaseKey` utility
@@ -304,7 +325,7 @@ Add notes for:
 ## Step 3 — Build verification
 
 ```bash
-cd /path/to/repo && pnpm build
+cd /Users/shaun.sevume/Projects/Relay && pnpm build
 ```
 
 Zero TypeScript errors required.
