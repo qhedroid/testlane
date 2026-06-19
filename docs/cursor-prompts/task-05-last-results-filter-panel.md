@@ -60,9 +60,9 @@ function caseRecentStatuses(
   n = 5,
 ): ExecStatus[] {
   const results: ExecStatus[] = []
-  for (const run of runs) {
+  for (let i = runs.length - 1; i >= 0; i--) {
     if (results.length >= n) break
-    const ex = run.executions[caseId]
+    const ex = runs[i].executions[caseId]
     if (ex) results.push(ex.status)
   }
   return results
@@ -77,7 +77,7 @@ Add a color map near the top of the file (alongside `PRI_MAP`):
 const EXEC_COLOR: Record<ExecStatus, string> = {
   Passed:  'var(--pass)',
   Failed:  'var(--fail)',
-  Blocked: 'var(--blocked)',
+  Blocked: 'var(--block)',
   Skipped: 'var(--text3)',
   'Not run': 'var(--text3)',
 }
@@ -132,7 +132,7 @@ Replace it with:
 </td>
 ```
 
-> Note: remove the earlier `const last = caseLastStatus(...)` that was computed outside this cell, since it's now computed inline. Or keep it and reference it — be consistent and avoid computing it twice.
+> **Important:** Delete the line `const last = caseLastStatus(activeRuns, c.id)` from the top of the `displayedCases.map` callback (it currently sits just above the `return (` in that map). The replacement `<td>` calls `caseLastStatus` inside its own IIFE, so the outer `last` variable is no longer referenced. Leaving it will cause a TypeScript unused-variable error and break `pnpm build`.
 
 ### A4 — Update the column header
 
@@ -401,7 +401,7 @@ Remove the three non-functional chips (Priority, Assignee, Type) and the `<div>`
 ## Step 2 — Build verification
 
 ```bash
-cd /path/to/repo && pnpm build
+cd /Users/shaun.sevume/Projects/Relay && pnpm build
 ```
 
 Zero TypeScript errors required.
