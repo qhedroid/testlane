@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 3`, multi-project + key routing) |
+| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 5`, multi-project + key routing + run keys + admin settings) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
 | Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
@@ -29,13 +29,16 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | `/:projectKey/dashboard` | mock | `DashboardScreen` | Full metrics when `seedTemplate === 'demo'`; placeholder for other projects |
 | `/:projectKey/cases` | mock + localStorage | `CasesScreen` | Scoped to active project |
 | `/:projectKey/plans` | mock | `PlansScreen` | Spawn → testruns |
-| **`/:projectKey/testruns`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX |
+| **`/:projectKey/testruns`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — run list; no run selected |
+| **`/:projectKey/testruns/tr/:runKey`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX for selected run |
 | **`/runs/api`** | **api** | **`ApiRunsWorkspace`** | MySQL; not project-prefixed |
 | `/:projectKey/audit` | mock | `AuditScreen` | Static seed |
 | `/:projectKey/defects` | mock | `DefectsScreen` | `MOCK_DEFECTS` |
 | `/:projectKey/settings` | mock | `SettingsScreen` | Read-only preview |
 | `/:projectKey/reports` | placeholder | `PlaceholderScreen` | |
 | `/:projectKey/integrations` | placeholder | `PlaceholderScreen` | |
+| **`/admin`** | **mock + localStorage** | **`AdminShell`** | **Global admin panel** — redirects to `/admin/profile`; not project-prefixed |
+| **`/admin/profile`** … **`/admin/audit-log`** | **mock + localStorage** | **`Admin*PageContent`** | 11 admin sections backed by `DemoState.adminSettings` |
 
 **Legacy redirects** (client-side, via `LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/${activeProjectKey}/…`. Root `/` → `/DP/dashboard`.
 
@@ -54,9 +57,10 @@ Machine-readable contracts: `apps/web/src/lib/relay/prototype-contracts.ts`.
 1. Open `http://localhost:3000` → `/DP/dashboard` (demo metrics).
 2. Browse/create test cases (`/DP/cases`) — persists in localStorage; isolated per project.
 3. View plans (`/DP/plans`) — spawn link opens `/DP/testruns`.
-4. Execute runs (`/DP/testruns`) — full execution UX unchanged; scoped to active project.
-5. **Project switching** — switcher rewrites URL (`/DP/testruns` → `/CTMS/testruns`); create via modal (name/key/description); **Add demo project** clones template as `DP1`, `DP2`, …
-6. Cmd+K search over active project's cases + runs.
+4. Execute runs — open `/DP/testruns/tr/00001` (or pick a run); full execution UX; scoped to active project. Run keys are per-project (`00001` …).
+5. **Create / duplicate / delete runs** — modal create, More… menu duplicate/delete, topbar seal toggle.
+6. **Project switching** — switcher rewrites URL (`/DP/testruns/tr/00001` → `/CTMS/testruns`; run selection stripped); create via modal (name/key/description); **Add demo project** clones template as `DP1`, `DP2`, …
+7. Cmd+K search over active project's cases + runs.
 
 ### API path (Docker + seed)
 
@@ -106,6 +110,7 @@ MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/sche
 | Defects screen create | Disabled |
 | Real multi-project switching | **Implemented** — key-prefixed URLs + `ProjectSwitcher` + create modal + add demo project |
 | Project settings screen | Disabled menu item only (coming soon) |
+| Admin panel (`/admin`) | **Implemented** — global route group with sidebar nav; 11 section pages wired to `DemoState.adminSettings` via FreshProvider `admin/*` actions; audit log tracks admin mutations |
 
 ---
 
@@ -125,7 +130,7 @@ pnpm api:validate                 # needs dev server + seeded DB
 
 Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-v2'); location.reload()`
 
-**Migration:** v1→v2 multi-project; v2→v3 adds required `key`, `description`, renames seed to Demo Project / `DP` (migrates legacy `DEMO` key). Failed migration resets to seed.
+**Migration:** v1→v2 multi-project; v2→v3 adds required `key`, `description`, renames seed to Demo Project / `DP`; v3→v4 adds `runKey`, `nextRunNumByProject`, URL run selection; v4→v5 adds `adminSettings` (global admin panel state). Failed migration resets to seed.
 
 ---
 
@@ -133,6 +138,10 @@ Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-
 
 ```
 apps/web/src/fresh/              # Demo UI (screens, seed, FreshProvider, ProjectSwitcher)
+apps/web/src/fresh/data/admin-initial-settings.ts  # AdminSettings seed data
+apps/web/src/fresh/data/admin-reducer.ts     # admin/* reducer actions
+apps/web/src/fresh/components/admin/  # Admin panel shell + page content components
+apps/web/src/app/admin/          # Global /admin route group (not project-prefixed)
 apps/web/src/fresh/lib/project-routes.ts  # Key-prefixed URL helpers
 apps/web/src/fresh/data/demo-template.ts   # Immutable demo template clone
 apps/web/src/fresh/data/demo-project-utils.ts  # Dashboard scoping + demo clone

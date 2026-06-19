@@ -1,3 +1,4 @@
+import { initialAdminSettings } from './admin-initial-settings'
 import { buildInitialDemoState } from './demo-seed'
 import type { Case, DemoRun, DemoState, Folder, LegacyDemoState, Project } from './demo-model'
 import {
@@ -6,6 +7,7 @@ import {
   DEMO_SCHEMA_VERSION,
   newId,
 } from './demo-model'
+import { migrateRunKeys } from './run-utils'
 import { isProjectKeyUnique } from './project-selectors'
 import { keyFromName } from '../lib/project-keys'
 import { normalizeAssigneeName } from './team-users'
@@ -51,6 +53,15 @@ function hasMultiProjectShape(state: LegacyDemoState): state is DemoState {
   )
 }
 
+function ensureNextRunNumByProject(state: DemoState): DemoState {
+  if (state.nextRunNumByProject) return state
+  const nextRunNumByProject: Record<string, number> = {}
+  for (const projectId of Object.keys(state.projectsById)) {
+    nextRunNumByProject[projectId] = 1
+  }
+  return { ...state, nextRunNumByProject }
+}
+
 function migrateToMultiProject(raw: LegacyDemoState): DemoState {
   const projectId = newId('proj')
   const legacyName = raw.module?.trim()
@@ -90,6 +101,8 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     runs,
     currentRunIdByProject: { [projectId]: legacyRunId },
     nextCaseNumByProject: { [projectId]: legacyNextCaseNum },
+    nextRunNumByProject: { [projectId]: 1 },
+    adminSettings: initialAdminSettings,
   }
 }
 
@@ -173,15 +186,32 @@ function ensureEntityProjectIds(state: DemoState): DemoState {
   return { ...state, folders, cases, runs }
 }
 
+function migrateAdminSettings(state: DemoState): DemoState {
+  if (state.adminSettings) return state
+  return {
+    ...state,
+    adminSettings: initialAdminSettings,
+    schemaVersion: DEMO_SCHEMA_VERSION,
+  }
+}
+
 /** Migrate persisted localStorage state to the current schema. Never throws. */
 export function migrateDemoState(raw: unknown): DemoState {
   try {
     const legacy = raw as LegacyDemoState
-    let state: DemoState = hasMultiProjectShape(legacy) ? legacy : migrateToMultiProject(legacy)
+    let state: DemoState = hasMultiProjectShape(legacy) ? (legacy as DemoState) : migrateToMultiProject(legacy)
     state = migrateAssignees(state)
     state = migrateProjectProperties(state)
     state = ensureEntityProjectIds(state)
     state = ensureActiveProject(state)
+    state = ensureNextRunNumByProject(state)
+    if (state.schemaVersion < DEMO_SCHEMA_VERSION || state.runs.some((r) => !r.runKey)) {
+      state = migrateRunKeys(state)
+    }
+    state = migrateAdminSettings(state)
+    if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
+      state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
+    }
     return state
   } catch (err) {
     console.error('[relay-demo] Migration failed; resetting to seeded default state:', err)

@@ -3,10 +3,12 @@ import {
   DEFAULT_SEED_PROJECT_ID,
   DEFAULT_SEED_PROJECT_KEY,
   DEMO_SCHEMA_VERSION,
+  formatRunKey,
   LEGACY_TO_EXEC,
   LEGACY_TO_PRIORITY,
   newId,
 } from './demo-model'
+import { initialAdminSettings } from './admin-initial-settings'
 import { INITIAL_CASES, INITIAL_EXEC_CASES, RUN_CARDS, RUN_PICKER_LIST } from './seed'
 import type { RunCard } from './types'
 import type { DemoCase, ExecCase, ResultStatus } from './types'
@@ -189,7 +191,7 @@ function buildExecutionFromStatus(c: ExecCase, status: ExecStatus): CaseExecutio
   return { ...base, status, stepResults }
 }
 
-function buildRunFromCard(card: RunCard, projectId: string, sealed = false): DemoRun {
+function buildRunFromCard(card: RunCard, projectId: string, runKey: string, sealed = false): DemoRun {
   const caseOrder = INITIAL_EXEC_CASES.map((c) => c.id)
   const statuses = distributeStatuses(caseOrder.length, card.pass, card.fail, card.blocked, card.notrun)
   const executions: Record<string, CaseExecution> = {}
@@ -199,6 +201,7 @@ function buildRunFromCard(card: RunCard, projectId: string, sealed = false): Dem
   return {
     id: card.id,
     projectId,
+    runKey,
     name: card.name,
     planId: `plan-${card.id.toLowerCase()}`,
     planName: card.plan,
@@ -210,7 +213,7 @@ function buildRunFromCard(card: RunCard, projectId: string, sealed = false): Dem
   }
 }
 
-function buildDefaultRun(projectId: string): DemoRun {
+function buildDefaultRun(projectId: string, runKey: string): DemoRun {
   const card = RUN_CARDS[0]
   const caseOrder = INITIAL_EXEC_CASES.map((c) => c.id)
   const executions: Record<string, CaseExecution> = {}
@@ -220,6 +223,7 @@ function buildDefaultRun(projectId: string): DemoRun {
   return {
     id: card.id,
     projectId,
+    runKey,
     name: card.name,
     planId: 'plan-ctms',
     planName: card.plan,
@@ -232,11 +236,12 @@ function buildDefaultRun(projectId: string): DemoRun {
 }
 
 function buildAllRuns(projectId: string): DemoRun[] {
-  return RUN_PICKER_LIST.map((picker) => {
+  return RUN_PICKER_LIST.map((picker, index) => {
+    const runKey = formatRunKey(index + 1)
     const card = RUN_CARDS.find((r) => r.id === picker.id)
     if (card) {
-      if (card.id === 'R1') return buildDefaultRun(projectId)
-      return buildRunFromCard(card, projectId, false)
+      if (card.id === 'R1') return buildDefaultRun(projectId, runKey)
+      return buildRunFromCard(card, projectId, runKey, false)
     }
     if (picker.id === 'R6') {
       const sealedCard: RunCard = {
@@ -255,9 +260,9 @@ function buildAllRuns(projectId: string): DemoRun[] {
         env: 'UAT',
         defects: [],
       }
-      return buildRunFromCard(sealedCard, projectId, true)
+      return buildRunFromCard(sealedCard, projectId, runKey, true)
     }
-    return buildDefaultRun(projectId)
+    return buildDefaultRun(projectId, runKey)
   })
 }
 
@@ -288,6 +293,7 @@ export function buildDemoProjectEntities(projectId: string): {
   runs: DemoRun[]
   defaultRunId: string
   nextCaseNum: number
+  nextRunNum: number
 } {
   const folders: Folder[] = SEED_FOLDERS_TEMPLATE.map((f) => ({ ...f, projectId }))
   const libraryCases = INITIAL_CASES.map((c) => legacyCaseToCase(c, projectId))
@@ -335,7 +341,7 @@ export function buildDemoProjectEntities(projectId: string): {
 
   for (const c of unfiledCases) caseMap.set(c.id, c)
 
-  const defaultRun = buildDefaultRun(projectId)
+  const defaultRun = buildDefaultRun(projectId, formatRunKey(1))
 
   return {
     folders,
@@ -343,11 +349,13 @@ export function buildDemoProjectEntities(projectId: string): {
     runs: buildAllRuns(projectId),
     defaultRunId: defaultRun.id,
     nextCaseNum: 13,
+    nextRunNum: RUN_PICKER_LIST.length + 1,
   }
 }
 
 export function buildInitialDemoState(): DemoState {
-  const { folders, cases, runs, defaultRunId, nextCaseNum } = buildDemoProjectEntities(DEFAULT_SEED_PROJECT_ID)
+  const { folders, cases, runs, defaultRunId, nextCaseNum, nextRunNum } =
+    buildDemoProjectEntities(DEFAULT_SEED_PROJECT_ID)
 
   return {
     schemaVersion: DEMO_SCHEMA_VERSION,
@@ -358,6 +366,8 @@ export function buildInitialDemoState(): DemoState {
     runs,
     currentRunIdByProject: { [DEFAULT_SEED_PROJECT_ID]: defaultRunId },
     nextCaseNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextCaseNum },
+    nextRunNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextRunNum },
+    adminSettings: initialAdminSettings,
   }
 }
 
@@ -368,5 +378,6 @@ export function getCaseById(state: DemoState, caseId: string): Case | undefined 
 export function getCurrentRun(state: DemoState): DemoRun | undefined {
   const projectRuns = listActiveProjectRuns(state)
   const runId = getActiveProjectCurrentRunId(state)
-  return projectRuns.find((r) => r.id === runId) ?? projectRuns[0]
+  if (!runId) return undefined
+  return projectRuns.find((r) => r.id === runId)
 }

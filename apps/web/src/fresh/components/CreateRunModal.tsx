@@ -1,39 +1,28 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFresh } from '../data/FreshProvider'
-import { normalizeProjectKeyInput, validateProjectKey } from '../lib/project-keys'
-import { projectPath } from '../lib/project-routes'
+import { testRunPath } from '../lib/project-routes'
 
-interface CreateProjectModalProps {
+interface CreateRunModalProps {
   open: boolean
   onClose: () => void
-  redirectOnCreate?: boolean
 }
 
-export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: CreateProjectModalProps) {
+export function CreateRunModal({ open, onClose }: CreateRunModalProps) {
   const router = useRouter()
-  const { createProject, isProjectKeyUnique } = useFresh()
+  const { activeProject, createRun } = useFresh()
   const [name, setName] = useState('')
-  const [key, setKey] = useState('')
   const [description, setDescription] = useState('')
 
-  const keyError = useMemo(() => {
-    const formatError = validateProjectKey(key)
-    if (formatError) return formatError
-    if (!isProjectKeyUnique(key)) return 'Key is already in use'
-    return null
-  }, [key, isProjectKeyUnique])
-
   const nameError = !name.trim() ? 'Name is required' : null
-  const canSubmit = !nameError && !keyError && !!name.trim() && !!key.trim()
+  const canSubmit = !nameError && !!name.trim()
 
   if (!open) return null
 
   function reset() {
     setName('')
-    setKey('')
     setDescription('')
   }
 
@@ -44,25 +33,19 @@ export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: C
 
   function handleSubmit() {
     if (!canSubmit) return
-    const trimmedName = name.trim()
-    const trimmedKey = key.trim().toUpperCase()
-    const trimmedDescription = description.trim()
-    createProject({
-      name: trimmedName,
-      key: trimmedKey,
-      description: trimmedDescription || undefined,
+    const { runKey } = createRun({
+      name: name.trim(),
+      description: description.trim() || undefined,
     })
     handleClose()
-    if (redirectOnCreate) {
-      router.push(projectPath(trimmedKey, 'dashboard'))
-    }
+    router.push(testRunPath(activeProject.key, runKey))
   }
 
   return (
     <div className="modal-backdrop" onClick={handleClose}>
       <div className="create-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="shortcuts-hd">
-          <div className="shortcuts-title">Create project</div>
+          <div className="shortcuts-title">Create test run</div>
           <button type="button" className="btn" style={{ padding: '2px 6px' }} onClick={handleClose}>
             <i className="ti ti-x" style={{ fontSize: 13 }} />
           </button>
@@ -73,7 +56,7 @@ export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: C
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. CTMS QA"
+              placeholder="e.g. Sprint 45 regression"
               autoFocus
             />
             {nameError && name.trim() === '' ? (
@@ -81,29 +64,19 @@ export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: C
             ) : null}
           </div>
           <div className="form-field">
-            <label>Key</label>
-            <input
-              value={key}
-              onChange={(e) => setKey(normalizeProjectKeyInput(e.target.value))}
-              placeholder="e.g. CTMS"
-            />
-            {keyError ? <span className="form-error">{keyError}</span> : null}
-            <span className="form-hint">Uppercase letters, numbers, hyphens, and underscores only</span>
-          </div>
-          <div className="form-field">
             <label>Description</label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional workspace description"
+              placeholder="Optional run description"
             />
           </div>
         </div>
         <div className="create-foot">
           <button type="button" className="btn" onClick={handleClose}>Cancel</button>
           <button type="button" className="btn btn-p" disabled={!canSubmit} onClick={handleSubmit}>
-            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create project
+            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create run
           </button>
         </div>
       </div>

@@ -11,12 +11,12 @@ import {
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
 import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project } from './demo-model'
-import { DEFAULT_SEED_PROJECT_KEY, newId } from './demo-model'
-import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
+import { isAdminAction, reduceAdminState, type AdminAction } from './admin-reducer'
 import {
   getActiveProject,
   getActiveProjectCurrentRunId,
   getActiveProjectNextCaseNum,
+  getActiveProjectNextRunNum,
   getProjectByKey,
   isProjectKeyUnique,
   listActiveProjectFolders,
@@ -24,9 +24,17 @@ import {
   listActiveProjectTestCases,
   listProjects,
 } from './project-selectors'
+import { findRunById } from './run-utils'
+import { DEFAULT_SEED_PROJECT_KEY, formatRunKey, newId } from './demo-model'
+import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
 import { nextCaseId } from './ui-utils'
 
 const STORAGE_KEY = 'relay-demo-v2'
+
+function runIsMutable(state: DemoState, runId: string): boolean {
+  const run = findRunById(state, runId)
+  return !!run && !run.sealed
+}
 
 function loadState(): DemoState {
   if (typeof window === 'undefined') return buildInitialDemoState()
@@ -69,6 +77,7 @@ function makeDefaultProject(): Project {
 }
 
 export type FreshAction =
+  | AdminAction
   | { type: 'ADD_DEMO_PROJECT' }
   | { type: 'CREATE_PROJECT'; name: string; key: string; description?: string }
   | { type: 'UPDATE_PROJECT'; projectId: string; patch: Partial<Pick<Project, 'name' | 'key' | 'description'>> }
@@ -81,11 +90,21 @@ export type FreshAction =
   | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string }
   | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
   | { type: 'SEAL_RUN'; runId: string }
+  | { type: 'UNSEAL_RUN'; runId: string }
   | { type: 'SET_CURRENT_RUN'; runId: string }
+  | { type: 'CREATE_RUN'; name: string; description?: string }
+  | { type: 'DUPLICATE_RUN'; runId: string }
+  | { type: 'ARCHIVE_RUN'; runId: string }
+  | { type: 'DELETE_RUN'; runId: string }
   | { type: 'ADD_FOLDER'; folder: Folder }
   | { type: 'HYDRATE'; state: DemoState }
 
 function reducer(state: DemoState, action: FreshAction): DemoState {
+  if (isAdminAction(action)) {
+    const next = reduceAdminState(state, action)
+    persistState(next)
+    return next
+  }
   let next: DemoState
   switch (action.type) {
     case 'HYDRATE':
@@ -109,6 +128,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         activeProjectId: project.id,
         currentRunIdByProject: { ...state.currentRunIdByProject, [project.id]: '' },
         nextCaseNumByProject: { ...state.nextCaseNumByProject, [project.id]: 1 },
+        nextRunNumByProject: { ...state.nextRunNumByProject, [project.id]: 1 },
       }
       break
     }
@@ -129,11 +149,13 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const { [projectId]: _removed, ...restProjects } = state.projectsById
       const { [projectId]: _run, ...restRunIds } = state.currentRunIdByProject
       const { [projectId]: _num, ...restNums } = state.nextCaseNumByProject
+      const { [projectId]: _runNum, ...restRunNums } = state.nextRunNumByProject
 
       let projectsById = restProjects
       let activeProjectId = state.activeProjectId
       let currentRunIdByProject = restRunIds
       let nextCaseNumByProject = restNums
+      let nextRunNumByProject = restRunNums
 
       if (state.activeProjectId === projectId) {
         const remaining = Object.keys(restProjects)
@@ -145,6 +167,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           activeProjectId = fallback.id
           currentRunIdByProject = { [fallback.id]: '' }
           nextCaseNumByProject = { [fallback.id]: 1 }
+          nextRunNumByProject = { [fallback.id]: 1 }
         }
       }
 
@@ -157,6 +180,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         runs: state.runs.filter((r) => r.projectId !== projectId),
         currentRunIdByProject,
         nextCaseNumByProject,
+        nextRunNumByProject,
       }
       break
     }
@@ -189,6 +213,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     case 'UPDATE_RUN_EXECUTION': {
+      if (!runIsMutable(state, action.runId)) return state
       const runs = state.runs.map((r) => {
         if (r.id !== action.runId) return r
         const prev = r.executions[action.caseId] ?? { status: 'Not run' as ExecStatus, stepResults: {} }
@@ -246,6 +271,91 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         runs: state.runs.map((r) => (r.id === action.runId ? { ...r, sealed: true } : r)),
       }
       break
+    case 'UNSEAL_RUN':
+      next = {
+        ...state,
+        runs: state.runs.map((r) => (r.id === action.runId ? { ...r, sealed: false } : r)),
+      }
+      break
+    case 'CREATE_RUN': {
+      const projectId = state.activeProjectId
+      const num = getActiveProjectNextRunNum(state)
+      const runKey = formatRunKey(num)
+      const id = newId('run')
+      const caseOrder = listActiveProjectTestCases(state).map((c) => c.id)
+      const run: DemoRun = {
+        id,
+        projectId,
+        runKey,
+        name: action.name.trim() || 'Untitled run',
+        description: action.description?.trim() || undefined,
+        createdAt: new Date().toISOString(),
+        sealed: false,
+        caseOrder,
+        executions: {},
+      }
+      next = {
+        ...state,
+        runs: [...state.runs, run],
+        nextRunNumByProject: { ...state.nextRunNumByProject, [projectId]: num + 1 },
+        currentRunIdByProject: { ...state.currentRunIdByProject, [projectId]: id },
+      }
+      break
+    }
+    case 'DUPLICATE_RUN': {
+      const source = findRunById(state, action.runId)
+      if (!source) return state
+      const projectId = source.projectId
+      const num = state.nextRunNumByProject[projectId] ?? 1
+      const runKey = formatRunKey(num)
+      const id = newId('run')
+      const copy: DemoRun = {
+        ...source,
+        id,
+        runKey,
+        name: `${source.name} (copy)`,
+        description: source.description,
+        createdAt: new Date().toISOString(),
+        sealed: false,
+        archivedAt: undefined,
+        caseOrder: [...source.caseOrder],
+        executions: {},
+      }
+      next = {
+        ...state,
+        runs: [...state.runs, copy],
+        nextRunNumByProject: { ...state.nextRunNumByProject, [projectId]: num + 1 },
+        currentRunIdByProject: { ...state.currentRunIdByProject, [projectId]: id },
+      }
+      break
+    }
+    case 'ARCHIVE_RUN': {
+      const archivedAt = new Date().toISOString()
+      next = {
+        ...state,
+        runs: state.runs.map((r) =>
+          r.id === action.runId ? { ...r, archivedAt } : r,
+        ),
+        currentRunIdByProject:
+          state.currentRunIdByProject[state.activeProjectId] === action.runId
+            ? { ...state.currentRunIdByProject, [state.activeProjectId]: '' }
+            : state.currentRunIdByProject,
+      }
+      break
+    }
+    case 'DELETE_RUN': {
+      const run = findRunById(state, action.runId)
+      if (!run) return state
+      const clearsSelection = state.currentRunIdByProject[run.projectId] === action.runId
+      next = {
+        ...state,
+        runs: state.runs.filter((r) => r.id !== action.runId),
+        currentRunIdByProject: clearsSelection
+          ? { ...state.currentRunIdByProject, [run.projectId]: '' }
+          : state.currentRunIdByProject,
+      }
+      break
+    }
     case 'SET_CURRENT_RUN':
       next = {
         ...state,
@@ -282,6 +392,23 @@ interface FreshContextValue {
   getProjectByKey: (key: string) => Project | undefined
   isProjectKeyUnique: (key: string, excludeProjectId?: string) => boolean
   addDemoProject: () => { key: string; name: string }
+  adminSettings: DemoState['adminSettings']
+  saveAdminProfile: (payload: Partial<DemoState['adminSettings']['profile']>) => void
+  saveAdminAccount: (payload: Partial<DemoState['adminSettings']['account']>) => void
+  toggleAdmin2FA: (method: string) => void
+  saveAdminOrganization: (payload: Partial<DemoState['adminSettings']['organization']>) => void
+  createAdminApiKey: (payload: Omit<DemoState['adminSettings']['apiKeys'][number], 'id' | 'createdAt' | 'maskedKey' | 'userId'>) => void
+  deleteAdminApiKey: (id: string) => void
+  inviteAdminUser: (payload: Omit<DemoState['adminSettings']['users'][number], 'id' | 'lastLoginAt' | 'twoFa' | 'status'>) => void
+  updateAdminUserRole: (id: string, role: DemoState['adminSettings']['users'][number]['role']) => void
+  createAdminRole: (payload: Omit<DemoState['adminSettings']['roles'][number], 'id' | 'userCount' | 'isBuiltIn'>) => void
+  addAdminCustomField: (payload: Omit<DemoState['adminSettings']['customFields'][number], 'id'>) => void
+  deleteAdminCustomField: (id: string) => void
+  saveAdminAutomationRetention: (retentionPeriod: string) => void
+  updateAdminAutomationSource: (source: DemoState['adminSettings']['automation']['sources'][number]) => void
+  deleteAdminAutomationSource: (id: string) => void
+  updateAdminAutomationField: (field: DemoState['adminSettings']['automation']['fields'][number]) => void
+  deleteAdminAutomationField: (id: string) => void
   createProject: (input: { name: string; key: string; description?: string }) => void
   updateProject: (projectId: string, patch: Partial<Pick<Project, 'name' | 'key' | 'description'>>) => void
   deleteProject: (projectId: string) => void
@@ -294,7 +421,12 @@ interface FreshContextValue {
   addStepComment: (caseId: string, stepId: string, body: string, author?: string) => void
   addGeneralComment: (caseId: string, body: string, author?: string) => void
   sealRun: () => void
+  unsealRun: () => void
   setCurrentRun: (runId: string) => void
+  createRun: (input: { name: string; description?: string }) => { runKey: string }
+  duplicateRun: (runId: string) => { runKey: string } | null
+  archiveRun: (runId: string) => void
+  deleteRun: (runId: string) => void
   addFolder: (name: string, parentId?: string | null) => string
   isRunSealed: boolean
 }
@@ -345,7 +477,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const updateExecution = useCallback(
     (caseId: string, patch: Partial<CaseExecution>) => {
       const runId = getActiveProjectCurrentRunId(state)
-      if (!runId) return
+      if (!runId || !runIsMutable(state, runId)) return
       dispatch({ type: 'UPDATE_RUN_EXECUTION', runId, caseId, patch })
     },
     [state],
@@ -353,16 +485,20 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const addStepComment = useCallback(
     (caseId: string, stepId: string, body: string, author = 'Shaun Sevume') => {
+      const runId = getActiveProjectCurrentRunId(state)
+      if (!runId || !runIsMutable(state, runId)) return
       dispatch({ type: 'ADD_STEP_COMMENT', caseId, stepId, author, body })
     },
-    [],
+    [state],
   )
 
   const addGeneralComment = useCallback(
     (caseId: string, body: string, author = 'Shaun Sevume') => {
+      const runId = getActiveProjectCurrentRunId(state)
+      if (!runId || !runIsMutable(state, runId)) return
       dispatch({ type: 'ADD_GENERAL_COMMENT', caseId, author, body })
     },
-    [],
+    [state],
   )
 
   const sealRun = useCallback(() => {
@@ -371,8 +507,44 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SEAL_RUN', runId })
   }, [state])
 
+  const unsealRun = useCallback(() => {
+    const runId = getActiveProjectCurrentRunId(state)
+    if (!runId) return
+    dispatch({ type: 'UNSEAL_RUN', runId })
+  }, [state])
+
   const setCurrentRun = useCallback((runId: string) => {
     dispatch({ type: 'SET_CURRENT_RUN', runId })
+  }, [])
+
+  const createRun = useCallback(
+    (input: { name: string; description?: string }) => {
+      const num = getActiveProjectNextRunNum(state)
+      const runKey = formatRunKey(num)
+      dispatch({ type: 'CREATE_RUN', name: input.name, description: input.description })
+      return { runKey }
+    },
+    [state],
+  )
+
+  const duplicateRun = useCallback(
+    (runId: string) => {
+      const source = findRunById(state, runId)
+      if (!source) return null
+      const num = state.nextRunNumByProject[source.projectId] ?? 1
+      const runKey = formatRunKey(num)
+      dispatch({ type: 'DUPLICATE_RUN', runId })
+      return { runKey }
+    },
+    [state],
+  )
+
+  const archiveRun = useCallback((runId: string) => {
+    dispatch({ type: 'ARCHIVE_RUN', runId })
+  }, [])
+
+  const deleteRun = useCallback((runId: string) => {
+    dispatch({ type: 'DELETE_RUN', runId })
   }, [])
 
   const addFolder = useCallback(
@@ -395,6 +567,88 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const createProject = useCallback((input: { name: string; key: string; description?: string }) => {
     dispatch({ type: 'CREATE_PROJECT', ...input })
+  }, [])
+
+  const saveAdminProfile = useCallback((payload: Partial<DemoState['adminSettings']['profile']>) => {
+    dispatch({ type: 'admin/saveProfile', payload })
+  }, [])
+
+  const saveAdminAccount = useCallback((payload: Partial<DemoState['adminSettings']['account']>) => {
+    dispatch({ type: 'admin/saveAccount', payload })
+  }, [])
+
+  const toggleAdmin2FA = useCallback((method: string) => {
+    dispatch({ type: 'admin/toggle2FA', payload: { method } })
+  }, [])
+
+  const saveAdminOrganization = useCallback((payload: Partial<DemoState['adminSettings']['organization']>) => {
+    dispatch({ type: 'admin/saveOrganization', payload })
+  }, [])
+
+  const createAdminApiKey = useCallback(
+    (payload: Omit<DemoState['adminSettings']['apiKeys'][number], 'id' | 'createdAt' | 'maskedKey' | 'userId'>) => {
+      dispatch({ type: 'admin/createApiKey', payload })
+    },
+    [],
+  )
+
+  const deleteAdminApiKey = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteApiKey', payload: { id } })
+  }, [])
+
+  const inviteAdminUser = useCallback(
+    (payload: Omit<DemoState['adminSettings']['users'][number], 'id' | 'lastLoginAt' | 'twoFa' | 'status'>) => {
+      dispatch({ type: 'admin/inviteUser', payload })
+    },
+    [],
+  )
+
+  const updateAdminUserRole = useCallback((id: string, role: DemoState['adminSettings']['users'][number]['role']) => {
+    dispatch({ type: 'admin/updateUserRole', payload: { id, role } })
+  }, [])
+
+  const createAdminRole = useCallback(
+    (payload: Omit<DemoState['adminSettings']['roles'][number], 'id' | 'userCount' | 'isBuiltIn'>) => {
+      dispatch({ type: 'admin/createRole', payload })
+    },
+    [],
+  )
+
+  const addAdminCustomField = useCallback(
+    (payload: Omit<DemoState['adminSettings']['customFields'][number], 'id'>) => {
+      dispatch({ type: 'admin/addCustomField', payload })
+    },
+    [],
+  )
+
+  const deleteAdminCustomField = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteCustomField', payload: { id } })
+  }, [])
+
+  const saveAdminAutomationRetention = useCallback((retentionPeriod: string) => {
+    dispatch({ type: 'admin/saveAutomationRetention', payload: { retentionPeriod } })
+  }, [])
+
+  const updateAdminAutomationSource = useCallback(
+    (source: DemoState['adminSettings']['automation']['sources'][number]) => {
+      dispatch({ type: 'admin/updateAutomationSource', payload: source })
+    },
+    [],
+  )
+
+  const deleteAdminAutomationSource = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteAutomationSource', payload: { id } })
+  }, [])
+
+  const updateAdminAutomationField = useCallback(
+    (field: DemoState['adminSettings']['automation']['fields'][number]) => {
+      dispatch({ type: 'admin/updateAutomationField', payload: field })
+    },
+    [],
+  )
+
+  const deleteAdminAutomationField = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteAutomationField', payload: { id } })
   }, [])
 
   const updateProject = useCallback(
@@ -437,6 +691,23 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       listActiveProjectRuns: () => listActiveProjectRuns(state),
       getProjectByKey: getProjectByKeyFn,
       isProjectKeyUnique: isProjectKeyUniqueFn,
+      adminSettings: state.adminSettings,
+      saveAdminProfile,
+      saveAdminAccount,
+      toggleAdmin2FA,
+      saveAdminOrganization,
+      createAdminApiKey,
+      deleteAdminApiKey,
+      inviteAdminUser,
+      updateAdminUserRole,
+      createAdminRole,
+      addAdminCustomField,
+      deleteAdminCustomField,
+      saveAdminAutomationRetention,
+      updateAdminAutomationSource,
+      deleteAdminAutomationSource,
+      updateAdminAutomationField,
+      deleteAdminAutomationField,
       createProject,
       addDemoProject,
       updateProject,
@@ -450,7 +721,12 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       addStepComment,
       addGeneralComment,
       sealRun,
+      unsealRun,
       setCurrentRun,
+      createRun,
+      duplicateRun,
+      archiveRun,
+      deleteRun,
       addFolder,
       isRunSealed,
     }),
@@ -464,6 +740,22 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       currentRun,
       getProjectByKeyFn,
       isProjectKeyUniqueFn,
+      saveAdminProfile,
+      saveAdminAccount,
+      toggleAdmin2FA,
+      saveAdminOrganization,
+      createAdminApiKey,
+      deleteAdminApiKey,
+      inviteAdminUser,
+      updateAdminUserRole,
+      createAdminRole,
+      addAdminCustomField,
+      deleteAdminCustomField,
+      saveAdminAutomationRetention,
+      updateAdminAutomationSource,
+      deleteAdminAutomationSource,
+      updateAdminAutomationField,
+      deleteAdminAutomationField,
       createProject,
       addDemoProject,
       updateProject,
@@ -477,7 +769,12 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       addStepComment,
       addGeneralComment,
       sealRun,
+      unsealRun,
       setCurrentRun,
+      createRun,
+      duplicateRun,
+      archiveRun,
+      deleteRun,
       addFolder,
       isRunSealed,
     ],

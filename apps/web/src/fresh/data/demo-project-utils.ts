@@ -39,7 +39,7 @@ export function buildClonedDemoProjectMeta(state: DemoState): ClonedDemoProject 
 /** Apply immutable demo template entities into state as a new isolated project. */
 export function appendClonedDemoProject(state: DemoState, meta: ClonedDemoProject): DemoState {
   const template = getImmutableDemoTemplate()
-  const { folders, cases, runs, defaultRunId, nextCaseNum } = cloneDemoTemplateEntities(template, meta.projectId)
+  const { folders, cases, runs, defaultRunId, nextCaseNum, nextRunNum } = cloneDemoTemplateEntities(template, meta.projectId)
 
   const project: Project = {
     id: meta.projectId,
@@ -59,5 +59,6 @@ export function appendClonedDemoProject(state: DemoState, meta: ClonedDemoProjec
     runs: [...state.runs, ...runs],
     currentRunIdByProject: { ...state.currentRunIdByProject, [project.id]: defaultRunId },
     nextCaseNumByProject: { ...state.nextCaseNumByProject, [project.id]: nextCaseNum },
+    nextRunNumByProject: { ...state.nextRunNumByProject, [project.id]: nextRunNum },
   }
 }

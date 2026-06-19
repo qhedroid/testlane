@@ -70,17 +70,27 @@ export interface CaseExecution {
 export interface DemoRun {
   id: string
   projectId: string
+  /** Project-scoped display id for URLs, e.g. "00001" */
+  runKey: string
   name: string
+  description?: string
   planId?: string
   planName?: string
   due?: string
   createdAt: string
   sealed: boolean
+  /** When set, run is hidden from the default picker list */
+  archivedAt?: string
   caseOrder: string[]
   executions: Record<string, CaseExecution>
 }
 
-export const DEMO_SCHEMA_VERSION = 3
+export const DEMO_SCHEMA_VERSION = 5
+
+/** Format a per-project run counter as a 5-digit key (00001 … 99999). */
+export function formatRunKey(n: number): string {
+  return n.toString().padStart(5, '0')
+}
 
 export const DEFAULT_SEED_PROJECT_ID = 'proj-ti-core'
 export const DEFAULT_SEED_PROJECT_KEY = 'DP'
@@ -101,6 +111,102 @@ export interface LegacyDemoState {
   activeProjectId?: string
   currentRunIdByProject?: Record<string, string>
   nextCaseNumByProject?: Record<string, number>
+  nextRunNumByProject?: Record<string, number>
+}
+
+export interface AdminApiKey {
+  id: string
+  name: string
+  maskedKey: string
+  project: string
+  permissions: string
+  expiration: string
+  createdAt: number
+  userId: string
+}
+
+export interface AdminUser {
+  id: string
+  name: string
+  email: string
+  twoFa: boolean
+  role: 'Owner' | 'Administrator' | 'Editor' | 'Viewer'
+  status: 'Active' | 'Inactive'
+  lastLoginAt: number
+}
+
+export interface AdminRole {
+  id: string
+  name: string
+  description: string
+  userCount: number
+  isOrgLevel: boolean
+  isBuiltIn: boolean
+}
+
+export interface AdminCustomField {
+  id: string
+  name: string
+  type: 'Text' | 'Multi-Line Text' | 'Number (integer)' | 'Boolean' | 'Multi-Select' | 'Date & Time'
+  required: boolean
+  enabled: boolean
+  inNewProjects: boolean
+  projects: string
+}
+
+export interface AdminAutomationSource {
+  id: string
+  name: string
+  displayName: string
+  project: string
+  retentionPeriod: string
+}
+
+export interface AdminAutomationField {
+  id: string
+  name: string
+  displayName: string
+  projects: string
+}
+
+export interface AuditLogEntry {
+  id: string
+  timestamp: number
+  area: 'Data' | 'Settings'
+  byUser: string
+  operation: 'Create' | 'Update' | 'Delete'
+  details: string
+}
+
+export interface AdminSettings {
+  profile: {
+    displayName: string
+    language: string
+    regionalFormat: string
+    theme: 'Light' | 'Dark' | 'System'
+  }
+  account: {
+    firstName: string
+    lastName: string
+    twoFactorMethods: { method: string; active: boolean }[]
+  }
+  organization: {
+    fullName: string
+    allowReopeningTestRuns: string
+    allowReopeningMilestones: string
+    allowEditingTestResults: string
+    oauthEnabled: boolean
+  }
+  apiKeys: AdminApiKey[]
+  users: AdminUser[]
+  roles: AdminRole[]
+  customFields: AdminCustomField[]
+  automation: {
+    retentionPeriod: string
+    sources: AdminAutomationSource[]
+    fields: AdminAutomationField[]
+  }
+  auditLog: AuditLogEntry[]
 }
 
 export interface DemoState {
@@ -112,6 +218,8 @@ export interface DemoState {
   runs: DemoRun[]
   currentRunIdByProject: Record<string, string>
   nextCaseNumByProject: Record<string, number>
+  nextRunNumByProject: Record<string, number>
+  adminSettings: AdminSettings
 }
 
 export interface RunSummary {

@@ -29,7 +29,13 @@ export function listActiveProjectTestCases(state: DemoState): Case[] {
 }
 
 export function listActiveProjectRuns(state: DemoState): DemoRun[] {
-  return state.runs.filter((r) => r.projectId === state.activeProjectId)
+  return state.runs.filter(
+    (r) => r.projectId === state.activeProjectId && !r.archivedAt,
+  )
+}
+
+export function getActiveProjectNextRunNum(state: DemoState): number {
+  return state.nextRunNumByProject[state.activeProjectId] ?? 1
 }
 
 export function listProjectFolders(state: DemoState, projectId: string): Folder[] {
