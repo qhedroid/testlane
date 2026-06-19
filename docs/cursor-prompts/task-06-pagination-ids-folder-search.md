@@ -325,6 +325,14 @@ Zero TypeScript errors required.
 
 ## Step 5 — Commit
 
+Run `git diff HEAD` and cross-check the actual changes against the proposed message below. Before committing, flag:
+- Any file changed that is not mentioned in the message
+- Any change made that is not reflected in the bullets
+- Any bullet that describes something not actually done
+
+Adjust the message to match reality, then commit.
+
+**Proposed message:**
 ```
 Test cases: human-readable case IDs, pagination footer, folder search
 
@@ -335,4 +343,12 @@ Test cases: human-readable case IDs, pagination footer, folder search
 - Add pagination footer: page-size selector (10/25/50/All), X–Y of Z label, Prev/Next buttons; currentPage resets on folder change or filter change
 - Add folder search input above folder tree; filters visible nodes to name-matching folders and their ancestors; FolderTreeNode accepts visibleFolderIds: Set<string> | null and returns null when excluded
 - Update DOMAIN_MODEL.md for schema v8 and caseKey
+```
+
+---
+
+## Step 6 — Restart dev server
+
+```bash
+cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev
 ```

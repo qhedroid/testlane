@@ -303,6 +303,14 @@ Zero TypeScript errors required.
 
 ## Step 10 — Commit
 
+Run `git diff HEAD` and cross-check the actual changes against the proposed message below. Before committing, flag:
+- Any file changed that is not mentioned in the message
+- Any change made that is not reflected in the bullets
+- Any bullet that describes something not actually done
+
+Adjust the message to match reality, then commit.
+
+**Proposed message:**
 ```
 Test cases: per-row context menu with Duplicate, Edit, Open folder, Delete
 
@@ -312,4 +320,12 @@ Test cases: per-row context menu with Duplicate, Edit, Open folder, Delete
 - Implement click-outside dismissal via mousedown listener + contextMenuRef
 - Add pendingEditRef pattern so "Edit" option can trigger CaseDetail's internal edit mode on mount via startEditOnMount prop
 - Add CSS: .row-ctx-btn, .ctx-menu, .ctx-item, .ctx-item-danger, .ctx-sep
+```
+
+---
+
+## Step 11 — Restart dev server
+
+```bash
+cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev
 ```

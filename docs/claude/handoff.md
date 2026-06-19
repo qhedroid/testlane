@@ -21,18 +21,29 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Schema version
-**Current: v6** (`DEMO_SCHEMA_VERSION = 6` in `apps/web/src/fresh/data/demo-model.ts`)
+**Current: v7** (`DEMO_SCHEMA_VERSION = 7` in `apps/web/src/fresh/data/demo-model.ts`)
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
 | v5 | Baseline before admin panel work | — |
 | v6 | Added `activeCustomFieldIds: string[]` and `projectSettings?: ProjectSettings` to `Project` | v5→v6 adds `activeCustomFieldIds: []` to any project missing it |
+| v7 | Added `template`, `references`, `summary`, `customFieldValues` to `Case` | v6→v7 backfills new fields with defaults on existing cases |
 
-> Tasks 02–06 will bump the schema further (v7 adds Case fields, v8 adds `caseKey`) but those tasks have not been executed yet — the prompts are written, not run.
+> Task 06 will bump to v8 (adds `caseKey` to `Case`). The prompt is written but not yet run.
 
 ---
 
 ## Completed work (this branch)
+
+### Case detail tabs — Task 02 ✅
+- 4 new tabs added to CaseDetail: Attachments, Defects, Requirements, Runs
+- `DetailTab` union extended to 7 values; `.dp-empty-tab` CSS class added to `fresh.css`
+
+### Case detail fields — Task 03 ✅
+- `Case` extended with `template`, `references`, `summary`, `customFieldValues`
+- Schema bumped to v7; `migrateProjectCustomFields` fixed to stamp `schemaVersion: 6` (not `DEMO_SCHEMA_VERSION`) to prevent migration chain being skipped
+- Details tab renders new built-in fields + dynamic custom fields from `activeCustomFieldIds`
+- `adminSettings` destructured and passed into `CaseDetail` from `CasesScreen`
 
 ### Admin panel — Task 01 ✅
 - New global route: `/admin` (outside the `(app)` route group)
@@ -43,13 +54,14 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
   - Custom fields tab reads `activeCustomFieldIds` from the project and toggles them via `UPDATE_ACTIVE_CUSTOM_FIELDS`
 - Commits on `mvp-test-cases`: `398f45a` (panel), layout fix commit, maximize-by-default commit
 
-### Cursor prompts written — Tasks 02–06 ✅
+### Cursor prompts written — Tasks 02–06 + 03b ✅
 All saved to `docs/cursor-prompts/`. Ready to hand to Cursor agents one at a time.
 
 | File | What it does |
 |------|-------------|
-| `task-02-case-detail-tabs.md` | Add 4 missing tabs to CaseDetail (Attachments, Defects, Requirements, Runs). No model changes. |
-| `task-03-case-detail-fields.md` | Add `template`/`references`/`summary`/`customFieldValues` to `Case`; bump to schema v7; render custom fields dynamically in Details tab. |
+| `task-02-case-detail-tabs.md` | ✅ Done. Add 4 missing tabs to CaseDetail (Attachments, Defects, Requirements, Runs). No model changes. |
+| `task-03-case-detail-fields.md` | ✅ Done. Add `template`/`references`/`summary`/`customFieldValues` to `Case`; bump to schema v7; render custom fields dynamically in Details tab. |
+| `task-03b-panel-resize-fixes.md` | Fix inverted drag direction on case detail panel (right-anchored: use `start - dx`); update min 300→540, max 540→720; update CSS default width 360→540. |
 | `task-04-row-context-menu.md` | Per-row "..." context menu: Duplicate, Edit, Copy to, Move to, Open folder, Delete. Adds `deleteCase` action to FreshProvider. |
 | `task-05-last-results-filter-panel.md` | Replace Last Run pill with status dot + sparkline. Replace non-functional filter chips with a proper Filter panel (field+operator+value, AND logic). |
 | `task-06-pagination-ids-folder-search.md` | Human-readable `TC-XXXXX` case IDs (schema v8), pagination footer, folder search input in sidebar. |
@@ -72,7 +84,8 @@ All saved to `docs/cursor-prompts/`. Ready to hand to Cursor agents one at a tim
 
 - **Git amend broke the merge commit** when run from the sandbox (set the wrong committer, caused 57 files to appear unstaged). Fix: `git reset --hard origin/mvp-main` from the user's terminal, then re-amend with the correct `GIT_COMMITTER_NAME` env var.
 - **`.git/HEAD.lock`** blocked amend from the sandbox — user had to remove it manually from their terminal.
-- **`adminSettings` is not in the default `useFresh()` destructure** in CasesScreen. When Task 03 is executed, Cursor will need to add it explicitly.
+- **`adminSettings` is not in the default `useFresh()` destructure** in CasesScreen — fixed in Task 03; it is now destructured there.
+- **Case detail panel drag direction**: right-anchored panels need `start - dx` not `start + dx` — covered in task-03b prompt.
 - **`formatRunKey` exists in `demo-model.ts`** — Task 06's `formatCaseKey` should follow the exact same pattern and live next to it.
 
 ---

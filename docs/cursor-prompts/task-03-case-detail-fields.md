@@ -59,9 +59,27 @@ Bump `DEMO_SCHEMA_VERSION` from `6` to `7`.
 
 ---
 
-## Step 3 — Add v6→v7 migration in `migrate-demo-state.ts`
+## Step 3 — Fix the v5→v6 migration, then add v6→v7
 
-After the existing v5→v6 block, add:
+### 3a — Fix `migrateProjectCustomFields` to stamp the correct version
+
+In `migrate-demo-state.ts`, find the `migrateProjectCustomFields` function. Its return currently reads:
+
+```ts
+return { ...state, projectsById, schemaVersion: DEMO_SCHEMA_VERSION }
+```
+
+Change it to stamp `6` explicitly:
+
+```ts
+return { ...state, projectsById, schemaVersion: 6 }
+```
+
+**Why:** this function runs when `schemaVersion < 6`. If it stamps `DEMO_SCHEMA_VERSION` (now 7 after this task), the new `< 7` migration block below will be skipped for users coming from v5, and their cases will never get the new fields backfilled. Stamping `6` makes the chain run sequentially.
+
+### 3b — Add v6→v7 migration
+
+After the existing v5→v6 block (`if (state.schemaVersion < 6) { ... }`), add:
 
 ```ts
 // v6 → v7: add template, references, summary, customFieldValues to existing cases
@@ -281,7 +299,7 @@ Zero TypeScript errors required. `adminSettings` must be a valid property on the
 Test cases: add Summary/References/Template fields and dynamic custom fields to case detail
 
 - Add template, references, summary, customFieldValues fields to Case interface in demo-model.ts
-- Bump DEMO_SCHEMA_VERSION to 7; add v6→v7 migration (backfills new fields with defaults on existing cases)
+- Bump DEMO_SCHEMA_VERSION to 7; fix migrateProjectCustomFields to stamp schemaVersion 6 (not DEMO_SCHEMA_VERSION) so the migration chain runs sequentially; add v6→v7 migration (backfills new fields with defaults on existing cases)
 - Case detail Details tab (view mode): show Summary, References, Template rows in metadata grid
 - Case detail Details tab (edit mode): add Summary text input, References text input, Template dropdown
 - Case detail Details tab: render active custom fields section dynamically from project.activeCustomFieldIds + adminSettings.customFields; supports Text, Multi-Line Text, Number, Boolean field types in both view and edit mode
