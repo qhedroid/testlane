@@ -35,6 +35,20 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 ## Completed work (this branch)
 
+### Panel resize fixes — Task 03b ✅
+- Drag direction fixed in `useResizablePanes.ts`: `start - dx` for right-anchored case detail panel
+- Min/max updated (300→540 / 540→720); CSS default width updated (360px→540px) in `fresh.css`
+
+### Row context menu — Task 04 ✅
+- `DELETE_CASE` action and `deleteCase(caseId)` added to `FreshProvider`
+- Per-row "..." button with context menu: Duplicate, Edit, Copy to…, Move to…, Open folder, Delete
+- `pendingEditRef` + `startEditOnMount` pattern for triggering edit mode from outside `CaseDetail`
+- CSS added: `.row-ctx-btn`, `.ctx-menu`, `.ctx-item`, `.ctx-item-danger`, `.ctx-sep`
+
+### Commit style updated ✅
+- `CLAUDE.md` commit body format changed: bullets now grouped by file, natural language phrasing
+- Claude will automatically provide a commit message after editing any markdown in `docs/claude/**` or `docs/cursor-prompts/**`
+
 ### Case detail tabs — Task 02 ✅
 - 4 new tabs added to CaseDetail: Attachments, Defects, Requirements, Runs
 - `DetailTab` union extended to 7 values; `.dp-empty-tab` CSS class added to `fresh.css`
@@ -61,9 +75,9 @@ All saved to `docs/cursor-prompts/`. Ready to hand to Cursor agents one at a tim
 |------|-------------|
 | `task-02-case-detail-tabs.md` | ✅ Done. Add 4 missing tabs to CaseDetail (Attachments, Defects, Requirements, Runs). No model changes. |
 | `task-03-case-detail-fields.md` | ✅ Done. Add `template`/`references`/`summary`/`customFieldValues` to `Case`; bump to schema v7; render custom fields dynamically in Details tab. |
-| `task-03b-panel-resize-fixes.md` | Fix inverted drag direction on case detail panel (right-anchored: use `start - dx`); update min 300→540, max 540→720; update CSS default width 360→540. |
-| `task-04-row-context-menu.md` | Per-row "..." context menu: Duplicate, Edit, Copy to, Move to, Open folder, Delete. Adds `deleteCase` action to FreshProvider. |
-| `task-05-last-results-filter-panel.md` | Replace Last Run pill with status dot + sparkline. Replace non-functional filter chips with a proper Filter panel (field+operator+value, AND logic). |
+| `task-03b-panel-resize-fixes.md` | ✅ Done. Fixed inverted drag direction (`start - dx`); updated min 300→540, max 540→720; CSS default 360→540. |
+| `task-04-row-context-menu.md` | ✅ Done. Per-row "..." context menu: Duplicate, Edit, Copy to, Move to, Open folder, Delete. Added `deleteCase` to FreshProvider. |
+| `task-05-last-results-filter-panel.md` | **Next.** Replace Last Run pill with status dot + sparkline. Replace non-functional filter chips with a proper Filter panel (field+operator+value, AND logic). |
 | `task-06-pagination-ids-folder-search.md` | Human-readable `TC-XXXXX` case IDs (schema v8), pagination footer, folder search input in sidebar. |
 
 ---
