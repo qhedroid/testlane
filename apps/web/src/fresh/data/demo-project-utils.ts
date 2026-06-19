@@ -47,6 +47,7 @@ export function appendClonedDemoProject(state: DemoState, meta: ClonedDemoProjec
     key: meta.key,
     description: template.projectDescription,
     seedTemplate: 'demo',
+    activeCustomFieldIds: [],
     createdAt: new Date().toISOString(),
   }
 

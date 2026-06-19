@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project } from './demo-model'
+import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project, ProjectSettings } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction } from './admin-reducer'
 import {
   getActiveProject,
@@ -72,6 +72,7 @@ function makeDefaultProject(): Project {
     key: DEFAULT_SEED_PROJECT_KEY,
     description: 'Default demo workspace with seed cases, folders, and runs.',
     seedTemplate: 'demo',
+    activeCustomFieldIds: [],
     createdAt: new Date().toISOString(),
   }
 }
@@ -81,6 +82,8 @@ export type FreshAction =
   | { type: 'ADD_DEMO_PROJECT' }
   | { type: 'CREATE_PROJECT'; name: string; key: string; description?: string }
   | { type: 'UPDATE_PROJECT'; projectId: string; patch: Partial<Pick<Project, 'name' | 'key' | 'description'>> }
+  | { type: 'UPDATE_ACTIVE_CUSTOM_FIELDS'; projectId: string; activeCustomFieldIds: string[] }
+  | { type: 'UPDATE_PROJECT_SETTINGS'; projectId: string; projectSettings: ProjectSettings }
   | { type: 'DELETE_PROJECT'; projectId: string }
   | { type: 'SET_ACTIVE_PROJECT'; projectId: string }
   | { type: 'ADD_CASE'; case: Case }
@@ -120,6 +123,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         name: action.name.trim() || 'Untitled project',
         key: action.key.toUpperCase(),
         description: action.description?.trim() || undefined,
+        activeCustomFieldIds: [],
         createdAt: new Date().toISOString(),
       }
       next = {
@@ -140,6 +144,30 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         projectsById: {
           ...state.projectsById,
           [action.projectId]: { ...existing, ...action.patch },
+        },
+      }
+      break
+    }
+    case 'UPDATE_ACTIVE_CUSTOM_FIELDS': {
+      const existing = state.projectsById[action.projectId]
+      if (!existing) return state
+      next = {
+        ...state,
+        projectsById: {
+          ...state.projectsById,
+          [action.projectId]: { ...existing, activeCustomFieldIds: action.activeCustomFieldIds },
+        },
+      }
+      break
+    }
+    case 'UPDATE_PROJECT_SETTINGS': {
+      const existing = state.projectsById[action.projectId]
+      if (!existing) return state
+      next = {
+        ...state,
+        projectsById: {
+          ...state.projectsById,
+          [action.projectId]: { ...existing, projectSettings: action.projectSettings },
         },
       }
       break
@@ -411,6 +439,8 @@ interface FreshContextValue {
   deleteAdminAutomationField: (id: string) => void
   createProject: (input: { name: string; key: string; description?: string }) => void
   updateProject: (projectId: string, patch: Partial<Pick<Project, 'name' | 'key' | 'description'>>) => void
+  updateActiveCustomFields: (projectId: string, activeCustomFieldIds: string[]) => void
+  updateProjectSettings: (projectId: string, projectSettings: ProjectSettings) => void
   deleteProject: (projectId: string) => void
   setActiveProject: (projectId: string) => void
   getCase: (caseId: string) => Case | undefined
@@ -658,6 +688,14 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const updateActiveCustomFields = useCallback((projectId: string, activeCustomFieldIds: string[]) => {
+    dispatch({ type: 'UPDATE_ACTIVE_CUSTOM_FIELDS', projectId, activeCustomFieldIds })
+  }, [])
+
+  const updateProjectSettings = useCallback((projectId: string, projectSettings: ProjectSettings) => {
+    dispatch({ type: 'UPDATE_PROJECT_SETTINGS', projectId, projectSettings })
+  }, [])
+
   const getProjectByKeyFn = useCallback((key: string) => getProjectByKey(state, key), [state])
   const isProjectKeyUniqueFn = useCallback(
     (key: string, excludeProjectId?: string) => isProjectKeyUnique(state, key, excludeProjectId),
@@ -711,6 +749,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       createProject,
       addDemoProject,
       updateProject,
+      updateActiveCustomFields,
+      updateProjectSettings,
       deleteProject,
       setActiveProject,
       getCase,
@@ -759,6 +799,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       createProject,
       addDemoProject,
       updateProject,
+      updateActiveCustomFields,
+      updateProjectSettings,
       deleteProject,
       setActiveProject,
       getCase,

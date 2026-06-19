@@ -67,11 +67,11 @@ Roles (capability, not job title): `super_admin` > `admin` > `contributor` > `vi
 
 ## Prototype model (FRESH / localStorage)
 
-State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 5`).
+State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 6`).
 
 | Entity | Prototype type | Notes |
 |--------|----------------|-------|
-| **Project** | `Project { id, name, key, description?, seedTemplate?, createdAt }` in `projectsById` | User-managed: **name** (required), **key** (required, uppercase, unique, `[A-Z0-9_-]`), **description** (optional). Seed project: **Demo Project** / key **DP**. `seedTemplate: 'demo'` marks projects that show the seeded dashboard UI and were created from the immutable demo template (initial seed `DP` or clones `DP1`, `DP2`, …). URL routing uses `key` as first path segment. |
+| **Project** | `Project { id, name, key, description?, activeCustomFieldIds, projectSettings?, seedTemplate?, createdAt }` in `projectsById` | User-managed: **name** (required), **key** (required, uppercase, unique, `[A-Z0-9_-]`), **description** (optional). **activeCustomFieldIds** — subset of global `adminSettings.customFields` ids active for this project (seed DP: Priority, References, Is Automated). **projectSettings** — optional per-project inherit/override for org policies (re-open runs/milestones, edit results, report logo). Seed project: **Demo Project** / key **DP**. `seedTemplate: 'demo'` marks projects that show the seeded dashboard UI and were created from the immutable demo template (initial seed `DP` or clones `DP1`, `DP2`, …). URL routing uses `key` as first path segment. |
 | **Folder** | `Folder { id, projectId, name, parentId? }` | Scoped to `projectId`. |
 | **TestCase** | `Case { id, projectId, title, folderId, priority, type, steps[], tags[], assignee, … }` | Steps embed comments. |
 | **TestPlan** | Static `PLANS` in seed | Not in `DemoState`; not linked to cases in state. |
@@ -119,7 +119,10 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 | **2** | Multi-project without required keys | → v3: seed renamed to Demo Project / `DP`; all projects get required `key`; optional `description`; legacy `DEMO` key migrated to `DP` |
 | **3** | `Project { name, key, description?, seedTemplate? }`, key-based URLs | Current through early v4 work |
 | **4** | `DemoRun.runKey`, `description?`, `archivedAt?`, `nextRunNumByProject`, URL `/testruns/tr/:runKey` | v3→v4 assigns run keys per project (seed R1–R6 → 00001–00006); initializes counters. |
-| **5** | `DemoState.adminSettings: AdminSettings` | **Current.** v4→v5 adds global admin panel state from `initialAdminSettings`; existing localStorage blobs without `adminSettings` receive seed on load. |
+| **5** | `DemoState.adminSettings: AdminSettings` | v4→v5 adds global admin panel state from `initialAdminSettings`; existing localStorage blobs without `adminSettings` receive seed on load. |
+| **6** | `Project.activeCustomFieldIds`, optional `Project.projectSettings` | **Current.** v5→v6 adds `activeCustomFieldIds: []` to projects missing it. Fresh seed sets DP active fields to Priority, References, Is Automated. |
+
+**Project store actions (prototype):** `UPDATE_PROJECT` (name/key/description), `UPDATE_ACTIVE_CUSTOM_FIELDS` (`projects/updateActiveCustomFields`), `UPDATE_PROJECT_SETTINGS` (`projects/updateSettings`).
 
 On migration failure: `console.error` and fall back to `buildInitialDemoState()` (seeded **Demo Project** / `DP`).
 

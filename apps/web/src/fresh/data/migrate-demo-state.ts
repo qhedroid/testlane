@@ -73,6 +73,7 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     key: isLegacySeedName ? DEFAULT_SEED_PROJECT_KEY : keyFromName(projectName),
     description: isLegacySeedName ? 'Default demo workspace with seed cases, folders, and runs.' : undefined,
     seedTemplate: isLegacySeedName ? 'demo' : undefined,
+    activeCustomFieldIds: [],
     createdAt: new Date().toISOString(),
   }
 
@@ -195,6 +196,17 @@ function migrateAdminSettings(state: DemoState): DemoState {
   }
 }
 
+function migrateProjectCustomFields(state: DemoState): DemoState {
+  const projectsById: Record<string, Project> = {}
+  for (const [id, project] of Object.entries(state.projectsById)) {
+    projectsById[id] = {
+      ...project,
+      activeCustomFieldIds: project.activeCustomFieldIds ?? [],
+    }
+  }
+  return { ...state, projectsById, schemaVersion: DEMO_SCHEMA_VERSION }
+}
+
 /** Migrate persisted localStorage state to the current schema. Never throws. */
 export function migrateDemoState(raw: unknown): DemoState {
   try {
@@ -209,6 +221,9 @@ export function migrateDemoState(raw: unknown): DemoState {
       state = migrateRunKeys(state)
     }
     state = migrateAdminSettings(state)
+    if (state.schemaVersion < 6) {
+      state = migrateProjectCustomFields(state)
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }

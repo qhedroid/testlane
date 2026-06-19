@@ -28,6 +28,23 @@ export interface CaseComment {
   body: string
 }
 
+export type ProjectPolicyValue = 'inherit' | 'unlimited' | 'never' | 'admins_only'
+export type ProjectReportLogoValue = 'inherit' | 'override'
+
+export interface ProjectSettings {
+  allowReopeningTestRuns: ProjectPolicyValue
+  allowReopeningMilestones: ProjectPolicyValue
+  allowEditingTestResults: ProjectPolicyValue
+  reportLogo: ProjectReportLogoValue
+}
+
+export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
+  allowReopeningTestRuns: 'inherit',
+  allowReopeningMilestones: 'inherit',
+  allowEditingTestResults: 'inherit',
+  reportLogo: 'inherit',
+}
+
 export interface Project {
   id: string
   name: string
@@ -35,6 +52,10 @@ export interface Project {
   description?: string
   /** When `'demo'`, project shows seeded dashboard UI and was created from the immutable demo template. */
   seedTemplate?: 'demo'
+  /** IDs from `adminSettings.customFields` that are active for this project. */
+  activeCustomFieldIds: string[]
+  /** Per-project overrides for org-level policies; omitted fields default to inherit in UI. */
+  projectSettings?: ProjectSettings
   createdAt: string
 }
 
@@ -85,7 +106,7 @@ export interface DemoRun {
   executions: Record<string, CaseExecution>
 }
 
-export const DEMO_SCHEMA_VERSION = 5
+export const DEMO_SCHEMA_VERSION = 6
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {

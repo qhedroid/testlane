@@ -9,6 +9,19 @@ import {
   newId,
 } from './demo-model'
 import { initialAdminSettings } from './admin-initial-settings'
+
+function customFieldIdsByNames(names: string[]): string[] {
+  return names
+    .map((name) => initialAdminSettings.customFields.find((f) => f.name === name)?.id)
+    .filter((id): id is string => !!id)
+}
+
+/** Default active custom fields for the seed Demo Project (DP). */
+export const SEED_DP_ACTIVE_CUSTOM_FIELD_IDS = customFieldIdsByNames([
+  'Priority',
+  'References',
+  'Is Automated',
+])
 import { INITIAL_CASES, INITIAL_EXEC_CASES, RUN_CARDS, RUN_PICKER_LIST } from './seed'
 import type { RunCard } from './types'
 import type { DemoCase, ExecCase, ResultStatus } from './types'
@@ -42,6 +55,7 @@ export const SEED_PROJECT: Project = {
   key: DEFAULT_SEED_PROJECT_KEY,
   description: 'Default demo workspace with seed cases, folders, and runs.',
   seedTemplate: 'demo',
+  activeCustomFieldIds: [...SEED_DP_ACTIVE_CUSTOM_FIELD_IDS],
   createdAt: NOW,
 }
 
