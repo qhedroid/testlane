@@ -162,7 +162,7 @@ After the existing `{tab === 'details' ? (...) : null}` block, add these four sh
 
 ## Step 5 — Add the empty tab CSS class
 
-Open `apps/web/src/app/globals.css` (or wherever `.dp-*` styles live — search for `.dp-hd` to find the right file).
+Open `apps/web/src/fresh/styles/fresh.css` (this is where all `.dp-*` rules live — confirmed by searching for `.dp-hd`).
 
 Add this utility class near the other `.dp-*` rules:
 
