@@ -135,6 +135,7 @@ body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--n
 .bulk.on{display:flex}
 .bulk-n{font-size:12px;font-weight:600;color:var(--accent)}
 .tc-wrap{flex:1;overflow-y:auto}
+.tc-pagination{display:flex;align-items:center;padding:6px 12px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
 /* DETAIL PANEL */
 .dp{width:0;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .15s ease}
 .dp.no-transition{transition:none!important}

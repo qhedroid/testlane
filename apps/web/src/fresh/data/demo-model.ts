@@ -61,6 +61,8 @@ export interface Project {
 
 export interface Case {
   id: string
+  /** Project-scoped human-readable ID, e.g. TC-00001. Assigned on creation. */
+  caseKey?: string
   projectId: string
   title: string
   folderId?: string | null
@@ -114,11 +116,16 @@ export interface DemoRun {
   executions: Record<string, CaseExecution>
 }
 
-export const DEMO_SCHEMA_VERSION = 7
+export const DEMO_SCHEMA_VERSION = 8
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
   return n.toString().padStart(5, '0')
+}
+
+/** Format a per-project case counter as a 5-digit key, e.g. TC-00001. */
+export function formatCaseKey(n: number): string {
+  return `TC-${n.toString().padStart(5, '0')}`
 }
 
 export const DEFAULT_SEED_PROJECT_ID = 'proj-ti-core'

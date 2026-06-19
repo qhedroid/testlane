@@ -106,6 +106,7 @@ function FolderTreeNode({
   selectedFolderId,
   newFolderDraftParentId,
   newFolderInputRef,
+  visibleFolderIds,
   onToggleFolder,
   onSelectFolder,
   onCommitNewFolder,
@@ -120,11 +121,14 @@ function FolderTreeNode({
   selectedFolderId: string | '__unfiled__'
   newFolderDraftParentId: string | null | undefined
   newFolderInputRef: RefObject<HTMLInputElement | null>
+  visibleFolderIds: Set<string> | null
   onToggleFolder: (id: string) => void
   onSelectFolder: (id: string) => void
   onCommitNewFolder: (name: string) => void
   onCancelNewFolder: () => void
 }) {
+  if (visibleFolderIds && !visibleFolderIds.has(folder.id)) return null
+
   const kids = childFolders(folder.id)
   const hasKids = kids.length > 0
   const isOpen = openFolders.has(folder.id)
@@ -181,6 +185,7 @@ function FolderTreeNode({
               selectedFolderId={selectedFolderId}
               newFolderDraftParentId={newFolderDraftParentId}
               newFolderInputRef={newFolderInputRef}
+              visibleFolderIds={visibleFolderIds}
               onToggleFolder={onToggleFolder}
               onSelectFolder={onSelectFolder}
               onCommitNewFolder={onCommitNewFolder}
@@ -225,6 +230,9 @@ export function CasesScreen() {
     value: '',
   })
   const filterPanelRef = useRef<HTMLDivElement>(null)
+  const [pageSize, setPageSize] = useState<number | 'all'>(25)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [folderSearch, setFolderSearch] = useState('')
   const [contextMenu, setContextMenu] = useState<{ caseId: string; x: number; y: number } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const pendingEditRef = useRef<string | null>(null)
@@ -262,7 +270,10 @@ export function CasesScreen() {
     setSelectedIds(new Set())
     setDetailCaseId(null)
     setOpenFolders(new Set(roots.map((f) => f.id)))
+    setCurrentPage(1)
   }, [activeProject.id])
+
+  useEffect(() => { setCurrentPage(1) }, [selectedFolderId, statusFilter, filterConditions])
 
   const rootFolders = useMemo(
     () => activeFolders.filter((f) => !f.parentId).sort((a, b) => a.name.localeCompare(b.name)),
@@ -273,6 +284,16 @@ export function CasesScreen() {
       activeFolders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name)),
     [activeFolders],
   )
+
+  const visibleFolderIds = useMemo(() => {
+    if (!folderSearch.trim()) return null
+    const term = folderSearch.toLowerCase()
+    const matched = new Set(activeFolders.filter((f) => f.name.toLowerCase().includes(term)).map((f) => f.id))
+    matched.forEach((id) => {
+      folderAncestorIds(activeFolders, id).forEach((aid) => matched.add(aid))
+    })
+    return matched
+  }, [folderSearch, activeFolders])
 
   const folderCases = useMemo(
     () => casesInFolder(activeCases, activeFolders, selectedFolderId),
@@ -311,6 +332,14 @@ export function CasesScreen() {
 
     return result
   }, [folderCases, statusFilter, activeRuns, filterConditions])
+
+  const totalCases = displayedCases.length
+  const pageSizeNum = pageSize === 'all' ? totalCases : pageSize
+  const totalPages = Math.max(1, Math.ceil(totalCases / pageSizeNum))
+  const safePage = Math.min(currentPage, totalPages)
+  const pagedCases = pageSize === 'all'
+    ? displayedCases
+    : displayedCases.slice((safePage - 1) * pageSizeNum, safePage * pageSizeNum)
 
   const detail = detailCaseId ? activeCases.find((c) => c.id === detailCaseId) ?? null : null
 
@@ -459,6 +488,24 @@ export function CasesScreen() {
             <span className="st-ttl">Folders</span>
             <button type="button" className="btn" style={{ padding: '2px 5px', fontSize: 13, lineHeight: 1 }} onClick={startCreateFolder} title="Add folder"><i className="ti ti-plus" /></button>
           </div>
+          <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--border)' }}>
+            <input
+              type="text"
+              placeholder="Filter folders…"
+              value={folderSearch}
+              onChange={(e) => setFolderSearch(e.target.value)}
+              style={{
+                width: '100%',
+                fontSize: 12,
+                padding: '3px 7px',
+                borderRadius: 4,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--text1)',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
           <div className="st-body">
             <div
               className={`st-sec${selectedFolderId === '__unfiled__' ? ' on' : ''}`}
@@ -480,6 +527,7 @@ export function CasesScreen() {
                 selectedFolderId={selectedFolderId}
                 newFolderDraftParentId={newFolderDraftParentId}
                 newFolderInputRef={newFolderInputRef}
+                visibleFolderIds={visibleFolderIds}
                 onToggleFolder={toggleFolder}
                 onSelectFolder={selectFolder}
                 onCommitNewFolder={commitNewFolder}
@@ -695,7 +743,7 @@ export function CasesScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedCases.map((c) => {
+                  {pagedCases.map((c) => {
                     return (
                       <tr
                         key={c.id}
@@ -714,7 +762,7 @@ export function CasesScreen() {
                             })}
                           />
                         </td>
-                        <td className="tmono">{c.id}</td>
+                        <td className="tmono" style={{ color: 'var(--accent)', fontWeight: 500 }}>{c.caseKey ?? c.id}</td>
                         <td className="title-cell" style={{ maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</td>
                         <td><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></td>
                         <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{folderLabel(activeFolders, c.folderId)}</td>
@@ -795,6 +843,47 @@ export function CasesScreen() {
               </div>
             )}
           </div>
+          {totalCases > 0 ? (
+            <div className="tc-pagination">
+              <span style={{ fontSize: 11, color: 'var(--text2)', marginRight: 8 }}>Rows per page:</span>
+              <select
+                style={{ fontSize: 11, padding: '1px 4px' }}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value))
+                  setCurrentPage(1)
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value="all">All</option>
+              </select>
+              <span style={{ fontSize: 11, color: 'var(--text2)', margin: '0 12px' }}>
+                {pageSize === 'all' || totalCases === 0
+                  ? `${totalCases} cases`
+                  : `${(safePage - 1) * pageSizeNum + 1}–${Math.min(safePage * pageSizeNum, totalCases)} of ${totalCases}`}
+              </span>
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: '1px 6px', fontSize: 12 }}
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                <i className="ti ti-chevron-left" style={{ fontSize: 13 }} />
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: '1px 6px', fontSize: 12 }}
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="resizer-v detail-resizer" data-resize="case-detail" data-min="540" data-max="720" />
@@ -1014,7 +1103,7 @@ function CaseDetail({
           <i className={`ti ${maximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`} />
         </button>
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          <span className="dp-id">{c.id}</span>
+          <span className="dp-id">{c.caseKey ?? c.id}</span>
           {editing ? (
             <input className="dp-edit-title" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} />
           ) : (

@@ -25,7 +25,7 @@ import {
   listProjects,
 } from './project-selectors'
 import { findRunById } from './run-utils'
-import { DEFAULT_SEED_PROJECT_KEY, formatRunKey, newId } from './demo-model'
+import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatRunKey, newId } from './demo-model'
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
 import { nextCaseId } from './ui-utils'
 
@@ -220,9 +220,10 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
     case 'ADD_CASE': {
       const projectId = state.activeProjectId
       const num = getActiveProjectNextCaseNum(state)
+      const caseKey = formatCaseKey(num)
       next = {
         ...state,
-        cases: [...state.cases, action.case],
+        cases: [...state.cases, { ...action.case, caseKey }],
         nextCaseNumByProject: { ...state.nextCaseNumByProject, [projectId]: num + 1 },
       }
       break

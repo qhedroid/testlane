@@ -17,7 +17,7 @@ Schema source: `packages/db/schema.ts`. Prototype types: `apps/web/src/fresh/dat
 | Kind | Target (MySQL) | Prototype (demo) |
 |------|----------------|------------------|
 | Primary key | ULID — 26-char string, app-generated | Opaque string (`case-…`, `run-…`, folder ids) |
-| Human ref | `case_ref`, `run_ref`, `plan_ref` per project (e.g. `TC-1001`) | Display refs in seed strings; not enforced |
+| Human ref | `case_ref`, `run_ref`, `plan_ref` per project (e.g. `TC-1001`) | `Case.caseKey` (e.g. `TC-00001`) via `formatCaseKey`; `DemoRun.runKey` (5-digit) |
 | Uniqueness | `(project_id, *_ref)` unique | N/A in localStorage |
 
 **Invariant (target):** PKs are never reused. Human refs are unique within a project, not globally.
@@ -67,13 +67,13 @@ Roles (capability, not job title): `super_admin` > `admin` > `contributor` > `vi
 
 ## Prototype model (FRESH / localStorage)
 
-State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 7`).
+State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 8`).
 
 | Entity | Prototype type | Notes |
 |--------|----------------|-------|
 | **Project** | `Project { id, name, key, description?, activeCustomFieldIds, projectSettings?, seedTemplate?, createdAt }` in `projectsById` | User-managed: **name** (required), **key** (required, uppercase, unique, `[A-Z0-9_-]`), **description** (optional). **activeCustomFieldIds** — subset of global `adminSettings.customFields` ids active for this project (seed DP: Priority, References, Is Automated). **projectSettings** — optional per-project inherit/override for org policies (re-open runs/milestones, edit results, report logo). Seed project: **Demo Project** / key **DP**. `seedTemplate: 'demo'` marks projects that show the seeded dashboard UI and were created from the immutable demo template (initial seed `DP` or clones `DP1`, `DP2`, …). URL routing uses `key` as first path segment. |
 | **Folder** | `Folder { id, projectId, name, parentId? }` | Scoped to `projectId`. |
-| **TestCase** | `Case { id, projectId, title, folderId, priority, type, steps[], tags[], assignee, template?, references?, summary?, customFieldValues?, … }` | Steps embed comments. **template** — `'text'` (Action/Expected) or `'bdd'` (Given/When/Then). **references** — free-text issue/doc links. **summary** — one-line description. **customFieldValues** — keyed by `AdminCustomField.id` for active project custom fields. |
+| **TestCase** | `Case { id, caseKey?, projectId, title, folderId, priority, type, steps[], tags[], assignee, template?, references?, summary?, customFieldValues?, … }` | **caseKey** — project-scoped human-readable id (e.g. `TC-00001`), assigned on `ADD_CASE` via `formatCaseKey(nextCaseNumByProject[projectId])`. Steps embed comments. **template** — `'text'` (Action/Expected) or `'bdd'` (Given/When/Then). **references** — free-text issue/doc links. **summary** — one-line description. **customFieldValues** — keyed by `AdminCustomField.id` for active project custom fields. |
 | **TestPlan** | Static `PLANS` in seed | Not in `DemoState`; not linked to cases in state. |
 | **TestRun** | `DemoRun { id, projectId, runKey, name, description?, planId, sealed, archivedAt?, caseOrder[], executions }` | `runKey` is project-scoped 5-digit display id for URLs. `executions` keyed by case id. `currentRunIdByProject` tracks picker per project (synced from URL when `/tr/:runKey` present). |
 | **Execution** | `CaseExecution { status, stepResults, defects[], assignee }` | Full step-level in demo `/runs`. |
@@ -98,7 +98,7 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 
 1. **Multi-project isolation** — folders, cases, and runs carry `projectId`. Selectors (`listActiveProject*`) and `FreshProvider` scope `/cases` and `/testruns` to `activeProjectId`.
 2. **Key-based routing** — canonical URLs are `/:projectKey/:module` (e.g. `/DP/dashboard`, `/CTMS/testruns`). `ProjectRouteSync` sets `activeProjectId` from URL key; switcher navigates to same module under new key. Legacy unprefixed paths (`/runs`, `/cases`, …) redirect client-side to active project's prefixed path.
-3. **Active project persistence** — `activeProjectId`, `currentRunIdByProject`, and `nextRunNumByProject` survive reload via `relay-demo-v2`.
+3. **Active project persistence** — `activeProjectId`, `currentRunIdByProject`, `nextRunNumByProject`, and `nextCaseNumByProject` survive reload via `relay-demo-v2`. `nextCaseNumByProject` increments on each `ADD_CASE` (mirrors `nextRunNumByProject` for runs).
 4. **Run URL routing** — selected run reflected at `/:projectKey/testruns/tr/:runKey` (5-digit `runKey`). No segment when no run selected. Invalid key → redirect to `/:projectKey/testruns`.
 5. **Project keys** — unique across `projectsById`; stored uppercase; validated on create (`[A-Z0-9_-]`).
 6. **Project delete** — **cascade delete**: removing a project deletes its folders, cases, and runs. If the active project is deleted, the store activates another project or creates `"Demo Project"` / `DP` when none remain.
@@ -106,10 +106,11 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 8. **Demo template cloning** — “Add demo project” clones from an **immutable in-code template** (`demo-template.ts`), never from live store state. Keys are incremental: `DP1`, `DP2`, … (base seed remains `DP`). All cloned entity ids are remapped for full project isolation.
 9. **Run case order** — `caseOrder[]` defines list order; executions map must align by case id.
 10. **Run keys** — `runKey` assigned incrementally per project (`nextRunNumByProject`, starting at `00001`). Seeded R1–R6 → `00001`–`00006`.
-11. **Sealed run** — when `DemoRun.sealed === true`, result/step/defect/comment mutations blocked in UI and `UPDATE_RUN_EXECUTION` reducer. Topbar Close/Re-open toggles seal state.
-12. **Archived run** — when `archivedAt` set, run hidden from default picker list.
-13. **Folder tree** — `parentId` nullable; descendant filtering via `folderDescendantIds()`.
-14. **Status vocabulary** — case execution uses title-case (`Passed`, `Failed`, …); API uses lowercase enum (`pass`, `fail`, …) — mapping helpers in `demo-model.ts`.
+11. **Case keys** — `caseKey` assigned incrementally per project (`nextCaseNumByProject`, starting at `TC-00001`) on `ADD_CASE`. Existing cases backfilled on v7→v8 migration.
+12. **Sealed run** — when `DemoRun.sealed === true`, result/step/defect/comment mutations blocked in UI and `UPDATE_RUN_EXECUTION` reducer. Topbar Close/Re-open toggles seal state.
+13. **Archived run** — when `archivedAt` set, run hidden from default picker list.
+14. **Folder tree** — `parentId` nullable; descendant filtering via `folderDescendantIds()`.
+15. **Status vocabulary** — case execution uses title-case (`Passed`, `Failed`, …); API uses lowercase enum (`pass`, `fail`, …) — mapping helpers in `demo-model.ts`.
 
 ### Schema migration (localStorage)
 
@@ -121,7 +122,8 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 | **4** | `DemoRun.runKey`, `description?`, `archivedAt?`, `nextRunNumByProject`, URL `/testruns/tr/:runKey` | v3→v4 assigns run keys per project (seed R1–R6 → 00001–00006); initializes counters. |
 | **5** | `DemoState.adminSettings: AdminSettings` | v4→v5 adds global admin panel state from `initialAdminSettings`; existing localStorage blobs without `adminSettings` receive seed on load. |
 | **6** | `Project.activeCustomFieldIds`, optional `Project.projectSettings` | v5→v6 adds `activeCustomFieldIds: []` to projects missing it. Fresh seed sets DP active fields to Priority, References, Is Automated. |
-| **7** | `Case.template`, `Case.references`, `Case.summary`, `Case.customFieldValues` | **Current.** v6→v7 backfills existing cases with `template: 'text'`, empty `references`/`summary`, and `{}` for `customFieldValues`. |
+| **7** | `Case.template`, `Case.references`, `Case.summary`, `Case.customFieldValues` | v6→v7 backfills existing cases with `template: 'text'`, empty `references`/`summary`, and `{}` for `customFieldValues`. |
+| **8** | `Case.caseKey`, `formatCaseKey()` | **Current.** v7→v8 backfills `caseKey` on existing cases using `nextCaseNumByProject` per project. New cases receive `caseKey` in `ADD_CASE` reducer. |
 
 **Project store actions (prototype):** `UPDATE_PROJECT` (name/key/description), `UPDATE_ACTIVE_CUSTOM_FIELDS` (`projects/updateActiveCustomFields`), `UPDATE_PROJECT_SETTINGS` (`projects/updateSettings`).
 
@@ -133,7 +135,7 @@ On migration failure: `console.error` and fall back to `buildInitialDemoState()`
 |------------------|-----------------|
 | Multi-project isolation | **Implemented** — client-side projects with per-project folders/cases/runs |
 | Normalized ULIDs everywhere | Opaque demo ids |
-| Human refs per project | Partially shown in seed copy only |
+| Human refs per project | **Implemented** — `caseKey` per project via `formatCaseKey`; `runKey` for runs |
 | Plan → run spawn via API | Navigation only |
 | Run snapshots immutable | In-memory edits mutate same case objects |
 | Requirements / traceability | Absent |

@@ -1,6 +1,7 @@
 import { initialAdminSettings } from './admin-initial-settings'
 import { buildInitialDemoState } from './demo-seed'
 import type { Case, DemoRun, DemoState, Folder, LegacyDemoState, Project } from './demo-model'
+import { formatCaseKey } from './demo-model'
 import {
   DEFAULT_SEED_PROJECT_ID,
   DEFAULT_SEED_PROJECT_KEY,
@@ -236,6 +237,21 @@ export function migrateDemoState(raw: unknown): DemoState {
           customFieldValues: c.customFieldValues ?? {},
         })),
         schemaVersion: 7,
+      }
+    }
+    // v7 → v8: assign caseKey to cases that are missing it
+    if (state.schemaVersion < 8) {
+      const counterByProject: Record<string, number> = { ...state.nextCaseNumByProject }
+      state = {
+        ...state,
+        cases: state.cases.map((c) => {
+          if (c.caseKey) return c
+          const num = counterByProject[c.projectId] ?? 1
+          counterByProject[c.projectId] = num + 1
+          return { ...c, caseKey: formatCaseKey(num) }
+        }),
+        nextCaseNumByProject: counterByProject,
+        schemaVersion: 8,
       }
     }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
