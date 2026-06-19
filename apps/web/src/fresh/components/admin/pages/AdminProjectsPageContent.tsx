@@ -47,6 +47,9 @@ export function AdminProjectsPageContent() {
         setPanelMaximized(false)
         return null
       }
+      if (prev === null) {
+        setPanelMaximized(true)
+      }
       return projectId
     })
   }
