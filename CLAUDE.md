@@ -5,6 +5,11 @@ Relay is a QA test execution platform (clinical-trials-style workspace).
 This file is read automatically by Claude (Cowork) at the start of every session.
 Treat `docs/_authoritative/**` as the only source of truth for requirements and contracts.
 
+## Claude-specific files (read on every session start)
+All files under `docs/claude/` are for Claude (Cowork) only — not for Cursor agents.
+
+- **`docs/claude/handoff.md`** — Read this immediately after CLAUDE.md. Contains: active branch, current schema version, completed task log, key decisions, and known gotchas. Update it at the end of any session where meaningful work was done.
+
 ## Phase: Frontend-only prototype
 - Do NOT implement or modify backend, DB/schema, Docker, auth, or API routes.
 - Do NOT wire UI to real APIs. Persistence is client-side only (FreshProvider + localStorage).
