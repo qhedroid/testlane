@@ -89,6 +89,7 @@ export type FreshAction =
   | { type: 'ADD_CASE'; case: Case }
   | { type: 'UPDATE_CASE'; caseId: string; patch: Partial<Case> }
   | { type: 'REPLACE_CASE'; case: Case }
+  | { type: 'DELETE_CASE'; caseId: string }
   | { type: 'UPDATE_RUN_EXECUTION'; runId: string; caseId: string; patch: Partial<CaseExecution> }
   | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string }
   | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
@@ -239,6 +240,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         ...state,
         cases: state.cases.map((c) => (c.id === action.case.id ? action.case : c)),
       }
+      break
+    case 'DELETE_CASE':
+      next = { ...state, cases: state.cases.filter((c) => c.id !== action.caseId) }
       break
     case 'UPDATE_RUN_EXECUTION': {
       if (!runIsMutable(state, action.runId)) return state
@@ -447,6 +451,7 @@ interface FreshContextValue {
   addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => string
   updateCase: (caseId: string, patch: Partial<Case>) => void
   replaceCase: (caseData: Case) => void
+  deleteCase: (caseId: string) => void
   updateExecution: (caseId: string, patch: Partial<CaseExecution>) => void
   addStepComment: (caseId: string, stepId: string, body: string, author?: string) => void
   addGeneralComment: (caseId: string, body: string, author?: string) => void
@@ -502,6 +507,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const replaceCase = useCallback((caseItem: Case) => {
     dispatch({ type: 'REPLACE_CASE', case: caseItem })
+  }, [])
+
+  const deleteCase = useCallback((caseId: string) => {
+    dispatch({ type: 'DELETE_CASE', caseId })
   }, [])
 
   const updateExecution = useCallback(
@@ -757,6 +766,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       addCase,
       updateCase,
       replaceCase,
+      deleteCase,
       updateExecution,
       addStepComment,
       addGeneralComment,
@@ -807,6 +817,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       addCase,
       updateCase,
       replaceCase,
+      deleteCase,
       updateExecution,
       addStepComment,
       addGeneralComment,

@@ -155,7 +155,7 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, addFolder } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, deleteCase, addFolder } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
@@ -171,6 +171,24 @@ export function CasesScreen() {
   const newFolderInputRef = useRef<HTMLInputElement>(null)
   const [newFolderDraft, setNewFolderDraft] = useState<{ parentId: string | null } | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [contextMenu, setContextMenu] = useState<{ caseId: string; x: number; y: number } | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+  const pendingEditRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!contextMenu) return
+    function handleClick(e: MouseEvent) {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [contextMenu])
+
+  useEffect(() => {
+    pendingEditRef.current = null
+  }, [detailCaseId])
 
   useEffect(() => {
     const roots = activeFolders.filter((f) => !f.parentId)
@@ -454,6 +472,7 @@ export function CasesScreen() {
                     <th style={{ width: 100 }}>Assigned</th>
                     <th style={{ width: 50, textAlign: 'center' }}>Steps</th>
                     <th style={{ width: 70 }}>Updated</th>
+                    <th style={{ width: 28 }} />
                   </tr>
                 </thead>
                 <tbody>
@@ -486,6 +505,24 @@ export function CasesScreen() {
                         <td style={{ color: 'var(--text2)' }}>{displayAssigneeName(c.assignee)}</td>
                         <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{c.steps.length}</td>
                         <td style={{ color: 'var(--text3)' }}>{formatRelativeTime(c.updatedAt)}</td>
+                        <td
+                          style={{ width: 28, textAlign: 'center' }}
+                          className="row-actions-cell"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="row-ctx-btn"
+                            title="More options"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              setContextMenu(contextMenu?.caseId === c.id ? null : { caseId: c.id, x: rect.right, y: rect.bottom + 4 })
+                            }}
+                          >
+                            <i className="ti ti-dots" style={{ fontSize: 13 }} />
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -521,10 +558,68 @@ export function CasesScreen() {
               onToggleMaximize={toggleMaximize}
               activeCustomFieldIds={activeProject.activeCustomFieldIds}
               allCustomFields={adminSettings.customFields}
+              startEditOnMount={pendingEditRef.current === detailCaseId}
             />
           ) : null}
         </div>
       </div>
+      {contextMenu ? (() => {
+        const menuCase = activeCases.find((c) => c.id === contextMenu.caseId)
+        if (!menuCase) return null
+        return (
+          <div
+            ref={contextMenuRef}
+            className="ctx-menu"
+            style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x - 160, zIndex: 1000, width: 160 }}
+          >
+            <button type="button" className="ctx-item" onClick={() => {
+              const { id: _id, updatedAt: _updatedAt, projectId: _projectId, ...copyData } = menuCase
+              const copyId = addCase(copyData)
+              setDetailCaseId(copyId)
+              setContextMenu(null)
+            }}>
+              <i className="ti ti-copy" /> Duplicate
+            </button>
+            <button type="button" className="ctx-item" onClick={() => {
+              setDetailCaseId(menuCase.id)
+              setDetailTab('details')
+              pendingEditRef.current = menuCase.id
+              setContextMenu(null)
+            }}>
+              <i className="ti ti-edit" /> Edit
+            </button>
+            <div className="ctx-sep" />
+            <button type="button" className="ctx-item" onClick={() => {
+              alert('Copy to… — coming soon')
+              setContextMenu(null)
+            }}>
+              <i className="ti ti-copy-plus" /> Copy to…
+            </button>
+            <button type="button" className="ctx-item" onClick={() => {
+              alert('Move to… — coming soon')
+              setContextMenu(null)
+            }}>
+              <i className="ti ti-arrows-move" /> Move to…
+            </button>
+            <button type="button" className="ctx-item" onClick={() => {
+              if (menuCase.folderId) selectFolder(menuCase.folderId)
+              setContextMenu(null)
+            }}>
+              <i className="ti ti-folder" /> Open folder
+            </button>
+            <div className="ctx-sep" />
+            <button type="button" className="ctx-item ctx-item-danger" onClick={() => {
+              if (window.confirm('Delete this test case?')) {
+                if (detailCaseId === menuCase.id) setDetailCaseId(null)
+                deleteCase(menuCase.id)
+              }
+              setContextMenu(null)
+            }}>
+              <i className="ti ti-trash" /> Delete
+            </button>
+          </div>
+        )
+      })() : null}
     </div>
   )
 }
@@ -582,6 +677,7 @@ function CaseDetail({
   onToggleMaximize,
   activeCustomFieldIds,
   allCustomFields,
+  startEditOnMount,
 }: {
   caseData: Case
   folders: Folder[]
@@ -593,6 +689,7 @@ function CaseDetail({
   onToggleMaximize: () => void
   activeCustomFieldIds: string[]
   allCustomFields: AdminCustomField[]
+  startEditOnMount?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(caseData)
@@ -625,6 +722,11 @@ function CaseDetail({
     setDraft({ ...caseData, steps: caseData.steps.map((s) => ({ ...s, comments: [...s.comments] })) })
     setEditing(true)
   }
+
+  useEffect(() => {
+    if (startEditOnMount) startEdit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startEditOnMount])
 
   function saveEdit() {
     onSave({ ...draft, updatedAt: new Date().toISOString() })
