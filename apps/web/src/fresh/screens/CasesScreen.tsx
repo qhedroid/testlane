@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
@@ -88,13 +88,18 @@ function caseRecentStatuses(
   return results
 }
 
-function caseLastRun(
+function caseBarRun(
   runs: DemoRun[],
   caseId: string,
+  barIndex: number,
 ): { run: DemoRun; execution: CaseExecution } | null {
+  let count = 0
   for (let i = runs.length - 1; i >= 0; i--) {
     const ex = runs[i].executions[caseId]
-    if (ex) return { run: runs[i], execution: ex }
+    if (ex) {
+      if (count === barIndex) return { run: runs[i], execution: ex }
+      count++
+    }
   }
   return null
 }
@@ -223,7 +228,6 @@ export function CasesScreen() {
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const pathname = usePathname()
-  const router = useRouter()
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
   const [selectedFolderId, setSelectedFolderId] = useState<string | '__unfiled__'>('f-rec')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -251,9 +255,11 @@ export function CasesScreen() {
   const [contextMenu, setContextMenu] = useState<{ caseId: string; x: number; y: number } | null>(null)
   const [sparkTooltip, setSparkTooltip] = useState<{
     caseId: string
+    barIndex: number
     x: number
     y: number
   } | null>(null)
+  const sparkHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const pendingEditRef = useRef<string | null>(null)
 
@@ -269,7 +275,7 @@ export function CasesScreen() {
     if (!activeProject.key) return
     const detail = detailCaseId ? activeCases.find((c) => c.id === detailCaseId) : null
     const target = testCasePath(activeProject.key, detail?.caseKey)
-    if (target !== pathname) router.replace(target)
+    if (target !== pathname) window.history.replaceState(null, '', target)
   }, [detailCaseId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -380,6 +386,24 @@ export function CasesScreen() {
   const detailIdx = detailCaseId
     ? displayedCases.findIndex((c) => c.id === detailCaseId)
     : -1
+
+  useEffect(() => {
+    if (!detail) return
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (detailIdx > 0) setDetailCaseId(displayedCases[detailIdx - 1].id)
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (detailIdx < displayedCases.length - 1) setDetailCaseId(displayedCases[detailIdx + 1].id)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [detail, detailIdx, displayedCases])
 
   function toggleFolder(id: string) {
     setOpenFolders((prev) => {
@@ -514,7 +538,7 @@ export function CasesScreen() {
           <>
             <button type="button" className="btn" onClick={() => selectFolder('f-import')}><i className="ti ti-upload" style={{ fontSize: 12 }} /> Import</button>
             <button type="button" className="btn" onClick={() => setQuickOpen((v) => !v)}><i className="ti ti-bolt" style={{ fontSize: 12 }} /> Quick create</button>
-            <button type="button" className="btn btn-p" onClick={openCreateCase}><i className="ti ti-plus" style={{ fontSize: 12 }} /> New case</button>
+            <button type="button" className="btn btn-p" onClick={() => openCreateCase(targetFolderId)}><i className="ti ti-plus" style={{ fontSize: 12 }} /> New case</button>
           </>
         }
       />
@@ -805,13 +829,7 @@ export function CasesScreen() {
                         <td><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></td>
                         <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{folderLabel(activeFolders, c.folderId)}</td>
                         <td style={{ color: 'var(--text2)' }}>{c.type}</td>
-                        <td
-                          onMouseEnter={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect()
-                            setSparkTooltip({ caseId: c.id, x: rect.left, y: rect.bottom + 6 })
-                          }}
-                          onMouseLeave={() => setSparkTooltip(null)}
-                        >
+                        <td>
                           {(() => {
                             const last = caseLastStatus(activeRuns, c.id)
                             const recent = caseRecentStatuses(activeRuns, c.id, 5)
@@ -838,7 +856,16 @@ export function CasesScreen() {
                                           borderRadius: 1,
                                           background: s ? EXEC_COLOR[s] : 'var(--border)',
                                           opacity: s ? 1 : 0.4,
+                                          outline: sparkTooltip?.caseId === c.id && sparkTooltip?.barIndex === i ? '1.5px solid #000' : 'none',
                                         }}
+                                        onMouseEnter={s ? (e) => {
+                                          if (sparkHideTimer.current) clearTimeout(sparkHideTimer.current)
+                                          const rect = e.currentTarget.getBoundingClientRect()
+                                          setSparkTooltip({ caseId: c.id, barIndex: i, x: rect.left, y: rect.bottom + 6 })
+                                        } : undefined}
+                                        onMouseLeave={s ? () => {
+                                          sparkHideTimer.current = setTimeout(() => setSparkTooltip(null), 400)
+                                        } : undefined}
                                       />
                                     )
                                   })}
@@ -880,7 +907,7 @@ export function CasesScreen() {
                   <div className="empty-title">No test cases in this folder</div>
                   <div className="empty-copy">Create a new case, quick add several titles, or import existing cases into the selected folder.</div>
                   <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button type="button" className="btn btn-p" onClick={openCreateCase}><i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test case</button>
+                    <button type="button" className="btn btn-p" onClick={() => openCreateCase(targetFolderId)}><i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test case</button>
                     <button type="button" className="btn" onClick={() => setQuickOpen(true)}><i className="ti ti-bolt" style={{ fontSize: 12 }} /> Quick create</button>
                   </div>
                 </div>
@@ -1016,7 +1043,7 @@ export function CasesScreen() {
         )
       })() : null}
       {sparkTooltip ? (() => {
-        const lr = caseLastRun(activeRuns, sparkTooltip.caseId)
+        const lr = caseBarRun(activeRuns, sparkTooltip.caseId, sparkTooltip.barIndex)
         if (!lr) return null
         return (
           <div
@@ -1032,7 +1059,13 @@ export function CasesScreen() {
               padding: '8px 10px',
               fontSize: 11.5,
               minWidth: 190,
-              pointerEvents: 'none',
+              pointerEvents: 'auto',
+            }}
+            onMouseEnter={() => {
+              if (sparkHideTimer.current) clearTimeout(sparkHideTimer.current)
+            }}
+            onMouseLeave={() => {
+              sparkHideTimer.current = setTimeout(() => setSparkTooltip(null), 400)
             }}
           >
             <div style={{ fontWeight: 600, marginBottom: 5, color: 'var(--text1)' }}>
