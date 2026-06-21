@@ -198,9 +198,98 @@ Render this alongside the context menu (at the end of the `CasesScreen` return, 
 })() : null}
 ```
 
+### Part D — URL sync: selected case reflected in the address bar
+
+When a case detail panel opens, the URL should change from `/DP/cases` to `/DP/cases/tc/TC-00001`. Closing the panel returns to `/DP/cases`. Deep-linking to `/DP/cases/tc/TC-00001` on page load should pre-open that case.
+
+**Context:** `project-routes.ts` already has `testRunPath` / `parseTestRunKey` helpers for runs (wired into `[projectKey]/testruns/tr/[runKey]/page.tsx`) but the same pattern was never implemented for cases. We are implementing it now, following the exact same approach.
+
+#### D1 — Add helpers to `apps/web/src/fresh/lib/project-routes.ts`
+
+Add these two functions after `parseTestRunKey`:
+
+```ts
+/** Canonical test case path — with or without selected case key. */
+export function testCasePath(projectKey: string, caseKey?: string): string {
+  const base = projectPath(projectKey, 'cases')
+  return caseKey ? `${base}/tc/${caseKey}` : base
+}
+
+/** Extract caseKey from /:projectKey/cases/tc/:caseKey paths. */
+export function parseTestCaseKey(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts.length === 4 && parts[1] === MODULE_SLUGS.cases && parts[2] === 'tc') {
+    return parts[3]
+  }
+  return null
+}
+```
+
+Also update `switchProjectPath` to strip case selection when switching projects (add before the existing `parseTestRunKey` check):
+
+```ts
+if (parseTestCaseKey(pathname)) return projectPath(newProjectKey, 'cases')
+```
+
+#### D2 — Create the new Next.js page route
+
+Create `apps/web/src/app/(app)/[projectKey]/cases/tc/[caseKey]/page.tsx`:
+
+```tsx
+import { CasesScreen } from '@/fresh/screens/CasesScreen'
+
+export default function ProjectCaseDetailPage() {
+  return <CasesScreen />
+}
+```
+
+This mirrors `[projectKey]/testruns/tr/[runKey]/page.tsx` exactly.
+
+#### D3 — Wire URL sync in `CasesScreen.tsx`
+
+Import `usePathname` and `useRouter` from `'next/navigation'`, and import `testCasePath` and `parseTestCaseKey` from `'../lib/project-routes'`.
+
+Add at the top of the `CasesScreen` component:
+
+```ts
+const pathname = usePathname()
+const router = useRouter()
+```
+
+**On mount: pre-open the case from the URL.**
+
+Add a one-time effect that runs when the component mounts with a deep-link URL:
+
+```ts
+useEffect(() => {
+  const key = parseTestCaseKey(pathname)
+  if (!key) return
+  const match = activeCases.find((c) => c.caseKey === key)
+  if (match) setDetailCaseId(match.id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []) // intentionally run only once on mount
+```
+
+**On selection change: update the URL.**
+
+Add an effect that syncs `detailCaseId` → URL:
+
+```ts
+useEffect(() => {
+  if (!activeProject.key) return
+  const detail = detailCaseId ? activeCases.find((c) => c.id === detailCaseId) : null
+  const target = testCasePath(activeProject.key, detail?.caseKey)
+  if (target !== pathname) router.replace(target)
+}, [detailCaseId]) // eslint-disable-line react-hooks/exhaustive-deps
+```
+
+> **Note:** Omit `pathname` and `router` from the dependency array deliberately — only `detailCaseId` should trigger this. The ESLint disable comment silences the exhaustive-deps warning.
+
 ---
 
 ## Files that will change
+- `apps/web/src/fresh/lib/project-routes.ts`
+- `apps/web/src/app/(app)/[projectKey]/cases/tc/[caseKey]/page.tsx` *(new file)*
 - `apps/web/src/fresh/screens/CasesScreen.tsx`
 
 ## Files that will NOT change
@@ -208,15 +297,16 @@ Render this alongside the context menu (at the end of the `CasesScreen` return, 
 
 ---
 
-## Step 1 — Read the file before touching it
+## Step 1 — Read files before touching them
 
 ```
+Read apps/web/src/fresh/lib/project-routes.ts
 Read apps/web/src/fresh/screens/CasesScreen.tsx
 ```
 
 ---
 
-## Step 2 — Make changes (Parts A, B, C)
+## Step 2 — Make changes (Parts A, B, C, D)
 
 Implement all three parts as described above.
 
@@ -243,6 +333,8 @@ Zero TypeScript errors required.
 7. **Edit mode**: open edit mode, confirm Assigned to and Template appear first in the form.
 8. **Navigation**: confirm ← / → buttons appear in the panel header with "X / N" counter. Click → to go to the next case, ← for previous. Confirm both buttons are disabled at the list boundaries.
 9. **Sparkline tooltip**: hover over the Last Results cell of a case that has run history — confirm tooltip appears with run name, result (coloured), and tested-by if present. Hover over a case with no history — confirm no tooltip.
+10. **URL sync**: click a case — confirm the address bar changes to `/DP/cases/tc/TC-00001` (or the matching key). Close the panel — confirm URL returns to `/DP/cases`. Navigate directly to `/DP/cases/tc/TC-00001` in a new tab — confirm the panel opens to that case automatically.
+11. **Project switch**: while a case is open, switch projects — confirm the URL resets to the new project's `/cases` base (no stale case key).
 
 ---
 
@@ -261,6 +353,9 @@ Test cases: metadata reorder, case navigation arrows, sparkline tooltip
 * Added `caseLastRun()` helper returning the most-recent DemoRun and CaseExecution for a case (iterates activeRuns newest-first)
 * Added `sparkTooltip` state; Last Results `<td>` sets it on mouseenter/mouseleave; fixed tooltip card shows run name, status (coloured via EXEC_COLOR), tested-by assignee, and run key
 * Added `caseIndex`, `totalCases`, `onPrevCase`, `onNextCase` props to CaseDetail; ← / → icon buttons in panel header with "X / N" mono counter; wired to displayedCases in CasesScreen
+* Added `testCasePath` and `parseTestCaseKey` helpers to `project-routes.ts`; updated `switchProjectPath` to strip case selection on project switch
+* Created `[projectKey]/cases/tc/[caseKey]/page.tsx` to handle deep-linked case URLs (renders same CasesScreen)
+* CasesScreen reads `caseKey` from URL on mount via `parseTestCaseKey` to pre-open the correct case; updates URL via `router.replace` whenever `detailCaseId` changes
 ```
 
 ---
