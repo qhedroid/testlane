@@ -21,64 +21,52 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Schema version
-**Current: v7** (`DEMO_SCHEMA_VERSION = 7` in `apps/web/src/fresh/data/demo-model.ts`)
+**Current: v8** (`DEMO_SCHEMA_VERSION = 8` in `apps/web/src/fresh/data/demo-model.ts`)
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
 | v5 | Baseline before admin panel work | — |
 | v6 | Added `activeCustomFieldIds: string[]` and `projectSettings?: ProjectSettings` to `Project` | v5→v6 adds `activeCustomFieldIds: []` to any project missing it |
 | v7 | Added `template`, `references`, `summary`, `customFieldValues` to `Case` | v6→v7 backfills new fields with defaults on existing cases |
-
-> Task 06 will bump to v8 (adds `caseKey` to `Case`). The prompt is written but not yet run.
+| v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
 
 ---
 
 ## Completed work (this branch)
 
-### Panel resize fixes — Task 03b ✅
-- Drag direction fixed in `useResizablePanes.ts`: `start - dx` for right-anchored case detail panel
-- Min/max updated (300→540 / 540→720); CSS default width updated (360px→540px) in `fresh.css`
+### Tasks 01–07 — all complete ✅
 
-### Row context menu — Task 04 ✅
-- `DELETE_CASE` action and `deleteCase(caseId)` added to `FreshProvider`
-- Per-row "..." button with context menu: Duplicate, Edit, Copy to…, Move to…, Open folder, Delete
-- `pendingEditRef` + `startEditOnMount` pattern for triggering edit mode from outside `CaseDetail`
-- CSS added: `.row-ctx-btn`, `.ctx-menu`, `.ctx-item`, `.ctx-item-danger`, `.ctx-sep`
+| Task | What it delivered | Commit |
+|------|------------------|--------|
+| Task 01 | Admin panel (`/admin`), `AdminProjectPanel` with 5 tabs, custom fields toggle | `398f45a` + fixups |
+| Task 02 | CaseDetail tabs: Attachments, Defects, Requirements, Runs | — |
+| Task 03 | `Case` extended with `template`/`references`/`summary`/`customFieldValues`; schema v7 | — |
+| Task 03b | Panel resize fix (`start - dx`); min/max 540→720; CSS default 540px | — |
+| Task 04 | Row context menu: Duplicate, Edit, Copy to, Move to, Open folder, Delete; `deleteCase` in FreshProvider | — |
+| Task 05 | Last Results sparkline (status dot + 5 bars), Filter panel (field+operator+value, AND logic) | — |
+| Task 06 | `TC-XXXXX` case IDs (schema v8, `nextCaseNumByProject`), pagination footer, folder search | — |
+| Task 07 | CaseDetail metadata reorder, navigation arrows (← →), sparkline tooltip (per-cell), URL sync via `testCasePath`/`parseTestCaseKey` + new `[caseKey]/page.tsx` route | `b8f5c8a` |
 
-### Commit style updated ✅
-- `CLAUDE.md` commit body format changed: bullets now grouped by file, natural language phrasing
-- Claude will automatically provide a commit message after editing any markdown in `docs/claude/**` or `docs/cursor-prompts/**`
+### Pending Cursor prompts (not yet executed)
 
-### Case detail tabs — Task 02 ✅
-- 4 new tabs added to CaseDetail: Attachments, Defects, Requirements, Runs
-- `DetailTab` union extended to 7 values; `.dp-empty-tab` CSS class added to `fresh.css`
+| File | Status | What it delivers |
+|------|--------|-----------------|
+| `task-08-toolbar-search-create-run.md` | **Ready to run** | Keyword search bar in tc-bar, "Create test run" dropdown in topbar (all cases or folder scope), modal with name input |
+| `task-07b-bug-fixes-sparkline-arrowkeys.md` | **Ready to run** | 3 bug fixes + 2 improvements from Task 07 execution (see below) |
 
-### Case detail fields — Task 03 ✅
-- `Case` extended with `template`, `references`, `summary`, `customFieldValues`
-- Schema bumped to v7; `migrateProjectCustomFields` fixed to stamp `schemaVersion: 6` (not `DEMO_SCHEMA_VERSION`) to prevent migration chain being skipped
-- Details tab renders new built-in fields + dynamic custom fields from `activeCustomFieldIds`
-- `adminSettings` destructured and passed into `CaseDetail` from `CasesScreen`
+**Run task-07b first, then task-08.**
 
-### Admin panel — Task 01 ✅
-- New global route: `/admin` (outside the `(app)` route group)
-- Left sidebar now has an **Admin** option under Settings
-- 11 admin pages wired to FreshProvider store with live reads + dispatch
-- `AdminProjectPanel.tsx`: slide-in detail panel for projects with 5 tabs (Details, Settings, Custom fields, Users shell, Integrations shell)
-  - Opens maximized by default (full-width, not side-by-side)
-  - Custom fields tab reads `activeCustomFieldIds` from the project and toggles them via `UPDATE_ACTIVE_CUSTOM_FIELDS`
-- Commits on `mvp-test-cases`: `398f45a` (panel), layout fix commit, maximize-by-default commit
+### Task 07b post-execution bugs
 
-### Cursor prompts written — Tasks 02–06 + 03b ✅
-All saved to `docs/cursor-prompts/`. Ready to hand to Cursor agents one at a time.
+After Cursor executed Task 07 (commit `b8f5c8a`), the following issues were found:
 
-| File | What it does |
-|------|-------------|
-| `task-02-case-detail-tabs.md` | ✅ Done. Add 4 missing tabs to CaseDetail (Attachments, Defects, Requirements, Runs). No model changes. |
-| `task-03-case-detail-fields.md` | ✅ Done. Add `template`/`references`/`summary`/`customFieldValues` to `Case`; bump to schema v7; render custom fields dynamically in Details tab. |
-| `task-03b-panel-resize-fixes.md` | ✅ Done. Fixed inverted drag direction (`start - dx`); updated min 300→540, max 540→720; CSS default 360→540. |
-| `task-04-row-context-menu.md` | ✅ Done. Per-row "..." context menu: Duplicate, Edit, Copy to, Move to, Open folder, Delete. Added `deleteCase` to FreshProvider. |
-| `task-05-last-results-filter-panel.md` | **Next.** Replace Last Run pill with status dot + sparkline. Replace non-functional filter chips with a proper Filter panel (field+operator+value, AND logic). |
-| `task-06-pagination-ids-folder-search.md` | Human-readable `TC-XXXXX` case IDs (schema v8), pagination footer, folder search input in sidebar. |
+1. **Panel flash on new projects** — clicking a case opens the panel for a fraction of a second then closes it. Root cause: `router.replace` in the URL sync effect triggers a full Next.js remount because `/cases` and `/cases/tc/[caseKey]` are different page files. Fix: `window.history.replaceState` instead.
+2. **New case created in Unfiled** — "New case" button opens `CreateCaseModal` which initialises `folderId = ''` regardless of the selected folder. Fix: pass `targetFolderId` through `openCreateCase` and sync in the modal.
+3. **Project switch flicker** — switching projects causes aggressive flickering. Same root cause as #1: `ProjectRouteSync` and `CasesScreen`'s URL sync effect both call `router.replace` and fight each other. Same fix.
+4. **Shared sparkline tooltip** — all 5 bars in the sparkline show the same (most recent) result. Each bar should show its own run's details, with hover-delay dismiss and a black outline on the hovered bar.
+5. **No arrow key navigation** — ArrowUp/Down should navigate cases when the detail panel is open.
+
+All five are addressed in `task-07b`.
 
 ---
 
@@ -101,6 +89,8 @@ All saved to `docs/cursor-prompts/`. Ready to hand to Cursor agents one at a tim
 - **`adminSettings` is not in the default `useFresh()` destructure** in CasesScreen — fixed in Task 03; it is now destructured there.
 - **Case detail panel drag direction**: right-anchored panels need `start - dx` not `start + dx` — covered in task-03b prompt.
 - **`formatRunKey` exists in `demo-model.ts`** — Task 06's `formatCaseKey` should follow the exact same pattern and live next to it.
+- **`router.replace` across different page files causes full remount** — `/cases` and `/cases/tc/[caseKey]` are backed by different `page.tsx` files. Any `router.replace` between them remounts the component. Always use `window.history.replaceState` for in-component URL updates that should not trigger navigation. `ProjectRouteSync` still uses `router.replace` correctly because it handles actual project switches.
+- **`CreateCaseModal` is always mounted** (returns `null` when closed, not unmounted). `useState` initialises only once. Use a `useEffect` watching `createCaseOpen` to reset field values each time the modal opens.
 
 ---
 
