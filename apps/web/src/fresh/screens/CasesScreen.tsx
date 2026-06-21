@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
-import type { AdminCustomField, Case, CasePriority, CaseStep, ExecStatus, Folder } from '../data/demo-model'
+import type { AdminCustomField, Case, CaseExecution, CasePriority, CaseStep, DemoRun, ExecStatus, Folder } from '../data/demo-model'
 import {
   casesInFolder,
   EXEC_TO_LEGACY,
@@ -18,6 +19,7 @@ import { EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, TEAM_USERS } from '../data/team-users'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
+import { parseTestCaseKey, testCasePath } from '../lib/project-routes'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
 type DetailTab = 'details' | 'attachments' | 'defects' | 'requirements' | 'runs' | 'history' | 'activity'
@@ -84,6 +86,17 @@ function caseRecentStatuses(
     if (ex) results.push(ex.status)
   }
   return results
+}
+
+function caseLastRun(
+  runs: DemoRun[],
+  caseId: string,
+): { run: DemoRun; execution: CaseExecution } | null {
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const ex = runs[i].executions[caseId]
+    if (ex) return { run: runs[i], execution: ex }
+  }
+  return null
 }
 
 function folderAncestorIds(folders: Folder[], folderId: string): string[] {
@@ -209,6 +222,8 @@ export function CasesScreen() {
   const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, deleteCase, addFolder } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
+  const pathname = usePathname()
+  const router = useRouter()
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
   const [selectedFolderId, setSelectedFolderId] = useState<string | '__unfiled__'>('f-rec')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -234,8 +249,28 @@ export function CasesScreen() {
   const [currentPage, setCurrentPage] = useState(1)
   const [folderSearch, setFolderSearch] = useState('')
   const [contextMenu, setContextMenu] = useState<{ caseId: string; x: number; y: number } | null>(null)
+  const [sparkTooltip, setSparkTooltip] = useState<{
+    caseId: string
+    x: number
+    y: number
+  } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const pendingEditRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const key = parseTestCaseKey(pathname)
+    if (!key) return
+    const match = activeCases.find((c) => c.caseKey === key)
+    if (match) setDetailCaseId(match.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally run only once on mount
+
+  useEffect(() => {
+    if (!activeProject.key) return
+    const detail = detailCaseId ? activeCases.find((c) => c.id === detailCaseId) : null
+    const target = testCasePath(activeProject.key, detail?.caseKey)
+    if (target !== pathname) router.replace(target)
+  }, [detailCaseId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!filterPanelOpen) return
@@ -342,6 +377,9 @@ export function CasesScreen() {
     : displayedCases.slice((safePage - 1) * pageSizeNum, safePage * pageSizeNum)
 
   const detail = detailCaseId ? activeCases.find((c) => c.id === detailCaseId) ?? null : null
+  const detailIdx = detailCaseId
+    ? displayedCases.findIndex((c) => c.id === detailCaseId)
+    : -1
 
   function toggleFolder(id: string) {
     setOpenFolders((prev) => {
@@ -767,7 +805,13 @@ export function CasesScreen() {
                         <td><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></td>
                         <td style={{ color: 'var(--accent)', fontSize: 11.5, fontWeight: 500 }}>{folderLabel(activeFolders, c.folderId)}</td>
                         <td style={{ color: 'var(--text2)' }}>{c.type}</td>
-                        <td>
+                        <td
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setSparkTooltip({ caseId: c.id, x: rect.left, y: rect.bottom + 6 })
+                          }}
+                          onMouseLeave={() => setSparkTooltip(null)}
+                        >
                           {(() => {
                             const last = caseLastStatus(activeRuns, c.id)
                             const recent = caseRecentStatuses(activeRuns, c.id, 5)
@@ -901,6 +945,15 @@ export function CasesScreen() {
               activeCustomFieldIds={activeProject.activeCustomFieldIds}
               allCustomFields={adminSettings.customFields}
               startEditOnMount={pendingEditRef.current === detailCaseId}
+              caseIndex={detailIdx}
+              totalCases={displayedCases.length}
+              onPrevCase={() => {
+                if (detailIdx > 0) setDetailCaseId(displayedCases[detailIdx - 1].id)
+              }}
+              onNextCase={() => {
+                if (detailIdx < displayedCases.length - 1)
+                  setDetailCaseId(displayedCases[detailIdx + 1].id)
+              }}
             />
           ) : null}
         </div>
@@ -962,6 +1015,49 @@ export function CasesScreen() {
           </div>
         )
       })() : null}
+      {sparkTooltip ? (() => {
+        const lr = caseLastRun(activeRuns, sparkTooltip.caseId)
+        if (!lr) return null
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              top: sparkTooltip.y,
+              left: sparkTooltip.x,
+              zIndex: 300,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              boxShadow: '0 4px 16px rgba(0,0,0,.18)',
+              padding: '8px 10px',
+              fontSize: 11.5,
+              minWidth: 190,
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 5, color: 'var(--text1)' }}>
+              {lr.run.name}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <div>
+                <span style={{ color: 'var(--text3)' }}>Result: </span>
+                <span style={{ color: EXEC_COLOR[lr.execution.status], fontWeight: 600 }}>
+                  {lr.execution.status}
+                </span>
+              </div>
+              {lr.execution.assignee ? (
+                <div>
+                  <span style={{ color: 'var(--text3)' }}>Tested by: </span>
+                  <span>{displayAssigneeName(lr.execution.assignee)}</span>
+                </div>
+              ) : null}
+              <div style={{ color: 'var(--text3)', fontSize: 10.5, marginTop: 1 }}>
+                Run {lr.run.runKey}
+              </div>
+            </div>
+          </div>
+        )
+      })() : null}
     </div>
   )
 }
@@ -1020,6 +1116,10 @@ function CaseDetail({
   activeCustomFieldIds,
   allCustomFields,
   startEditOnMount,
+  caseIndex,
+  totalCases,
+  onPrevCase,
+  onNextCase,
 }: {
   caseData: Case
   folders: Folder[]
@@ -1032,6 +1132,10 @@ function CaseDetail({
   activeCustomFieldIds: string[]
   allCustomFields: AdminCustomField[]
   startEditOnMount?: boolean
+  caseIndex: number
+  totalCases: number
+  onPrevCase: () => void
+  onNextCase: () => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(caseData)
@@ -1095,6 +1199,7 @@ function CaseDetail({
   }
 
   const c = editing ? draft : caseData
+  const activeFields = allCustomFields.filter((f) => activeCustomFieldIds.includes(f.id) && f.enabled)
 
   return (
     <>
@@ -1102,6 +1207,37 @@ function CaseDetail({
         <button type="button" className="dp-max-btn" title={maximized ? 'Restore panel width' : 'Maximize panel'} onClick={onToggleMaximize}>
           <i className={`ti ${maximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`} />
         </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          <button
+            type="button"
+            className="btn"
+            style={{ padding: '1px 5px' }}
+            disabled={caseIndex <= 0}
+            onClick={onPrevCase}
+            title="Previous case"
+          >
+            <i className="ti ti-chevron-up" style={{ fontSize: 12 }} />
+          </button>
+          <span style={{
+            fontFamily: 'var(--mono)',
+            fontSize: 10.5,
+            color: 'var(--text2)',
+            minWidth: 44,
+            textAlign: 'center',
+          }}>
+            {caseIndex >= 0 ? `${caseIndex + 1} / ${totalCases}` : ''}
+          </span>
+          <button
+            type="button"
+            className="btn"
+            style={{ padding: '1px 5px' }}
+            disabled={caseIndex >= totalCases - 1}
+            onClick={onNextCase}
+            title="Next case"
+          >
+            <i className="ti ti-chevron-down" style={{ fontSize: 12 }} />
+          </button>
+        </div>
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <span className="dp-id">{c.caseKey ?? c.id}</span>
           {editing ? (
@@ -1128,11 +1264,26 @@ function CaseDetail({
               <div className="dp-sl">Metadata</div>
               {editing ? (
                 <div className="dp-edit-grid">
+                  <div className="form-field" style={{ gridColumn: 'span 2' }}>
+                    <label>Assigned to</label>
+                    <select
+                      value={draft.assignee ?? ''}
+                      onChange={(e) => setDraft((d) => ({ ...d, assignee: e.target.value || undefined }))}
+                    >
+                      <option value="">Unassigned</option>
+                      {TEAM_USERS.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="form-field">
-                    <label>Folder</label>
-                    <select value={draft.folderId ?? ''} onChange={(e) => setDraft((d) => ({ ...d, folderId: e.target.value || null }))}>
-                      <option value="">Unfiled</option>
-                      {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                    <label>Template</label>
+                    <select
+                      value={draft.template ?? 'text'}
+                      onChange={(e) => setDraft((d) => ({ ...d, template: e.target.value as 'text' | 'bdd' }))}
+                    >
+                      <option value="text">Text (Action / Expected)</option>
+                      <option value="bdd">BDD (Given / When / Then)</option>
                     </select>
                   </div>
                   <div className="form-field">
@@ -1150,26 +1301,12 @@ function CaseDetail({
                       ))}
                     </select>
                   </div>
-                  <div className="form-field" style={{ gridColumn: 'span 2' }}>
-                    <label>Assigned to</label>
-                    <select
-                      value={draft.assignee ?? ''}
-                      onChange={(e) => setDraft((d) => ({ ...d, assignee: e.target.value || undefined }))}
-                    >
-                      <option value="">Unassigned</option>
-                      {TEAM_USERS.map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))}
+                  <div className="form-field">
+                    <label>Folder</label>
+                    <select value={draft.folderId ?? ''} onChange={(e) => setDraft((d) => ({ ...d, folderId: e.target.value || null }))}>
+                      <option value="">Unfiled</option>
+                      {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                     </select>
-                  </div>
-                  <div className="form-field" style={{ gridColumn: 'span 2' }}>
-                    <label>Summary</label>
-                    <input
-                      type="text"
-                      value={draft.summary ?? ''}
-                      onChange={(e) => setDraft((d) => ({ ...d, summary: e.target.value }))}
-                      placeholder="One-line summary…"
-                    />
                   </div>
                   <div className="form-field" style={{ gridColumn: 'span 2' }}>
                     <label>References</label>
@@ -1180,41 +1317,89 @@ function CaseDetail({
                       placeholder="e.g. JIRA-123, https://…"
                     />
                   </div>
-                  <div className="form-field">
-                    <label>Template</label>
-                    <select
-                      value={draft.template ?? 'text'}
-                      onChange={(e) => setDraft((d) => ({ ...d, template: e.target.value as 'text' | 'bdd' }))}
-                    >
-                      <option value="text">Text (Action / Expected)</option>
-                      <option value="bdd">BDD (Given / When / Then)</option>
-                    </select>
+                  <div className="form-field" style={{ gridColumn: 'span 2' }}>
+                    <label>Summary</label>
+                    <input
+                      type="text"
+                      value={draft.summary ?? ''}
+                      onChange={(e) => setDraft((d) => ({ ...d, summary: e.target.value }))}
+                      placeholder="One-line summary…"
+                    />
                   </div>
+                  {activeFields.map((field) => (
+                    <div key={field.id} className="form-field" style={{ gridColumn: field.type === 'Multi-Line Text' ? 'span 2' : undefined }}>
+                      <label>{field.name}{field.required ? ' *' : ''}</label>
+                      {field.type === 'Boolean' ? (
+                        <select
+                          value={String(draft.customFieldValues?.[field.id] ?? false)}
+                          onChange={(e) => setDraft((d) => ({
+                            ...d,
+                            customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value === 'true' },
+                          }))}
+                        >
+                          <option value="false">No</option>
+                          <option value="true">Yes</option>
+                        </select>
+                      ) : field.type === 'Multi-Line Text' ? (
+                        <textarea
+                          rows={3}
+                          className="dp-edit-area"
+                          value={String(draft.customFieldValues?.[field.id] ?? '')}
+                          onChange={(e) => setDraft((d) => ({
+                            ...d,
+                            customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value },
+                          }))}
+                        />
+                      ) : (
+                        <input
+                          type={field.type === 'Number (integer)' ? 'number' : 'text'}
+                          value={String(draft.customFieldValues?.[field.id] ?? '')}
+                          onChange={(e) => setDraft((d) => ({
+                            ...d,
+                            customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value },
+                          }))}
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="dp-mg">
-                  <div><div className="dp-ml">Priority</div><div className="dp-mv"><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></div></div>
-                  <div><div className="dp-ml">Type</div><div className="dp-mv">{c.type}</div></div>
                   <div><div className="dp-ml">Assigned to</div><div className="dp-mv">{displayAssigneeName(c.assignee)}</div></div>
-                  <div><div className="dp-ml">Folder</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
-                  <div><div className="dp-ml">Suite</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
-                  <div><div className="dp-ml">Automation</div><div className="dp-mv">Manual</div></div>
-                  {c.summary ? (
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <div className="dp-ml">Summary</div>
-                      <div className="dp-mv" style={{ whiteSpace: 'pre-wrap' }}>{c.summary}</div>
-                    </div>
-                  ) : null}
-                  {c.references ? (
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <div className="dp-ml">References</div>
-                      <div className="dp-mv" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{c.references}</div>
-                    </div>
-                  ) : null}
                   <div>
                     <div className="dp-ml">Template</div>
                     <div className="dp-mv">{c.template === 'bdd' ? 'BDD (Given/When/Then)' : 'Text (Action/Expected)'}</div>
                   </div>
+                  <div><div className="dp-ml">Priority</div><div className="dp-mv"><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[c.priority]]}`}>{c.priority}</span></div></div>
+                  <div><div className="dp-ml">Type</div><div className="dp-mv">{c.type}</div></div>
+                  <div><div className="dp-ml">Folder</div><div className="dp-mv">{folderLabel(folders, c.folderId)}</div></div>
+                  <div><div className="dp-ml">Automation</div><div className="dp-mv">Manual</div></div>
+                  <div>
+                    <div className="dp-ml">References</div>
+                    <div className="dp-mv" style={{ fontFamily: c.references ? 'var(--mono)' : undefined, fontSize: c.references ? 11 : undefined }}>
+                      {c.references || <span style={{ color: 'var(--text3)' }}>—</span>}
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <div className="dp-ml">Summary</div>
+                    <div className="dp-mv" style={{ whiteSpace: 'pre-wrap' }}>
+                      {c.summary || <span style={{ color: 'var(--text3)' }}>—</span>}
+                    </div>
+                  </div>
+                  {activeFields.map((field) => {
+                    const val = c.customFieldValues?.[field.id]
+                    const display = val === undefined || val === '' || val === null
+                      ? <span style={{ color: 'var(--text3)' }}>—</span>
+                      : field.type === 'Boolean'
+                      ? (val ? 'Yes' : 'No')
+                      : String(val)
+                    return (
+                      <div key={field.id} style={field.type === 'Multi-Line Text' ? { gridColumn: 'span 2' } : undefined}>
+                        <div className="dp-ml">{field.name}</div>
+                        <div className="dp-mv">{display}</div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1289,72 +1474,6 @@ function CaseDetail({
                 </div>
               )}
             </div>
-            {(() => {
-              const activeFields = allCustomFields.filter((f) => activeCustomFieldIds.includes(f.id) && f.enabled)
-              if (activeFields.length === 0) return null
-              return (
-                <div className="dp-sec" style={{ borderBottom: 'none' }}>
-                  <div className="dp-sl">Custom fields</div>
-                  {editing ? (
-                    <div className="dp-edit-grid">
-                      {activeFields.map((field) => (
-                        <div key={field.id} className="form-field" style={{ gridColumn: field.type === 'Multi-Line Text' ? 'span 2' : undefined }}>
-                          <label>{field.name}{field.required ? ' *' : ''}</label>
-                          {field.type === 'Boolean' ? (
-                            <select
-                              value={String(draft.customFieldValues?.[field.id] ?? false)}
-                              onChange={(e) => setDraft((d) => ({
-                                ...d,
-                                customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value === 'true' },
-                              }))}
-                            >
-                              <option value="false">No</option>
-                              <option value="true">Yes</option>
-                            </select>
-                          ) : field.type === 'Multi-Line Text' ? (
-                            <textarea
-                              rows={3}
-                              className="dp-edit-area"
-                              value={String(draft.customFieldValues?.[field.id] ?? '')}
-                              onChange={(e) => setDraft((d) => ({
-                                ...d,
-                                customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value },
-                              }))}
-                            />
-                          ) : (
-                            <input
-                              type={field.type === 'Number (integer)' ? 'number' : 'text'}
-                              value={String(draft.customFieldValues?.[field.id] ?? '')}
-                              onChange={(e) => setDraft((d) => ({
-                                ...d,
-                                customFieldValues: { ...d.customFieldValues, [field.id]: e.target.value },
-                              }))}
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="dp-mg">
-                      {activeFields.map((field) => {
-                        const val = c.customFieldValues?.[field.id]
-                        const display = val === undefined || val === '' || val === null
-                          ? <span style={{ color: 'var(--text3)' }}>—</span>
-                          : field.type === 'Boolean'
-                          ? (val ? 'Yes' : 'No')
-                          : String(val)
-                        return (
-                          <div key={field.id} style={field.type === 'Multi-Line Text' ? { gridColumn: 'span 2' } : undefined}>
-                            <div className="dp-ml">{field.name}</div>
-                            <div className="dp-mv">{display}</div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
           </>
         ) : null}
         {tab === 'attachments' ? (
