@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-test-cases` (branched from `mvp-main`)
+`mvp-test-runs` (branched from `mvp-test-cases`)
 
 ---
 
