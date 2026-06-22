@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
-import type { Case, DemoRun, ExecStatus } from '../data/demo-model'
+import type { Case, DemoRun, ExecStatus, ExecutionLogEntry } from '../data/demo-model'
 import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { CreateRunModal } from '../components/CreateRunModal'
+import { EditRunModal } from '../components/EditRunModal'
 import { TestRunsTopbar } from '../components/TestRunsTopbar'
 import { DEFECT_NAMES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
@@ -18,7 +19,7 @@ import { ProjectSwitcher } from '../components/ProjectSwitcher'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
-import { parseTestRunKey, testRunPath } from '../lib/project-routes'
+import { parseTestRunCaseKey, parseTestRunKey, testRunCasePath, testRunPath } from '../lib/project-routes'
 
 type FilterTab = 'all' | ExecStatus
 type EdTab = 'details' | 'steps' | 'activity' | 'history' | 'comments' | 'defects'
@@ -74,12 +75,22 @@ interface RunCaseRow {
   comments: number
 }
 
+interface RunFilter {
+  result: ExecStatus | 'all'
+  assignee: string
+  priority: string
+  type: string
+}
+
+const DEFAULT_ADV_FILTER: RunFilter = { result: 'all', assignee: '', priority: '', type: '' }
+
 export function RunsScreen() {
   const router = useRouter()
   const pathname = usePathname()
   const params = useParams()
   const {
     activeProject,
+    activeFolders,
     activeRuns,
     getCase,
     updateExecution,
@@ -96,21 +107,27 @@ export function RunsScreen() {
   const projectHref = useProjectHref()
 
   const runKeyFromUrl = (params.runKey as string | undefined) ?? parseTestRunKey(pathname) ?? undefined
+  const caseKeyFromUrl = (params.caseKey as string | undefined) ?? parseTestRunCaseKey(pathname) ?? undefined
   const currentRun: DemoRun | undefined = useMemo(() => {
     if (!runKeyFromUrl) return undefined
     return activeRuns.find((r) => r.runKey === runKeyFromUrl)
   }, [activeRuns, runKeyFromUrl])
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
+  const [advFilter, setAdvFilter] = useState<RunFilter>(DEFAULT_ADV_FILTER)
+  const [filterOpen, setFilterOpen] = useState(false)
   const [runSearch, setRunSearch] = useState('')
-  const [activeCaseId, setActiveCaseId] = useState(currentRun?.caseOrder[0] ?? '')
+  const [activeCaseId, setActiveCaseId] = useState('')
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string | null>>(new Set())
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
   const [edTab, setEdTab] = useState<EdTab>('details')
   const [edVisible, setEdVisible] = useState(true)
   const [edFullscreen, setEdFullscreen] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
+  const filterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (runKeyFromUrl && !currentRun) {
@@ -170,8 +187,9 @@ export function RunsScreen() {
       .filter((r): r is RunCaseRow => r !== null)
   }, [currentRun, getCase])
 
-  const active = getCase(activeCaseId)
-  const activeEx = currentRun?.executions[activeCaseId]
+  const resolvedCaseId = activeCaseId || currentRun?.caseOrder[0] || ''
+  const active = getCase(resolvedCaseId)
+  const activeEx = currentRun?.executions[resolvedCaseId]
 
   const pickerRuns = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase()
@@ -196,23 +214,110 @@ export function RunsScreen() {
     const sq = runSearch.trim().toLowerCase()
     return runRows.filter((row) => {
       if (filter !== 'all' && row.status !== filter) return false
-      if (sq && !row.case.id.toLowerCase().includes(sq) && !row.case.title.toLowerCase().includes(sq)) return false
+      if (advFilter.result !== 'all' && row.status !== advFilter.result) return false
+      if (advFilter.assignee && row.assignee !== advFilter.assignee) return false
+      if (advFilter.priority && row.case.priority !== advFilter.priority) return false
+      if (advFilter.type && row.case.type !== advFilter.type) return false
+      if (sq) {
+        const caseKey = (row.case.caseKey ?? '').toLowerCase()
+        if (
+          !row.case.id.toLowerCase().includes(sq) &&
+          !caseKey.includes(sq) &&
+          !row.case.title.toLowerCase().includes(sq)
+        ) {
+          return false
+        }
+      }
       return true
     })
-  }, [runRows, filter, runSearch])
+  }, [runRows, filter, runSearch, advFilter])
 
-  useEffect(() => {
-    if (!currentRun) return
-    if (!currentRun.caseOrder.includes(activeCaseId)) {
-      setActiveCaseId(currentRun.caseOrder[0] ?? '')
+  const groupedRows = useMemo(() => {
+    const folderMap = new Map(activeFolders.map((f) => [f.id, f]))
+    const groups: { folderId: string | null; folderName: string; rows: RunCaseRow[] }[] = []
+    const seen = new Map<string | null, number>()
+
+    for (const row of filteredRows) {
+      const folderId = row.case.folderId ?? null
+      if (!seen.has(folderId)) {
+        seen.set(folderId, groups.length)
+        groups.push({
+          folderId,
+          folderName: folderId ? (folderMap.get(folderId)?.name ?? 'Unfiled') : 'Unfiled',
+          rows: [],
+        })
+      }
+      groups[seen.get(folderId)!].rows.push(row)
     }
-  }, [currentRun, activeCaseId])
+    return groups
+  }, [filteredRows, activeFolders])
+
+  const uniqueAssignees = useMemo(
+    () => [...new Set(runRows.map((r) => r.assignee).filter(Boolean))].sort(),
+    [runRows],
+  )
+
+  const uniqueTypes = useMemo(
+    () => [...new Set(runRows.map((r) => r.case.type).filter(Boolean))].sort(),
+    [runRows],
+  )
+
+  const advFilterActive =
+    advFilter.result !== 'all' ||
+    advFilter.assignee !== '' ||
+    advFilter.priority !== '' ||
+    advFilter.type !== ''
+
+  const teamSummary = useMemo(() => {
+    if (!currentRun) return []
+    const byAssignee = new Map<string, { passed: number; failed: number; blocked: number; notRun: number; skipped: number; total: number }>()
+    for (const row of runRows) {
+      const key = row.assignee || 'Unassigned'
+      const prev = byAssignee.get(key) ?? { passed: 0, failed: 0, blocked: 0, notRun: 0, skipped: 0, total: 0 }
+      prev.total += 1
+      if (row.status === 'Passed') prev.passed += 1
+      else if (row.status === 'Failed') prev.failed += 1
+      else if (row.status === 'Blocked') prev.blocked += 1
+      else if (row.status === 'Skipped') prev.skipped += 1
+      else prev.notRun += 1
+      byAssignee.set(key, prev)
+    }
+    return [...byAssignee.entries()].map(([name, counts]) => ({ name, ...counts }))
+  }, [runRows, currentRun])
 
   useEffect(() => {
     if (!currentRun) return
+    if (caseKeyFromUrl) {
+      const match = currentRun.caseOrder.find((cid) => {
+        const c = getCase(cid)
+        return c?.caseKey === caseKeyFromUrl
+      })
+      if (match) {
+        setActiveCaseId(match)
+        return
+      }
+    }
     setActiveCaseId(currentRun.caseOrder[0] ?? '')
+  }, [currentRun?.id])
+
+  useEffect(() => {
+    if (!currentRun) return
+    const caseId = activeCaseId || currentRun.caseOrder[0] || ''
+    if (!caseId) return
+    const activeCase = getCase(caseId)
+    if (!activeCase?.caseKey) return
+    const target = testRunCasePath(activeProject.key, currentRun.runKey, activeCase.caseKey)
+    if (pathname !== target) {
+      window.history.replaceState(null, '', target)
+    }
+  }, [activeCaseId, currentRun?.runKey, currentRun?.caseOrder, activeProject.key, pathname, getCase])
+
+  useEffect(() => {
+    if (!currentRun) return
     setFilter('all')
     setRunSearch('')
+    setAdvFilter(DEFAULT_ADV_FILTER)
+    setFilterOpen(false)
   }, [currentRun?.id])
 
   useEffect(() => {
@@ -221,23 +326,39 @@ export function RunsScreen() {
         setPickerOpen(false)
         setPickerQuery('')
       }
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false)
+      }
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
 
+  const toggleFolder = useCallback((folderId: string | null) => {
+    setCollapsedFolders((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) next.delete(folderId)
+      else next.add(folderId)
+      return next
+    })
+  }, [])
+
   const setResult = useCallback(
     (result: ExecStatus) => {
       if (result === 'Not run' || isRunSealed) return
-      updateExecution(activeCaseId, { status: result })
+      const caseId = activeCaseId || currentRun?.caseOrder[0] || ''
+      if (!caseId) return
+      updateExecution(caseId, { status: result })
     },
-    [activeCaseId, updateExecution, isRunSealed],
+    [activeCaseId, currentRun, updateExecution, isRunSealed],
   )
 
   const clearResult = useCallback(() => {
     if (isRunSealed) return
-    updateExecution(activeCaseId, { status: 'Not run' })
-  }, [activeCaseId, updateExecution, isRunSealed])
+    const caseId = activeCaseId || currentRun?.caseOrder[0] || ''
+    if (!caseId) return
+    updateExecution(caseId, { status: 'Not run' })
+  }, [activeCaseId, currentRun, updateExecution, isRunSealed])
 
   const setStepR = useCallback(
     (caseId: string, stepId: string, result: ExecStatus) => {
@@ -252,17 +373,20 @@ export function RunsScreen() {
 
   const linkDefect = useCallback(() => {
     if (isRunSealed || !activeEx) return
+    const caseId = activeCaseId || currentRun?.caseOrder[0] || ''
+    if (!caseId) return
     const newId = `TI-${4420 + Math.floor(Math.random() * 80)}`
-    updateExecution(activeCaseId, { defects: [...(activeEx.defects ?? []), newId] })
+    updateExecution(caseId, { defects: [...(activeEx.defects ?? []), newId] })
     setEdTab('defects')
-  }, [activeCaseId, activeEx, updateExecution, isRunSealed])
+  }, [activeCaseId, currentRun, activeEx, updateExecution, isRunSealed])
 
   const navCase = useCallback(
     (dir: number) => {
-      const idx = filteredRows.findIndex((r) => r.caseId === activeCaseId)
-      const base = idx >= 0 ? idx : runRows.findIndex((r) => r.caseId === activeCaseId)
-      const list = filter === 'all' && !runSearch.trim() ? runRows : filteredRows
-      const pos = list.findIndex((r) => r.caseId === activeCaseId)
+      const caseId = activeCaseId || currentRun?.caseOrder[0] || ''
+      const idx = filteredRows.findIndex((r) => r.caseId === caseId)
+      const base = idx >= 0 ? idx : runRows.findIndex((r) => r.caseId === caseId)
+      const list = filter === 'all' && !runSearch.trim() && !advFilterActive ? runRows : filteredRows
+      const pos = list.findIndex((r) => r.caseId === caseId)
       const start = pos >= 0 ? pos : base
       let next = start + dir
       if (next < 0) next = 0
@@ -270,7 +394,7 @@ export function RunsScreen() {
       if (list[next]) setActiveCaseId(list[next].caseId)
       setEdVisible(true)
     },
-    [activeCaseId, filteredRows, runRows, filter, runSearch],
+    [activeCaseId, currentRun, filteredRows, runRows, filter, runSearch, advFilterActive],
   )
 
   useEffect(() => {
@@ -371,6 +495,7 @@ export function RunsScreen() {
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onCreateRun={() => setCreateOpen(true)}
+            onEdit={() => setEditOpen(true)}
           />
         </div>
         <div className="empty-state on">
@@ -402,6 +527,7 @@ export function RunsScreen() {
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onCreateRun={() => setCreateOpen(true)}
+            onEdit={() => setEditOpen(true)}
           />
         </div>
         <div className="tr-lay tr-lay-select">
@@ -441,6 +567,7 @@ export function RunsScreen() {
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
           onCreateRun={() => setCreateOpen(true)}
+          onEdit={() => setEditOpen(true)}
         />
       </div>
 
@@ -467,12 +594,104 @@ export function RunsScreen() {
                 compact
                 showCompleteLabel
                 interactive
+                activeStatus={filter}
+                onStatusClick={(s) => setFilter((prev) => (prev === s ? 'all' : s))}
               />
             </div>
+            {teamSummary.length > 0 && (
+              <div className="ec-team-summary">
+                <div className="ec-sl" style={{ marginBottom: 5 }}>Team</div>
+                {teamSummary.map((m) => (
+                  <div key={m.name} className="ec-team-row">
+                    <div className="ec-team-av">{m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}</div>
+                    <div className="ec-team-name">{m.name}</div>
+                    <div className="ec-team-stats">
+                      {m.passed > 0 && <span style={{ color: 'var(--pass)' }}>{m.passed}P</span>}
+                      {m.failed > 0 && <span style={{ color: 'var(--fail)' }}>{m.failed}F</span>}
+                      {m.blocked > 0 && <span style={{ color: 'var(--block)' }}>{m.blocked}B</span>}
+                      {m.notRun > 0 && <span style={{ color: 'var(--text3)' }}>{m.notRun}N</span>}
+                    </div>
+                    <div className="ec-team-total">{m.total}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="run-search-bar">
+          <div className="run-search-bar" ref={filterRef}>
             <input className="run-search-input" type="text" placeholder="Search cases in this run…" value={runSearch} onChange={(e) => setRunSearch(e.target.value)} />
+            <button
+              type="button"
+              className={`run-filter-btn${advFilterActive ? ' active' : ''}`}
+              onClick={() => setFilterOpen((v) => !v)}
+            >
+              <i className="ti ti-filter" style={{ fontSize: 11 }} />
+              Filter
+              {advFilterActive ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} /> : null}
+            </button>
+            {filterOpen ? (
+              <div className="run-filter-panel">
+                <div className="run-filter-row">
+                  <label>Result</label>
+                  <select
+                    value={advFilter.result}
+                    onChange={(e) => setAdvFilter((f) => ({ ...f, result: e.target.value as ExecStatus | 'all' }))}
+                  >
+                    <option value="all">All</option>
+                    <option value="Not run">Not run</option>
+                    <option value="Passed">Passed</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Blocked">Blocked</option>
+                    <option value="Skipped">Skipped</option>
+                  </select>
+                </div>
+                <div className="run-filter-row">
+                  <label>Assignee</label>
+                  <select
+                    value={advFilter.assignee}
+                    onChange={(e) => setAdvFilter((f) => ({ ...f, assignee: e.target.value }))}
+                  >
+                    <option value="">Any</option>
+                    {uniqueAssignees.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="run-filter-row">
+                  <label>Priority</label>
+                  <select
+                    value={advFilter.priority}
+                    onChange={(e) => setAdvFilter((f) => ({ ...f, priority: e.target.value }))}
+                  >
+                    <option value="">Any</option>
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+                <div className="run-filter-row">
+                  <label>Type</label>
+                  <select
+                    value={advFilter.type}
+                    onChange={(e) => setAdvFilter((f) => ({ ...f, type: e.target.value }))}
+                  >
+                    <option value="">Any</option>
+                    {uniqueTypes.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                {advFilterActive ? (
+                  <div
+                    className="run-filter-clear"
+                    onClick={() => setAdvFilter(DEFAULT_ADV_FILTER)}
+                  >
+                    Clear filters
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="ec-ftab-bar">
@@ -485,29 +704,41 @@ export function RunsScreen() {
           </div>
 
           <div className="ec-list">
-            {filteredRows.length === 0 ? (
+            {groupedRows.length === 0 ? (
               <div style={{ padding: 16, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>No cases match filter</div>
             ) : (
-              filteredRows.map((row) => (
-                <div
-                  key={row.caseId}
-                  className={`ec-case${activeCaseId === row.caseId ? ' on' : ''}`}
-                  onClick={() => { setActiveCaseId(row.caseId); setEdVisible(true) }}
-                >
-                  <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
-                  <div className="ec-info">
-                    <div className="ec-cid">{row.case.id}</div>
-                    <div className="ec-cnm">{row.case.title}</div>
-                    <div className="ec-cby">{row.assignee}</div>
+              groupedRows.map((group) => {
+                const collapsed = collapsedFolders.has(group.folderId)
+                return (
+                  <div key={group.folderId ?? '__unfiled__'} className="ec-folder-group">
+                    <div className="ec-folder-hd" onClick={() => toggleFolder(group.folderId)}>
+                      <i className={`ti ${collapsed ? 'ti-chevron-right' : 'ti-chevron-down'}`} style={{ fontSize: 10, opacity: 0.5 }} />
+                      <span className="ec-folder-name">{group.folderName}</span>
+                      <span className="ec-folder-count">{group.rows.length}</span>
+                    </div>
+                    {!collapsed && group.rows.map((row) => (
+                      <div
+                        key={row.caseId}
+                        className={`ec-case${resolvedCaseId === row.caseId ? ' on' : ''}`}
+                        onClick={() => { setActiveCaseId(row.caseId); setEdVisible(true) }}
+                      >
+                        <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
+                        <div className="ec-info">
+                          <div className="ec-cid">{row.case.caseKey ?? row.case.id}</div>
+                          <div className="ec-cnm">{row.case.title}</div>
+                          <div className="ec-cby">{row.assignee}</div>
+                        </div>
+                        <div className="ec-case-right">
+                          <span className={`pill ec-status-pill ${EXEC_PILL_MAP[row.status]}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                            {EXEC_PILL_LABEL[row.status].replace(/^[✓✗⊘○→]\s*/, '')}
+                          </span>
+                          {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="ec-case-right">
-                    <span className={`pill ec-status-pill ${EXEC_PILL_MAP[row.status]}`} style={{ fontSize: 9, padding: '1px 5px' }}>
-                      {EXEC_PILL_LABEL[row.status].replace(/^[✓✗⊘○→]\s*/, '')}
-                    </span>
-                    {row.comments > 0 ? <span className="ec-cmt-badge">{row.comments}</span> : null}
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
@@ -519,16 +750,18 @@ export function RunsScreen() {
             <ExecDetailPane
               caseData={active}
               execution={activeEx}
+              executionLog={currentRun.executionLog ?? []}
               tab={edTab}
               onTab={setEdTab}
               onNav={navCase}
               onResult={setResult}
               onClear={clearResult}
-              onStepR={(stepId, r) => setStepR(activeCaseId, stepId, r)}
-              onAddStepComment={(stepId, body) => addStepComment(activeCaseId, stepId, body)}
-              onAddGeneralComment={(body) => addGeneralComment(activeCaseId, body)}
+              onStepR={(stepId, r) => setStepR(resolvedCaseId, stepId, r)}
+              onAddStepComment={(stepId, body) => addStepComment(resolvedCaseId, stepId, body)}
+              onAddGeneralComment={(body) => addGeneralComment(resolvedCaseId, body)}
               onLinkDefect={linkDefect}
-              onAssigneeChange={(name) => updateExecution(activeCaseId, { assignee: name })}
+              onAssigneeChange={(name) => updateExecution(resolvedCaseId, { assignee: name })}
+              onSaveResultNotes={(notes) => updateExecution(resolvedCaseId, { resultNotes: notes })}
               onOpenShortcuts={openShortcuts}
               onClose={() => setEdVisible(false)}
               onToggleFs={() => setEdFullscreen((v) => !v)}
@@ -539,6 +772,7 @@ export function RunsScreen() {
         ) : null}
       </div>
       <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditRunModal open={editOpen} run={currentRun} onClose={() => setEditOpen(false)} />
     </div>
   )
 }
@@ -546,6 +780,7 @@ export function RunsScreen() {
 function ExecDetailPane({
   caseData,
   execution,
+  executionLog,
   tab,
   onTab,
   onNav,
@@ -556,6 +791,7 @@ function ExecDetailPane({
   onAddGeneralComment,
   onLinkDefect,
   onAssigneeChange,
+  onSaveResultNotes,
   onOpenShortcuts,
   onClose,
   onToggleFs,
@@ -563,7 +799,8 @@ function ExecDetailPane({
   sealed,
 }: {
   caseData: Case
-  execution?: { status: ExecStatus; stepResults: Record<string, ExecStatus>; defects?: string[]; assignee?: string }
+  execution?: { status: ExecStatus; stepResults: Record<string, ExecStatus>; defects?: string[]; assignee?: string; resultNotes?: string }
+  executionLog?: ExecutionLogEntry[]
   tab: EdTab
   onTab: (t: EdTab) => void
   onNav: (dir: number) => void
@@ -574,6 +811,7 @@ function ExecDetailPane({
   onAddGeneralComment: (body: string) => void
   onLinkDefect: () => void
   onAssigneeChange: (name: string) => void
+  onSaveResultNotes: (notes: string) => void
   onOpenShortcuts: () => void
   onClose: () => void
   onToggleFs: () => void
@@ -587,6 +825,13 @@ function ExecDetailPane({
     normalizeAssigneeName(execution?.assignee ?? caseData.assignee) ?? TEAM_USERS[1]
   const [generalDraft, setGeneralDraft] = useState('')
   const [stepDrafts, setStepDrafts] = useState<Record<string, string>>({})
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [notesDraft, setNotesDraft] = useState(execution?.resultNotes ?? '')
+
+  useEffect(() => {
+    setNotesDraft(execution?.resultNotes ?? '')
+    setNotesOpen(!!(execution?.resultNotes))
+  }, [execution?.resultNotes, caseData.id])
 
   const allComments = useMemo(() => {
     const items: { kind: 'step' | 'general'; stepNum?: number; stepTitle?: string; author: string; createdAt: string; body: string }[] = []
@@ -620,7 +865,7 @@ function ExecDetailPane({
       <div className="ed-hd">
         <div className="ed-top">
           <div>
-            <div className="ed-id">{caseData.id}</div>
+            <div className="ed-id">{caseData.caseKey ?? caseData.id}</div>
             <div className="ed-ttl">{caseData.title}</div>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8, alignItems: 'center' }}>
@@ -688,6 +933,42 @@ function ExecDetailPane({
             <div><div className="ed-ml">Last result</div><div className="ed-mv">{statusLabel}</div></div>
           </div>
         </div>
+        <div className="ed-result-info">
+          <div
+            className="ed-result-info-hd"
+            onClick={() => setNotesOpen((v) => !v)}
+          >
+            <i className={`ti ${notesOpen ? 'ti-chevron-down' : 'ti-chevron-right'}`} style={{ fontSize: 10 }} />
+            <span>Result information</span>
+            {execution?.resultNotes ? <span className="ed-result-info-dot" /> : null}
+          </div>
+          {notesOpen && (
+            <div className="ed-result-info-body">
+              {sealed ? (
+                <div className="ed-pt" style={{ whiteSpace: 'pre-wrap' }}>{execution?.resultNotes || <em style={{ color: 'var(--text3)' }}>No notes</em>}</div>
+              ) : (
+                <>
+                  <textarea
+                    className="esc-cmt"
+                    rows={3}
+                    placeholder="Add execution notes, observations, or evidence…"
+                    value={notesDraft}
+                    onChange={(e) => setNotesDraft(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-p"
+                    style={{ fontSize: 10, padding: '2px 6px', marginTop: 4 }}
+                    onClick={() => onSaveResultNotes(notesDraft)}
+                    disabled={notesDraft === (execution?.resultNotes ?? '')}
+                  >
+                    Save
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={`ed-tp${tab === 'steps' ? ' on' : ''}`}>
@@ -750,13 +1031,36 @@ function ExecDetailPane({
       </div>
 
       <div className={`ed-tp${tab === 'history' ? ' on' : ''}`}>
-        <div className="ed-hist-item">
-          <div className="ed-hist-dot" style={{ background: 'var(--fail)' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Result: Failed</div>
-            <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>Sprint 44 · Nadim Sharif · Today</div>
-          </div>
-        </div>
+        {(() => {
+          const entries = (executionLog ?? [])
+            .filter((e) => e.caseId === caseData.id)
+            .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+          if (entries.length === 0) {
+            return <div style={{ padding: 12, color: 'var(--text3)', fontSize: 12 }}>No execution history yet.</div>
+          }
+          return entries.map((e) => (
+            <div key={e.id} className="ed-hist-item">
+              <div
+                className="ed-hist-dot"
+                style={{
+                  background:
+                    e.to === 'Passed' ? 'var(--pass)' :
+                    e.to === 'Failed' ? 'var(--fail)' :
+                    e.to === 'Blocked' ? 'var(--block)' :
+                    'var(--text3)',
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>
+                  {e.from} → {e.to}
+                </div>
+                <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>
+                  {e.by} · {formatRelativeTime(e.at)}
+                </div>
+              </div>
+            </div>
+          ))
+        })()}
       </div>
 
       <div className={`ed-tp${tab === 'comments' ? ' on' : ''}`}>
