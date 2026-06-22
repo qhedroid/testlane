@@ -19,7 +19,7 @@ import { ProjectSwitcher } from '../components/ProjectSwitcher'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
-import { parseTestRunCaseKey, parseTestRunKey, testRunCasePath, testRunPath } from '../lib/project-routes'
+import { parseTestRunCaseKey, parseTestRunKey, slugToCaseKey, testRunCasePath, testRunPath } from '../lib/project-routes'
 
 type FilterTab = 'all' | ExecStatus
 type EdTab = 'details' | 'steps' | 'activity' | 'history' | 'comments' | 'defects'
@@ -288,9 +288,10 @@ export function RunsScreen() {
   useEffect(() => {
     if (!currentRun) return
     if (caseKeyFromUrl) {
+      const key = slugToCaseKey(caseKeyFromUrl)
       const match = currentRun.caseOrder.find((cid) => {
         const c = getCase(cid)
-        return c?.caseKey === caseKeyFromUrl
+        return c?.caseKey === key
       })
       if (match) {
         setActiveCaseId(match)

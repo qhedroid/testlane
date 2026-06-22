@@ -19,7 +19,7 @@ import { EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, TEAM_USERS } from '../data/team-users'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
-import { parseTestCaseKey, testCasePath } from '../lib/project-routes'
+import { parseTestCaseKey, slugToCaseKey, testCasePath } from '../lib/project-routes'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
 type DetailTab = 'details' | 'attachments' | 'defects' | 'requirements' | 'runs' | 'history' | 'activity'
@@ -272,8 +272,9 @@ export function CasesScreen() {
   } | null>(null)
 
   useEffect(() => {
-    const key = parseTestCaseKey(pathname)
-    if (!key) return
+    const slug = parseTestCaseKey(pathname)
+    if (!slug) return
+    const key = slugToCaseKey(slug)
     const match = activeCases.find((c) => c.caseKey === key)
     if (match) setDetailCaseId(match.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
