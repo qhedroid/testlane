@@ -8,66 +8,66 @@ This branch delivers the full test case management feature for Relay's frontend 
 
 ## What's included
 
-### `398f45a` — Test cases: admin project panel + per-project custom field activation
+### Admin Panel: project panel with per-project custom field activation ([`398f45a`](https://github.com/qhedroid/Relay/commit/398f45a))
 - Added `/admin` route and `AdminProjectPanel` with five tabs: General, Custom Fields, Members, Integrations, Settings
 - Per-project custom field activation toggle; active field IDs stored in `Project.activeCustomFieldIds`
 - `adminSettings.customFields` seeded with Priority, References, and Is Automated fields
 
-### `87b419f` — Admin panel: fix project panel layout to inline flex side panel
+### Admin Panel: fix project panel layout ([`87b419f`](https://github.com/qhedroid/Relay/commit/87b419f))
 - Corrected panel layout from block to inline-flex so the side panel renders alongside the list correctly
 
-### `f53562e` — Admin panel: open project panel maximized by default
+### Admin Panel: open project panel maximized by default ([`f53562e`](https://github.com/qhedroid/Relay/commit/f53562e))
 - `AdminProjectPanel` now initialises `isMaximized: true` when `selectedProjectId` is set
 
-### `8d3b5f4` — Test cases: add Attachments, Defects, Requirements, Runs tabs to case detail panel
+### Test Cases: tabs in the case detail panel ([`8d3b5f4`](https://github.com/qhedroid/Relay/commit/8d3b5f4))
 - Added tab bar to `CaseDetail` with Attachments, Defects, Requirements, Runs, History, and Activity tabs
 - Each tab renders an appropriate empty state or stub content
 
-### `c99514f` — Test cases: add Summary/References/Template fields and dynamic custom fields to case detail
+### Test Cases: extended fields and dynamic custom fields in case detail ([`c99514f`](https://github.com/qhedroid/Relay/commit/c99514f))
 - Extended `Case` type with `template`, `references`, `summary`, and `customFieldValues`
 - Case detail edit form renders active custom fields dynamically based on `activeCustomFieldIds`; schema bumped to v7
 
-### `d38523d` — Test cases: fix case detail panel drag direction and resize bounds
+### Test Cases: fix case detail panel resize ([`d38523d`](https://github.com/qhedroid/Relay/commit/d38523d))
 - Fixed right-anchored panel drag: now uses `start - dx` (not `start + dx`)
 - Min/max width set to 540–720px; CSS default `--case-detail-width` set to 540px
 
-### `98ec34d` — Test cases: per-row context menu with Duplicate, Edit, Open folder, Delete
+### Test Cases: per-row context menu ([`98ec34d`](https://github.com/qhedroid/Relay/commit/98ec34d))
 - Row `...` button (visible on hover) opens a fixed-position context menu
 - Duplicate — copies via `addCase`, opens copy in detail panel
 - Edit — opens case detail and triggers edit mode via `pendingEditRef`
 - Open folder — selects the case's folder in the tree
 - Delete — confirms via `window.confirm`, calls `deleteCase`
 
-### `db91e0b` — Test cases: sparkline last-results column and advanced filter panel
+### Test Cases: last results column and filter panel ([`db91e0b`](https://github.com/qhedroid/Relay/commit/db91e0b))
 - Last Results column: status dot (most recent) + 5 mini bars (recent run history)
 - Filter panel: field + operator + value conditions with AND logic; badge shows active count; click-outside closes
 
-### `0a317c8` — Test cases: human-readable case IDs, pagination footer, folder search
+### Test Cases: human-readable case IDs, pagination, and folder search ([`0a317c8`](https://github.com/qhedroid/Relay/commit/0a317c8))
 - `TC-XXXXX` case keys generated on creation; `nextCaseNumByProject` added to `DemoState`; schema v8
 - Pagination footer with rows-per-page selector (10/25/50/All) and prev/next controls
 - Folder search input filters the tree while preserving ancestor visibility
 
-### `b8f5c8a` — Test cases: metadata reorder, case navigation arrows, sparkline tooltip
+### Test Cases: case detail polish — navigation arrows, sparkline tooltips, URL deep-linking ([`b8f5c8a`](https://github.com/qhedroid/Relay/commit/b8f5c8a))
 - Case detail metadata section reordered to match design spec
 - ← → navigation arrows in the detail panel header with `N / total` counter
 - Per-bar sparkline tooltip showing run name, result, and tester; hover-delay dismiss
 - URL deep-linking: `window.history.replaceState` keeps the address bar in sync with the open case; new `[caseKey]/page.tsx` route handles direct navigation
 
-### `d0d2fa7` — Cases: fix panel flash, folder default, per-bar sparkline, arrow key nav
+### Test Cases: fix panel flash, folder default, and sparkline tooltips ([`d0d2fa7`](https://github.com/qhedroid/Relay/commit/d0d2fa7))
 - Panel URL sync now uses `window.history.replaceState` to avoid remount on URL change
 - `CreateCaseModal` resets field values via `useEffect` watching `createCaseOpen`; defaults to the currently selected folder
 - Per-bar sparkline tooltips refined with hover-delay dismiss; arrow key navigation added to the detail panel
 
-### `0a248a5` — Cases: fix case id collision across projects (schema v9)
+### Test Cases: fix case ID collision across projects (schema v9) ([`0a248a5`](https://github.com/qhedroid/Relay/commit/0a248a5))
 - `addCase` in `FreshProvider` now uses `newId('case')` for globally unique IDs (previously used `TC-NNNN` counter which collided across projects)
 - Schema v9 migration remaps any existing `TC-NNNN`-style case IDs to fresh unique IDs; rewrites matching keys in `run.executions` and `run.caseOrder`
 
-### `d6a163e` — Cases: fix project switch reversion race in ProjectRouteSync
+### Navigation: fix project switch reversion race ([`d6a163e`](https://github.com/qhedroid/Relay/commit/d6a163e))
 - Removed `state.activeProjectId` from `ProjectRouteSync` effect deps; reads it via a ref instead
 - Prevents the effect from firing mid-navigation (while `usePathname()` still reads the old URL) and reverting the project selection
 
-### `8c7ac23` — Test cases: global keyword search and create-test-run button
-- Keyword search input in the `tc-bar` filters cases by title or case key; resets pagination on change
+### Test Cases: keyword search and create test run button ([`8c7ac23`](https://github.com/qhedroid/Relay/commit/8c7ac23))
+- Keyword search input in the case list filters by title or case key; resets pagination on change
 - "Create test run" dropdown in the topbar with two scope options: cases in current folder (N) or all project cases (N)
 - Name modal with autoFocus, Enter to submit, Escape to cancel; navigates to `/runs` on creation
 - `CREATE_RUN` action and `createRun` callback extended with optional `caseIds` to support folder-scoped runs
