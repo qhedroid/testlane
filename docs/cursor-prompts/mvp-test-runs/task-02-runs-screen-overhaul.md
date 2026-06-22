@@ -1,4 +1,4 @@
-# Task 10 — Test Runs: RunsScreen Feature Overhaul
+# Task 02 — Test Runs: RunsScreen Feature Overhaul
 
 ## Goal
 Seven interconnected improvements to `RunsScreen.tsx` (and a new `EditRunModal`):
@@ -16,7 +16,7 @@ Seven interconnected improvements to `RunsScreen.tsx` (and a new `EditRunModal`)
 ---
 
 ## Context from previous tasks
-- Task 09 must be complete before this task runs. It adds: `ExecutionLogEntry`, `CaseExecution.resultNotes`, `DemoRun.executionLog`, `editRun()` on context, `testRunCasePath()` and `parseTestRunCaseKey()` in `project-routes.ts`, and the new `/testruns/tr/[runKey]/tc/[caseKey]/page.tsx` route.
+- Task 01 must be complete before this task runs. It adds: `ExecutionLogEntry`, `CaseExecution.resultNotes`, `DemoRun.executionLog`, `editRun()` on context, `testRunCasePath()` and `parseTestRunCaseKey()` in `project-routes.ts`, and the new `/testruns/tr/[runKey]/tc/[caseKey]/page.tsx` route.
 - `Case.id` = globally-unique internal key. `Case.caseKey` = display key like `TC-00001`.
 - `DemoRun.runKey` = display key like `"00001"`.
 - `activeFolders` from `useFresh()` is the list of `Folder[]` for the active project.
@@ -601,13 +601,100 @@ Check `apps/web/src/fresh/components/TestRunsTopbar.tsx` to understand the exist
 | `apps/web/src/fresh/styles/prototype-runs.css` | New CSS for folder groups, filter panel, team summary, result notes section |
 
 ## Files that do NOT change
-- `FreshProvider.tsx` — done in Task 09
-- `demo-model.ts` — done in Task 09
-- `migrate-demo-state.ts` — done in Task 09
-- `project-routes.ts` — done in Task 09
-- Any route `page.tsx` files — done in Task 09
+- `FreshProvider.tsx` — done in Task 01
+- `demo-model.ts` — done in Task 01
+- `migrate-demo-state.ts` — done in Task 01
+- `project-routes.ts` — done in Task 01
+- Any route `page.tsx` files — done in Task 01
 - `ApiRunsWorkspace.tsx` — not in scope
 - `apps/web/src/legacy/**` — never touch
 
-## After completing
-Run `pnpm build` from the repo root. Zero TypeScript errors required before committing.
+---
+
+## Step 1 — Read files before touching them
+
+```
+Read apps/web/src/fresh/screens/RunsScreen.tsx
+Read apps/web/src/fresh/components/RunStatusInfographic.tsx
+Read apps/web/src/fresh/components/TestRunsTopbar.tsx
+Read apps/web/src/fresh/styles/prototype-runs.css
+```
+
+---
+
+## Step 2 — Make changes
+
+Work through the nine feature areas in order (1 → 9). After each area, confirm no TypeScript errors before proceeding.
+
+---
+
+## Step 3 — Build verification
+
+```bash
+cd /Users/shaun.sevume/Projects/Relay && pnpm build
+```
+
+Zero TypeScript errors required.
+
+---
+
+## Step 4 — Manual check
+
+1. Start dev server: `cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev`
+2. Open `/DP/testruns`, select a run.
+3. **Case ID display**: confirm case list shows `TC-00001` style keys, not internal `case-…` ids.
+4. **URL sync**: click a case — confirm URL updates to `/DP/testruns/tr/00001/tc/TC-00003`. Reload the page — confirm the same case is selected.
+5. **Folder grouping**: confirm cases are grouped under collapsible folder headers. Click a header — confirm it collapses/expands.
+6. **Status click-to-filter**: click "Passed" in the run summary stats — confirm the case list filters. Click again — confirm it returns to all.
+7. **Filter panel**: click the Filter button — confirm dropdown opens with Result / Assignee / Priority / Type selects. Set a filter — confirm list narrows. Clear filters — confirm full list returns.
+8. **Team summary**: confirm per-assignee breakdown renders below the status infographic.
+9. **Result information**: open a case, expand "Result information", type notes, click Save — confirm notes persist after switching cases and back.
+10. **History tab**: set a case result, switch to History tab — confirm a log entry appears with from/to status, tester name, and relative time.
+11. **Edit run**: click the edit action in the topbar — confirm modal opens with current name/description/due. Change the name, save — confirm the run header updates.
+
+---
+
+## Step 5 — Commit
+
+Run `git diff HEAD` and cross-check actual changes against the message below. Adjust if anything differs, then commit.
+
+```
+Test runs: RunsScreen overhaul — URL sync, folder grouping, filters, history
+
+`RunsScreen.tsx`
+* Fixed case ID display to use `caseKey` in list rows and ExecDetailPane
+* Added URL sync: reads `caseKey` from route params on load, pushes URL via `window.history.replaceState` on case change
+* Replaced flat case list with folder-grouped collapsible sections (`groupedRows` memo, `collapsedFolders` state)
+* Passed `onStatusClick`/`activeStatus` to `RunStatusInfographic` for click-to-filter on summary stats
+* Added `advFilter` state and Filter button with dropdown panel (Result, Assignee, Priority, Type)
+* Added `teamSummary` memo and rendered per-assignee breakdown in run header
+* Passed `onSaveResultNotes` to `ExecDetailPane`; wired to `updateExecution`
+* Passed `executionLog` to `ExecDetailPane` for live History tab
+* Added `editOpen` state and `<EditRunModal>`; wired `onEdit` to `TestRunsTopbar`
+
+`RunStatusInfographic.tsx`
+* Added `onStatusClick?: (status: ExecStatus) => void` prop; each status `<li>` calls it on click
+* Added `activeStatus?: FilterTab` prop; applies `.rsi-active` class to the matching item
+
+`EditRunModal.tsx`
+* New component: modal for editing run name, description, and due date
+* Follows `CreateRunModal` pattern (backdrop, Escape closes, Enter submits)
+* Calls `editRun(run.id, patch)` on submit
+
+`TestRunsTopbar.tsx`
+* Added `onEdit?: () => void` prop; wired to an "Edit run" action
+
+`prototype-runs.css`
+* Added styles for `.ec-folder-group`, `.ec-folder-hd`, `.ec-folder-name`, `.ec-folder-count`
+* Added styles for `.run-filter-btn`, `.run-filter-panel`, `.run-filter-row`, `.run-filter-clear`
+* Added styles for `.ec-team-summary`, `.ec-team-row`, `.ec-team-av`, `.ec-team-name`, `.ec-team-stats`, `.ec-team-total`
+* Added styles for `.ed-result-info`, `.ed-result-info-hd`, `.ed-result-info-dot`, `.ed-result-info-body`
+```
+
+---
+
+## Step 6 — Restart dev server
+
+```bash
+cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev
+```

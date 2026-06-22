@@ -1,4 +1,4 @@
-# Task 09 — Test Runs: Data Model & Routing Foundation
+# Task 01 — Test Runs: Data Model & Routing Foundation
 
 ## Goal
 Extend the data model to support execution result notes, a real execution audit log, and run editing. Add the URL route and helpers for `/testruns/tr/[runKey]/tc/[caseKey]`. Bump schema to v10.
@@ -220,9 +220,82 @@ export default function ProjectTestRunCaseDetailPage() {
 ---
 
 ## What does NOT change
-- `RunsScreen.tsx` — that is Task 10.
+- `RunsScreen.tsx` — that is Task 02.
 - `demo-seed.ts` seed data — seed runs that don't have `executionLog` will receive it via the migration.
 - No backend, no API routes, no Docker config.
 
-## After completing
-Run `pnpm build` from the repo root. Zero TypeScript errors required before committing.
+---
+
+## Step 1 — Read files before touching them
+
+```
+Read apps/web/src/fresh/data/demo-model.ts
+Read apps/web/src/fresh/data/migrate-demo-state.ts
+Read apps/web/src/fresh/data/FreshProvider.tsx
+Read apps/web/src/fresh/lib/project-routes.ts
+```
+
+---
+
+## Step 2 — Make changes
+
+Apply changes in order: `demo-model.ts` → `migrate-demo-state.ts` → `FreshProvider.tsx` → `project-routes.ts` → new route page.
+
+---
+
+## Step 3 — Build verification
+
+```bash
+cd /Users/shaun.sevume/Projects/Relay && pnpm build
+```
+
+Zero TypeScript errors required.
+
+---
+
+## Step 4 — Manual check
+
+1. Start dev server: `cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev`
+2. Open `/DP/testruns` — confirm the runs page loads without errors.
+3. Open browser DevTools → Application → Local Storage → `relay-demo-v2`. Confirm `schemaVersion` is `10` and existing runs have `executionLog: []`.
+4. Open a run and set a case result (e.g. Passed). Re-open DevTools and confirm the execution entry now has `testedAt` and `testedBy` set, and `executionLog` has a new entry.
+
+---
+
+## Step 5 — Commit
+
+Run `git diff HEAD` and cross-check actual changes against the message below. Adjust if anything differs, then commit.
+
+```
+Test runs: schema v10, execution log, editRun, URL routing
+
+`demo-model.ts`
+* Added `ExecutionLogEntry` interface with id, caseId, at, by, from, to fields
+* Extended `CaseExecution` with optional `resultNotes`, `testedAt`, `testedBy`
+* Extended `DemoRun` with optional `executionLog: ExecutionLogEntry[]`
+* Bumped `DEMO_SCHEMA_VERSION` from 9 to 10
+
+`migrate-demo-state.ts`
+* Added v9→v10 migration: adds `executionLog: []` to all runs; backfills `resultNotes`/`testedAt`/`testedBy` defaults on all executions
+
+`FreshProvider.tsx`
+* Updated `UPDATE_RUN_EXECUTION` reducer to append an `ExecutionLogEntry` when status changes; sets `testedAt`/`testedBy` on the execution when status is not 'Not run'
+* Added `UPDATE_RUN` action and reducer case
+* Added `editRun(runId, patch)` callback; exposed on context
+
+`project-routes.ts`
+* Added `testRunCasePath(projectKey, runKey, caseKey)` helper
+* Added `parseTestRunCaseKey(pathname)` helper
+* Updated `parseTestRunKey` to handle 6-part `/tr/[runKey]/tc/[caseKey]` URLs
+
+`apps/web/src/app/(app)/[projectKey]/testruns/tr/[runKey]/tc/[caseKey]/page.tsx`
+* New route page rendering `RunsScreen` (mirrors case-detail route pattern)
+```
+
+---
+
+## Step 6 — Restart dev server
+
+```bash
+cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev
+```
