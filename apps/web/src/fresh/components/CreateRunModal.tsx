@@ -12,12 +12,12 @@ interface CreateRunModalProps {
 
 export function CreateRunModal({ open, onClose }: CreateRunModalProps) {
   const router = useRouter()
-  const { activeProject, createRun } = useFresh()
+  const { activeProject, createRun, activeCases } = useFresh()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
   const nameError = !name.trim() ? 'Name is required' : null
-  const canSubmit = !nameError && !!name.trim()
+  const canSubmit = !nameError && !!name.trim() && activeCases.length > 0
 
   if (!open) return null
 
@@ -36,6 +36,7 @@ export function CreateRunModal({ open, onClose }: CreateRunModalProps) {
     const { runKey } = createRun({
       name: name.trim(),
       description: description.trim() || undefined,
+      caseIds: [],
     })
     handleClose()
     router.push(testRunPath(activeProject.key, runKey))
@@ -72,6 +73,11 @@ export function CreateRunModal({ open, onClose }: CreateRunModalProps) {
               placeholder="Optional run description"
             />
           </div>
+          {activeCases.length === 0 && (
+            <div style={{ fontSize: 11.5, color: 'var(--text3)', background: 'var(--hover)', borderRadius: 4, padding: '6px 10px' }}>
+              This project has no test cases yet. Add test cases before creating a run.
+            </div>
+          )}
         </div>
         <div className="create-foot">
           <button type="button" className="btn" onClick={handleClose}>Cancel</button>

@@ -90,6 +90,7 @@ export function RunsScreen() {
     activeProject,
     activeFolders,
     activeRuns,
+    state,
     getCase,
     updateExecution,
     addStepComment,
@@ -132,6 +133,18 @@ export function RunsScreen() {
       router.replace(testRunPath(activeProject.key))
     }
   }, [runKeyFromUrl, currentRun, activeProject.key, router])
+
+  useEffect(() => {
+    if (runKeyFromUrl) return
+    if (activeRuns.length === 0) return
+
+    const lastRunId = state.currentRunIdByProject?.[activeProject.id]
+    const preferred = lastRunId
+      ? activeRuns.find((r) => r.id === lastRunId)
+      : undefined
+    const target = preferred ?? activeRuns[0]
+    router.push(testRunPath(activeProject.key, target.runKey))
+  }, [runKeyFromUrl, activeRuns, activeProject.key, activeProject.id, state.currentRunIdByProject, router])
 
   useEffect(() => {
     if (currentRun) setCurrentRun(currentRun.id)
@@ -539,6 +552,48 @@ export function RunsScreen() {
                 <div className="empty-copy">Choose a run from the picker above, or create a new one.</div>
                 <button type="button" className="btn btn-p" style={{ marginTop: 12 }} onClick={() => setCreateOpen(true)}>
                   <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      </div>
+    )
+  }
+
+  if (currentRun.caseOrder.length === 0) {
+    return (
+      <div className="view runs-v12">
+        {prototypeBanner}
+        <div className="topbar">
+          <ProjectSwitcher />
+          <div className="proj-sep" />
+          {breadcrumb}
+          <TestRunsTopbar
+            currentRun={currentRun}
+            onSealToggle={handleSealToggle}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            onCreateRun={() => setCreateOpen(true)}
+            onEdit={() => setEditOpen(true)}
+          />
+        </div>
+        <div className="tr-lay tr-lay-select">
+          <div className="ec-pane">
+            {runPicker}
+            <div className="empty-state on" style={{ position: 'relative', flex: 1 }}>
+              <div className="empty-card">
+                <i className="ti ti-clipboard-plus" style={{ fontSize: 36, color: 'var(--accent)', marginBottom: 10 }} />
+                <div className="empty-title">Add test case to test run</div>
+                <div className="empty-copy">Test runs contain test cases to be executed on your test target.</div>
+                <button
+                  type="button"
+                  className="btn btn-p"
+                  style={{ marginTop: 12 }}
+                  onClick={() => {}}
+                >
+                  <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add to test run
                 </button>
               </div>
             </div>

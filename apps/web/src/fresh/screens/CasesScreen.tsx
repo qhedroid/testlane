@@ -19,7 +19,7 @@ import { EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, TEAM_USERS } from '../data/team-users'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
-import { parseTestCaseKey, slugToCaseKey, testCasePath } from '../lib/project-routes'
+import { parseTestCaseKey, slugToCaseKey, testCasePath, testRunPath } from '../lib/project-routes'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
 type DetailTab = 'details' | 'attachments' | 'defects' | 'requirements' | 'runs' | 'history' | 'activity'
@@ -559,13 +559,14 @@ export function CasesScreen() {
 
   function doCreateRun() {
     if (!createRunModal?.name.trim()) return
+    if (activeCases.length === 0) return
     const caseIds =
       createRunModal.scope === 'folder'
         ? folderCases.map((c) => c.id)
         : undefined
-    createRun({ name: createRunModal.name.trim(), caseIds })
+    const { runKey } = createRun({ name: createRunModal.name.trim(), caseIds })
     setCreateRunModal(null)
-    router.push(projectHref('testruns'))
+    router.push(testRunPath(activeProject.key, runKey))
   }
 
   return (
@@ -583,7 +584,9 @@ export function CasesScreen() {
             <div style={{ position: 'relative' }} ref={createRunMenuRef}>
               <button
                 type="button"
-                className="btn"
+                className="btn btn-p"
+                disabled={activeCases.length === 0}
+                title={activeCases.length === 0 ? 'Add test cases before creating a run' : undefined}
                 onClick={() => setCreateRunMenuOpen((v) => !v)}
               >
                 <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
