@@ -73,6 +73,7 @@ export interface Case {
   generalComments: CaseComment[]
   tags?: string[]
   updatedAt: string
+  createdAt?: string
   assignee?: string
   /** Step template format. Defaults to 'text'. */
   template?: 'text' | 'bdd'
@@ -129,7 +130,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 10
+export const DEMO_SCHEMA_VERSION = 11
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {

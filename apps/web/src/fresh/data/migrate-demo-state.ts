@@ -299,6 +299,17 @@ export function migrateDemoState(raw: unknown): DemoState {
         schemaVersion: 10,
       }
     }
+    // v10 → v11: add createdAt to cases (proxy from updatedAt for existing cases)
+    if (state.schemaVersion < 11) {
+      state = {
+        ...state,
+        cases: state.cases.map((c) => ({
+          ...c,
+          createdAt: c.createdAt ?? c.updatedAt,
+        })),
+        schemaVersion: 11,
+      }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }

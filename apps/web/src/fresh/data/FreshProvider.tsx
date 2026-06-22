@@ -239,7 +239,10 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
     case 'REPLACE_CASE':
       next = {
         ...state,
-        cases: state.cases.map((c) => (c.id === action.case.id ? action.case : c)),
+        cases: state.cases.map((c) => {
+          if (c.id !== action.case.id) return c
+          return { ...action.case, createdAt: c.createdAt ?? action.case.createdAt }
+        }),
       }
       break
     case 'DELETE_CASE':
@@ -475,7 +478,7 @@ interface FreshContextValue {
   deleteProject: (projectId: string) => void
   setActiveProject: (projectId: string) => void
   getCase: (caseId: string) => Case | undefined
-  addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => string
+  addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>) => string
   updateCase: (caseId: string, patch: Partial<Case>) => void
   replaceCase: (caseData: Case) => void
   deleteCase: (caseId: string) => void
@@ -515,13 +518,15 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   )
 
   const addCase = useCallback(
-    (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => {
+    (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>) => {
       const id = newId('case')
+      const now = new Date().toISOString()
       const newCase: Case = {
         ...data,
         id,
         projectId: state.activeProjectId,
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       }
       dispatch({ type: 'ADD_CASE', case: newCase })
       return id

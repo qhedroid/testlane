@@ -1185,26 +1185,36 @@ export function CasesScreen() {
               sparkHideTimer.current = setTimeout(() => setSparkTooltip(null), 400)
             }}
           >
-            <div style={{ fontWeight: 600, marginBottom: 5, color: 'var(--text1)' }}>
-              {lr.run.name}
+            <div style={{ marginBottom: 6 }}>
+              <span style={{ color: 'var(--text3)', fontSize: 11 }}>Go to execution: </span>
+              <a
+                href={testRunPath(activeProject.key, lr.run.runKey)}
+                onClick={(e) => { e.preventDefault(); router.push(testRunPath(activeProject.key, lr.run.runKey)) }}
+                style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 11, textDecoration: 'none' }}
+              >
+                {lr.run.runKey}
+              </a>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <div>
-                <span style={{ color: 'var(--text3)' }}>Result: </span>
-                <span style={{ color: EXEC_COLOR[lr.execution.status], fontWeight: 600 }}>
-                  {lr.execution.status}
-                </span>
-              </div>
-              {lr.execution.assignee ? (
-                <div>
-                  <span style={{ color: 'var(--text3)' }}>Tested by: </span>
-                  <span>{displayAssigneeName(lr.execution.assignee)}</span>
-                </div>
-              ) : null}
-              <div style={{ color: 'var(--text3)', fontSize: 10.5, marginTop: 1 }}>
-                Run {lr.run.runKey}
-              </div>
+            <div style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 3 }}>
+              <span style={{ color: 'var(--text3)', minWidth: 72 }}>Test run:</span>
+              <span style={{ color: 'var(--text)', fontWeight: 500 }}>{lr.run.name}</span>
             </div>
+            <div style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 3 }}>
+              <span style={{ color: 'var(--text3)', minWidth: 72 }}>Result:</span>
+              <span style={{ color: EXEC_COLOR[lr.execution.status], fontWeight: 600 }}>{lr.execution.status}</span>
+            </div>
+            {lr.execution.testedAt ? (
+              <div style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 3 }}>
+                <span style={{ color: 'var(--text3)', minWidth: 72 }}>Tested at:</span>
+                <span style={{ color: 'var(--text2)' }}>{formatRelativeTime(lr.execution.testedAt)}</span>
+              </div>
+            ) : null}
+            {lr.execution.testedBy ? (
+              <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
+                <span style={{ color: 'var(--text3)', minWidth: 72 }}>Tested by:</span>
+                <span style={{ color: 'var(--text2)' }}>{displayAssigneeName(lr.execution.testedBy)}</span>
+              </div>
+            ) : null}
           </div>
         )
       })() : null}

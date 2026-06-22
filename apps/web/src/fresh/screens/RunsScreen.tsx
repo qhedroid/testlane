@@ -19,7 +19,7 @@ import { ProjectSwitcher } from '../components/ProjectSwitcher'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
-import { parseTestRunCaseKey, parseTestRunKey, slugToCaseKey, testRunCasePath, testRunPath } from '../lib/project-routes'
+import { parseTestRunCaseKey, parseTestRunKey, slugToCaseKey, testCasePath, testRunCasePath, testRunPath } from '../lib/project-routes'
 
 type FilterTab = 'all' | ExecStatus
 type EdTab = 'details' | 'history' | 'comments' | 'defects'
@@ -128,8 +128,14 @@ export function RunsScreen() {
   const [edTab, setEdTab] = useState<EdTab>('details')
   const [edVisible, setEdVisible] = useState(true)
   const [edFullscreen, setEdFullscreen] = useState(false)
+  const [caseIdTooltip, setCaseIdTooltip] = useState<{
+    caseId: string
+    x: number
+    y: number
+  } | null>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
   const filterRef = useRef<HTMLDivElement>(null)
+  const caseIdHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (projectMismatch) return
@@ -784,7 +790,19 @@ export function RunsScreen() {
                       >
                         <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
                         <div className="ec-info">
-                          <div className="ec-cid">{row.case.caseKey ?? row.case.id}</div>
+                          <div
+                            className="ec-cid"
+                            onMouseEnter={(e) => {
+                              if (caseIdHideTimer.current) clearTimeout(caseIdHideTimer.current)
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              setCaseIdTooltip({ caseId: row.caseId, x: rect.left, y: rect.bottom + 6 })
+                            }}
+                            onMouseLeave={() => {
+                              caseIdHideTimer.current = setTimeout(() => setCaseIdTooltip(null), 300)
+                            }}
+                          >
+                            {row.case.caseKey ?? row.case.id}
+                          </div>
                           <div className="ec-cnm">{row.case.title}</div>
                           <div className="ec-cby">{row.assignee}</div>
                         </div>
@@ -833,6 +851,56 @@ export function RunsScreen() {
       </div>
       <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditRunModal open={editOpen} run={currentRun} onClose={() => setEditOpen(false)} />
+      {caseIdTooltip ? (() => {
+        const c = getCase(caseIdTooltip.caseId)
+        if (!c) return null
+        const caseHref = testCasePath(activeProject.key, c.caseKey)
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              top: caseIdTooltip.y,
+              left: caseIdTooltip.x,
+              zIndex: 300,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              boxShadow: '0 4px 16px rgba(0,0,0,.18)',
+              padding: '8px 10px',
+              fontSize: 11.5,
+              minWidth: 210,
+              pointerEvents: 'auto',
+            }}
+            onMouseEnter={() => {
+              if (caseIdHideTimer.current) clearTimeout(caseIdHideTimer.current)
+            }}
+            onMouseLeave={() => {
+              caseIdHideTimer.current = setTimeout(() => setCaseIdTooltip(null), 300)
+            }}
+          >
+            <div style={{ marginBottom: 6 }}>
+              <span style={{ color: 'var(--text3)', fontSize: 11 }}>Go to test case: </span>
+              <a
+                href={caseHref}
+                onClick={(e) => { e.preventDefault(); router.push(caseHref) }}
+                style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 11, textDecoration: 'none' }}
+              >
+                {c.caseKey ?? c.id}
+              </a>
+            </div>
+            {c.createdAt ? (
+              <div style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 3 }}>
+                <span style={{ color: 'var(--text3)', minWidth: 88 }}>Created:</span>
+                <span style={{ color: 'var(--text2)' }}>{formatRelativeTime(c.createdAt)}</span>
+              </div>
+            ) : null}
+            <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
+              <span style={{ color: 'var(--text3)', minWidth: 88 }}>Last modified:</span>
+              <span style={{ color: 'var(--text2)' }}>{formatRelativeTime(c.updatedAt)}</span>
+            </div>
+          </div>
+        )
+      })() : null}
     </div>
   )
 }
