@@ -566,8 +566,8 @@ tr:hover .row-ctx-btn{display:inline-flex;align-items:center}
 .proj-action.muted{color:var(--text3);cursor:not-allowed;opacity:.65}
 .proj-action.muted:hover{background:transparent}
 .proj-action:disabled{pointer-events:none}
-.create-dialog{width:430px;background:var(--surface);border-radius:8px;border:1px solid var(--border);box-shadow:0 12px 40px rgba(4,44,83,.22);overflow:hidden;margin-top:60px}
-.create-body{padding:12px 16px}
+.create-dialog{width:430px;background:var(--surface);border-radius:8px;border:1px solid var(--border);box-shadow:0 12px 40px rgba(4,44,83,.22);overflow:hidden;margin-top:60px;display:flex;flex-direction:column;max-height:85vh}
+.create-body{padding:12px 16px;overflow-y:auto;flex:1}
 .create-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:6px;background:var(--surface2)}
 .tr-lay{display:grid;grid-template-columns:minmax(430px,var(--run-list-width,52%)) 6px minmax(360px,1fr);grid-template-rows:auto minmax(0,1fr);gap:0}
 .rl-pane{display:none}

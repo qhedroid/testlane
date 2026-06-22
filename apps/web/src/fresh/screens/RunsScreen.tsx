@@ -22,7 +22,7 @@ import { useFreshUI } from '../hooks/useFreshUI'
 import { parseTestRunCaseKey, parseTestRunKey, slugToCaseKey, testRunCasePath, testRunPath } from '../lib/project-routes'
 
 type FilterTab = 'all' | ExecStatus
-type EdTab = 'details' | 'steps' | 'activity' | 'history' | 'comments' | 'defects'
+type EdTab = 'details' | 'history' | 'comments' | 'defects'
 
 const RMB_CLASS: Record<Exclude<ExecStatus, 'Not run'>, string> = {
   Passed: 'rmb-p',
@@ -53,8 +53,6 @@ const PICKER_PILL: Record<string, { cls: string; lbl: string }> = {
 
 const ED_TABS: { id: EdTab; label: string }[] = [
   { id: 'details', label: 'Details' },
-  { id: 'steps', label: 'Steps' },
-  { id: 'activity', label: 'Activity' },
   { id: 'history', label: 'History' },
   { id: 'comments', label: 'Comments' },
   { id: 'defects', label: 'Defects' },
@@ -409,8 +407,8 @@ export function RunsScreen() {
       }
       const map: Record<string, ExecStatus> = { p: 'Passed', f: 'Failed', b: 'Blocked', s: 'Skipped' }
       if (map[k]) setResult(map[k])
-      if (k === 'j') navCase(1)
-      if (k === 'k') navCase(-1)
+      if (e.key === 'ArrowDown') { e.preventDefault(); navCase(1) }
+      if (e.key === 'ArrowUp') { e.preventDefault(); navCase(-1) }
       if (k === 'd') linkDefect()
     }
     window.addEventListener('keydown', onKey)
@@ -934,45 +932,6 @@ function ExecDetailPane({
             <div><div className="ed-ml">Last result</div><div className="ed-mv">{statusLabel}</div></div>
           </div>
         </div>
-        <div className="ed-result-info">
-          <div
-            className="ed-result-info-hd"
-            onClick={() => setNotesOpen((v) => !v)}
-          >
-            <i className={`ti ${notesOpen ? 'ti-chevron-down' : 'ti-chevron-right'}`} style={{ fontSize: 10 }} />
-            <span>Result information</span>
-            {execution?.resultNotes ? <span className="ed-result-info-dot" /> : null}
-          </div>
-          {notesOpen && (
-            <div className="ed-result-info-body">
-              {sealed ? (
-                <div className="ed-pt" style={{ whiteSpace: 'pre-wrap' }}>{execution?.resultNotes || <em style={{ color: 'var(--text3)' }}>No notes</em>}</div>
-              ) : (
-                <>
-                  <textarea
-                    className="esc-cmt"
-                    rows={3}
-                    placeholder="Add execution notes, observations, or evidence…"
-                    value={notesDraft}
-                    onChange={(e) => setNotesDraft(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-p"
-                    style={{ fontSize: 10, padding: '2px 6px', marginTop: 4 }}
-                    onClick={() => onSaveResultNotes(notesDraft)}
-                    disabled={notesDraft === (execution?.resultNotes ?? '')}
-                  >
-                    Save
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className={`ed-tp${tab === 'steps' ? ' on' : ''}`}>
         {caseData.steps.map((s, n) => {
           const sr = execution?.stepResults[s.id] ?? 'Not run'
           return (
@@ -1019,15 +978,41 @@ function ExecDetailPane({
             </div>
           )
         })}
-      </div>
-
-      <div className={`ed-tp${tab === 'activity' ? ' on' : ''}`}>
-        <div className="ed-act-item">
-          <div className="ed-act-av" style={{ background: '#185FA5' }}>NS</div>
-          <div className="ed-act-body">
-            <strong>Nadim Sharif</strong> marked Step 1 as <span style={{ color: 'var(--fail)' }}>Failed</span>
-            <div className="ed-act-time">Today at 14:32 · CTMS Regression — Sprint 44</div>
+        <div className="ed-result-info">
+          <div
+            className="ed-result-info-hd"
+            onClick={() => setNotesOpen((v) => !v)}
+          >
+            <i className={`ti ${notesOpen ? 'ti-chevron-down' : 'ti-chevron-right'}`} style={{ fontSize: 10 }} />
+            <span>Result information</span>
+            {execution?.resultNotes ? <span className="ed-result-info-dot" /> : null}
           </div>
+          {notesOpen && (
+            <div className="ed-result-info-body">
+              {sealed ? (
+                <div className="ed-pt" style={{ whiteSpace: 'pre-wrap' }}>{execution?.resultNotes || <em style={{ color: 'var(--text3)' }}>No notes</em>}</div>
+              ) : (
+                <>
+                  <textarea
+                    className="esc-cmt"
+                    rows={3}
+                    placeholder="Add execution notes, observations, or evidence…"
+                    value={notesDraft}
+                    onChange={(e) => setNotesDraft(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-p"
+                    style={{ fontSize: 10, padding: '2px 6px', marginTop: 4 }}
+                    onClick={() => onSaveResultNotes(notesDraft)}
+                    disabled={notesDraft === (execution?.resultNotes ?? '')}
+                  >
+                    Save
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
