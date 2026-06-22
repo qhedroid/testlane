@@ -42,7 +42,7 @@ export function useResizablePanes() {
         const root = document.documentElement
         const max = paneMax()
         if (type === 'case-detail') {
-          const val = Math.max(min, Math.min(max, start + dx))
+          const val = Math.max(min, Math.min(max, start - dx))
           root.style.setProperty('--case-detail-width', `${val}px`)
         } else {
           const val = Math.max(min, Math.min(max, start + dx))

@@ -54,6 +54,21 @@ export function parseTestRunKey(pathname: string): string | null {
   return null
 }
 
+/** Canonical test case path — with or without selected case key. */
+export function testCasePath(projectKey: string, caseKey?: string): string {
+  const base = projectPath(projectKey, 'cases')
+  return caseKey ? `${base}/tc/${caseKey}` : base
+}
+
+/** Extract caseKey from /:projectKey/cases/tc/:caseKey paths. */
+export function parseTestCaseKey(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts.length === 4 && parts[1] === MODULE_SLUGS.cases && parts[2] === 'tc') {
+    return parts[3]
+  }
+  return null
+}
+
 export function parseProjectPath(pathname: string): { projectKey: string; module: ModuleSlug } | null {
   if (pathname.startsWith('/runs/api')) return null
   const parts = pathname.split('/').filter(Boolean)
@@ -72,6 +87,7 @@ export function getModuleFromPathname(pathname: string): ModuleSlug | null {
 
 /** Keep current module when switching project keys. Strips test run selection (per-project namespace). */
 export function switchProjectPath(pathname: string, newProjectKey: string): string {
+  if (parseTestCaseKey(pathname)) return projectPath(newProjectKey, 'cases')
   if (parseTestRunKey(pathname)) return projectPath(newProjectKey, 'testruns')
   const parsed = parseProjectPath(pathname)
   if (parsed) return projectPath(newProjectKey, parsed.module)

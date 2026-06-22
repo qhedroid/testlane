@@ -151,3 +151,43 @@
 .admin-link{color:var(--accent);font-size:12px}
 .admin-static{font-size:12px;color:var(--text)}
 .admin-inline-actions{display:flex;gap:8px;margin-top:10px}
+
+/* ── Projects page + detail panel ── */
+.admin-main:has(.admin-projects-layout){overflow:hidden;display:flex;flex-direction:column}
+.admin-page:has(.admin-projects-layout){display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box}
+.admin-page:has(.admin-projects-layout) .admin-page-title{flex-shrink:0;margin-bottom:16px}
+.admin-projects-layout{display:flex;flex-direction:row;gap:0;flex:1;min-height:0;height:100%}
+.admin-projects-main{flex:1;min-width:0;overflow:auto}
+.admin-projects-layout.panel-maximized .admin-projects-main{display:none}
+.admin-project-panel{width:420px;flex-shrink:0;height:100%;display:flex;flex-direction:column;background:#fff;border-left:1px solid var(--border);overflow:hidden;min-height:0}
+.admin-projects-layout.panel-maximized .admin-project-panel,
+.admin-project-panel.maximized{flex:1;width:100%}
+.admin-project-panel-hd{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.admin-project-panel-title{flex:1;min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden}
+.admin-project-key-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;background:#E0F2F1;color:#00796B;font-size:11px;font-weight:700;font-family:var(--mono);flex-shrink:0}
+.admin-project-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-project-type{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);flex-shrink:0}
+.admin-project-panel-body{flex:1;overflow-y:auto;padding:14px 16px}
+.admin-project-panel-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+.admin-project-fields{display:flex;flex-direction:column;gap:14px}
+.admin-project-field{display:flex;flex-direction:column;gap:4px}
+.admin-project-field .admin-inp{max-width:none}
+.admin-required{color:var(--fail)}
+.admin-project-further{margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+.admin-project-further-title{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:10px}
+.admin-project-link-row{display:flex;align-items:flex-start;gap:10px;width:100%;padding:10px 0;border:none;border-bottom:1px solid var(--border);background:transparent;text-align:left;cursor:pointer;color:var(--text)}
+.admin-project-link-row:last-child{border-bottom:none}
+.admin-project-link-row:hover strong{color:var(--accent)}
+.admin-project-link-row svg{flex-shrink:0;color:var(--accent);margin-top:2px}
+.admin-project-link-row span{display:flex;flex-direction:column;gap:2px}
+.admin-project-link-row strong{font-size:12.5px;font-weight:600;color:var(--text)}
+.admin-project-link-row span span{font-size:11.5px;color:var(--text2);line-height:1.4}
+.admin-project-settings{display:flex;flex-direction:column;gap:20px}
+.admin-project-setting{display:flex;flex-direction:column;gap:8px}
+.admin-inherit-row{display:flex;gap:16px;flex-wrap:wrap}
+.admin-radio{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer}
+.admin-radio input{margin:0}
+.admin-project-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:40px 20px;color:var(--text2);font-size:12.5px;line-height:1.5}
+.admin-project-placeholder-icon{color:var(--text3)}
+.admin-table tbody tr.sel td{background:#EBF4FF}
+.admin-table tbody tr.sel:hover td{background:#EAF3FF}

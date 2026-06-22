@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project } from './demo-model'
+import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project, ProjectSettings } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction } from './admin-reducer'
 import {
   getActiveProject,
@@ -25,9 +25,8 @@ import {
   listProjects,
 } from './project-selectors'
 import { findRunById } from './run-utils'
-import { DEFAULT_SEED_PROJECT_KEY, formatRunKey, newId } from './demo-model'
+import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatRunKey, newId } from './demo-model'
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
-import { nextCaseId } from './ui-utils'
 
 const STORAGE_KEY = 'relay-demo-v2'
 
@@ -72,6 +71,7 @@ function makeDefaultProject(): Project {
     key: DEFAULT_SEED_PROJECT_KEY,
     description: 'Default demo workspace with seed cases, folders, and runs.',
     seedTemplate: 'demo',
+    activeCustomFieldIds: [],
     createdAt: new Date().toISOString(),
   }
 }
@@ -81,18 +81,21 @@ export type FreshAction =
   | { type: 'ADD_DEMO_PROJECT' }
   | { type: 'CREATE_PROJECT'; name: string; key: string; description?: string }
   | { type: 'UPDATE_PROJECT'; projectId: string; patch: Partial<Pick<Project, 'name' | 'key' | 'description'>> }
+  | { type: 'UPDATE_ACTIVE_CUSTOM_FIELDS'; projectId: string; activeCustomFieldIds: string[] }
+  | { type: 'UPDATE_PROJECT_SETTINGS'; projectId: string; projectSettings: ProjectSettings }
   | { type: 'DELETE_PROJECT'; projectId: string }
   | { type: 'SET_ACTIVE_PROJECT'; projectId: string }
   | { type: 'ADD_CASE'; case: Case }
   | { type: 'UPDATE_CASE'; caseId: string; patch: Partial<Case> }
   | { type: 'REPLACE_CASE'; case: Case }
+  | { type: 'DELETE_CASE'; caseId: string }
   | { type: 'UPDATE_RUN_EXECUTION'; runId: string; caseId: string; patch: Partial<CaseExecution> }
   | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string }
   | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
   | { type: 'SEAL_RUN'; runId: string }
   | { type: 'UNSEAL_RUN'; runId: string }
   | { type: 'SET_CURRENT_RUN'; runId: string }
-  | { type: 'CREATE_RUN'; name: string; description?: string }
+  | { type: 'CREATE_RUN'; name: string; description?: string; caseIds?: string[] }
   | { type: 'DUPLICATE_RUN'; runId: string }
   | { type: 'ARCHIVE_RUN'; runId: string }
   | { type: 'DELETE_RUN'; runId: string }
@@ -120,6 +123,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         name: action.name.trim() || 'Untitled project',
         key: action.key.toUpperCase(),
         description: action.description?.trim() || undefined,
+        activeCustomFieldIds: [],
         createdAt: new Date().toISOString(),
       }
       next = {
@@ -140,6 +144,30 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         projectsById: {
           ...state.projectsById,
           [action.projectId]: { ...existing, ...action.patch },
+        },
+      }
+      break
+    }
+    case 'UPDATE_ACTIVE_CUSTOM_FIELDS': {
+      const existing = state.projectsById[action.projectId]
+      if (!existing) return state
+      next = {
+        ...state,
+        projectsById: {
+          ...state.projectsById,
+          [action.projectId]: { ...existing, activeCustomFieldIds: action.activeCustomFieldIds },
+        },
+      }
+      break
+    }
+    case 'UPDATE_PROJECT_SETTINGS': {
+      const existing = state.projectsById[action.projectId]
+      if (!existing) return state
+      next = {
+        ...state,
+        projectsById: {
+          ...state.projectsById,
+          [action.projectId]: { ...existing, projectSettings: action.projectSettings },
         },
       }
       break
@@ -191,9 +219,10 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
     case 'ADD_CASE': {
       const projectId = state.activeProjectId
       const num = getActiveProjectNextCaseNum(state)
+      const caseKey = formatCaseKey(num)
       next = {
         ...state,
-        cases: [...state.cases, action.case],
+        cases: [...state.cases, { ...action.case, caseKey }],
         nextCaseNumByProject: { ...state.nextCaseNumByProject, [projectId]: num + 1 },
       }
       break
@@ -211,6 +240,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         ...state,
         cases: state.cases.map((c) => (c.id === action.case.id ? action.case : c)),
       }
+      break
+    case 'DELETE_CASE':
+      next = { ...state, cases: state.cases.filter((c) => c.id !== action.caseId) }
       break
     case 'UPDATE_RUN_EXECUTION': {
       if (!runIsMutable(state, action.runId)) return state
@@ -282,7 +314,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const num = getActiveProjectNextRunNum(state)
       const runKey = formatRunKey(num)
       const id = newId('run')
-      const caseOrder = listActiveProjectTestCases(state).map((c) => c.id)
+      const caseOrder = action.caseIds ?? listActiveProjectTestCases(state).map((c) => c.id)
       const run: DemoRun = {
         id,
         projectId,
@@ -411,19 +443,22 @@ interface FreshContextValue {
   deleteAdminAutomationField: (id: string) => void
   createProject: (input: { name: string; key: string; description?: string }) => void
   updateProject: (projectId: string, patch: Partial<Pick<Project, 'name' | 'key' | 'description'>>) => void
+  updateActiveCustomFields: (projectId: string, activeCustomFieldIds: string[]) => void
+  updateProjectSettings: (projectId: string, projectSettings: ProjectSettings) => void
   deleteProject: (projectId: string) => void
   setActiveProject: (projectId: string) => void
   getCase: (caseId: string) => Case | undefined
   addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => string
   updateCase: (caseId: string, patch: Partial<Case>) => void
   replaceCase: (caseData: Case) => void
+  deleteCase: (caseId: string) => void
   updateExecution: (caseId: string, patch: Partial<CaseExecution>) => void
   addStepComment: (caseId: string, stepId: string, body: string, author?: string) => void
   addGeneralComment: (caseId: string, body: string, author?: string) => void
   sealRun: () => void
   unsealRun: () => void
   setCurrentRun: (runId: string) => void
-  createRun: (input: { name: string; description?: string }) => { runKey: string }
+  createRun: (input: { name: string; description?: string; caseIds?: string[] }) => { runKey: string }
   duplicateRun: (runId: string) => { runKey: string } | null
   archiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
@@ -453,7 +488,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const addCase = useCallback(
     (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => {
-      const id = nextCaseId(getActiveProjectNextCaseNum(state))
+      const id = newId('case')
       const newCase: Case = {
         ...data,
         id,
@@ -472,6 +507,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const replaceCase = useCallback((caseItem: Case) => {
     dispatch({ type: 'REPLACE_CASE', case: caseItem })
+  }, [])
+
+  const deleteCase = useCallback((caseId: string) => {
+    dispatch({ type: 'DELETE_CASE', caseId })
   }, [])
 
   const updateExecution = useCallback(
@@ -518,10 +557,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const createRun = useCallback(
-    (input: { name: string; description?: string }) => {
+    (input: { name: string; description?: string; caseIds?: string[] }) => {
       const num = getActiveProjectNextRunNum(state)
       const runKey = formatRunKey(num)
-      dispatch({ type: 'CREATE_RUN', name: input.name, description: input.description })
+      dispatch({ type: 'CREATE_RUN', name: input.name, description: input.description, caseIds: input.caseIds })
       return { runKey }
     },
     [state],
@@ -658,6 +697,14 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const updateActiveCustomFields = useCallback((projectId: string, activeCustomFieldIds: string[]) => {
+    dispatch({ type: 'UPDATE_ACTIVE_CUSTOM_FIELDS', projectId, activeCustomFieldIds })
+  }, [])
+
+  const updateProjectSettings = useCallback((projectId: string, projectSettings: ProjectSettings) => {
+    dispatch({ type: 'UPDATE_PROJECT_SETTINGS', projectId, projectSettings })
+  }, [])
+
   const getProjectByKeyFn = useCallback((key: string) => getProjectByKey(state, key), [state])
   const isProjectKeyUniqueFn = useCallback(
     (key: string, excludeProjectId?: string) => isProjectKeyUnique(state, key, excludeProjectId),
@@ -711,12 +758,15 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       createProject,
       addDemoProject,
       updateProject,
+      updateActiveCustomFields,
+      updateProjectSettings,
       deleteProject,
       setActiveProject,
       getCase,
       addCase,
       updateCase,
       replaceCase,
+      deleteCase,
       updateExecution,
       addStepComment,
       addGeneralComment,
@@ -759,12 +809,15 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       createProject,
       addDemoProject,
       updateProject,
+      updateActiveCustomFields,
+      updateProjectSettings,
       deleteProject,
       setActiveProject,
       getCase,
       addCase,
       updateCase,
       replaceCase,
+      deleteCase,
       updateExecution,
       addStepComment,
       addGeneralComment,

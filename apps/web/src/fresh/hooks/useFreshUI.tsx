@@ -10,7 +10,8 @@ interface FreshUIContextValue {
   openShortcuts: () => void
   closeShortcuts: () => void
   createCaseOpen: boolean
-  openCreateCase: () => void
+  createCaseFolderId: string | null
+  openCreateCase: (folderId?: string | null) => void
   closeCreateCase: () => void
 }
 
@@ -20,12 +21,16 @@ export function FreshUIProvider({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [createCaseOpen, setCreateCaseOpen] = useState(false)
+  const [createCaseFolderId, setCreateCaseFolderId] = useState<string | null>(null)
 
   const openSearch = useCallback(() => setSearchOpen(true), [])
   const closeSearch = useCallback(() => setSearchOpen(false), [])
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
-  const openCreateCase = useCallback(() => setCreateCaseOpen(true), [])
+  const openCreateCase = useCallback((folderId?: string | null) => {
+    setCreateCaseFolderId(folderId ?? null)
+    setCreateCaseOpen(true)
+  }, [])
   const closeCreateCase = useCallback(() => setCreateCaseOpen(false), [])
 
   useEffect(() => {
@@ -53,10 +58,11 @@ export function FreshUIProvider({ children }: { children: ReactNode }) {
       openShortcuts,
       closeShortcuts,
       createCaseOpen,
+      createCaseFolderId,
       openCreateCase,
       closeCreateCase,
     }),
-    [searchOpen, shortcutsOpen, createCaseOpen, openSearch, closeSearch, openShortcuts, closeShortcuts, openCreateCase, closeCreateCase],
+    [searchOpen, shortcutsOpen, createCaseOpen, createCaseFolderId, openSearch, closeSearch, openShortcuts, closeShortcuts, openCreateCase, closeCreateCase],
   )
 
   return <FreshUIContext.Provider value={value}>{children}</FreshUIContext.Provider>

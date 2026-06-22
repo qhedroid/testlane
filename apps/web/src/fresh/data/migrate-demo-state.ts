@@ -1,6 +1,7 @@
 import { initialAdminSettings } from './admin-initial-settings'
 import { buildInitialDemoState } from './demo-seed'
 import type { Case, DemoRun, DemoState, Folder, LegacyDemoState, Project } from './demo-model'
+import { formatCaseKey } from './demo-model'
 import {
   DEFAULT_SEED_PROJECT_ID,
   DEFAULT_SEED_PROJECT_KEY,
@@ -73,6 +74,7 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     key: isLegacySeedName ? DEFAULT_SEED_PROJECT_KEY : keyFromName(projectName),
     description: isLegacySeedName ? 'Default demo workspace with seed cases, folders, and runs.' : undefined,
     seedTemplate: isLegacySeedName ? 'demo' : undefined,
+    activeCustomFieldIds: [],
     createdAt: new Date().toISOString(),
   }
 
@@ -195,6 +197,17 @@ function migrateAdminSettings(state: DemoState): DemoState {
   }
 }
 
+function migrateProjectCustomFields(state: DemoState): DemoState {
+  const projectsById: Record<string, Project> = {}
+  for (const [id, project] of Object.entries(state.projectsById)) {
+    projectsById[id] = {
+      ...project,
+      activeCustomFieldIds: project.activeCustomFieldIds ?? [],
+    }
+  }
+  return { ...state, projectsById, schemaVersion: 6 }
+}
+
 /** Migrate persisted localStorage state to the current schema. Never throws. */
 export function migrateDemoState(raw: unknown): DemoState {
   try {
@@ -209,6 +222,61 @@ export function migrateDemoState(raw: unknown): DemoState {
       state = migrateRunKeys(state)
     }
     state = migrateAdminSettings(state)
+    if (state.schemaVersion < 6) {
+      state = migrateProjectCustomFields(state)
+    }
+    // v6 → v7: add template, references, summary, customFieldValues to existing cases
+    if (state.schemaVersion < 7) {
+      state = {
+        ...state,
+        cases: state.cases.map((c) => ({
+          ...c,
+          template: c.template ?? 'text',
+          references: c.references ?? '',
+          summary: c.summary ?? '',
+          customFieldValues: c.customFieldValues ?? {},
+        })),
+        schemaVersion: 7,
+      }
+    }
+    // v7 → v8: assign caseKey to cases that are missing it
+    if (state.schemaVersion < 8) {
+      const counterByProject: Record<string, number> = { ...state.nextCaseNumByProject }
+      state = {
+        ...state,
+        cases: state.cases.map((c) => {
+          if (c.caseKey) return c
+          const num = counterByProject[c.projectId] ?? 1
+          counterByProject[c.projectId] = num + 1
+          return { ...c, caseKey: formatCaseKey(num) }
+        }),
+        nextCaseNumByProject: counterByProject,
+        schemaVersion: 8,
+      }
+    }
+    // v8 → v9: replace collision-prone TC-NNNN case ids with globally unique ids.
+    // nextCaseId() used TC-${1000+num} — always exactly 4 digits, e.g. TC-1001.
+    // Multiple projects starting at counter 1 all produce the same ids, causing
+    // REPLACE_CASE to corrupt cases across projects. Reassign with newId('case').
+    if (state.schemaVersion < 9) {
+      const idMap = new Map<string, string>()
+      const cases = state.cases.map((c) => {
+        if (/^TC-\d{4}$/.test(c.id)) {
+          const freshId = newId('case')
+          idMap.set(c.id, freshId)
+          return { ...c, id: freshId }
+        }
+        return c
+      })
+      const runs = idMap.size === 0 ? state.runs : state.runs.map((r) => ({
+        ...r,
+        caseOrder: r.caseOrder.map((id) => idMap.get(id) ?? id),
+        executions: Object.fromEntries(
+          Object.entries(r.executions).map(([caseId, ex]) => [idMap.get(caseId) ?? caseId, ex]),
+        ),
+      }))
+      state = { ...state, cases, runs, schemaVersion: 9 }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import type { CasePriority } from '../data/demo-model'
 import { newId, TYPE_PLACEHOLDER_TAGS } from '../data/demo-model'
@@ -13,7 +13,7 @@ interface StepDraft {
 }
 
 export function CreateCaseModal() {
-  const { createCaseOpen, closeCreateCase } = useFreshUI()
+  const { createCaseOpen, createCaseFolderId, closeCreateCase } = useFreshUI()
   const { activeFolders, addCase } = useFresh()
   const [title, setTitle] = useState('')
   const [folderId, setFolderId] = useState<string>('')
@@ -24,6 +24,12 @@ export function CreateCaseModal() {
   const [tagInput, setTagInput] = useState('')
   const [assignee, setAssignee] = useState<string>(TEAM_USERS[1])
   const [steps, setSteps] = useState<StepDraft[]>([{ action: '', expected: '' }])
+
+  useEffect(() => {
+    if (createCaseOpen) {
+      setFolderId(createCaseFolderId ?? '')
+    }
+  }, [createCaseOpen, createCaseFolderId])
 
   if (!createCaseOpen) return null
 
