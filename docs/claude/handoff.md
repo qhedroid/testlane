@@ -64,7 +64,7 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 | Task 09 | Schema v10: `CaseExecution.resultNotes/testedAt/testedBy`, `ExecutionLogEntry` type, `DemoRun.executionLog`, `UPDATE_RUN` action + `editRun()` in FreshProvider, migration v9→v10, new route `/testruns/tr/[runKey]/tc/[caseKey]/page.tsx`, `testRunCasePath()` + `parseTestRunCaseKey()` helpers |
 | Task 10 | RunsScreen overhaul: case ID display fix (show caseKey), URL sync to `/tr/{runKey}/tc/{caseKey}`, folder grouping in case list, status-label click-to-filter on summary, rich filter panel (Result/Priority/Assignee/Type), team summary, "Add Result Information" textarea, real History tab from executionLog, EditRunModal |
 
-Cursor prompts: `docs/cursor-prompts/mvp-test-cases/task-09-runs-data-model.md` and `task-10-runs-screen-overhaul.md`.
+Cursor prompts: `docs/cursor-prompts/mvp-test-runs/task-01-runs-data-model.md` and `task-02-runs-screen-overhaul.md`.
 
 **Run Task 09 first, then Task 10.**
 

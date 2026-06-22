@@ -16,6 +16,21 @@ Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implemen
 - Do NOT edit any project source files (`apps/**`, `docs/_authoritative/**`, etc.) unless explicitly asked for a specific change in that session.
 - When given a feature task, the job is to: read the relevant files, plan the approach, and **write a Cursor agent prompt** to `docs/cursor-prompts/` for Cursor to execute.
 - The only files Claude should write to without being asked are `docs/claude/**` (session state) and `docs/cursor-prompts/**` (task prompts).
+
+## Cursor prompt organisation (MANDATORY)
+Cursor prompts live under `docs/cursor-prompts/`. Each **branch** gets its own sub-folder named after the branch. Tasks within that folder are numbered from `task-01` upward, scoped to that branch only — do not continue numbering from a previous branch.
+
+```
+docs/cursor-prompts/
+  mvp-test-cases/     ← prompts written while on branch mvp-test-cases
+    task-01-…
+    task-08-…
+  mvp-test-runs/      ← prompts written while on branch mvp-test-runs
+    task-01-…         ← restarts at 01
+    task-02-…
+```
+
+When starting work on a new branch, always create a new sub-folder. Never place prompts for one branch inside another branch's folder.
 - If unsure whether to implement or draft, **always ask first**.
 
 ## Phase: Frontend-only prototype
