@@ -8,69 +8,72 @@ This branch delivers the full test case management feature for Relay's frontend 
 
 ## What's included
 
-### Admin Panel: project panel with per-project custom field activation ([`398f45a`](https://github.com/qhedroid/Relay/commit/398f45a))
+### Admin Panel
+
+**Project panel with per-project custom field activation** ([`398f45a`](https://github.com/qhedroid/Relay/commit/398f45a))
 - Added `/admin` route and `AdminProjectPanel` with five tabs: General, Custom Fields, Members, Integrations, Settings
 - Per-project custom field activation toggle; active field IDs stored in `Project.activeCustomFieldIds`
 - `adminSettings.customFields` seeded with Priority, References, and Is Automated fields
 
-### Admin Panel: fix project panel layout ([`87b419f`](https://github.com/qhedroid/Relay/commit/87b419f))
+**Fix project panel layout** ([`87b419f`](https://github.com/qhedroid/Relay/commit/87b419f))
 - Corrected panel layout from block to inline-flex so the side panel renders alongside the list correctly
 
-### Admin Panel: open project panel maximized by default ([`f53562e`](https://github.com/qhedroid/Relay/commit/f53562e))
+**Open project panel maximized by default** ([`f53562e`](https://github.com/qhedroid/Relay/commit/f53562e))
 - `AdminProjectPanel` now initialises `isMaximized: true` when `selectedProjectId` is set
 
-### Test Cases: tabs in the case detail panel ([`8d3b5f4`](https://github.com/qhedroid/Relay/commit/8d3b5f4))
+---
+
+### Test Cases
+
+**Tabs in the case detail panel** ([`8d3b5f4`](https://github.com/qhedroid/Relay/commit/8d3b5f4))
 - Added tab bar to `CaseDetail` with Attachments, Defects, Requirements, Runs, History, and Activity tabs
 - Each tab renders an appropriate empty state or stub content
 
-### Test Cases: extended fields and dynamic custom fields in case detail ([`c99514f`](https://github.com/qhedroid/Relay/commit/c99514f))
+**Extended fields and dynamic custom fields in case detail** ([`c99514f`](https://github.com/qhedroid/Relay/commit/c99514f))
 - Extended `Case` type with `template`, `references`, `summary`, and `customFieldValues`
 - Case detail edit form renders active custom fields dynamically based on `activeCustomFieldIds`; schema bumped to v7
 
-### Test Cases: fix case detail panel resize ([`d38523d`](https://github.com/qhedroid/Relay/commit/d38523d))
+**Fix case detail panel resize** ([`d38523d`](https://github.com/qhedroid/Relay/commit/d38523d))
 - Fixed right-anchored panel drag: now uses `start - dx` (not `start + dx`)
 - Min/max width set to 540–720px; CSS default `--case-detail-width` set to 540px
 
-### Test Cases: per-row context menu ([`98ec34d`](https://github.com/qhedroid/Relay/commit/98ec34d))
+**Per-row context menu** ([`98ec34d`](https://github.com/qhedroid/Relay/commit/98ec34d))
 - Row `...` button (visible on hover) opens a fixed-position context menu
-- Duplicate — copies via `addCase`, opens copy in detail panel
-- Edit — opens case detail and triggers edit mode via `pendingEditRef`
-- Open folder — selects the case's folder in the tree
-- Delete — confirms via `window.confirm`, calls `deleteCase`
+- Duplicate, Edit, Open folder, and Delete actions; Delete confirms via `window.confirm`
 
-### Test Cases: last results column and filter panel ([`db91e0b`](https://github.com/qhedroid/Relay/commit/db91e0b))
+**Last results column and filter panel** ([`db91e0b`](https://github.com/qhedroid/Relay/commit/db91e0b))
 - Last Results column: status dot (most recent) + 5 mini bars (recent run history)
 - Filter panel: field + operator + value conditions with AND logic; badge shows active count; click-outside closes
 
-### Test Cases: human-readable case IDs, pagination, and folder search ([`0a317c8`](https://github.com/qhedroid/Relay/commit/0a317c8))
+**Human-readable case IDs, pagination, and folder search** ([`0a317c8`](https://github.com/qhedroid/Relay/commit/0a317c8))
 - `TC-XXXXX` case keys generated on creation; `nextCaseNumByProject` added to `DemoState`; schema v8
 - Pagination footer with rows-per-page selector (10/25/50/All) and prev/next controls
 - Folder search input filters the tree while preserving ancestor visibility
 
-### Test Cases: case detail polish — navigation arrows, sparkline tooltips, URL deep-linking ([`b8f5c8a`](https://github.com/qhedroid/Relay/commit/b8f5c8a))
-- Case detail metadata section reordered to match design spec
+**Case detail polish: navigation arrows, sparkline tooltips, URL deep-linking** ([`b8f5c8a`](https://github.com/qhedroid/Relay/commit/b8f5c8a))
+- Metadata section reordered to match design spec
 - ← → navigation arrows in the detail panel header with `N / total` counter
 - Per-bar sparkline tooltip showing run name, result, and tester; hover-delay dismiss
-- URL deep-linking: `window.history.replaceState` keeps the address bar in sync with the open case; new `[caseKey]/page.tsx` route handles direct navigation
+- URL deep-linking via `window.history.replaceState`; new `[caseKey]/page.tsx` route handles direct navigation
 
-### Test Cases: fix panel flash, folder default, and sparkline tooltips ([`d0d2fa7`](https://github.com/qhedroid/Relay/commit/d0d2fa7))
-- Panel URL sync now uses `window.history.replaceState` to avoid remount on URL change
-- `CreateCaseModal` resets field values via `useEffect` watching `createCaseOpen`; defaults to the currently selected folder
-- Per-bar sparkline tooltips refined with hover-delay dismiss; arrow key navigation added to the detail panel
+**Fix panel flash, folder default, and sparkline tooltips** ([`d0d2fa7`](https://github.com/qhedroid/Relay/commit/d0d2fa7))
+- Panel URL sync switched to `window.history.replaceState` to avoid full remount on URL change
+- `CreateCaseModal` resets field values on open and defaults to the currently selected folder
+- Sparkline tooltip hover-delay dismiss refined; arrow key navigation added to the detail panel
 
-### Test Cases: fix case ID collision across projects (schema v9) ([`0a248a5`](https://github.com/qhedroid/Relay/commit/0a248a5))
-- `addCase` in `FreshProvider` now uses `newId('case')` for globally unique IDs (previously used `TC-NNNN` counter which collided across projects)
-- Schema v9 migration remaps any existing `TC-NNNN`-style case IDs to fresh unique IDs; rewrites matching keys in `run.executions` and `run.caseOrder`
+**Fix case ID collision across projects (schema v9)** ([`0a248a5`](https://github.com/qhedroid/Relay/commit/0a248a5))
+- `addCase` now uses `newId('case')` for globally unique IDs (previously `TC-NNNN` counters collided across projects)
+- Schema v9 migration remaps existing `TC-NNNN`-style IDs; rewrites matching keys in `run.executions` and `run.caseOrder`
 
-### Navigation: fix project switch reversion race ([`d6a163e`](https://github.com/qhedroid/Relay/commit/d6a163e))
+**Fix project switch reversion race** ([`d6a163e`](https://github.com/qhedroid/Relay/commit/d6a163e))
 - Removed `state.activeProjectId` from `ProjectRouteSync` effect deps; reads it via a ref instead
-- Prevents the effect from firing mid-navigation (while `usePathname()` still reads the old URL) and reverting the project selection
+- Prevents the effect reverting the active project mid-navigation while `usePathname()` still reads the old URL
 
-### Test Cases: keyword search and create test run button ([`8c7ac23`](https://github.com/qhedroid/Relay/commit/8c7ac23))
+**Keyword search and create test run button** ([`8c7ac23`](https://github.com/qhedroid/Relay/commit/8c7ac23))
 - Keyword search input in the case list filters by title or case key; resets pagination on change
-- "Create test run" dropdown in the topbar with two scope options: cases in current folder (N) or all project cases (N)
+- "Create test run" dropdown with two scope options: cases in current folder (N) or all project cases (N)
 - Name modal with autoFocus, Enter to submit, Escape to cancel; navigates to `/runs` on creation
-- `CREATE_RUN` action and `createRun` callback extended with optional `caseIds` to support folder-scoped runs
+- `CREATE_RUN` action and `createRun` callback extended with optional `caseIds` for folder-scoped runs
 
 ---
 

@@ -76,7 +76,7 @@ After Task 07b ran, two additional bugs were found:
 - **Always run `pnpm build` before committing.** Zero TS errors required.
 - **Dev server restart command:** `cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev`
 - **Commit after each task** as a checkpoint for easy rollback.
-- **Committing doc changes** — after providing a commit message for `docs/claude/**` or `docs/cursor-prompts/**` edits, always offer to run the commit directly. Use `--author="CrimsonDelta <crimson@delta.dev>"` and append `Co-authored-by: Claude <claude@anthropic.com>` to the message body.
+- **Committing doc changes** — after providing a commit message for `docs/claude/**` or `docs/cursor-prompts/**` edits, always offer to run the commit directly. Append `Co-authored-by: Claude <claude@anthropic.com>` to the message body.
 - **No backend work.** If a task appears to require it, stop and ask for confirmation.
 
 ---

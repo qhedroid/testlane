@@ -49,7 +49,7 @@ Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implemen
 - Do not create commits unless asked.
 
 ## After editing any markdown files
-Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit. It must also ask the user whether they want Claude to perform the commit directly. If yes, commit with `--author="CrimsonDelta <crimson@delta.dev>"` and `Co-authored-by: Claude <claude@anthropic.com>` in the message body.
+Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit. It must also ask the user whether they want Claude to perform the commit directly. If yes, commit with `Co-authored-by: Claude <claude@anthropic.com>` in the message body.
 
 ## localStorage
 - Key: `relay-demo-v2`
@@ -72,12 +72,32 @@ Example:
 ```
 
 ## Merge request description format
-- **Header:** one-paragraph summary of the feature and its UI entry point
-- **What's included:** one sub-section per commit — short SHA, subject, tight bullet list of what it delivers
-- **⚠️ Caveats:** accidental commits, known gaps, deferred work
-- **Testing:** build status, key manual checks, migration/localStorage notes
+- **Header:** one-paragraph summary of the feature and its UI entry point.
+- **What's included:** group commits by feature area (e.g. "Admin Panel", "Test Cases"). Each area is a `###` heading. Under it, list each commit as a bold title followed by the short SHA in parentheses, then bullet points of what it delivers. Format: `**Commit title** (sha)` with no leading SHA prefix.
+- **⚠️ Caveats:** accidental commits, known gaps, deferred work.
+- **Testing:** build status, key manual checks, migration/localStorage notes.
 
 Prefer specifics over summaries in every bullet.
+
+Example structure:
+```
+### Admin Panel
+
+**Project panel with per-project custom field activation** (398f45a)
+- Added /admin route and AdminProjectPanel with five tabs
+- Per-project custom field activation toggle
+
+**Fix project panel layout** (87b419f)
+- Corrected panel layout from block to inline-flex
+
+### Test Cases
+
+**Per-row context menu** (98ec34d)
+- Row ... button opens a fixed-position context menu
+- Duplicate, Edit, Open folder, and Delete actions
+```
+
+When writing for GitHub, link the SHA: `([`398f45a`](https://github.com/qhedroid/Relay/commit/398f45a))`.
 
 ## When information is missing
 Do not guess. Ask, or add a TODO in the relevant `docs/_authoritative/*` file.
