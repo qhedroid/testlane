@@ -49,7 +49,7 @@ Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implemen
 - Do not create commits unless asked.
 
 ## After editing any markdown files
-Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit.
+Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit. It must also ask the user whether they want Claude to perform the commit directly. If yes, commit with `--author="CrimsonDelta <crimson@delta.dev>"` and `Co-authored-by: Claude <claude@anthropic.com>` in the message body.
 
 ## localStorage
 - Key: `relay-demo-v2`
