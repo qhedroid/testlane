@@ -65,12 +65,12 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 | Task 01 | Schema v10, `ExecutionLogEntry`, `CaseExecution.resultNotes/testedAt/testedBy`, `DemoRun.executionLog`, `UPDATE_RUN` + `editRun()`, route `/testruns/tr/[runKey]/tc/[caseKey]/page.tsx`, `testRunCasePath()` + `parseTestRunCaseKey()` | `b7a7b5b` |
 | Task 02 | RunsScreen overhaul: caseKey display, URL sync, folder grouping, status-click filter, rich filter panel, team summary, result notes, History tab, EditRunModal | — |
 
-### Tasks 03–07 — Feedback fixes (drafted, not yet executed)
+### Tasks 03–07 — Feedback fixes
 
-| Task | What it will deliver |
-|------|---------------------|
-| Task 03 | URL format: rename slug `cases`→`testcases`, add `caseKeyToSlug`/`slugToCaseKey` helpers, strip `TC-` prefix from case URL segments |
-| Task 04 | Tab restructure: remove Activity tab, merge Steps into Details, arrow key navigation (↑↓), scrollable `CreateCaseModal` |
+| Task | What it delivered | Status |
+|------|------------------|--------|
+| Task 03 | URL format: `cases`→`testcases` slug, `caseKeyToSlug`/`slugToCaseKey` helpers, `TC-` prefix stripped from URL segments, `/testcases` legacy redirect | ✅ Complete |
+| Task 04 | Tab restructure: remove Activity tab, merge Steps into Details, arrow key navigation (↑↓), scrollable `CreateCaseModal` | 🔄 Running in Cursor |
 | Task 05 | Run management: auto-open first/last run, Testiny-style empty-run state, `CreateRunModal` creates empty runs, no-cases guards, navigate to new run after creation |
 | Task 06 | Schema v11: `Case.createdAt`; Testiny-style sparkline tooltip (link to run); case ID hover tooltip in runs (link to test case, created/modified) |
 | Task 07 | Add cases to run: `ADD_CASES_TO_RUN` action, `AddCasesToRunModal` (searchable, folder-grouped, checkboxes), "+ Add cases" button in RunsScreen |
