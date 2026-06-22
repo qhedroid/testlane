@@ -35,7 +35,9 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 ## Completed work (this branch)
 
-### Tasks 01–07 — all complete ✅
+### Tasks 01–08 — all complete ✅
+
+Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
 | Task | What it delivered | Commit |
 |------|------------------|--------|
@@ -48,16 +50,13 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 | Task 06 | `TC-XXXXX` case IDs (schema v8, `nextCaseNumByProject`), pagination footer, folder search | — |
 | Task 07 | CaseDetail metadata reorder, navigation arrows (← →), sparkline tooltip (per-cell), URL sync via `testCasePath`/`parseTestCaseKey` + new `[caseKey]/page.tsx` route | `b8f5c8a` |
 | Task 07b | Panel flash fix (`window.history.replaceState`), folder default in CreateCaseModal, per-bar sparkline tooltips with hover-delay dismiss, arrow key navigation | — |
+| Task 07c | Case ID collision fix across projects; schema v9 migration (remaps legacy `TC-NNNN` ids to globally-unique ids) | `0a248a5` |
+| Task 07d | Project switch reversion race fix in `ProjectRouteSync` (removed `state.activeProjectId` from effect deps, reads via ref instead) | `d6a163e` |
+| Task 08 | Keyword search bar in tc-bar; "Create test run" dropdown with folder-scope and all-cases options; name modal with Enter/Escape; navigates to `/runs` on create | `8c7ac23` |
 
 ### Pending Cursor prompts (not yet executed)
 
-| File | Status | What it delivers |
-|------|--------|-----------------|
-| `task-07c-bug-fix-case-id-collision.md` | **Ready to run** | Fix case id collision across projects; schema v9 migration |
-| `task-07d-bug-fix-project-switch-flicker.md` | **Ready to run** | Fix project switch reversion race in ProjectRouteSync |
-| `task-08-toolbar-search-create-run.md` | **Ready to run** | Keyword search bar in tc-bar, "Create test run" dropdown in topbar (all cases or folder scope), modal with name input |
-
-**Run task-07c → task-07d → task-08.**
+None. Branch is feature-complete and ready for PR.
 
 ### Task 07c / 07d — pending bug fixes
 
