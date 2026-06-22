@@ -229,6 +229,8 @@ export function CasesScreen() {
   const projectHref = useProjectHref()
   const pathname = usePathname()
   const router = useRouter()
+  const urlProjectKey = pathname.split('/').filter(Boolean)[0]?.toUpperCase() ?? ''
+  const projectMismatch = !!urlProjectKey && urlProjectKey !== activeProject.key.toUpperCase()
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
   const [selectedFolderId, setSelectedFolderId] = useState<string | '__unfiled__'>('f-rec')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -282,6 +284,7 @@ export function CasesScreen() {
 
   useEffect(() => {
     if (!activeProject.key) return
+    if (projectMismatch) return
     const detail = detailCaseId ? activeCases.find((c) => c.id === detailCaseId) : null
     const target = testCasePath(activeProject.key, detail?.caseKey)
     if (target !== pathname) window.history.replaceState(null, '', target)

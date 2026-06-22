@@ -112,6 +112,9 @@ export function RunsScreen() {
     return activeRuns.find((r) => r.runKey === runKeyFromUrl)
   }, [activeRuns, runKeyFromUrl])
 
+  const urlProjectKey = pathname.split('/').filter(Boolean)[0]?.toUpperCase() ?? ''
+  const projectMismatch = !!urlProjectKey && urlProjectKey !== activeProject.key.toUpperCase()
+
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
@@ -129,12 +132,14 @@ export function RunsScreen() {
   const filterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (projectMismatch) return
     if (runKeyFromUrl && !currentRun) {
       router.replace(testRunPath(activeProject.key))
     }
-  }, [runKeyFromUrl, currentRun, activeProject.key, router])
+  }, [projectMismatch, runKeyFromUrl, currentRun, activeProject.key, router])
 
   useEffect(() => {
+    if (projectMismatch) return
     if (runKeyFromUrl) return
     if (activeRuns.length === 0) return
 
@@ -144,7 +149,7 @@ export function RunsScreen() {
       : undefined
     const target = preferred ?? activeRuns[0]
     router.push(testRunPath(activeProject.key, target.runKey))
-  }, [runKeyFromUrl, activeRuns, activeProject.key, activeProject.id, state.currentRunIdByProject, router])
+  }, [projectMismatch, runKeyFromUrl, activeRuns, activeProject.key, activeProject.id, state.currentRunIdByProject, router])
 
   useEffect(() => {
     if (currentRun) setCurrentRun(currentRun.id)
@@ -313,6 +318,7 @@ export function RunsScreen() {
   }, [currentRun?.id])
 
   useEffect(() => {
+    if (projectMismatch) return
     if (!currentRun) return
     const caseId = activeCaseId || currentRun.caseOrder[0] || ''
     if (!caseId) return
@@ -322,7 +328,7 @@ export function RunsScreen() {
     if (pathname !== target) {
       window.history.replaceState(null, '', target)
     }
-  }, [activeCaseId, currentRun?.runKey, currentRun?.caseOrder, activeProject.key, pathname, getCase])
+  }, [projectMismatch, activeCaseId, currentRun?.runKey, currentRun?.caseOrder, activeProject.key, pathname, getCase])
 
   useEffect(() => {
     if (!currentRun) return
