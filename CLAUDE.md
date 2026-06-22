@@ -9,6 +9,7 @@ Treat `docs/_authoritative/**` as the only source of truth for requirements and 
 All files under `docs/claude/` are for Claude (Cowork) only — not for Cursor agents.
 
 - **`docs/claude/handoff.md`** — Read this immediately after CLAUDE.md. Contains: active branch, current schema version, completed task log, key decisions, and known gotchas. Update it at the end of any session where meaningful work was done.
+- **`docs/claude/known-bugs.md`** — Investigation log for bugs that are identified but not yet fully resolved. Read before drafting any bug-fix prompt. Update whenever a bug is partially fixed, deferred, or newly discovered.
 
 ## Claude's role in this project (MANDATORY)
 Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implementer.

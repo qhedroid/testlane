@@ -72,7 +72,7 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 | Task 03 | URL format: `cases`→`testcases` slug, `caseKeyToSlug`/`slugToCaseKey` helpers, `TC-` prefix stripped from URL segments, `/testcases` legacy redirect | ✅ Complete |
 | Task 04 | Tab restructure: remove Activity tab, merge Steps into Details, arrow key navigation (↑↓), scrollable `CreateCaseModal` | ✅ Complete |
 | Task 05 | Run management: auto-open first/last run, Testiny-style empty-run state, `CreateRunModal` creates empty runs, no-cases guards, navigate to new run after creation | ✅ Complete |
-| Task 05b | Fix project-switch flicker: `projectMismatch` guard in RunsScreen (3 effects) and CasesScreen (URL-sync effect) | 🔄 Ready for Cursor |
+| Task 05b | Fix project-switch flicker: `projectMismatch` guard in RunsScreen (3 effects) and CasesScreen (URL-sync effect) | ✅ Complete (RunsScreen fully fixed; CasesScreen residual flicker deferred — see Known Bugs) |
 | Task 05 | Run management: auto-open first/last run, Testiny-style empty-run state, `CreateRunModal` creates empty runs, no-cases guards, navigate to new run after creation |
 | Task 06 | Schema v11: `Case.createdAt`; Testiny-style sparkline tooltip (link to run); case ID hover tooltip in runs (link to test case, created/modified) |
 | Task 07 | Add cases to run: `ADD_CASES_TO_RUN` action, `AddCasesToRunModal` (searchable, folder-grouped, checkboxes), "+ Add cases" button in RunsScreen |
@@ -115,9 +115,20 @@ After Task 07b ran, two additional bugs were found:
 - **`formatRunKey` exists in `demo-model.ts`** — Task 06's `formatCaseKey` should follow the exact same pattern and live next to it.
 - **`router.replace` across different page files causes full remount** — `/cases` and `/cases/tc/[caseKey]` are backed by different `page.tsx` files. Any `router.replace` between them remounts the component. Always use `window.history.replaceState` for in-component URL updates that should not trigger navigation. `ProjectRouteSync` still uses `router.replace` correctly for the unknown-project redirect case.
 - **`window.history.replaceState` during an in-flight `router.push` aborts it** (Next.js 15) — This is why the CasesScreen URL sync effect (which calls `window.history.replaceState`) must not fire with stale project data during a project switch. Fixed in task-07d by preventing `ProjectRouteSync` from reverting state mid-navigation.
-- **Project-switch flicker in RunsScreen (task-05b)** — `setActiveProject(P2)` fires synchronously before `router.push` commits. React re-renders with P2 state while `params.runKey` and `pathname` still show P1's run. The unknown-run redirect and auto-open effects both fire in this window, creating racing navigations. Fix: derive `projectMismatch` from `pathname`'s project key vs `activeProject.key`; bail out of all navigation/replaceState effects when they disagree. Same guard added to CasesScreen's URL-sync effect.
+- **Project-switch flicker in RunsScreen (task-05b)** — `setActiveProject(P2)` fires synchronously before `router.push` commits. React re-renders with P2 state while `params.runKey` and `pathname` still show P1's run. The unknown-run redirect and auto-open effects both fire in this window, creating racing navigations. Fix: derive `projectMismatch` from `pathname`'s project key vs `activeProject.key`; bail out of all navigation/replaceState effects when they disagree. Same guard added to CasesScreen's URL-sync effect. **Fully fixed in RunsScreen. CasesScreen still has residual flicker (see Known Bugs).**
 - **`ProjectRouteSync` must not depend on `state.activeProjectId`** — Adding it to deps causes the effect to fire when the switcher dispatches `setActiveProject`, while `pathname` still reads the old URL, creating a reversion race. Use a ref to read the latest value without triggering re-runs.
 - **`CreateCaseModal` is always mounted** (returns `null` when closed, not unmounted). `useState` initialises only once. Use a `useEffect` watching `createCaseOpen` to reset field values each time the modal opens.
+
+---
+
+## Known bugs
+
+See **`docs/claude/known-bugs.md`** for the full investigation log. Summary:
+
+| ID | Screen | Status |
+|----|--------|--------|
+| BUG-01 | Project switch fails (CasesScreen) | Partially fixed — RunsScreen resolved in task-05b; CasesScreen still flickering |
+| BUG-02 | Residual project-switch flicker (CasesScreen) | Deferred — visual only, switch still completes |
 
 ---
 
