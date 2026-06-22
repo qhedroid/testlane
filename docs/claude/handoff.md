@@ -30,7 +30,8 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 | v7 | Added `template`, `references`, `summary`, `customFieldValues` to `Case` | v6→v7 backfills new fields with defaults on existing cases |
 | v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
 | v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
-| v10 | (pending task-09) Added `resultNotes/testedAt/testedBy` to `CaseExecution`; `executionLog: ExecutionLogEntry[]` to `DemoRun` | v9→v10 adds `executionLog: []` to all runs; backfills missing execution fields with defaults |
+| v10 | Added `resultNotes/testedAt/testedBy` to `CaseExecution`; `executionLog: ExecutionLogEntry[]` to `DemoRun` | v9→v10 adds `executionLog: []` to all runs; backfills missing execution fields with defaults |
+| v11 | (pending task-06) Added `createdAt?: string` to `Case` | v10→v11 sets `createdAt = updatedAt` for all existing cases |
 | v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
 | v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
 
@@ -57,20 +58,28 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 | Task 07d | Project switch reversion race fix in `ProjectRouteSync` (removed `state.activeProjectId` from effect deps, reads via ref instead) | `d6a163e` |
 | Task 08 | Keyword search bar in tc-bar; "Create test run" dropdown with folder-scope and all-cases options; name modal with Enter/Escape; navigates to `/runs` on create | `8c7ac23` |
 
-### Tasks 09–10 — Test Runs feature (drafted, not yet executed)
+### Tasks 01–02 — Complete ✅
+
+| Task | What it delivered | Commit |
+|------|------------------|--------|
+| Task 01 | Schema v10, `ExecutionLogEntry`, `CaseExecution.resultNotes/testedAt/testedBy`, `DemoRun.executionLog`, `UPDATE_RUN` + `editRun()`, route `/testruns/tr/[runKey]/tc/[caseKey]/page.tsx`, `testRunCasePath()` + `parseTestRunCaseKey()` | `b7a7b5b` |
+| Task 02 | RunsScreen overhaul: caseKey display, URL sync, folder grouping, status-click filter, rich filter panel, team summary, result notes, History tab, EditRunModal | — |
+
+### Tasks 03–07 — Feedback fixes (drafted, not yet executed)
 
 | Task | What it will deliver |
 |------|---------------------|
-| Task 09 | Schema v10: `CaseExecution.resultNotes/testedAt/testedBy`, `ExecutionLogEntry` type, `DemoRun.executionLog`, `UPDATE_RUN` action + `editRun()` in FreshProvider, migration v9→v10, new route `/testruns/tr/[runKey]/tc/[caseKey]/page.tsx`, `testRunCasePath()` + `parseTestRunCaseKey()` helpers |
-| Task 10 | RunsScreen overhaul: case ID display fix (show caseKey), URL sync to `/tr/{runKey}/tc/{caseKey}`, folder grouping in case list, status-label click-to-filter on summary, rich filter panel (Result/Priority/Assignee/Type), team summary, "Add Result Information" textarea, real History tab from executionLog, EditRunModal |
+| Task 03 | URL format: rename slug `cases`→`testcases`, add `caseKeyToSlug`/`slugToCaseKey` helpers, strip `TC-` prefix from case URL segments |
+| Task 04 | Tab restructure: remove Activity tab, merge Steps into Details, arrow key navigation (↑↓), scrollable `CreateCaseModal` |
+| Task 05 | Run management: auto-open first/last run, Testiny-style empty-run state, `CreateRunModal` creates empty runs, no-cases guards, navigate to new run after creation |
+| Task 06 | Schema v11: `Case.createdAt`; Testiny-style sparkline tooltip (link to run); case ID hover tooltip in runs (link to test case, created/modified) |
+| Task 07 | Add cases to run: `ADD_CASES_TO_RUN` action, `AddCasesToRunModal` (searchable, folder-grouped, checkboxes), "+ Add cases" button in RunsScreen |
 
-Cursor prompts: `docs/cursor-prompts/mvp-test-runs/task-01-runs-data-model.md` and `task-02-runs-screen-overhaul.md`.
-
-**Run Task 09 first, then Task 10.**
+**Run in order: 03 → 04 → 05 → 06 → 07.**
 
 ### Pending Cursor prompts (not yet executed)
 
-None besides Task 09 and Task 10 above.
+Tasks 03–07 above.
 
 ### Task 07c / 07d — pending bug fixes
 
