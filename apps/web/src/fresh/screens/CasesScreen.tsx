@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
@@ -224,10 +224,11 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, deleteCase, addFolder } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const pathname = usePathname()
+  const router = useRouter()
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set(['f-ctms', 'f-etmf', 'f-viewer']))
   const [selectedFolderId, setSelectedFolderId] = useState<string | '__unfiled__'>('f-rec')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -242,6 +243,7 @@ export function CasesScreen() {
   const [newFolderDraft, setNewFolderDraft] = useState<{ parentId: string | null } | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([])
+  const [keywordSearch, setKeywordSearch] = useState('')
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [draftFilter, setDraftFilter] = useState<{ field: FilterField; operator: FilterOperator; value: string }>({
     field: 'title',
@@ -262,6 +264,12 @@ export function CasesScreen() {
   const sparkHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const pendingEditRef = useRef<string | null>(null)
+  const [createRunMenuOpen, setCreateRunMenuOpen] = useState(false)
+  const createRunMenuRef = useRef<HTMLDivElement>(null)
+  const [createRunModal, setCreateRunModal] = useState<{
+    scope: 'folder' | 'all'
+    name: string
+  } | null>(null)
 
   useEffect(() => {
     const key = parseTestCaseKey(pathname)
@@ -314,7 +322,18 @@ export function CasesScreen() {
     setCurrentPage(1)
   }, [activeProject.id])
 
-  useEffect(() => { setCurrentPage(1) }, [selectedFolderId, statusFilter, filterConditions])
+  useEffect(() => { setCurrentPage(1) }, [selectedFolderId, statusFilter, filterConditions, keywordSearch])
+
+  useEffect(() => {
+    if (!createRunMenuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (createRunMenuRef.current && !createRunMenuRef.current.contains(e.target as Node)) {
+        setCreateRunMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [createRunMenuOpen])
 
   const rootFolders = useMemo(
     () => activeFolders.filter((f) => !f.parentId).sort((a, b) => a.name.localeCompare(b.name)),
@@ -371,8 +390,16 @@ export function CasesScreen() {
       })
     }
 
+    if (keywordSearch.trim()) {
+      const kw = keywordSearch.toLowerCase()
+      result = result.filter((c) =>
+        c.title.toLowerCase().includes(kw) ||
+        (c.caseKey ?? '').toLowerCase().includes(kw)
+      )
+    }
+
     return result
-  }, [folderCases, statusFilter, activeRuns, filterConditions])
+  }, [folderCases, statusFilter, activeRuns, filterConditions, keywordSearch])
 
   const totalCases = displayedCases.length
   const pageSizeNum = pageSize === 'all' ? totalCases : pageSize
@@ -524,6 +551,22 @@ export function CasesScreen() {
 
   const unfiledCount = activeCases.filter((c) => !c.folderId).length
 
+  function openCreateRunModal(scope: 'folder' | 'all') {
+    setCreateRunMenuOpen(false)
+    setCreateRunModal({ scope, name: '' })
+  }
+
+  function doCreateRun() {
+    if (!createRunModal?.name.trim()) return
+    const caseIds =
+      createRunModal.scope === 'folder'
+        ? folderCases.map((c) => c.id)
+        : undefined
+    createRun({ name: createRunModal.name.trim(), caseIds })
+    setCreateRunModal(null)
+    router.push(projectHref('testruns'))
+  }
+
   return (
     <div className="view">
       <FreshTopbar
@@ -536,6 +579,48 @@ export function CasesScreen() {
         searchWidth={200}
         actions={
           <>
+            <div style={{ position: 'relative' }} ref={createRunMenuRef}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setCreateRunMenuOpen((v) => !v)}
+              >
+                <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
+                <i className="ti ti-chevron-down" style={{ fontSize: 10, marginLeft: 3 }} />
+              </button>
+              {createRunMenuOpen ? (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 4,
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    boxShadow: '0 4px 16px rgba(0,0,0,.18)',
+                    zIndex: 200,
+                    minWidth: 220,
+                    padding: 4,
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="ctx-item"
+                    onClick={() => openCreateRunModal('folder')}
+                  >
+                    <i className="ti ti-folder" /> Cases in current folder ({folderCases.length})
+                  </button>
+                  <button
+                    type="button"
+                    className="ctx-item"
+                    onClick={() => openCreateRunModal('all')}
+                  >
+                    <i className="ti ti-stack" /> All project cases ({activeCases.length})
+                  </button>
+                </div>
+              ) : null}
+            </div>
             <button type="button" className="btn" onClick={() => selectFolder('f-import')}><i className="ti ti-upload" style={{ fontSize: 12 }} /> Import</button>
             <button type="button" className="btn" onClick={() => setQuickOpen((v) => !v)}><i className="ti ti-bolt" style={{ fontSize: 12 }} /> Quick create</button>
             <button type="button" className="btn btn-p" onClick={() => openCreateCase(targetFolderId)}><i className="ti ti-plus" style={{ fontSize: 12 }} /> New case</button>
@@ -747,7 +832,32 @@ export function CasesScreen() {
               ) : null}
             </div>
 
-            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+            <div style={{ position: 'relative', marginLeft: 'auto' }}>
+              <i
+                className="ti ti-search"
+                style={{
+                  position: 'absolute', left: 7, top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: 12, color: 'var(--text3)', pointerEvents: 'none',
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Search cases…"
+                value={keywordSearch}
+                onChange={(e) => setKeywordSearch(e.target.value)}
+                style={{
+                  fontSize: 12,
+                  padding: '3px 7px 3px 24px',
+                  borderRadius: 4,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text1)',
+                  width: 180,
+                }}
+              />
+            </div>
+            <span style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
               {displayedCases.length} cases
             </span>
           </div>
@@ -1091,6 +1201,79 @@ export function CasesScreen() {
           </div>
         )
       })() : null}
+      {createRunModal ? (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 400,
+            background: 'rgba(0,0,0,.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setCreateRunModal(null)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: 20,
+              width: 340,
+              boxShadow: '0 8px 32px rgba(0,0,0,.22)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>
+              Create test run
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>
+              {createRunModal.scope === 'folder'
+                ? `${folderCases.length} cases from "${folderLabel(activeFolders, selectedFolderId === '__unfiled__' ? null : selectedFolderId)}"`
+                : `${activeCases.length} cases (all project cases)`}
+            </div>
+            <input
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              type="text"
+              placeholder="Run name…"
+              value={createRunModal.name}
+              onChange={(e) =>
+                setCreateRunModal((m) => (m ? { ...m, name: e.target.value } : m))
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') doCreateRun()
+                if (e.key === 'Escape') setCreateRunModal(null)
+              }}
+              style={{
+                width: '100%',
+                fontSize: 13,
+                padding: '6px 8px',
+                borderRadius: 4,
+                border: '1px solid var(--border)',
+                background: 'var(--surface2, var(--surface))',
+                color: 'var(--text1)',
+                boxSizing: 'border-box',
+                marginBottom: 14,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setCreateRunModal(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-p"
+                disabled={!createRunModal.name.trim()}
+                onClick={doCreateRun}
+              >
+                <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

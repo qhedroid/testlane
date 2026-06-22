@@ -95,7 +95,7 @@ export type FreshAction =
   | { type: 'SEAL_RUN'; runId: string }
   | { type: 'UNSEAL_RUN'; runId: string }
   | { type: 'SET_CURRENT_RUN'; runId: string }
-  | { type: 'CREATE_RUN'; name: string; description?: string }
+  | { type: 'CREATE_RUN'; name: string; description?: string; caseIds?: string[] }
   | { type: 'DUPLICATE_RUN'; runId: string }
   | { type: 'ARCHIVE_RUN'; runId: string }
   | { type: 'DELETE_RUN'; runId: string }
@@ -314,7 +314,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const num = getActiveProjectNextRunNum(state)
       const runKey = formatRunKey(num)
       const id = newId('run')
-      const caseOrder = listActiveProjectTestCases(state).map((c) => c.id)
+      const caseOrder = action.caseIds ?? listActiveProjectTestCases(state).map((c) => c.id)
       const run: DemoRun = {
         id,
         projectId,
@@ -458,7 +458,7 @@ interface FreshContextValue {
   sealRun: () => void
   unsealRun: () => void
   setCurrentRun: (runId: string) => void
-  createRun: (input: { name: string; description?: string }) => { runKey: string }
+  createRun: (input: { name: string; description?: string; caseIds?: string[] }) => { runKey: string }
   duplicateRun: (runId: string) => { runKey: string } | null
   archiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
@@ -557,10 +557,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const createRun = useCallback(
-    (input: { name: string; description?: string }) => {
+    (input: { name: string; description?: string; caseIds?: string[] }) => {
       const num = getActiveProjectNextRunNum(state)
       const runKey = formatRunKey(num)
-      dispatch({ type: 'CREATE_RUN', name: input.name, description: input.description })
+      dispatch({ type: 'CREATE_RUN', name: input.name, description: input.description, caseIds: input.caseIds })
       return { runKey }
     },
     [state],
