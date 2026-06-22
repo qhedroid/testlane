@@ -54,15 +54,18 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 | File | Status | What it delivers |
 |------|--------|-----------------|
 | `task-07c-bug-fix-case-id-collision.md` | **Ready to run** | Fix case id collision across projects; schema v9 migration |
+| `task-07d-bug-fix-project-switch-flicker.md` | **Ready to run** | Fix project switch reversion race in ProjectRouteSync |
 | `task-08-toolbar-search-create-run.md` | **Ready to run** | Keyword search bar in tc-bar, "Create test run" dropdown in topbar (all cases or folder scope), modal with name input |
 
-**Run task-07c first, then task-08.**
+**Run task-07c → task-07d → task-08.**
 
-### Task 07c — pending bug fix
+### Task 07c / 07d — pending bug fixes
 
-After Task 07b ran, one additional bug was found:
+After Task 07b ran, two additional bugs were found:
 
-**Edit/save creates duplicate case** — `addCase` in `FreshProvider` uses `nextCaseId(num)` which returns `TC-${1000+num}`. Every new project starts at counter 1, so all projects generate `TC-1001`, `TC-1002`, etc. `REPLACE_CASE` matches across all projects by id, corrupting cases from other projects and producing duplicate ids in `activeCases`. Fix: use `newId('case')` in `addCase`; add schema v9 migration to remap existing collision-prone ids. Addressed in `task-07c`.
+**Edit/save creates duplicate case (07c)** — `addCase` in `FreshProvider` uses `nextCaseId(num)` which returns `TC-${1000+num}`. Every new project starts at counter 1, so all projects generate `TC-1001`, `TC-1002`, etc. `REPLACE_CASE` matches across all projects by id, corrupting cases from other projects and producing duplicate ids in `activeCases`. Fix: use `newId('case')` in `addCase`; add schema v9 migration to remap existing collision-prone ids. Addressed in `task-07c`.
+
+**Project switch flicker / first attempt stays on P1 (07d)** — `ProjectRouteSync` includes `state.activeProjectId` in its effect deps. When `handleSelect` calls `setActiveProject(P2)` + `router.push('/P2/cases')`, the state change fires the effect immediately while `usePathname()` still reads `/P1/cases`. The effect sees URL=P1 vs state=P2 and calls `setActiveProject(P1)` — reverting the state. The reversion then causes `CasesScreen`'s URL sync effect to call `window.history.replaceState('/P1/cases')` mid-navigation, which aborts the `router.push` in Next.js 15. Fix: remove `state.activeProjectId` from the effect deps; read it via a ref instead. Addressed in `task-07d`.
 
 ---
 
@@ -85,7 +88,9 @@ After Task 07b ran, one additional bug was found:
 - **`adminSettings` is not in the default `useFresh()` destructure** in CasesScreen — fixed in Task 03; it is now destructured there.
 - **Case detail panel drag direction**: right-anchored panels need `start - dx` not `start + dx` — covered in task-03b prompt.
 - **`formatRunKey` exists in `demo-model.ts`** — Task 06's `formatCaseKey` should follow the exact same pattern and live next to it.
-- **`router.replace` across different page files causes full remount** — `/cases` and `/cases/tc/[caseKey]` are backed by different `page.tsx` files. Any `router.replace` between them remounts the component. Always use `window.history.replaceState` for in-component URL updates that should not trigger navigation. `ProjectRouteSync` still uses `router.replace` correctly because it handles actual project switches.
+- **`router.replace` across different page files causes full remount** — `/cases` and `/cases/tc/[caseKey]` are backed by different `page.tsx` files. Any `router.replace` between them remounts the component. Always use `window.history.replaceState` for in-component URL updates that should not trigger navigation. `ProjectRouteSync` still uses `router.replace` correctly for the unknown-project redirect case.
+- **`window.history.replaceState` during an in-flight `router.push` aborts it** (Next.js 15) — This is why the CasesScreen URL sync effect (which calls `window.history.replaceState`) must not fire with stale project data during a project switch. Fixed in task-07d by preventing `ProjectRouteSync` from reverting state mid-navigation.
+- **`ProjectRouteSync` must not depend on `state.activeProjectId`** — Adding it to deps causes the effect to fire when the switcher dispatches `setActiveProject`, while `pathname` still reads the old URL, creating a reversion race. Use a ref to read the latest value without triggering re-runs.
 - **`CreateCaseModal` is always mounted** (returns `null` when closed, not unmounted). `useState` initialises only once. Use a `useEffect` watching `createCaseOpen` to reset field values each time the modal opens.
 
 ---
