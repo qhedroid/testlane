@@ -21,7 +21,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Schema version
-**Current: v8** (`DEMO_SCHEMA_VERSION = 8` in `apps/web/src/fresh/data/demo-model.ts`)
+**Current: v8** (v9 pending task-07c execution)
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
@@ -29,6 +29,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 | v6 | Added `activeCustomFieldIds: string[]` and `projectSettings?: ProjectSettings` to `Project` | v5→v6 adds `activeCustomFieldIds: []` to any project missing it |
 | v7 | Added `template`, `references`, `summary`, `customFieldValues` to `Case` | v6→v7 backfills new fields with defaults on existing cases |
 | v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
+| v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
 
 ---
 
@@ -46,27 +47,22 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 | Task 05 | Last Results sparkline (status dot + 5 bars), Filter panel (field+operator+value, AND logic) | — |
 | Task 06 | `TC-XXXXX` case IDs (schema v8, `nextCaseNumByProject`), pagination footer, folder search | — |
 | Task 07 | CaseDetail metadata reorder, navigation arrows (← →), sparkline tooltip (per-cell), URL sync via `testCasePath`/`parseTestCaseKey` + new `[caseKey]/page.tsx` route | `b8f5c8a` |
+| Task 07b | Panel flash fix (`window.history.replaceState`), folder default in CreateCaseModal, per-bar sparkline tooltips with hover-delay dismiss, arrow key navigation | — |
 
 ### Pending Cursor prompts (not yet executed)
 
 | File | Status | What it delivers |
 |------|--------|-----------------|
+| `task-07c-bug-fix-case-id-collision.md` | **Ready to run** | Fix case id collision across projects; schema v9 migration |
 | `task-08-toolbar-search-create-run.md` | **Ready to run** | Keyword search bar in tc-bar, "Create test run" dropdown in topbar (all cases or folder scope), modal with name input |
-| `task-07b-bug-fixes-sparkline-arrowkeys.md` | **Ready to run** | 3 bug fixes + 2 improvements from Task 07 execution (see below) |
 
-**Run task-07b first, then task-08.**
+**Run task-07c first, then task-08.**
 
-### Task 07b post-execution bugs
+### Task 07c — pending bug fix
 
-After Cursor executed Task 07 (commit `b8f5c8a`), the following issues were found:
+After Task 07b ran, one additional bug was found:
 
-1. **Panel flash on new projects** — clicking a case opens the panel for a fraction of a second then closes it. Root cause: `router.replace` in the URL sync effect triggers a full Next.js remount because `/cases` and `/cases/tc/[caseKey]` are different page files. Fix: `window.history.replaceState` instead.
-2. **New case created in Unfiled** — "New case" button opens `CreateCaseModal` which initialises `folderId = ''` regardless of the selected folder. Fix: pass `targetFolderId` through `openCreateCase` and sync in the modal.
-3. **Project switch flicker** — switching projects causes aggressive flickering. Same root cause as #1: `ProjectRouteSync` and `CasesScreen`'s URL sync effect both call `router.replace` and fight each other. Same fix.
-4. **Shared sparkline tooltip** — all 5 bars in the sparkline show the same (most recent) result. Each bar should show its own run's details, with hover-delay dismiss and a black outline on the hovered bar.
-5. **No arrow key navigation** — ArrowUp/Down should navigate cases when the detail panel is open.
-
-All five are addressed in `task-07b`.
+**Edit/save creates duplicate case** — `addCase` in `FreshProvider` uses `nextCaseId(num)` which returns `TC-${1000+num}`. Every new project starts at counter 1, so all projects generate `TC-1001`, `TC-1002`, etc. `REPLACE_CASE` matches across all projects by id, corrupting cases from other projects and producing duplicate ids in `activeCases`. Fix: use `newId('case')` in `addCase`; add schema v9 migration to remap existing collision-prone ids. Addressed in `task-07c`.
 
 ---
 
