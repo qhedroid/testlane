@@ -254,6 +254,29 @@ export function migrateDemoState(raw: unknown): DemoState {
         schemaVersion: 8,
       }
     }
+    // v8 → v9: replace collision-prone TC-NNNN case ids with globally unique ids.
+    // nextCaseId() used TC-${1000+num} — always exactly 4 digits, e.g. TC-1001.
+    // Multiple projects starting at counter 1 all produce the same ids, causing
+    // REPLACE_CASE to corrupt cases across projects. Reassign with newId('case').
+    if (state.schemaVersion < 9) {
+      const idMap = new Map<string, string>()
+      const cases = state.cases.map((c) => {
+        if (/^TC-\d{4}$/.test(c.id)) {
+          const freshId = newId('case')
+          idMap.set(c.id, freshId)
+          return { ...c, id: freshId }
+        }
+        return c
+      })
+      const runs = idMap.size === 0 ? state.runs : state.runs.map((r) => ({
+        ...r,
+        caseOrder: r.caseOrder.map((id) => idMap.get(id) ?? id),
+        executions: Object.fromEntries(
+          Object.entries(r.executions).map(([caseId, ex]) => [idMap.get(caseId) ?? caseId, ex]),
+        ),
+      }))
+      state = { ...state, cases, runs, schemaVersion: 9 }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }

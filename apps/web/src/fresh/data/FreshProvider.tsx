@@ -27,7 +27,6 @@ import {
 import { findRunById } from './run-utils'
 import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatRunKey, newId } from './demo-model'
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
-import { nextCaseId } from './ui-utils'
 
 const STORAGE_KEY = 'relay-demo-v2'
 
@@ -489,7 +488,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const addCase = useCallback(
     (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => {
-      const id = nextCaseId(getActiveProjectNextCaseNum(state))
+      const id = newId('case')
       const newCase: Case = {
         ...data,
         id,

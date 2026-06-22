@@ -116,7 +116,7 @@ export interface DemoRun {
   executions: Record<string, CaseExecution>
 }
 
-export const DEMO_SCHEMA_VERSION = 8
+export const DEMO_SCHEMA_VERSION = 9
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
