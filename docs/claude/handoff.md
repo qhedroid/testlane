@@ -21,13 +21,16 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Schema version
-**Current: v8** (v9 pending task-07c execution)
+**Current: v9** (v10 pending task-09 execution)
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
 | v5 | Baseline before admin panel work | — |
 | v6 | Added `activeCustomFieldIds: string[]` and `projectSettings?: ProjectSettings` to `Project` | v5→v6 adds `activeCustomFieldIds: []` to any project missing it |
 | v7 | Added `template`, `references`, `summary`, `customFieldValues` to `Case` | v6→v7 backfills new fields with defaults on existing cases |
+| v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
+| v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
+| v10 | (pending task-09) Added `resultNotes/testedAt/testedBy` to `CaseExecution`; `executionLog: ExecutionLogEntry[]` to `DemoRun` | v9→v10 adds `executionLog: []` to all runs; backfills missing execution fields with defaults |
 | v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
 | v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
 
@@ -54,9 +57,20 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 | Task 07d | Project switch reversion race fix in `ProjectRouteSync` (removed `state.activeProjectId` from effect deps, reads via ref instead) | `d6a163e` |
 | Task 08 | Keyword search bar in tc-bar; "Create test run" dropdown with folder-scope and all-cases options; name modal with Enter/Escape; navigates to `/runs` on create | `8c7ac23` |
 
+### Tasks 09–10 — Test Runs feature (drafted, not yet executed)
+
+| Task | What it will deliver |
+|------|---------------------|
+| Task 09 | Schema v10: `CaseExecution.resultNotes/testedAt/testedBy`, `ExecutionLogEntry` type, `DemoRun.executionLog`, `UPDATE_RUN` action + `editRun()` in FreshProvider, migration v9→v10, new route `/testruns/tr/[runKey]/tc/[caseKey]/page.tsx`, `testRunCasePath()` + `parseTestRunCaseKey()` helpers |
+| Task 10 | RunsScreen overhaul: case ID display fix (show caseKey), URL sync to `/tr/{runKey}/tc/{caseKey}`, folder grouping in case list, status-label click-to-filter on summary, rich filter panel (Result/Priority/Assignee/Type), team summary, "Add Result Information" textarea, real History tab from executionLog, EditRunModal |
+
+Cursor prompts: `docs/cursor-prompts/mvp-test-cases/task-09-runs-data-model.md` and `task-10-runs-screen-overhaul.md`.
+
+**Run Task 09 first, then Task 10.**
+
 ### Pending Cursor prompts (not yet executed)
 
-None. Branch is feature-complete and ready for PR.
+None besides Task 09 and Task 10 above.
 
 ### Task 07c / 07d — pending bug fixes
 
