@@ -125,8 +125,28 @@ Remove the existing standalone `<span>` that shows the case count (it will be mo
 
 #### C1 — State and refs
 
+First, update the `next/navigation` import at the top of the file to add `useRouter`:
+
 ```ts
-const router = useRouter() // import from 'next/navigation'
+// Before:
+import { usePathname } from 'next/navigation'
+// After:
+import { usePathname, useRouter } from 'next/navigation'
+```
+
+Then add `createRun` to the `useFresh()` destructure (line ~227):
+
+```ts
+// Before:
+const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, deleteCase, addFolder } = useFresh()
+// After:
+const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun } = useFresh()
+```
+
+Then add state and refs inside the component:
+
+```ts
+const router = useRouter()
 const [createRunMenuOpen, setCreateRunMenuOpen] = useState(false)
 const createRunMenuRef = useRef<HTMLDivElement>(null)
 const [createRunModal, setCreateRunModal] = useState<{
