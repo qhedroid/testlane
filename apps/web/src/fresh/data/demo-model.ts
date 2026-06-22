@@ -96,6 +96,18 @@ export interface CaseExecution {
   assignee?: string
   stepResults: Record<string, ExecStatus>
   defects?: string[]
+  resultNotes?: string
+  testedAt?: string
+  testedBy?: string
+}
+
+export interface ExecutionLogEntry {
+  id: string
+  caseId: string
+  at: string
+  by: string
+  from: ExecStatus
+  to: ExecStatus
 }
 
 export interface DemoRun {
@@ -114,9 +126,10 @@ export interface DemoRun {
   archivedAt?: string
   caseOrder: string[]
   executions: Record<string, CaseExecution>
+  executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 9
+export const DEMO_SCHEMA_VERSION = 10
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {

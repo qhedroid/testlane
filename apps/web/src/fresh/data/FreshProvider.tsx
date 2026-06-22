@@ -90,6 +90,7 @@ export type FreshAction =
   | { type: 'REPLACE_CASE'; case: Case }
   | { type: 'DELETE_CASE'; caseId: string }
   | { type: 'UPDATE_RUN_EXECUTION'; runId: string; caseId: string; patch: Partial<CaseExecution> }
+  | { type: 'UPDATE_RUN'; runId: string; patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>> }
   | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string }
   | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
   | { type: 'SEAL_RUN'; runId: string }
@@ -249,15 +250,41 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const runs = state.runs.map((r) => {
         if (r.id !== action.runId) return r
         const prev = r.executions[action.caseId] ?? { status: 'Not run' as ExecStatus, stepResults: {} }
+        const newEx: CaseExecution = { ...prev, ...action.patch }
+        let executionLog = r.executionLog ?? []
+        if (action.patch.status && action.patch.status !== prev.status) {
+          executionLog = [
+            ...executionLog,
+            {
+              id: newId('log'),
+              caseId: action.caseId,
+              at: new Date().toISOString(),
+              by: newEx.assignee ?? prev.assignee ?? 'Shaun Sevume',
+              from: prev.status,
+              to: action.patch.status,
+            },
+          ]
+          if (action.patch.status !== 'Not run') {
+            newEx.testedAt = new Date().toISOString()
+            newEx.testedBy = newEx.assignee ?? prev.assignee ?? 'Shaun Sevume'
+          }
+        }
         return {
           ...r,
-          executions: {
-            ...r.executions,
-            [action.caseId]: { ...prev, ...action.patch },
-          },
+          executions: { ...r.executions, [action.caseId]: newEx },
+          executionLog,
         }
       })
       next = { ...state, runs }
+      break
+    }
+    case 'UPDATE_RUN': {
+      next = {
+        ...state,
+        runs: state.runs.map((r) =>
+          r.id === action.runId ? { ...r, ...action.patch } : r,
+        ),
+      }
       break
     }
     case 'ADD_STEP_COMMENT': {
@@ -462,6 +489,7 @@ interface FreshContextValue {
   duplicateRun: (runId: string) => { runKey: string } | null
   archiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
+  editRun: (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => void
   addFolder: (name: string, parentId?: string | null) => string
   isRunSealed: boolean
 }
@@ -585,6 +613,13 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const deleteRun = useCallback((runId: string) => {
     dispatch({ type: 'DELETE_RUN', runId })
   }, [])
+
+  const editRun = useCallback(
+    (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => {
+      dispatch({ type: 'UPDATE_RUN', runId, patch })
+    },
+    [],
+  )
 
   const addFolder = useCallback(
     (name: string, parentId?: string | null) => {
@@ -777,6 +812,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       duplicateRun,
       archiveRun,
       deleteRun,
+      editRun,
       addFolder,
       isRunSealed,
     }),
@@ -828,6 +864,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       duplicateRun,
       archiveRun,
       deleteRun,
+      editRun,
       addFolder,
       isRunSealed,
     ],

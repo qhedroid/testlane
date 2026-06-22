@@ -277,6 +277,28 @@ export function migrateDemoState(raw: unknown): DemoState {
       }))
       state = { ...state, cases, runs, schemaVersion: 9 }
     }
+    // v9 → v10: add executionLog to runs; add resultNotes/testedAt/testedBy to executions
+    if (state.schemaVersion < 10) {
+      state = {
+        ...state,
+        runs: state.runs.map((r) => ({
+          ...r,
+          executionLog: r.executionLog ?? [],
+          executions: Object.fromEntries(
+            Object.entries(r.executions).map(([caseId, ex]) => [
+              caseId,
+              {
+                ...ex,
+                resultNotes: ex.resultNotes ?? '',
+                testedAt: ex.testedAt ?? undefined,
+                testedBy: ex.testedBy ?? undefined,
+              },
+            ]),
+          ),
+        })),
+        schemaVersion: 10,
+      }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }

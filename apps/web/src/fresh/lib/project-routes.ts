@@ -48,8 +48,24 @@ export function testRunPath(projectKey: string, runKey?: string): string {
 /** Extract runKey from /:projectKey/testruns/tr/:runKey paths. */
 export function parseTestRunKey(pathname: string): string | null {
   const parts = pathname.split('/').filter(Boolean)
-  if (parts.length === 4 && parts[1] === MODULE_SLUGS.testruns && parts[2] === 'tr') {
+  // /projectKey/testruns/tr/runKey  OR  /projectKey/testruns/tr/runKey/tc/caseKey
+  if ((parts.length === 4 || parts.length === 6) && parts[1] === MODULE_SLUGS.testruns && parts[2] === 'tr') {
     return parts[3]
+  }
+  return null
+}
+
+/** Canonical path for a specific test case inside a test run. */
+export function testRunCasePath(projectKey: string, runKey: string, caseKey: string): string {
+  return `${testRunPath(projectKey, runKey)}/tc/${caseKey}`
+}
+
+/** Extract caseKey from /:projectKey/testruns/tr/:runKey/tc/:caseKey paths. */
+export function parseTestRunCaseKey(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean)
+  // parts: [projectKey, 'testruns', 'tr', runKey, 'tc', caseKey]
+  if (parts.length === 6 && parts[1] === MODULE_SLUGS.testruns && parts[2] === 'tr' && parts[4] === 'tc') {
+    return parts[5]
   }
   return null
 }
