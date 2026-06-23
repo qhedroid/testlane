@@ -21,7 +21,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Schema version
-**Current: v9** (v10 pending task-09 execution)
+**Current: v11**
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
@@ -73,15 +73,15 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 | Task 04 | Tab restructure: remove Activity tab, merge Steps into Details, arrow key navigation (↑↓), scrollable `CreateCaseModal` | ✅ Complete |
 | Task 05 | Run management: auto-open first/last run, Testiny-style empty-run state, `CreateRunModal` creates empty runs, no-cases guards, navigate to new run after creation | ✅ Complete |
 | Task 05b | Fix project-switch flicker: `projectMismatch` guard in RunsScreen (3 effects) and CasesScreen (URL-sync effect) | ✅ Complete (RunsScreen fully fixed; CasesScreen residual flicker deferred — see Known Bugs) |
+| Task 06 | Schema v11: `Case.createdAt`; Testiny-style sparkline tooltip (link to run); case ID hover tooltip in runs (link to test case, created/modified) | ✅ Complete |
+| Task 07 | `ADD_CASES_TO_RUN` action, `AddCasesToRunModal` (searchable, folder-grouped, checkboxes), "+ Add cases" button in RunsScreen, wired empty-run button | ✅ Complete |
 | Task 05 | Run management: auto-open first/last run, Testiny-style empty-run state, `CreateRunModal` creates empty runs, no-cases guards, navigate to new run after creation |
-| Task 06 | Schema v11: `Case.createdAt`; Testiny-style sparkline tooltip (link to run); case ID hover tooltip in runs (link to test case, created/modified) |
-| Task 07 | Add cases to run: `ADD_CASES_TO_RUN` action, `AddCasesToRunModal` (searchable, folder-grouped, checkboxes), "+ Add cases" button in RunsScreen |
+| Task 06 | Schema v11: `Case.createdAt`; Testiny-style sparkline tooltip (link to run); case ID hover tooltip in runs (link to test case, created/modified) | ✅ Complete |
+| Task 07 | Add cases to run: `ADD_CASES_TO_RUN` action, `AddCasesToRunModal` (searchable, folder-grouped, checkboxes), "+ Add cases" button in RunsScreen | ✅ Complete |
 
-**Run in order: 03 → 04 → 05 → 06 → 07.**
+### Pending
 
-### Pending Cursor prompts (not yet executed)
-
-Tasks 03–07 above.
+Task 07b — feedback fixes on Task 07 (to be drafted in next session).
 
 ### Task 07c / 07d — pending bug fixes
 
