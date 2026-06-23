@@ -717,21 +717,34 @@ export function RunsScreen() {
                     {summaryTab === 'team' && (
                       <div className="ec-summary-tab-content">
                         {teamSummary.length === 0 ? (
-                          <div style={{ fontSize: 11, color: 'var(--text3)', padding: '6px 0' }}>0 users</div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)', padding: '4px 0' }}>0 users</div>
                         ) : (
-                          teamSummary.map((m) => (
-                            <div key={m.name} className="ec-team-row">
-                              <div className="ec-team-av">{m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}</div>
-                              <div className="ec-team-name">{m.name}</div>
-                              <div className="ec-team-stats">
-                                {m.passed > 0 && <span style={{ color: 'var(--pass)' }}>{m.passed}P</span>}
-                                {m.failed > 0 && <span style={{ color: 'var(--fail)' }}>{m.failed}F</span>}
-                                {m.blocked > 0 && <span style={{ color: 'var(--block)' }}>{m.blocked}B</span>}
-                                {m.notRun > 0 && <span style={{ color: 'var(--text3)' }}>{m.notRun}N</span>}
+                          teamSummary.map((m) => {
+                            const isActive = advFilter.assignee === m.name
+                            return (
+                              <div
+                                key={m.name}
+                                className="ec-team-row"
+                                style={{ cursor: 'pointer', borderRadius: 3, padding: '3px 4px', background: isActive ? 'rgba(25,118,210,.08)' : 'transparent' }}
+                                onClick={() =>
+                                  setAdvFilter((f) => ({
+                                    ...f,
+                                    assignee: f.assignee === m.name ? '' : m.name,
+                                  }))
+                                }
+                              >
+                                <div className="ec-team-av">
+                                  {m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="ec-team-name" style={{ color: isActive ? 'var(--accent)' : undefined }}>
+                                  {m.name}
+                                </div>
+                                <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text3)' }}>
+                                  {m.total} {m.total === 1 ? 'case' : 'cases'} assigned
+                                </div>
                               </div>
-                              <div className="ec-team-total">{m.total}</div>
-                            </div>
-                          ))
+                            )
+                          })
                         )}
                       </div>
                     )}
@@ -1375,6 +1388,7 @@ function ExecDetailPane({
                 className="ed-hist-dot"
                 style={{
                   background:
+                    e.event === 'created' ? 'var(--accent)' :
                     e.to === 'Passed' ? 'var(--pass)' :
                     e.to === 'Failed' ? 'var(--fail)' :
                     e.to === 'Blocked' ? 'var(--block)' :
@@ -1383,7 +1397,7 @@ function ExecDetailPane({
               />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>
-                  {e.from} → {e.to}
+                  {e.event === 'created' ? 'Record was created' : `${e.from} → ${e.to}`}
                 </div>
                 <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>
                   {e.by} · {formatRelativeTime(e.at)}

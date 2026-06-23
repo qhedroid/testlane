@@ -109,6 +109,7 @@ export interface ExecutionLogEntry {
   by: string
   from: ExecStatus
   to: ExecStatus
+  event?: 'created'
 }
 
 export interface DemoRun {

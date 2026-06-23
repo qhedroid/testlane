@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project, ProjectSettings } from './demo-model'
+import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction } from './admin-reducer'
 import {
   getActiveProject,
@@ -305,13 +305,28 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       break
     }
     case 'ADD_CASES_TO_RUN': {
+      const now = new Date().toISOString()
       next = {
         ...state,
         runs: state.runs.map((r) => {
           if (r.id !== action.runId) return r
           const existing = new Set(r.caseOrder)
           const newIds = action.caseIds.filter((id) => !existing.has(id))
-          return { ...r, caseOrder: [...r.caseOrder, ...newIds] }
+          if (newIds.length === 0) return r
+          const createdEntries: ExecutionLogEntry[] = newIds.map((caseId) => ({
+            id: newId('log'),
+            caseId,
+            at: now,
+            by: 'Shaun Sevume',
+            from: 'Not run' as ExecStatus,
+            to: 'Not run' as ExecStatus,
+            event: 'created' as const,
+          }))
+          return {
+            ...r,
+            caseOrder: [...r.caseOrder, ...newIds],
+            executionLog: [...(r.executionLog ?? []), ...createdEntries],
+          }
         }),
       }
       break
