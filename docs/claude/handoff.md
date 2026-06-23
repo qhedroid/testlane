@@ -81,7 +81,7 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
 ### Pending
 
-Task 07b — feedback fixes on Task 07 (to be drafted in next session).
+Task 07b — feedback fixes on Task 07. **Prompt drafted** at `docs/cursor-prompts/mvp-test-runs/task-07b-runs-ui-polish.md`. 9 fixes covering: Details pane reorganisation, step scroll/height, shortcut bar, create-run guard, TR-XXXXX tooltip format, case ID blue/underline, row font sizes, Summary collapsible, tab reorder + Requirements tab.
 
 ### Task 07c / 07d — pending bug fixes
 
