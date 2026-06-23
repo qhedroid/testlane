@@ -16,24 +16,17 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-test-runs` (branched from `mvp-test-cases`)
+`mvp-user-role-access` (branched from `mvp-test-runs`)
 
 ---
 
 ## Schema version
-**Current: v11**
+**Current: v12**
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
-| v5 | Baseline before admin panel work | — |
-| v6 | Added `activeCustomFieldIds: string[]` and `projectSettings?: ProjectSettings` to `Project` | v5→v6 adds `activeCustomFieldIds: []` to any project missing it |
-| v7 | Added `template`, `references`, `summary`, `customFieldValues` to `Case` | v6→v7 backfills new fields with defaults on existing cases |
-| v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
-| v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
-| v10 | Added `resultNotes/testedAt/testedBy` to `CaseExecution`; `executionLog: ExecutionLogEntry[]` to `DemoRun` | v9→v10 adds `executionLog: []` to all runs; backfills missing execution fields with defaults |
-| v11 | (pending task-06) Added `createdAt?: string` to `Case` | v10→v11 sets `createdAt = updatedAt` for all existing cases |
-| v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
-| v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
+| v12 | User/role access MVP: `currentActorUserId`, `AdminUser.firstName/lastName/projectAccess`, statuses (Pending invite, Silent created, Disabled), `AdminRole.permissions`, built-in role set | v11→v12 via `migrateUserAccessV12` |
+| v11 | Added `createdAt?: string` to `Case` | v10→v11 sets `createdAt = updatedAt` for all existing cases |
 
 ---
 
@@ -65,7 +58,16 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 | Task 01 | Schema v10, `ExecutionLogEntry`, `CaseExecution.resultNotes/testedAt/testedBy`, `DemoRun.executionLog`, `UPDATE_RUN` + `editRun()`, route `/testruns/tr/[runKey]/tc/[caseKey]/page.tsx`, `testRunCasePath()` + `parseTestRunCaseKey()` | `b7a7b5b` |
 | Task 02 | RunsScreen overhaul: caseKey display, URL sync, folder grouping, status-click filter, rich filter panel, team summary, result notes, History tab, EditRunModal | — |
 
-### Tasks 03–07 — Feedback fixes
+### User / role access MVP — Complete ✅
+
+| Area | What it delivered |
+|------|------------------|
+| User management | Full table, invite (silent + pending), edit, disable/reactivate, project access |
+| Role management | 7 built-in roles, custom role CRUD, permission matrix |
+| Demo actor | Top-bar switcher; RBAC on admin user/role actions |
+| Schema v12 | `currentActorUserId`, expanded admin models, migration |
+
+### Tasks 01–07 — Feedback fixes (mvp-test-runs)
 
 | Task | What it delivered | Status |
 |------|------------------|--------|

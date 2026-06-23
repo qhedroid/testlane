@@ -1,3 +1,4 @@
+import { formatAdminUserName, SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { AdminSettings, AuditLogEntry, DemoState } from './demo-model'
 import { newId } from './demo-model'
 
@@ -15,6 +16,9 @@ export function generateMaskedApiKey(): string {
 }
 
 export function auditByUser(state: DemoState): string {
+  const actorId = state.currentActorUserId ?? SEED_ADMIN_USER_ID
+  const actor = state.adminSettings.users.find((u) => u.id === actorId)
+  if (actor) return formatAdminUserName(actor)
   return state.adminSettings.profile.displayName
 }
 

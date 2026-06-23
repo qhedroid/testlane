@@ -1,4 +1,5 @@
-import { initialAdminSettings } from './admin-initial-settings'
+import { initialAdminSettings, SEED_ADMIN_USER_ID } from './admin-initial-settings'
+import { migrateUserAccessV12 } from './admin-reducer'
 import { buildInitialDemoState } from './demo-seed'
 import type { Case, DemoRun, DemoState, Folder, LegacyDemoState, Project } from './demo-model'
 import { formatCaseKey } from './demo-model'
@@ -105,6 +106,7 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     nextCaseNumByProject: { [projectId]: legacyNextCaseNum },
     nextRunNumByProject: { [projectId]: 1 },
     adminSettings: initialAdminSettings,
+    currentActorUserId: SEED_ADMIN_USER_ID,
   }
 }
 
@@ -309,6 +311,10 @@ export function migrateDemoState(raw: unknown): DemoState {
         })),
         schemaVersion: 11,
       }
+    }
+    // v11 → v12: user/role access MVP — permissions, actor, silent invite statuses
+    if (state.schemaVersion < 12) {
+      state = migrateUserAccessV12(state)
     }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }

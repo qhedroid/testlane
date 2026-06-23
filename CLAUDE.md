@@ -72,6 +72,22 @@ Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-promp
 - Always add a migration step in `migrate-demo-state.ts` when bumping the schema version.
 - See `DEMO_SCHEMA_VERSION` in `demo-model.ts` for the current value.
 
+## Living product documentation (MANDATORY for Cursor prompts)
+When drafting Cursor prompts, require agents to keep product docs current alongside code changes.
+
+**Living docs:**
+- `docs/product/user-guide.md` — user-facing how-to
+- `docs/product/feature-flow.md` — routes, journeys, feature status, test checklists
+
+**Update both when changing:** user-visible behaviour, routes, demo data, localStorage schema, RBAC behaviour, or module flow.
+
+**Also update when contractual/structural:**
+- `docs/_authoritative/AS_BUILT_SNAPSHOT.md`
+- `docs/_authoritative/FRONTEND_CONTRACTS.md`
+- `docs/claude/handoff.md`
+
+Include a “Documentation” section in each Cursor prompt when the task affects any of the above.
+
 ## Commit message format
 Subject: `<Scope>: <short imperative summary>` (≤72 chars, sentence case, no trailing period)
 

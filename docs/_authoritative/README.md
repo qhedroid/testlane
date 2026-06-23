@@ -74,10 +74,14 @@ Originals preserved at their source paths; `_authoritative/` copies are the main
 
 ## Sync checklist (frontend phase)
 
-- [ ] Route or `dataState` changed → `PROJECT_CONTEXT.md` + `FRONTEND_CONTRACTS.md` + `prototype-contracts.ts`
-- [ ] New mock/API split or persistence change → `AS_BUILT_SNAPSHOT.md` + `DOMAIN_MODEL.md`
+- [ ] Route or `dataState` changed → `PROJECT_CONTEXT.md` + `FRONTEND_CONTRACTS.md` + `prototype-contracts.ts` + **`docs/product/user-guide.md`** + **`docs/product/feature-flow.md`**
+- [ ] New mock/API split or persistence change → `AS_BUILT_SNAPSHOT.md` + `DOMAIN_MODEL.md` + **`docs/product/feature-flow.md`**
+- [ ] User-visible feature or journey change → **`docs/product/user-guide.md`** + **`docs/product/feature-flow.md`**
+- [ ] localStorage schema bump → `DOMAIN_MODEL.md` + `docs/claude/handoff.md` + **`docs/product/feature-flow.md`**
 - [ ] Phase scope change → `MVP_FRONTEND_ONLY_SCOPE.md`
 - [ ] API/services touched (backend slice) → `docs/implementation/api-contracts.md` + `pnpm api:validate`
+
+**Living product docs:** [`docs/product/user-guide.md`](../product/user-guide.md) (user how-to) · [`docs/product/feature-flow.md`](../product/feature-flow.md) (team flow map)
 
 ---
 

@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 5`, multi-project + key routing + run keys + admin settings) |
+| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 12`, multi-project + admin access + actor) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
 | Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
@@ -37,8 +37,10 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | `/:projectKey/settings` | mock | `SettingsScreen` | Read-only preview |
 | `/:projectKey/reports` | placeholder | `PlaceholderScreen` | |
 | `/:projectKey/integrations` | placeholder | `PlaceholderScreen` | |
-| **`/admin`** | **mock + localStorage** | **`AdminShell`** | **Global admin panel** — redirects to `/admin/profile`; not project-prefixed |
-| **`/admin/profile`** … **`/admin/audit-log`** | **mock + localStorage** | **`Admin*PageContent`** | 11 admin sections backed by `DemoState.adminSettings` |
+| **`/admin`** | **mock + localStorage** | **`AdminShell`** | Global settings — actor switcher, sidebar nav |
+| **`/admin/profile`** … **`/admin/audit-log`** | **mock + localStorage** | **`Admin*PageContent`** | Profile, org, projects, audit, etc. |
+| **`/admin/users`** | **mock + localStorage** | **`AdminUsersPageContent`** | User management — invite, silent invite, edit, disable |
+| **`/admin/roles`** | **mock + localStorage** | **`AdminRolesPageContent`** | Role management — built-in + custom, permission matrix |
 
 **Legacy redirects** (client-side, via `LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/${activeProjectKey}/…`. Root `/` → `/DP/dashboard`.
 
@@ -110,7 +112,7 @@ MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/sche
 | Defects screen create | Disabled |
 | Real multi-project switching | **Implemented** — key-prefixed URLs + `ProjectSwitcher` + create modal + add demo project |
 | Project settings screen | Disabled menu item only (coming soon) |
-| Admin panel (`/admin`) | **Implemented** — global route group with sidebar nav; 11 section pages wired to `DemoState.adminSettings` via FreshProvider `admin/*` actions; audit log tracks admin mutations |
+| Admin panel (`/admin`) | **Implemented** — user/role management, demo actor RBAC on admin actions, silent invite, permission matrix |
 
 ---
 

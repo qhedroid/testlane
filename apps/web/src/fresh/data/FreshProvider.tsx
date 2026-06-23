@@ -11,7 +11,9 @@ import {
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
 import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings } from './demo-model'
-import { isAdminAction, reduceAdminState, type AdminAction } from './admin-reducer'
+import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
+import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
+import type { RolePermissions } from './rbac'
 import {
   getActiveProject,
   getActiveProjectCurrentRunId,
@@ -496,15 +498,22 @@ interface FreshContextValue {
   isProjectKeyUnique: (key: string, excludeProjectId?: string) => boolean
   addDemoProject: () => { key: string; name: string }
   adminSettings: DemoState['adminSettings']
+  currentActor: DemoState['adminSettings']['users'][number]
+  setCurrentActor: (userId: string) => void
   saveAdminProfile: (payload: Partial<DemoState['adminSettings']['profile']>) => void
   saveAdminAccount: (payload: Partial<DemoState['adminSettings']['account']>) => void
   toggleAdmin2FA: (method: string) => void
   saveAdminOrganization: (payload: Partial<DemoState['adminSettings']['organization']>) => void
   createAdminApiKey: (payload: Omit<DemoState['adminSettings']['apiKeys'][number], 'id' | 'createdAt' | 'maskedKey' | 'userId'>) => void
   deleteAdminApiKey: (id: string) => void
-  inviteAdminUser: (payload: Omit<DemoState['adminSettings']['users'][number], 'id' | 'lastLoginAt' | 'twoFa' | 'status'>) => void
+  inviteAdminUser: (payload: InviteUserPayload) => void
+  updateAdminUser: (payload: UpdateUserPayload) => void
+  disableAdminUser: (id: string) => void
+  reactivateAdminUser: (id: string) => void
   updateAdminUserRole: (id: string, role: DemoState['adminSettings']['users'][number]['role']) => void
-  createAdminRole: (payload: Omit<DemoState['adminSettings']['roles'][number], 'id' | 'userCount' | 'isBuiltIn'>) => void
+  createAdminRole: (payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }) => void
+  updateAdminRole: (payload: { id: string; name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }) => void
+  deleteAdminRole: (id: string) => void
   addAdminCustomField: (payload: Omit<DemoState['adminSettings']['customFields'][number], 'id'>) => void
   deleteAdminCustomField: (id: string) => void
   saveAdminAutomationRetention: (retentionPeriod: string) => void
@@ -553,6 +562,14 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const activeCases = useMemo(() => listActiveProjectTestCases(state), [state])
   const activeRuns = useMemo(() => listActiveProjectRuns(state), [state])
   const currentRun = useMemo(() => getCurrentRun(state), [state])
+  const currentActor = useMemo(() => {
+    const id = state.currentActorUserId ?? SEED_ADMIN_USER_ID
+    return state.adminSettings.users.find((u) => u.id === id) ?? state.adminSettings.users[0]
+  }, [state])
+
+  const setCurrentActor = useCallback((userId: string) => {
+    dispatch({ type: 'admin/setCurrentActor', payload: { userId } })
+  }, [])
 
   const getCase = useCallback(
     (caseId: string) => activeCases.find((c) => c.id === caseId),
@@ -724,23 +741,43 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'admin/deleteApiKey', payload: { id } })
   }, [])
 
-  const inviteAdminUser = useCallback(
-    (payload: Omit<DemoState['adminSettings']['users'][number], 'id' | 'lastLoginAt' | 'twoFa' | 'status'>) => {
-      dispatch({ type: 'admin/inviteUser', payload })
-    },
-    [],
-  )
+  const inviteAdminUser = useCallback((payload: InviteUserPayload) => {
+    dispatch({ type: 'admin/inviteUser', payload })
+  }, [])
+
+  const updateAdminUser = useCallback((payload: UpdateUserPayload) => {
+    dispatch({ type: 'admin/updateUser', payload })
+  }, [])
+
+  const disableAdminUser = useCallback((id: string) => {
+    dispatch({ type: 'admin/disableUser', payload: { id } })
+  }, [])
+
+  const reactivateAdminUser = useCallback((id: string) => {
+    dispatch({ type: 'admin/reactivateUser', payload: { id } })
+  }, [])
 
   const updateAdminUserRole = useCallback((id: string, role: DemoState['adminSettings']['users'][number]['role']) => {
     dispatch({ type: 'admin/updateUserRole', payload: { id, role } })
   }, [])
 
   const createAdminRole = useCallback(
-    (payload: Omit<DemoState['adminSettings']['roles'][number], 'id' | 'userCount' | 'isBuiltIn'>) => {
+    (payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }) => {
       dispatch({ type: 'admin/createRole', payload })
     },
     [],
   )
+
+  const updateAdminRole = useCallback(
+    (payload: { id: string; name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }) => {
+      dispatch({ type: 'admin/updateRole', payload })
+    },
+    [],
+  )
+
+  const deleteAdminRole = useCallback((id: string) => {
+    dispatch({ type: 'admin/deleteRole', payload: { id } })
+  }, [])
 
   const addAdminCustomField = useCallback(
     (payload: Omit<DemoState['adminSettings']['customFields'][number], 'id'>) => {
@@ -828,6 +865,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       getProjectByKey: getProjectByKeyFn,
       isProjectKeyUnique: isProjectKeyUniqueFn,
       adminSettings: state.adminSettings,
+      currentActor,
+      setCurrentActor,
       saveAdminProfile,
       saveAdminAccount,
       toggleAdmin2FA,
@@ -835,8 +874,13 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       createAdminApiKey,
       deleteAdminApiKey,
       inviteAdminUser,
+      updateAdminUser,
+      disableAdminUser,
+      reactivateAdminUser,
       updateAdminUserRole,
       createAdminRole,
+      updateAdminRole,
+      deleteAdminRole,
       addAdminCustomField,
       deleteAdminCustomField,
       saveAdminAutomationRetention,
@@ -888,8 +932,15 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       createAdminApiKey,
       deleteAdminApiKey,
       inviteAdminUser,
+      updateAdminUser,
+      disableAdminUser,
+      reactivateAdminUser,
       updateAdminUserRole,
       createAdminRole,
+      updateAdminRole,
+      deleteAdminRole,
+      currentActor,
+      setCurrentActor,
       addAdminCustomField,
       deleteAdminCustomField,
       saveAdminAutomationRetention,

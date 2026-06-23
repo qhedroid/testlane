@@ -10,8 +10,32 @@ import type {
   DemoState,
 } from './demo-model'
 import { newId } from './demo-model'
-import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
+import {
+  formatAdminUserName,
+  SEED_ADMIN_USER_ID,
+  syncRoleUserCounts,
+} from './admin-initial-settings'
 import { appendAuditEntry, auditByUser, generateMaskedApiKey } from './admin-utils'
+import type { AdminUserRole, RolePermissions } from './rbac'
+import { ADMIN_USER_ROLES, BUILTIN_ROLE_META, BUILTIN_ROLE_PERMISSIONS, emptyPermissions, isFinalEffectiveAdmin } from './rbac'
+
+export type InviteUserPayload = {
+  firstName: string
+  lastName: string
+  email: string
+  role: AdminUserRole
+  projectAccess: string[]
+  silentInvite: boolean
+}
+
+export type UpdateUserPayload = {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  role: AdminUserRole
+  projectAccess: string[]
+}
 
 export type AdminAction =
   | { type: 'admin/saveProfile'; payload: Partial<AdminSettings['profile']> }
@@ -20,9 +44,14 @@ export type AdminAction =
   | { type: 'admin/saveOrganization'; payload: Partial<AdminSettings['organization']> }
   | { type: 'admin/createApiKey'; payload: Omit<AdminApiKey, 'id' | 'createdAt' | 'maskedKey' | 'userId'> }
   | { type: 'admin/deleteApiKey'; payload: { id: string } }
-  | { type: 'admin/inviteUser'; payload: Omit<AdminUser, 'id' | 'lastLoginAt' | 'twoFa' | 'status'> }
+  | { type: 'admin/inviteUser'; payload: InviteUserPayload }
+  | { type: 'admin/updateUser'; payload: UpdateUserPayload }
+  | { type: 'admin/disableUser'; payload: { id: string } }
+  | { type: 'admin/reactivateUser'; payload: { id: string } }
   | { type: 'admin/updateUserRole'; payload: { id: string; role: AdminUser['role'] } }
-  | { type: 'admin/createRole'; payload: Omit<AdminRole, 'id' | 'userCount' | 'isBuiltIn'> }
+  | { type: 'admin/createRole'; payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions } }
+  | { type: 'admin/updateRole'; payload: { id: string; name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions } }
+  | { type: 'admin/deleteRole'; payload: { id: string } }
   | { type: 'admin/addCustomField'; payload: Omit<AdminCustomField, 'id'> }
   | { type: 'admin/deleteCustomField'; payload: { id: string } }
   | { type: 'admin/saveAutomationRetention'; payload: { retentionPeriod: string } }
@@ -31,12 +60,37 @@ export type AdminAction =
   | { type: 'admin/updateAutomationField'; payload: AdminAutomationField }
   | { type: 'admin/deleteAutomationField'; payload: { id: string } }
   | { type: 'admin/addAuditEntry'; payload: Omit<AuditLogEntry, 'id' | 'timestamp'> }
+  | { type: 'admin/setCurrentActor'; payload: { userId: string } }
+
+function withUsers(state: DemoState, users: AdminUser[], settings: AdminSettings): DemoState {
+  const roles = syncRoleUserCounts(users, settings.roles)
+  return {
+    ...state,
+    adminSettings: { ...settings, users, roles },
+  }
+}
+
+function userStatusFromInvite(silentInvite: boolean): AdminUser['status'] {
+  return silentInvite ? 'Silent created' : 'Pending invite'
+}
 
 export function reduceAdminState(state: DemoState, action: AdminAction): DemoState {
   const byUser = auditByUser(state)
   let settings = state.adminSettings
 
   switch (action.type) {
+    case 'admin/setCurrentActor': {
+      const target = settings.users.find((u) => u.id === action.payload.userId)
+      if (!target || target.status === 'Disabled') return state
+      settings = appendAuditEntry(settings, {
+        area: 'Settings',
+        byUser,
+        operation: 'Update',
+        details: `Switched demo actor to ${formatAdminUserName(target)} (${target.role})`,
+      })
+      return { ...state, adminSettings: settings, currentActorUserId: action.payload.userId }
+    }
+
     case 'admin/saveProfile':
       return {
         ...state,
@@ -85,7 +139,7 @@ export function reduceAdminState(state: DemoState, action: AdminAction): DemoSta
         id: newId('apikey'),
         maskedKey: generateMaskedApiKey(),
         createdAt: Date.now(),
-        userId: SEED_ADMIN_USER_ID,
+        userId: state.currentActorUserId ?? SEED_ADMIN_USER_ID,
       }
       settings = appendAuditEntry(settings, {
         area: 'Settings',
@@ -121,26 +175,91 @@ export function reduceAdminState(state: DemoState, action: AdminAction): DemoSta
     }
 
     case 'admin/inviteUser': {
+      const { firstName, lastName, email, role, projectAccess, silentInvite } = action.payload
+      const status = userStatusFromInvite(silentInvite)
       const user: AdminUser = {
-        ...action.payload,
         id: newId('admin-user-inv'),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        name: `${firstName.trim()} ${lastName.trim()}`,
+        email: email.trim(),
         twoFa: false,
-        status: 'Active',
-        lastLoginAt: Date.now(),
+        role,
+        status,
+        lastLoginAt: silentInvite ? Date.now() : 0,
+        projectAccess,
       }
       settings = appendAuditEntry(settings, {
         area: 'Settings',
         byUser,
         operation: 'Create',
-        details: `Invited user ${user.name} (${user.email})`,
+        details: silentInvite
+          ? `Silently created user ${user.name} (${user.email})`
+          : `Invited user ${user.name} (${user.email})`,
       })
-      return {
-        ...state,
-        adminSettings: {
-          ...settings,
-          users: [...settings.users, user],
-        },
+      return withUsers(state, [...settings.users, user], settings)
+    }
+
+    case 'admin/updateUser': {
+      const { id, firstName, lastName, email, role, projectAccess } = action.payload
+      const target = settings.users.find((u) => u.id === id)
+      if (!target) return state
+      settings = appendAuditEntry(settings, {
+        area: 'Settings',
+        byUser,
+        operation: 'Update',
+        details: `Updated user ${formatAdminUserName({ firstName, lastName, name: target.name })}`,
+      })
+      const users = settings.users.map((u) =>
+        u.id === id
+          ? {
+              ...u,
+              firstName: firstName.trim(),
+              lastName: lastName.trim(),
+              name: `${firstName.trim()} ${lastName.trim()}`,
+              email: email.trim(),
+              role,
+              projectAccess,
+            }
+          : u,
+      )
+      return withUsers(state, users, settings)
+    }
+
+    case 'admin/disableUser': {
+      const target = settings.users.find((u) => u.id === action.payload.id)
+      if (!target || target.status === 'Disabled') return state
+      if (isFinalEffectiveAdmin(settings.users, action.payload.id)) return state
+      settings = appendAuditEntry(settings, {
+        area: 'Settings',
+        byUser,
+        operation: 'Update',
+        details: `Disabled user ${formatAdminUserName(target)}`,
+      })
+      const users = settings.users.map((u) =>
+        u.id === action.payload.id ? { ...u, status: 'Disabled' as const } : u,
+      )
+      let nextState = withUsers(state, users, settings)
+      if (nextState.currentActorUserId === action.payload.id) {
+        const fallback = users.find((u) => u.status !== 'Disabled')
+        if (fallback) nextState = { ...nextState, currentActorUserId: fallback.id }
       }
+      return nextState
+    }
+
+    case 'admin/reactivateUser': {
+      const target = settings.users.find((u) => u.id === action.payload.id)
+      if (!target || target.status !== 'Disabled') return state
+      settings = appendAuditEntry(settings, {
+        area: 'Settings',
+        byUser,
+        operation: 'Update',
+        details: `Reactivated user ${formatAdminUserName(target)}`,
+      })
+      const users = settings.users.map((u) =>
+        u.id === action.payload.id ? { ...u, status: 'Active' as const, lastLoginAt: Date.now() } : u,
+      )
+      return withUsers(state, users, settings)
     }
 
     case 'admin/updateUserRole': {
@@ -150,25 +269,23 @@ export function reduceAdminState(state: DemoState, action: AdminAction): DemoSta
         area: 'Settings',
         byUser,
         operation: 'Update',
-        details: `Updated user role for ${target.name} to ${action.payload.role}`,
+        details: `Updated user role for ${formatAdminUserName(target)} to ${action.payload.role}`,
       })
-      return {
-        ...state,
-        adminSettings: {
-          ...settings,
-          users: settings.users.map((u) =>
-            u.id === action.payload.id ? { ...u, role: action.payload.role } : u,
-          ),
-        },
-      }
+      const users = settings.users.map((u) =>
+        u.id === action.payload.id ? { ...u, role: action.payload.role } : u,
+      )
+      return withUsers(state, users, settings)
     }
 
     case 'admin/createRole': {
       const role: AdminRole = {
-        ...action.payload,
         id: newId('role'),
+        name: action.payload.name,
+        description: action.payload.description,
         userCount: 0,
+        isProjectLevel: action.payload.isProjectLevel,
         isBuiltIn: false,
+        permissions: action.payload.permissions,
       }
       settings = appendAuditEntry(settings, {
         area: 'Settings',
@@ -181,6 +298,52 @@ export function reduceAdminState(state: DemoState, action: AdminAction): DemoSta
         adminSettings: {
           ...settings,
           roles: [...settings.roles, role],
+        },
+      }
+    }
+
+    case 'admin/updateRole': {
+      const existing = settings.roles.find((r) => r.id === action.payload.id)
+      if (!existing || existing.isBuiltIn) return state
+      settings = appendAuditEntry(settings, {
+        area: 'Settings',
+        byUser,
+        operation: 'Update',
+        details: `Updated role ${action.payload.name}`,
+      })
+      return {
+        ...state,
+        adminSettings: {
+          ...settings,
+          roles: settings.roles.map((r) =>
+            r.id === action.payload.id
+              ? {
+                  ...r,
+                  name: action.payload.name,
+                  description: action.payload.description,
+                  isProjectLevel: action.payload.isProjectLevel,
+                  permissions: action.payload.permissions,
+                }
+              : r,
+          ),
+        },
+      }
+    }
+
+    case 'admin/deleteRole': {
+      const removed = settings.roles.find((r) => r.id === action.payload.id)
+      if (!removed || removed.isBuiltIn) return state
+      settings = appendAuditEntry(settings, {
+        area: 'Settings',
+        byUser,
+        operation: 'Delete',
+        details: `Deleted role ${removed.name}`,
+      })
+      return {
+        ...state,
+        adminSettings: {
+          ...settings,
+          roles: settings.roles.filter((r) => r.id !== action.payload.id),
         },
       }
     }
@@ -336,4 +499,67 @@ export function reduceAdminState(state: DemoState, action: AdminAction): DemoSta
 
 export function isAdminAction(action: { type: string }): action is AdminAction {
   return action.type.startsWith('admin/')
+}
+
+/** v11 → v12: user access model, roles permissions, current actor. */
+export function migrateUserAccessV12(state: DemoState): DemoState {
+  const users = settingsUsersMigrate(state.adminSettings.users)
+  const roles = migrateRoles(state.adminSettings.roles, users)
+  const syncedRoles = syncRoleUserCounts(users, roles)
+
+  return {
+    ...state,
+    currentActorUserId: state.currentActorUserId ?? SEED_ADMIN_USER_ID,
+    adminSettings: {
+      ...state.adminSettings,
+      users,
+      roles: syncedRoles,
+    },
+    schemaVersion: 12,
+  }
+}
+
+function settingsUsersMigrate(raw: AdminUser[]): AdminUser[] {
+  return raw.map((u) => {
+    const legacy = u as AdminUser & { status?: string }
+    const parts = (legacy.name ?? '').trim().split(/\s+/)
+    const firstName = u.firstName ?? parts[0] ?? 'User'
+    const lastName = u.lastName ?? parts.slice(1).join(' ') ?? ''
+    let status = u.status ?? 'Active'
+    if ((status as string) === 'Inactive') status = 'Disabled'
+    return {
+      ...u,
+      firstName,
+      lastName,
+      name: u.name ?? `${firstName} ${lastName}`.trim(),
+      projectAccess: u.projectAccess ?? ['__all__'],
+      status,
+    }
+  })
+}
+
+function migrateRoles(existing: AdminRole[], _users: AdminUser[]): AdminRole[] {
+  const legacy = existing as (AdminRole & { isOrgLevel?: boolean })[]
+  const custom = legacy.filter((r) => !r.isBuiltIn && !ADMIN_USER_ROLES.includes(r.name as AdminUserRole))
+
+  const builtIn = ADMIN_USER_ROLES.map((roleName, i) => {
+    const meta = BUILTIN_ROLE_META[roleName]
+    return {
+      id: `admin-role-builtin-${i + 1}`,
+      name: roleName,
+      description: meta.description,
+      userCount: 0,
+      isProjectLevel: meta.isProjectLevel,
+      isBuiltIn: true,
+      permissions: { ...BUILTIN_ROLE_PERMISSIONS[roleName] },
+    }
+  })
+
+  const migratedCustom = custom.map((r) => ({
+    ...r,
+    isProjectLevel: r.isProjectLevel ?? !(r.isOrgLevel ?? false),
+    permissions: r.permissions ?? emptyPermissions(),
+  }))
+
+  return [...builtIn, ...migratedCustom]
 }
