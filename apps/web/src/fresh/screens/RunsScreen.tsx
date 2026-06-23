@@ -9,6 +9,7 @@ import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from 
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { CreateRunModal } from '../components/CreateRunModal'
+import { AddCasesToRunModal } from '../components/AddCasesToRunModal'
 import { EditRunModal } from '../components/EditRunModal'
 import { TestRunsTopbar } from '../components/TestRunsTopbar'
 import { DEFECT_NAMES, RUN_PICKER_LIST } from '../data/seed'
@@ -116,6 +117,7 @@ export function RunsScreen() {
   const projectMismatch = !!urlProjectKey && urlProjectKey !== activeProject.key.toUpperCase()
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [addCasesOpen, setAddCasesOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [advFilter, setAdvFilter] = useState<RunFilter>(DEFAULT_ADV_FILTER)
@@ -603,7 +605,7 @@ export function RunsScreen() {
                   type="button"
                   className="btn btn-p"
                   style={{ marginTop: 12 }}
-                  onClick={() => {}}
+                  onClick={() => setAddCasesOpen(true)}
                 >
                   <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add to test run
                 </button>
@@ -612,6 +614,11 @@ export function RunsScreen() {
           </div>
         </div>
         <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
+        <AddCasesToRunModal
+          open={addCasesOpen}
+          runId={currentRun?.id}
+          onClose={() => setAddCasesOpen(false)}
+        />
       </div>
     )
   }
@@ -685,6 +692,16 @@ export function RunsScreen() {
           </div>
 
           <div className="run-search-bar" ref={filterRef}>
+            {!isRunSealed ? (
+              <button
+                type="button"
+                className="btn btn-p"
+                style={{ fontSize: 11, padding: '3px 8px', flexShrink: 0 }}
+                onClick={() => setAddCasesOpen(true)}
+              >
+                <i className="ti ti-plus" style={{ fontSize: 11 }} /> Add cases
+              </button>
+            ) : null}
             <input className="run-search-input" type="text" placeholder="Search cases in this run…" value={runSearch} onChange={(e) => setRunSearch(e.target.value)} />
             <button
               type="button"
@@ -851,6 +868,11 @@ export function RunsScreen() {
       </div>
       <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditRunModal open={editOpen} run={currentRun} onClose={() => setEditOpen(false)} />
+      <AddCasesToRunModal
+        open={addCasesOpen}
+        runId={currentRun?.id}
+        onClose={() => setAddCasesOpen(false)}
+      />
       {caseIdTooltip ? (() => {
         const c = getCase(caseIdTooltip.caseId)
         if (!c) return null

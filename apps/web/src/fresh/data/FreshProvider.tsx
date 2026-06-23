@@ -91,6 +91,7 @@ export type FreshAction =
   | { type: 'DELETE_CASE'; caseId: string }
   | { type: 'UPDATE_RUN_EXECUTION'; runId: string; caseId: string; patch: Partial<CaseExecution> }
   | { type: 'UPDATE_RUN'; runId: string; patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>> }
+  | { type: 'ADD_CASES_TO_RUN'; runId: string; caseIds: string[] }
   | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string }
   | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
   | { type: 'SEAL_RUN'; runId: string }
@@ -287,6 +288,18 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         runs: state.runs.map((r) =>
           r.id === action.runId ? { ...r, ...action.patch } : r,
         ),
+      }
+      break
+    }
+    case 'ADD_CASES_TO_RUN': {
+      next = {
+        ...state,
+        runs: state.runs.map((r) => {
+          if (r.id !== action.runId) return r
+          const existing = new Set(r.caseOrder)
+          const newIds = action.caseIds.filter((id) => !existing.has(id))
+          return { ...r, caseOrder: [...r.caseOrder, ...newIds] }
+        }),
       }
       break
     }
@@ -493,6 +506,7 @@ interface FreshContextValue {
   archiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
   editRun: (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => void
+  addCasesToRun: (runId: string, caseIds: string[]) => void
   addFolder: (name: string, parentId?: string | null) => string
   isRunSealed: boolean
 }
@@ -622,6 +636,13 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const editRun = useCallback(
     (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => {
       dispatch({ type: 'UPDATE_RUN', runId, patch })
+    },
+    [],
+  )
+
+  const addCasesToRun = useCallback(
+    (runId: string, caseIds: string[]) => {
+      dispatch({ type: 'ADD_CASES_TO_RUN', runId, caseIds })
     },
     [],
   )
@@ -818,6 +839,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       archiveRun,
       deleteRun,
       editRun,
+      addCasesToRun,
       addFolder,
       isRunSealed,
     }),
@@ -870,6 +892,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       archiveRun,
       deleteRun,
       editRun,
+      addCasesToRun,
       addFolder,
       isRunSealed,
     ],
