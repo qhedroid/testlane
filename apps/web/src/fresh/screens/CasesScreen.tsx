@@ -243,6 +243,7 @@ export function CasesScreen() {
   const quickInputRef = useRef<HTMLInputElement>(null)
   const newFolderInputRef = useRef<HTMLInputElement>(null)
   const [newFolderDraft, setNewFolderDraft] = useState<{ parentId: string | null } | null>(null)
+  const [deleteCaseConfirm, setDeleteCaseConfirm] = useState<{ caseId: string; affectedRuns: { id: string; runKey: string; name: string }[] } | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([])
   const [keywordSearch, setKeywordSearch] = useState('')
@@ -1148,10 +1149,10 @@ export function CasesScreen() {
             </button>
             <div className="ctx-sep" />
             <button type="button" className="ctx-item ctx-item-danger" onClick={() => {
-              if (window.confirm('Delete this test case?')) {
-                if (detailCaseId === menuCase.id) setDetailCaseId(null)
-                deleteCase(menuCase.id)
-              }
+              const affectedRuns = activeRuns
+                .filter((r) => !r.sealed && r.caseOrder.includes(menuCase.id))
+                .map((r) => ({ id: r.id, runKey: r.runKey, name: r.name }))
+              setDeleteCaseConfirm({ caseId: menuCase.id, affectedRuns })
               setContextMenu(null)
             }}>
               <i className="ti ti-trash" /> Delete
@@ -1286,6 +1287,53 @@ export function CasesScreen() {
                 onClick={doCreateRun}
               >
                 <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {deleteCaseConfirm ? (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '20px 24px', minWidth: 360, maxWidth: 480, boxShadow: '0 8px 32px rgba(0,0,0,.24)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <i className="ti ti-trash" style={{ fontSize: 20, color: 'var(--fail)' }} />
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Confirm test case deletion</div>
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 10 }}>
+              Do you want to delete test case{' '}
+              <strong style={{ fontFamily: 'var(--mono)' }}>
+                {activeCases.find((c) => c.id === deleteCaseConfirm.caseId)?.caseKey ?? deleteCaseConfirm.caseId}
+              </strong>?
+            </div>
+            {deleteCaseConfirm.affectedRuns.length > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '8px 10px', marginBottom: 14 }}>
+                The test case will also be removed from{' '}
+                <strong>{deleteCaseConfirm.affectedRuns.length}</strong> open test run
+                {deleteCaseConfirm.affectedRuns.length > 1 ? 's' : ''} (
+                {deleteCaseConfirm.affectedRuns.map((r, i) => (
+                  <span key={r.id}>
+                    {i > 0 ? ', ' : ''}
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>TR-{r.runKey}</span>
+                  </span>
+                ))}
+                ).
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn" onClick={() => setDeleteCaseConfirm(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                style={{ background: 'var(--fail)', color: '#fff', border: 'none' }}
+                onClick={() => {
+                  if (detailCaseId === deleteCaseConfirm.caseId) setDetailCaseId(null)
+                  deleteCase(deleteCaseConfirm.caseId)
+                  setDeleteCaseConfirm(null)
+                }}
+              >
+                <i className="ti ti-trash" style={{ fontSize: 11 }} /> Delete
               </button>
             </div>
           </div>
@@ -1724,24 +1772,23 @@ function CaseDetail({
         {tab === 'defects' ? (
           <div className="dp-empty-tab">
             <i className="ti ti-bug" style={{ fontSize: 28, color: 'var(--text3)', marginBottom: 8 }} />
-            <div style={{ fontWeight: 600, fontSize: 13 }}>No defects linked</div>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>No defects</div>
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
               No defects have yet been linked to this test case in a test run.
             </div>
           </div>
         ) : null}
         {tab === 'requirements' ? (
-          <div className="dp-empty-tab">
-            <i className="ti ti-list-check" style={{ fontSize: 28, color: 'var(--text3)', marginBottom: 8 }} />
-            <div style={{ fontWeight: 600, fontSize: 13 }}>No requirements linked</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
-              Link this test case to a requirement to track coverage.
+          <div style={{ padding: '12px 14px' }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>Create requirement</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4, marginBottom: 10 }}>
+              Link requirements from configured integrations with test cases.
             </div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-              <button type="button" className="btn btn-p" style={{ fontSize: 12 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" className="btn" style={{ fontSize: 12 }} disabled>
                 <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create requirement
               </button>
-              <button type="button" className="btn" style={{ fontSize: 12 }}>
+              <button type="button" className="btn" style={{ fontSize: 12 }} disabled>
                 <i className="ti ti-link" style={{ fontSize: 12 }} /> Link requirement
               </button>
             </div>

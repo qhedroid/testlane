@@ -132,6 +132,7 @@ export function RunsScreen() {
   const [pickerQuery, setPickerQuery] = useState('')
   const [edTab, setEdTab] = useState<EdTab>('details')
   const [summaryOpen, setSummaryOpen] = useState(true)
+  const [summaryTab, setSummaryTab] = useState<'team' | 'defects' | 'details'>('team')
   const [edVisible, setEdVisible] = useState(true)
   const [edFullscreen, setEdFullscreen] = useState(false)
   const [caseIdTooltip, setCaseIdTooltip] = useState<{
@@ -503,7 +504,7 @@ export function RunsScreen() {
               )
             })}
           </div>
-          <button type="button" className="run-sel-create" onClick={() => { setPickerOpen(false); setCreateOpen(true) }}>
+          <button type="button" className="run-sel-create" disabled={!hasCases} onClick={() => { setPickerOpen(false); setCreateOpen(true) }}>
             <i className="ti ti-plus" style={{ fontSize: 11 }} /> Create new run…
           </button>
         </div>
@@ -675,8 +676,6 @@ export function RunsScreen() {
             <div className="ec-rmt">
               <span className="ec-run-key">{currentRun.runKey}</span>
               <span className={`pill ${isRunSealed ? 'p-pass' : 'p-act'}`} style={{ fontSize: 10, padding: '1px 5px' }}>{isRunSealed ? 'Sealed' : 'Active'}</span>
-              {currentRun.due ? <span>Due: {currentRun.due}</span> : null}
-              {currentRun.planName ? <span>Plan: {currentRun.planName}</span> : null}
             </div>
             <div className="ec-summary-section">
               <div
@@ -687,41 +686,98 @@ export function RunsScreen() {
                 <span>Summary</span>
               </div>
               {summaryOpen && (
-                <div className="ec-run-summary">
-                  <RunStatusInfographic
-                    pass={summary.passed}
-                    fail={summary.failed}
-                    blocked={summary.blocked}
-                    notrun={summary.notRun}
-                    skipped={summary.skipped}
-                    size={DONUT_CHART_SIZE}
-                    compact
-                    showCompleteLabel
-                    interactive
-                    activeStatus={filter}
-                    onStatusClick={(s) => setFilter((prev) => (prev === s ? 'all' : s))}
-                  />
+                <div className="ec-summary-body">
+                  <div className="ec-run-summary">
+                    <RunStatusInfographic
+                      pass={summary.passed}
+                      fail={summary.failed}
+                      blocked={summary.blocked}
+                      notrun={summary.notRun}
+                      skipped={summary.skipped}
+                      size={DONUT_CHART_SIZE}
+                      compact
+                      showCompleteLabel
+                      interactive
+                      activeStatus={filter}
+                      onStatusClick={(s) => setFilter((prev) => (prev === s ? 'all' : s))}
+                    />
+                  </div>
+                  <div className="ec-summary-tabs-panel">
+                    <div className="ec-summary-tab-bar">
+                      {(['team', 'defects', 'details'] as const).map((t) => (
+                        <div
+                          key={t}
+                          className={`ec-summary-tab${summaryTab === t ? ' on' : ''}`}
+                          onClick={() => setSummaryTab(t)}
+                        >
+                          {t.charAt(0).toUpperCase() + t.slice(1)}
+                        </div>
+                      ))}
+                    </div>
+                    {summaryTab === 'team' && (
+                      <div className="ec-summary-tab-content">
+                        {teamSummary.length === 0 ? (
+                          <div style={{ fontSize: 11, color: 'var(--text3)', padding: '6px 0' }}>0 users</div>
+                        ) : (
+                          teamSummary.map((m) => (
+                            <div key={m.name} className="ec-team-row">
+                              <div className="ec-team-av">{m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}</div>
+                              <div className="ec-team-name">{m.name}</div>
+                              <div className="ec-team-stats">
+                                {m.passed > 0 && <span style={{ color: 'var(--pass)' }}>{m.passed}P</span>}
+                                {m.failed > 0 && <span style={{ color: 'var(--fail)' }}>{m.failed}F</span>}
+                                {m.blocked > 0 && <span style={{ color: 'var(--block)' }}>{m.blocked}B</span>}
+                                {m.notRun > 0 && <span style={{ color: 'var(--text3)' }}>{m.notRun}N</span>}
+                              </div>
+                              <div className="ec-team-total">{m.total}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                    {summaryTab === 'defects' && (
+                      <div className="ec-summary-tab-content">
+                        <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6, fontWeight: 500 }}>Create defect</div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>Test runs can be linked to defects from configured integrations.</div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px' }} disabled>
+                            <i className="ti ti-bug" style={{ fontSize: 11 }} /> Create defect
+                          </button>
+                          <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px' }} disabled>
+                            <i className="ti ti-link" style={{ fontSize: 11 }} /> Link defect
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {summaryTab === 'details' && (
+                      <div className="ec-summary-tab-content">
+                        {currentRun?.description ? (
+                          <div style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 4 }}>
+                            <span style={{ color: 'var(--text3)', minWidth: 72 }}>Description:</span>
+                            <span style={{ color: 'var(--text2)' }}>{currentRun.description}</span>
+                          </div>
+                        ) : null}
+                        {currentRun?.due ? (
+                          <div style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 4 }}>
+                            <span style={{ color: 'var(--text3)', minWidth: 72 }}>Due:</span>
+                            <span style={{ color: 'var(--text2)' }}>{currentRun.due}</span>
+                          </div>
+                        ) : null}
+                        {currentRun?.planName ? (
+                          <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
+                            <span style={{ color: 'var(--text3)', minWidth: 72 }}>Plan:</span>
+                            <span style={{ color: 'var(--text2)' }}>{currentRun.planName}</span>
+                          </div>
+                        ) : null}
+                        {!currentRun?.description && !currentRun?.due && !currentRun?.planName ? (
+                          <div style={{ fontSize: 11, color: 'var(--text3)' }}>No additional details.</div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-            {teamSummary.length > 0 && (
-              <div className="ec-team-summary">
-                <div className="ec-sl" style={{ marginBottom: 5 }}>Team</div>
-                {teamSummary.map((m) => (
-                  <div key={m.name} className="ec-team-row">
-                    <div className="ec-team-av">{m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}</div>
-                    <div className="ec-team-name">{m.name}</div>
-                    <div className="ec-team-stats">
-                      {m.passed > 0 && <span style={{ color: 'var(--pass)' }}>{m.passed}P</span>}
-                      {m.failed > 0 && <span style={{ color: 'var(--fail)' }}>{m.failed}F</span>}
-                      {m.blocked > 0 && <span style={{ color: 'var(--block)' }}>{m.blocked}B</span>}
-                      {m.notRun > 0 && <span style={{ color: 'var(--text3)' }}>{m.notRun}N</span>}
-                    </div>
-                    <div className="ec-team-total">{m.total}</div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="run-search-bar" ref={filterRef}>
@@ -871,7 +927,7 @@ export function RunsScreen() {
           </div>
         </div>
 
-        <div className="resizer-v" data-resize="run-list" data-min="220" data-max-half="true" />
+        <div className="resizer-v" data-resize="run-list" data-min="475" data-max-half="true" />
 
         {edVisible ? (
           <div className={`ed-pane${edFullscreen ? ' fs' : ''}`}>
@@ -1011,17 +1067,28 @@ function ExecDetailPane({
   const [customFieldsOpen, setCustomFieldsOpen] = useState(true)
   const [notesOpen, setNotesOpen] = useState(false)
   const [notesDraft, setNotesDraft] = useState(execution?.resultNotes ?? '')
+  const scrollToStepRef = useRef<string | null>(null)
 
   useEffect(() => {
     setNotesDraft(execution?.resultNotes ?? '')
     setNotesOpen(!!(execution?.resultNotes))
   }, [execution?.resultNotes, caseData.id])
 
+  useEffect(() => {
+    if (tab !== 'details') return
+    const stepId = scrollToStepRef.current
+    if (!stepId) return
+    scrollToStepRef.current = null
+    setTimeout(() => {
+      document.getElementById(`step-${stepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }, [tab])
+
   const allComments = useMemo(() => {
-    const items: { kind: 'step' | 'general'; stepNum?: number; stepTitle?: string; author: string; createdAt: string; body: string }[] = []
+    const items: { kind: 'step' | 'general'; stepId?: string; stepNum?: number; stepTitle?: string; author: string; createdAt: string; body: string }[] = []
     caseData.steps.forEach((s, i) => {
       s.comments.forEach((c) => {
-        items.push({ kind: 'step', stepNum: i + 1, stepTitle: s.action, author: c.author, createdAt: c.createdAt, body: c.body })
+        items.push({ kind: 'step', stepId: s.id, stepNum: i + 1, stepTitle: s.action, author: c.author, createdAt: c.createdAt, body: c.body })
       })
     })
     caseData.generalComments.forEach((c) => {
@@ -1128,7 +1195,7 @@ function ExecDetailPane({
         {caseData.steps.map((s, n) => {
           const sr = execution?.stepResults[s.id] ?? 'Not run'
           return (
-            <div key={s.id} className="esc">
+            <div key={s.id} id={`step-${s.id}`} className="esc">
               <div className="esc-hd">
                 <span className="esc-n">Step {n + 1}</span>
                 <span className="esc-ttl">{s.action.length > 52 ? `${s.action.slice(0, 52)}…` : s.action}</span>
@@ -1218,8 +1285,17 @@ function ExecDetailPane({
             <div key={i} className="ed-act-item">
               <div className="ed-act-av" style={{ background: '#2E7D32' }}>{c.author.slice(0, 2).toUpperCase()}</div>
               <div className="ed-act-body">
-                {c.kind === 'step' ? (
-                  <div className="ed-cmt-step-lbl">Step {c.stepNum}: {c.stepTitle && c.stepTitle.length > 40 ? `${c.stepTitle.slice(0, 40)}…` : c.stepTitle}</div>
+                {c.kind === 'step' && c.stepId ? (
+                  <div
+                    className="ed-cmt-step-lbl ed-cmt-step-link"
+                    onClick={() => {
+                      scrollToStepRef.current = c.stepId!
+                      onTab('details')
+                    }}
+                    title="Go to step"
+                  >
+                    ↗ Step {c.stepNum}: {c.stepTitle && c.stepTitle.length > 40 ? `${c.stepTitle.slice(0, 40)}…` : c.stepTitle}
+                  </div>
                 ) : (
                   <div className="ed-cmt-step-lbl">General comment</div>
                 )}
@@ -1241,17 +1317,33 @@ function ExecDetailPane({
 
       <div className={`ed-tp${tab === 'defects' ? ' on' : ''}`}>
         <div className="ed-defects">
-          {(execution?.defects ?? []).map((d) => (
-            <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span className="ed-dtag"><i className="ti ti-bug" style={{ fontSize: 10 }} />{d}</span>
-              <span style={{ fontSize: 11, color: 'var(--text2)' }}>{DEFECT_NAMES[d] || 'Open defect'}</span>
-            </div>
-          ))}
-          {!sealed ? (
-            <div className="ed-dlink" onClick={onLinkDefect}>
-              <i className="ti ti-plus" style={{ fontSize: 12 }} /> Link defect <span className="kbd">D</span>
-            </div>
-          ) : null}
+          {(execution?.defects ?? []).length === 0 ? (
+            <>
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6, fontWeight: 500 }}>Create defect</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>Test runs can be linked to defects from configured integrations.</div>
+            </>
+          ) : (
+            (execution?.defects ?? []).map((d) => (
+              <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <span className="ed-dtag"><i className="ti ti-bug" style={{ fontSize: 10 }} />{d}</span>
+                <span style={{ fontSize: 11, color: 'var(--text2)' }}>{DEFECT_NAMES[d] || 'Open defect'}</span>
+              </div>
+            ))
+          )}
+          <div style={{ display: 'flex', gap: 6, marginTop: (execution?.defects ?? []).length > 0 ? 8 : 0 }}>
+            <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px' }} disabled>
+              <i className="ti ti-bug" style={{ fontSize: 11 }} /> Create defect
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              disabled={sealed}
+              onClick={() => !sealed && onLinkDefect()}
+            >
+              <i className="ti ti-link" style={{ fontSize: 11 }} /> Link defect
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1262,8 +1354,9 @@ function ExecDetailPane({
             <div className="ed-pt" style={{ whiteSpace: 'pre-wrap' }}>{caseData.references}</div>
           </div>
         ) : (
-          <div style={{ padding: 12, color: 'var(--text3)', fontSize: 12 }}>
-            No requirements linked to this test case.
+          <div style={{ padding: '8px 10px' }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>No requirements</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>No requirements have been linked.</div>
           </div>
         )}
       </div>

@@ -247,7 +247,20 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     case 'DELETE_CASE':
-      next = { ...state, cases: state.cases.filter((c) => c.id !== action.caseId) }
+      next = {
+        ...state,
+        cases: state.cases.filter((c) => c.id !== action.caseId),
+        runs: state.runs.map((r) => {
+          if (r.sealed) return r
+          return {
+            ...r,
+            caseOrder: r.caseOrder.filter((id) => id !== action.caseId),
+            executions: Object.fromEntries(
+              Object.entries(r.executions).filter(([id]) => id !== action.caseId)
+            ),
+          }
+        }),
+      }
       break
     case 'UPDATE_RUN_EXECUTION': {
       if (!runIsMutable(state, action.runId)) return state
