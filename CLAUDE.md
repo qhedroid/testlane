@@ -88,30 +88,47 @@ Example:
 ```
 
 ## Merge request description format
-- **Header:** one-paragraph summary of the feature and its UI entry point.
-- **What's included:** group commits by feature area (e.g. "Admin Panel", "Test Cases"). Each area is a `###` heading. Under it, list each commit as a bold title followed by the short SHA in parentheses, then bullet points of what it delivers. Format: `**Commit title** (sha)` with no leading SHA prefix.
-- **⚠️ Caveats:** accidental commits, known gaps, deferred work.
-- **Testing:** build status, key manual checks, migration/localStorage notes.
 
-Prefer specifics over summaries in every bullet.
+Document structure (use this skeleton exactly):
 
-Example structure:
 ```
-### Admin Panel
+# PR: <source-branch> → <target-branch>
 
-**Project panel with per-project custom field activation** (398f45a)
-- Added /admin route and AdminProjectPanel with five tabs
-- Per-project custom field activation toggle
+## Summary
+One-paragraph summary of the feature and its UI entry point.
 
-**Fix project panel layout** (87b419f)
-- Corrected panel layout from block to inline-flex
+---
 
-### Test Cases
+## What's included
 
-**Per-row context menu** (98ec34d)
-- Row ... button opens a fixed-position context menu
-- Duplicate, Edit, Open folder, and Delete actions
+### Feature Area
+
+**Commit title** ([`398f45a`](https://github.com/qhedroid/Relay/commit/398f45a))
+- bullet
+- bullet
+
+---
+
+## ⚠️ Caveats
+- Known gaps, stubs, deferred work, or accidental commits.
+
+---
+
+## Testing
+- **Build:** pnpm build status.
+- **localStorage:** key, schema version, migration notes.
+- **Manual smoke checks:**
+  - item
 ```
+
+Rules:
+- `## Summary` wraps the intro paragraph — not a bare paragraph at the top.
+- `## What's included` is the heading above all feature area groups.
+- Feature areas use `###` headings (e.g. `### Admin Panel`, `### Test Cases`).
+- Each commit: bold title + linked short SHA in parentheses, then bullet points. No leading SHA prefix.
+- `## ⚠️ Caveats` and `## Testing` are `##` headings, not `###`.
+- Separate major sections with `---`.
+- Prefer specifics over summaries in every bullet.
 
 When writing for GitHub, link the SHA: `([`398f45a`](https://github.com/qhedroid/Relay/commit/398f45a))`.
 
