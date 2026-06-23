@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, Folder, Project, ProjectSettings } from './demo-model'
+import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction } from './admin-reducer'
 import {
   getActiveProject,
@@ -90,6 +90,8 @@ export type FreshAction =
   | { type: 'REPLACE_CASE'; case: Case }
   | { type: 'DELETE_CASE'; caseId: string }
   | { type: 'UPDATE_RUN_EXECUTION'; runId: string; caseId: string; patch: Partial<CaseExecution> }
+  | { type: 'UPDATE_RUN'; runId: string; patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>> }
+  | { type: 'ADD_CASES_TO_RUN'; runId: string; caseIds: string[] }
   | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string }
   | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
   | { type: 'SEAL_RUN'; runId: string }
@@ -238,26 +240,95 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
     case 'REPLACE_CASE':
       next = {
         ...state,
-        cases: state.cases.map((c) => (c.id === action.case.id ? action.case : c)),
+        cases: state.cases.map((c) => {
+          if (c.id !== action.case.id) return c
+          return { ...action.case, createdAt: c.createdAt ?? action.case.createdAt }
+        }),
       }
       break
     case 'DELETE_CASE':
-      next = { ...state, cases: state.cases.filter((c) => c.id !== action.caseId) }
+      next = {
+        ...state,
+        cases: state.cases.filter((c) => c.id !== action.caseId),
+        runs: state.runs.map((r) => {
+          if (r.sealed) return r
+          return {
+            ...r,
+            caseOrder: r.caseOrder.filter((id) => id !== action.caseId),
+            executions: Object.fromEntries(
+              Object.entries(r.executions).filter(([id]) => id !== action.caseId)
+            ),
+          }
+        }),
+      }
       break
     case 'UPDATE_RUN_EXECUTION': {
       if (!runIsMutable(state, action.runId)) return state
       const runs = state.runs.map((r) => {
         if (r.id !== action.runId) return r
         const prev = r.executions[action.caseId] ?? { status: 'Not run' as ExecStatus, stepResults: {} }
+        const newEx: CaseExecution = { ...prev, ...action.patch }
+        let executionLog = r.executionLog ?? []
+        if (action.patch.status && action.patch.status !== prev.status) {
+          executionLog = [
+            ...executionLog,
+            {
+              id: newId('log'),
+              caseId: action.caseId,
+              at: new Date().toISOString(),
+              by: newEx.assignee ?? prev.assignee ?? 'Shaun Sevume',
+              from: prev.status,
+              to: action.patch.status,
+            },
+          ]
+          if (action.patch.status !== 'Not run') {
+            newEx.testedAt = new Date().toISOString()
+            newEx.testedBy = newEx.assignee ?? prev.assignee ?? 'Shaun Sevume'
+          }
+        }
         return {
           ...r,
-          executions: {
-            ...r.executions,
-            [action.caseId]: { ...prev, ...action.patch },
-          },
+          executions: { ...r.executions, [action.caseId]: newEx },
+          executionLog,
         }
       })
       next = { ...state, runs }
+      break
+    }
+    case 'UPDATE_RUN': {
+      next = {
+        ...state,
+        runs: state.runs.map((r) =>
+          r.id === action.runId ? { ...r, ...action.patch } : r,
+        ),
+      }
+      break
+    }
+    case 'ADD_CASES_TO_RUN': {
+      const now = new Date().toISOString()
+      next = {
+        ...state,
+        runs: state.runs.map((r) => {
+          if (r.id !== action.runId) return r
+          const existing = new Set(r.caseOrder)
+          const newIds = action.caseIds.filter((id) => !existing.has(id))
+          if (newIds.length === 0) return r
+          const createdEntries: ExecutionLogEntry[] = newIds.map((caseId) => ({
+            id: newId('log'),
+            caseId,
+            at: now,
+            by: 'Shaun Sevume',
+            from: 'Not run' as ExecStatus,
+            to: 'Not run' as ExecStatus,
+            event: 'created' as const,
+          }))
+          return {
+            ...r,
+            caseOrder: [...r.caseOrder, ...newIds],
+            executionLog: [...(r.executionLog ?? []), ...createdEntries],
+          }
+        }),
+      }
       break
     }
     case 'ADD_STEP_COMMENT': {
@@ -448,7 +519,7 @@ interface FreshContextValue {
   deleteProject: (projectId: string) => void
   setActiveProject: (projectId: string) => void
   getCase: (caseId: string) => Case | undefined
-  addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => string
+  addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>) => string
   updateCase: (caseId: string, patch: Partial<Case>) => void
   replaceCase: (caseData: Case) => void
   deleteCase: (caseId: string) => void
@@ -462,6 +533,8 @@ interface FreshContextValue {
   duplicateRun: (runId: string) => { runKey: string } | null
   archiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
+  editRun: (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => void
+  addCasesToRun: (runId: string, caseIds: string[]) => void
   addFolder: (name: string, parentId?: string | null) => string
   isRunSealed: boolean
 }
@@ -487,13 +560,15 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   )
 
   const addCase = useCallback(
-    (data: Omit<Case, 'id' | 'updatedAt' | 'projectId'>) => {
+    (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>) => {
       const id = newId('case')
+      const now = new Date().toISOString()
       const newCase: Case = {
         ...data,
         id,
         projectId: state.activeProjectId,
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       }
       dispatch({ type: 'ADD_CASE', case: newCase })
       return id
@@ -585,6 +660,20 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const deleteRun = useCallback((runId: string) => {
     dispatch({ type: 'DELETE_RUN', runId })
   }, [])
+
+  const editRun = useCallback(
+    (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => {
+      dispatch({ type: 'UPDATE_RUN', runId, patch })
+    },
+    [],
+  )
+
+  const addCasesToRun = useCallback(
+    (runId: string, caseIds: string[]) => {
+      dispatch({ type: 'ADD_CASES_TO_RUN', runId, caseIds })
+    },
+    [],
+  )
 
   const addFolder = useCallback(
     (name: string, parentId?: string | null) => {
@@ -777,6 +866,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       duplicateRun,
       archiveRun,
       deleteRun,
+      editRun,
+      addCasesToRun,
       addFolder,
       isRunSealed,
     }),
@@ -828,6 +919,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       duplicateRun,
       archiveRun,
       deleteRun,
+      editRun,
+      addCasesToRun,
       addFolder,
       isRunSealed,
     ],

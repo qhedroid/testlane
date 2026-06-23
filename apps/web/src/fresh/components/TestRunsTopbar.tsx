@@ -9,6 +9,8 @@ interface TestRunsTopbarProps {
   onDuplicate: () => void
   onDelete: () => void
   onCreateRun: () => void
+  onEdit?: () => void
+  hasCases?: boolean
 }
 
 export function TestRunsTopbar({
@@ -17,6 +19,8 @@ export function TestRunsTopbar({
   onDuplicate,
   onDelete,
   onCreateRun,
+  onEdit,
+  hasCases = true,
 }: TestRunsTopbarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
@@ -52,6 +56,11 @@ export function TestRunsTopbar({
     onSealToggle()
   }
 
+  function handleEdit() {
+    closeMore()
+    onEdit?.()
+  }
+
   return (
     <div className="ta tr-topbar-actions">
       <button
@@ -69,6 +78,7 @@ export function TestRunsTopbar({
         disabled={!hasRun}
         title="Edit test run"
         aria-label="Edit test run"
+        onClick={handleEdit}
       >
         <i className="ti ti-pencil" style={{ fontSize: 13 }} />
       </button>
@@ -92,7 +102,7 @@ export function TestRunsTopbar({
         </button>
         {moreOpen ? (
           <div className="tr-more-dd open">
-            <button type="button" className="tr-more-item" disabled={!hasRun}>Edit test run</button>
+            <button type="button" className="tr-more-item" disabled={!hasRun} onClick={handleEdit}>Edit test run</button>
             <button type="button" className="tr-more-item" disabled={!hasRun} onClick={handleSealFromMenu}>
               {sealed ? 'Re-open test run' : 'Close test run'}
             </button>
@@ -111,7 +121,7 @@ export function TestRunsTopbar({
               Delete test run
             </button>
             <div className="tr-more-sep" />
-            <button type="button" className="tr-more-item tr-more-create" onClick={() => { closeMore(); onCreateRun() }}>
+            <button type="button" className="tr-more-item tr-more-create" disabled={!hasCases} onClick={() => { closeMore(); onCreateRun() }}>
               Create new run…
             </button>
           </div>

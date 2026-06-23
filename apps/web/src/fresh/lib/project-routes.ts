@@ -4,7 +4,7 @@ export const DEFAULT_PROJECT_KEY = 'DP'
 
 export const MODULE_SLUGS = {
   dashboard: 'dashboard',
-  cases: 'cases',
+  cases: 'testcases',
   testruns: 'testruns',
   plans: 'plans',
   audit: 'audit',
@@ -33,6 +33,7 @@ export const LEGACY_PATH_TO_MODULE: Record<string, ModuleSlug> = {
   '/settings': 'settings',
   '/reports': 'reports',
   '/integrations': 'integrations',
+  '/testcases': 'cases',
 }
 
 export function projectPath(projectKey: string, module: ModuleSlug = 'dashboard'): string {
@@ -48,16 +49,42 @@ export function testRunPath(projectKey: string, runKey?: string): string {
 /** Extract runKey from /:projectKey/testruns/tr/:runKey paths. */
 export function parseTestRunKey(pathname: string): string | null {
   const parts = pathname.split('/').filter(Boolean)
-  if (parts.length === 4 && parts[1] === MODULE_SLUGS.testruns && parts[2] === 'tr') {
+  // /projectKey/testruns/tr/runKey  OR  /projectKey/testruns/tr/runKey/tc/caseKey
+  if ((parts.length === 4 || parts.length === 6) && parts[1] === MODULE_SLUGS.testruns && parts[2] === 'tr') {
     return parts[3]
   }
   return null
 }
 
+/** Canonical path for a specific test case inside a test run. */
+export function testRunCasePath(projectKey: string, runKey: string, caseKey: string): string {
+  return `${testRunPath(projectKey, runKey)}/tc/${caseKeyToSlug(caseKey)}`
+}
+
+/** Extract caseKey from /:projectKey/testruns/tr/:runKey/tc/:caseKey paths. */
+export function parseTestRunCaseKey(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean)
+  // parts: [projectKey, 'testruns', 'tr', runKey, 'tc', caseKey]
+  if (parts.length === 6 && parts[1] === MODULE_SLUGS.testruns && parts[2] === 'tr' && parts[4] === 'tc') {
+    return parts[5]
+  }
+  return null
+}
+
+/** Strip TC- prefix from a caseKey to produce a clean URL slug. */
+export function caseKeyToSlug(caseKey: string): string {
+  return caseKey.replace(/^TC-/i, '')
+}
+
+/** Restore TC- prefix from a URL slug back to a caseKey. */
+export function slugToCaseKey(slug: string): string {
+  return /^TC-/i.test(slug) ? slug : `TC-${slug}`
+}
+
 /** Canonical test case path — with or without selected case key. */
 export function testCasePath(projectKey: string, caseKey?: string): string {
   const base = projectPath(projectKey, 'cases')
-  return caseKey ? `${base}/tc/${caseKey}` : base
+  return caseKey ? `${base}/tc/${caseKeyToSlug(caseKey)}` : base
 }
 
 /** Extract caseKey from /:projectKey/cases/tc/:caseKey paths. */

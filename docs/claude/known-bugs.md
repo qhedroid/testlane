@@ -50,4 +50,50 @@ The race condition theory from 07d appears sound on paper but either:
 
 ---
 
-_Last updated: after task-07d. No further investigation done._
+### Update — task-05b (mvp-test-runs branch)
+
+The `projectMismatch` guard was applied to `RunsScreen.tsx` (3 effects) and `CasesScreen.tsx` (URL-sync effect). The guard derives a boolean from `pathname`'s project key vs `activeProject.key` and bails out of any navigation/replaceState call during the transition window.
+
+**RunsScreen: fully fixed.** No flicker on project switch from Test Runs.
+
+**CasesScreen: residual flicker remains.** The switch still completes, but a visible flash occurs. The `projectMismatch` guard on the URL-sync effect did not fully eliminate it — likely other effects or state resets (e.g. the `[activeProject.id]` effect resetting folder/case state) are causing intermediate renders that produce the flash. Further investigation needed.
+
+_Last updated: task-05b, branch mvp-test-runs._
+
+---
+
+## BUG-02 — Project switch: residual flicker from Test Cases screen
+
+### Symptom
+
+Switching projects while on the Test Cases screen shows a brief visual flicker (the screen repaints with an intermediate state before settling on the new project). The switch ultimately succeeds — this is a visual artifact only, not a navigation failure.
+
+### Commits / tasks attempted
+
+| Task | Approach | Outcome |
+|------|----------|---------|
+| 05b | Added `projectMismatch` guard to `CasesScreen`'s URL-sync `window.history.replaceState` effect. | Insufficient — residual flicker remains. |
+
+### Current best understanding
+
+The most likely remaining causes, in order of suspicion:
+
+1. **`useEffect([activeProject.id])` resets local state** — this effect resets `selectedFolderId`, `detailCaseId`, `openFolders`, etc. in the same render cycle as the project state change. These resets cause intermediate renders that paint briefly with P2 state but P1 DOM before the route commit.
+
+2. **`activeCases` / `activeFolders` change in the same flush** — these derived values (computed in `FreshProvider`) switch from P1 to P2 data synchronously with `setActiveProject`. Any component subscribed to them re-renders immediately, even before the URL updates.
+
+3. **`window.history.replaceState` still firing** — the `projectMismatch` guard reads `pathname` from the closure at the time `detailCaseId` changes. There may be a subtle timing case where `projectMismatch` is `false` at closure-capture time but the route hasn't committed yet.
+
+### Relevant files
+
+- `apps/web/src/fresh/screens/CasesScreen.tsx` — `useEffect([activeProject.id])` and URL-sync `useEffect([detailCaseId])`
+- `apps/web/src/fresh/data/FreshProvider.tsx` — how `activeCases` / `activeFolders` are computed on project change
+- `apps/web/src/fresh/components/ProjectSwitcher.tsx` — `handleSelect` call order
+
+### Areas to check next
+
+1. Temporarily add `console.log` at the start of the `[activeProject.id]` effect and the URL-sync effect to observe their firing order relative to `pathname` updates during a switch.
+2. Consider whether the `[activeProject.id]` local-state resets should be deferred until the route has committed (e.g. keying the screen on `activeProject.id` to unmount/remount cleanly, rather than resetting piecemeal).
+3. Check whether `pathname` inside the URL-sync closure ever reads P1 when `activeProject.key` is already P2 — add a `console.log(pathname, activeProject.key, projectMismatch)` to verify the guard is actually firing.
+
+_Last updated: task-05b, branch mvp-test-runs. Deferred — does not block current work._

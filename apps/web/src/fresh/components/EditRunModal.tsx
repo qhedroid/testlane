@@ -1,52 +1,71 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import type { DemoRun } from '../data/demo-model'
 import { useFresh } from '../data/FreshProvider'
-import { testRunPath } from '../lib/project-routes'
 
-interface CreateRunModalProps {
+interface EditRunModalProps {
   open: boolean
+  run: DemoRun | undefined
   onClose: () => void
 }
 
-export function CreateRunModal({ open, onClose }: CreateRunModalProps) {
-  const router = useRouter()
-  const { activeProject, createRun, activeCases } = useFresh()
+function parseDueForInput(due: string | undefined): string {
+  if (!due) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(due)) return due
+  return ''
+}
+
+export function EditRunModal({ open, run, onClose }: EditRunModalProps) {
+  const { editRun } = useFresh()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [due, setDue] = useState('')
+
+  useEffect(() => {
+    if (!open || !run) return
+    setName(run.name)
+    setDescription(run.description ?? '')
+    setDue(parseDueForInput(run.due))
+  }, [open, run])
 
   const nameError = !name.trim() ? 'Name is required' : null
-  const canSubmit = !nameError && !!name.trim() && activeCases.length > 0
+  const canSubmit = !nameError && !!name.trim()
 
-  if (!open) return null
-
-  function reset() {
-    setName('')
-    setDescription('')
-  }
-
-  function handleClose() {
-    reset()
+  const handleClose = useCallback(() => {
     onClose()
-  }
+  }, [onClose])
 
-  function handleSubmit() {
-    if (!canSubmit) return
-    const { runKey } = createRun({
+  const handleSubmit = useCallback(() => {
+    if (!canSubmit || !run) return
+    editRun(run.id, {
       name: name.trim(),
       description: description.trim() || undefined,
-      caseIds: [],
+      due: due || undefined,
     })
     handleClose()
-    router.push(testRunPath(activeProject.key, runKey))
-  }
+  }, [canSubmit, run, editRun, name, description, due, handleClose])
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') handleClose()
+      if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault()
+        handleSubmit()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, handleClose, handleSubmit])
+
+  if (!open || !run) return null
 
   return (
     <div className="modal-backdrop" onClick={handleClose}>
       <div className="create-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="shortcuts-hd">
-          <div className="shortcuts-title">Create test run</div>
+          <div className="shortcuts-title">Edit test run</div>
           <button type="button" className="btn" style={{ padding: '2px 6px' }} onClick={handleClose}>
             <i className="ti ti-x" style={{ fontSize: 13 }} />
           </button>
@@ -73,16 +92,19 @@ export function CreateRunModal({ open, onClose }: CreateRunModalProps) {
               placeholder="Optional run description"
             />
           </div>
-          {activeCases.length === 0 && (
-            <div style={{ fontSize: 11.5, color: 'var(--text3)', background: 'var(--hover)', borderRadius: 4, padding: '6px 10px' }}>
-              This project has no test cases yet. Add test cases before creating a run.
-            </div>
-          )}
+          <div className="form-field">
+            <label>Due date</label>
+            <input
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+            />
+          </div>
         </div>
         <div className="create-foot">
           <button type="button" className="btn" onClick={handleClose}>Cancel</button>
           <button type="button" className="btn btn-p" disabled={!canSubmit} onClick={handleSubmit}>
-            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create run
+            Save changes
           </button>
         </div>
       </div>

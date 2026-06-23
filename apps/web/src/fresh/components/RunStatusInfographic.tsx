@@ -1,4 +1,7 @@
+import type { ExecStatus } from '../data/demo-model'
 import { RunDonut } from './RunDonut'
+
+type FilterTab = 'all' | ExecStatus
 
 export function RunStatusInfographic({
   pass,
@@ -10,6 +13,8 @@ export function RunStatusInfographic({
   compact = false,
   showCompleteLabel = true,
   interactive = false,
+  onStatusClick,
+  activeStatus,
 }: {
   pass: number
   fail: number
@@ -20,7 +25,25 @@ export function RunStatusInfographic({
   compact?: boolean
   showCompleteLabel?: boolean
   interactive?: boolean
+  onStatusClick?: (status: ExecStatus) => void
+  activeStatus?: FilterTab
 }) {
+  const clickable = !!onStatusClick
+
+  function statusLi(status: ExecStatus, count: number, color: string, label: string) {
+    const active = activeStatus === status
+    return (
+      <li
+        className={active ? 'rsi-active' : undefined}
+        onClick={() => onStatusClick?.(status)}
+        style={clickable ? { cursor: 'pointer' } : undefined}
+      >
+        <span className="rsi-n" style={{ color }}>{count}</span>
+        <span className="rsi-lbl">{label}</span>
+      </li>
+    )
+  }
+
   return (
     <div
       className={`run-status-info pie-block${compact ? ' compact' : ''}`}
@@ -40,13 +63,11 @@ export function RunStatusInfographic({
       </div>
       <div className="run-status-col">
         <ul className="run-status-list">
-          <li><span className="rsi-n" style={{ color: '#2E7D32' }}>{pass}</span><span className="rsi-lbl">Passed</span></li>
-          <li><span className="rsi-n" style={{ color: '#C62828' }}>{fail}</span><span className="rsi-lbl">Failed</span></li>
-          <li><span className="rsi-n" style={{ color: '#E65100' }}>{blocked}</span><span className="rsi-lbl">Blocked</span></li>
-          {skipped > 0 ? (
-            <li><span className="rsi-n" style={{ color: '#4527A0' }}>{skipped}</span><span className="rsi-lbl">Skipped</span></li>
-          ) : null}
-          <li><span className="rsi-n" style={{ color: 'var(--text3)' }}>{notrun}</span><span className="rsi-lbl">Not run</span></li>
+          {statusLi('Passed', pass, '#2E7D32', 'Passed')}
+          {statusLi('Failed', fail, '#C62828', 'Failed')}
+          {statusLi('Blocked', blocked, '#E65100', 'Blocked')}
+          {skipped > 0 ? statusLi('Skipped', skipped, '#4527A0', 'Skipped') : null}
+          {statusLi('Not run', notrun, 'var(--text3)', 'Not run')}
         </ul>
       </div>
     </div>
