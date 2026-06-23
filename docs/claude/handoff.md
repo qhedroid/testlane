@@ -92,6 +92,10 @@ Task 07c — feedback fixes on Task 07b. **Prompt drafted** at `docs/cursor-prom
 
 **Key Testiny finding (item 5):** Deleting a test case removes it from open (unsealed) runs. Sealed runs are left untouched as immutable historical records. Warning dialog lists affected run keys.
 
+Task 07d — feedback fixes on Task 07b/07c. **Prompt drafted** at `docs/cursor-prompts/mvp-test-runs/task-07d-runs-ui-polish-3.md`. 2 fixes:
+1. Track "Record was created" in History tab when a case is added to a run — `ExecutionLogEntry` gains `event?: 'created'`; `ADD_CASES_TO_RUN` appends creation log entries; History tab renders "Record was created" with `var(--accent)` dot
+2. Summary tabbed panel height to match donut chart (`align-items: stretch` on parent); Team tab shows "N cases assigned" per member; clicking a member toggles `advFilter.assignee` to filter the run list
+
 ### Task legacy 07c / 07d — legacy bug fixes
 
 After Task 07b ran, two additional bugs were found:
