@@ -23,7 +23,7 @@ import { useFreshUI } from '../hooks/useFreshUI'
 import { parseTestRunCaseKey, parseTestRunKey, slugToCaseKey, testCasePath, testRunCasePath, testRunPath } from '../lib/project-routes'
 
 type FilterTab = 'all' | ExecStatus
-type EdTab = 'details' | 'history' | 'comments' | 'defects'
+type EdTab = 'details' | 'comments' | 'defects' | 'requirements' | 'history'
 
 const RMB_CLASS: Record<Exclude<ExecStatus, 'Not run'>, string> = {
   Passed: 'rmb-p',
@@ -54,9 +54,10 @@ const PICKER_PILL: Record<string, { cls: string; lbl: string }> = {
 
 const ED_TABS: { id: EdTab; label: string }[] = [
   { id: 'details', label: 'Details' },
-  { id: 'history', label: 'History' },
   { id: 'comments', label: 'Comments' },
   { id: 'defects', label: 'Defects' },
+  { id: 'requirements', label: 'Requirements' },
+  { id: 'history', label: 'History' },
 ]
 
 const FILTER_TABS: { id: FilterTab; label: string }[] = [
@@ -89,6 +90,7 @@ export function RunsScreen() {
   const params = useParams()
   const {
     activeProject,
+    activeCases,
     activeFolders,
     activeRuns,
     state,
@@ -105,6 +107,7 @@ export function RunsScreen() {
   } = useFresh()
   const { openShortcuts } = useFreshUI()
   const projectHref = useProjectHref()
+  const hasCases = activeCases.length > 0
 
   const runKeyFromUrl = (params.runKey as string | undefined) ?? parseTestRunKey(pathname) ?? undefined
   const caseKeyFromUrl = (params.caseKey as string | undefined) ?? parseTestRunCaseKey(pathname) ?? undefined
@@ -128,6 +131,7 @@ export function RunsScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
   const [edTab, setEdTab] = useState<EdTab>('details')
+  const [summaryOpen, setSummaryOpen] = useState(true)
   const [edVisible, setEdVisible] = useState(true)
   const [edFullscreen, setEdFullscreen] = useState(false)
   const [caseIdTooltip, setCaseIdTooltip] = useState<{
@@ -522,6 +526,7 @@ export function RunsScreen() {
             onDelete={handleDelete}
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
+            hasCases={hasCases}
           />
         </div>
         <div className="empty-state on">
@@ -529,7 +534,14 @@ export function RunsScreen() {
             <i className="ti ti-player-play" />
             <div className="empty-title">No runs in this project</div>
             <div className="empty-copy">Create a test run to start executing cases in this project.</div>
-            <button type="button" className="btn btn-p" style={{ marginTop: 12 }} onClick={() => setCreateOpen(true)}>
+            <button
+              type="button"
+              className="btn btn-p"
+              style={{ marginTop: 12 }}
+              disabled={!hasCases}
+              title={!hasCases ? 'Add test cases to this project before creating a run' : undefined}
+              onClick={() => setCreateOpen(true)}
+            >
               <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
             </button>
           </div>
@@ -554,6 +566,7 @@ export function RunsScreen() {
             onDelete={handleDelete}
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
+            hasCases={hasCases}
           />
         </div>
         <div className="tr-lay tr-lay-select">
@@ -564,7 +577,14 @@ export function RunsScreen() {
                 <i className="ti ti-list-check" />
                 <div className="empty-title">Select a test run</div>
                 <div className="empty-copy">Choose a run from the picker above, or create a new one.</div>
-                <button type="button" className="btn btn-p" style={{ marginTop: 12 }} onClick={() => setCreateOpen(true)}>
+                <button
+                  type="button"
+                  className="btn btn-p"
+                  style={{ marginTop: 12 }}
+                  disabled={!hasCases}
+                  title={!hasCases ? 'Add test cases to this project before creating a run' : undefined}
+                  onClick={() => setCreateOpen(true)}
+                >
                   <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
                 </button>
               </div>
@@ -591,6 +611,7 @@ export function RunsScreen() {
             onDelete={handleDelete}
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
+            hasCases={hasCases}
           />
         </div>
         <div className="tr-lay tr-lay-select">
@@ -641,6 +662,7 @@ export function RunsScreen() {
           onDelete={handleDelete}
           onCreateRun={() => setCreateOpen(true)}
           onEdit={() => setEditOpen(true)}
+          hasCases={hasCases}
         />
       </div>
 
@@ -656,20 +678,31 @@ export function RunsScreen() {
               {currentRun.due ? <span>Due: {currentRun.due}</span> : null}
               {currentRun.planName ? <span>Plan: {currentRun.planName}</span> : null}
             </div>
-            <div className="ec-run-summary">
-              <RunStatusInfographic
-                pass={summary.passed}
-                fail={summary.failed}
-                blocked={summary.blocked}
-                notrun={summary.notRun}
-                skipped={summary.skipped}
-                size={DONUT_CHART_SIZE}
-                compact
-                showCompleteLabel
-                interactive
-                activeStatus={filter}
-                onStatusClick={(s) => setFilter((prev) => (prev === s ? 'all' : s))}
-              />
+            <div className="ec-summary-section">
+              <div
+                className="ec-summary-hd"
+                onClick={() => setSummaryOpen((v) => !v)}
+              >
+                <i className={`ti ${summaryOpen ? 'ti-chevron-down' : 'ti-chevron-right'}`} style={{ fontSize: 10 }} />
+                <span>Summary</span>
+              </div>
+              {summaryOpen && (
+                <div className="ec-run-summary">
+                  <RunStatusInfographic
+                    pass={summary.passed}
+                    fail={summary.failed}
+                    blocked={summary.blocked}
+                    notrun={summary.notRun}
+                    skipped={summary.skipped}
+                    size={DONUT_CHART_SIZE}
+                    compact
+                    showCompleteLabel
+                    interactive
+                    activeStatus={filter}
+                    onStatusClick={(s) => setFilter((prev) => (prev === s ? 'all' : s))}
+                  />
+                </div>
+              )}
             </div>
             {teamSummary.length > 0 && (
               <div className="ec-team-summary">
@@ -975,6 +1008,7 @@ function ExecDetailPane({
     normalizeAssigneeName(execution?.assignee ?? caseData.assignee) ?? TEAM_USERS[1]
   const [generalDraft, setGeneralDraft] = useState('')
   const [stepDrafts, setStepDrafts] = useState<Record<string, string>>({})
+  const [customFieldsOpen, setCustomFieldsOpen] = useState(true)
   const [notesOpen, setNotesOpen] = useState(false)
   const [notesDraft, setNotesDraft] = useState(execution?.resultNotes ?? '')
 
@@ -1053,35 +1087,43 @@ function ExecDetailPane({
       </div>
 
       <div className={`ed-tp${tab === 'details' ? ' on' : ''}`}>
+        <div style={{ marginBottom: 10 }}>
+          <div className="ed-sl">Assigned to</div>
+          {sealed ? (
+            <div style={{ fontSize: 12, marginTop: 4 }}>{displayAssigneeName(execution?.assignee ?? caseData.assignee)}</div>
+          ) : (
+            <select
+              value={currentAssignee}
+              onChange={(e) => onAssigneeChange(e.target.value)}
+              style={{ fontSize: 11.5, padding: '2px 4px', borderRadius: 3, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', maxWidth: '100%', marginTop: 4 }}
+            >
+              {TEAM_USERS.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+        <div className="ed-custom-fields">
+          <div
+            className="ed-custom-fields-hd"
+            onClick={() => setCustomFieldsOpen((v) => !v)}
+          >
+            <i className={`ti ${customFieldsOpen ? 'ti-chevron-down' : 'ti-chevron-right'}`} style={{ fontSize: 10 }} />
+            <span>Custom Fields</span>
+          </div>
+          {customFieldsOpen && (
+            <div className="ed-custom-fields-body">
+              <div className="ed-meta-grid">
+                <div><div className="ed-ml">Priority</div><div className="ed-mv"><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[caseData.priority]]}`}>{caseData.priority}</span></div></div>
+                <div><div className="ed-ml">Type</div><div className="ed-mv">{caseData.type}</div></div>
+                <div><div className="ed-ml">Last result</div><div className="ed-mv">{statusLabel}</div></div>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="ed-precond">
           <div className="ed-sl">Preconditions</div>
           <div className="ed-pt">{caseData.preconditions}</div>
-        </div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 5, padding: '8px 10px' }}>
-          <div className="ed-sl" style={{ marginBottom: 7 }}>Metadata</div>
-          <div className="ed-meta-grid">
-            <div><div className="ed-ml">Priority</div><div className="ed-mv"><span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[caseData.priority]]}`}>{caseData.priority}</span></div></div>
-            <div><div className="ed-ml">Type</div><div className="ed-mv">{caseData.type}</div></div>
-            <div>
-              <div className="ed-ml">Assigned to</div>
-              <div className="ed-mv">
-                {sealed ? (
-                  displayAssigneeName(execution?.assignee ?? caseData.assignee)
-                ) : (
-                  <select
-                    value={currentAssignee}
-                    onChange={(e) => onAssigneeChange(e.target.value)}
-                    style={{ fontSize: 11.5, padding: '2px 4px', borderRadius: 3, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', maxWidth: '100%' }}
-                  >
-                    {TEAM_USERS.map((name) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-            <div><div className="ed-ml">Last result</div><div className="ed-mv">{statusLabel}</div></div>
-          </div>
         </div>
         {caseData.steps.map((s, n) => {
           const sr = execution?.stepResults[s.id] ?? 'Not run'
@@ -1115,7 +1157,8 @@ function ExecDetailPane({
                   <div className="esc-cmt-add">
                     <textarea
                       className="esc-cmt"
-                      rows={1}
+                      rows={2}
+                      style={{ resize: 'vertical' }}
                       placeholder="Add step comment…"
                       value={stepDrafts[s.id] ?? ''}
                       onChange={(e) => setStepDrafts((d) => ({ ...d, [s.id]: e.target.value }))}
@@ -1167,39 +1210,6 @@ function ExecDetailPane({
         </div>
       </div>
 
-      <div className={`ed-tp${tab === 'history' ? ' on' : ''}`}>
-        {(() => {
-          const entries = (executionLog ?? [])
-            .filter((e) => e.caseId === caseData.id)
-            .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-          if (entries.length === 0) {
-            return <div style={{ padding: 12, color: 'var(--text3)', fontSize: 12 }}>No execution history yet.</div>
-          }
-          return entries.map((e) => (
-            <div key={e.id} className="ed-hist-item">
-              <div
-                className="ed-hist-dot"
-                style={{
-                  background:
-                    e.to === 'Passed' ? 'var(--pass)' :
-                    e.to === 'Failed' ? 'var(--fail)' :
-                    e.to === 'Blocked' ? 'var(--block)' :
-                    'var(--text3)',
-                }}
-              />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>
-                  {e.from} → {e.to}
-                </div>
-                <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>
-                  {e.by} · {formatRelativeTime(e.at)}
-                </div>
-              </div>
-            </div>
-          ))
-        })()}
-      </div>
-
       <div className={`ed-tp${tab === 'comments' ? ' on' : ''}`}>
         {allComments.length === 0 ? (
           <div style={{ padding: 12, color: 'var(--text3)', fontSize: 12 }}>No comments yet.</div>
@@ -1245,6 +1255,52 @@ function ExecDetailPane({
         </div>
       </div>
 
+      <div className={`ed-tp${tab === 'requirements' ? ' on' : ''}`}>
+        {caseData.references ? (
+          <div style={{ padding: '8px 10px' }}>
+            <div className="ed-sl" style={{ marginBottom: 6 }}>Linked requirements</div>
+            <div className="ed-pt" style={{ whiteSpace: 'pre-wrap' }}>{caseData.references}</div>
+          </div>
+        ) : (
+          <div style={{ padding: 12, color: 'var(--text3)', fontSize: 12 }}>
+            No requirements linked to this test case.
+          </div>
+        )}
+      </div>
+
+      <div className={`ed-tp${tab === 'history' ? ' on' : ''}`}>
+        {(() => {
+          const entries = (executionLog ?? [])
+            .filter((e) => e.caseId === caseData.id)
+            .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+          if (entries.length === 0) {
+            return <div style={{ padding: 12, color: 'var(--text3)', fontSize: 12 }}>No execution history yet.</div>
+          }
+          return entries.map((e) => (
+            <div key={e.id} className="ed-hist-item">
+              <div
+                className="ed-hist-dot"
+                style={{
+                  background:
+                    e.to === 'Passed' ? 'var(--pass)' :
+                    e.to === 'Failed' ? 'var(--fail)' :
+                    e.to === 'Blocked' ? 'var(--block)' :
+                    'var(--text3)',
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>
+                  {e.from} → {e.to}
+                </div>
+                <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>
+                  {e.by} · {formatRelativeTime(e.at)}
+                </div>
+              </div>
+            </div>
+          ))
+        })()}
+      </div>
+
       <div className="ed-foot">
         <span className="ed-rl">Result:</span>
         <div className="ed-rbs">
@@ -1268,7 +1324,7 @@ function ExecDetailPane({
         <div className="sc-h"><span className="kbd">B</span>Blocked</div>
         <div className="sc-h"><span className="kbd">S</span>Skipped</div>
         <div className="sc-h"><span className="kbd">D</span>Defect</div>
-        <div className="sc-h"><span className="kbd">J/K</span>Navigate</div>
+        <div className="sc-h"><span className="kbd">↑/↓</span>Navigate</div>
         <div className="sc-h" style={{ marginLeft: 'auto' }}>
           <span className="kbd sc-kbd-btn" onClick={onOpenShortcuts}>?</span>&nbsp;Shortcuts
         </div>

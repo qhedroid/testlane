@@ -1192,7 +1192,7 @@ export function CasesScreen() {
                 onClick={(e) => { e.preventDefault(); router.push(testRunPath(activeProject.key, lr.run.runKey)) }}
                 style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 11, textDecoration: 'none' }}
               >
-                {lr.run.runKey}
+                {`TR-${lr.run.runKey}`}
               </a>
             </div>
             <div style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 3 }}>

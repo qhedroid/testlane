@@ -10,6 +10,7 @@ interface TestRunsTopbarProps {
   onDelete: () => void
   onCreateRun: () => void
   onEdit?: () => void
+  hasCases?: boolean
 }
 
 export function TestRunsTopbar({
@@ -19,6 +20,7 @@ export function TestRunsTopbar({
   onDelete,
   onCreateRun,
   onEdit,
+  hasCases = true,
 }: TestRunsTopbarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
@@ -119,7 +121,7 @@ export function TestRunsTopbar({
               Delete test run
             </button>
             <div className="tr-more-sep" />
-            <button type="button" className="tr-more-item tr-more-create" onClick={() => { closeMore(); onCreateRun() }}>
+            <button type="button" className="tr-more-item tr-more-create" disabled={!hasCases} onClick={() => { closeMore(); onCreateRun() }}>
               Create new run…
             </button>
           </div>
