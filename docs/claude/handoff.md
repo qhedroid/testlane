@@ -101,15 +101,16 @@ After Task 07b ran, two additional bugs were found:
 - **Always run `pnpm build` before committing.** Zero TS errors required.
 - **Dev server restart command:** `cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev`
 - **Commit after each task** as a checkpoint for easy rollback.
-- **Committing doc changes** — after providing a commit message for `docs/claude/**` or `docs/cursor-prompts/**` edits, always offer to run the commit directly. Append `Co-authored-by: Claude <claude@anthropic.com>` to the message body.
+- **Committing doc changes** — after providing a commit message for `docs/claude/**` or `docs/cursor-prompts/**` edits, always offer to run the commit directly. Append `Co-authored-by: Claude <claude@anthropic.com>` to the message body. The repo has a local git config (`user.name=CrimsonDelta`, `user.email=30307439+CrimsonDelta@users.noreply.github.com`) — do NOT override it with `GIT_AUTHOR_*` or `GIT_COMMITTER_*` env vars; just run `git commit` directly and the local config will be used.
 - **No backend work.** If a task appears to require it, stop and ask for confirmation.
 
 ---
 
 ## Gotchas encountered
 
-- **Git amend broke the merge commit** when run from the sandbox (set the wrong committer, caused 57 files to appear unstaged). Fix: `git reset --hard origin/mvp-main` from the user's terminal, then re-amend with the correct `GIT_COMMITTER_NAME` env var.
-- **`.git/HEAD.lock`** blocked amend from the sandbox — user had to remove it manually from their terminal.
+- **Git amend broke the merge commit** when run from the sandbox (set the wrong committer, caused 57 files to appear unstaged). Fix: `git reset --hard origin/mvp-main` from the user's terminal, then re-amend. Do not pass `GIT_COMMITTER_NAME` env vars — the repo has a local git config that handles identity correctly.
+- **`.git/HEAD.lock`** blocked amend from the sandbox — user had to remove it manually from their terminal. The sandbox cannot `rm` this file; always ask the user to remove it if it appears.
+- **Do not override git identity with env vars** — the repo local config sets `user.name=CrimsonDelta` / `user.email=30307439+CrimsonDelta@users.noreply.github.com`. Passing `GIT_AUTHOR_NAME` or `GIT_COMMITTER_NAME` overrides this and causes commits to appear under the wrong author.
 - **`adminSettings` is not in the default `useFresh()` destructure** in CasesScreen — fixed in Task 03; it is now destructured there.
 - **Case detail panel drag direction**: right-anchored panels need `start - dx` not `start + dx` — covered in task-03b prompt.
 - **`formatRunKey` exists in `demo-model.ts`** — Task 06's `formatCaseKey` should follow the exact same pattern and live next to it.
