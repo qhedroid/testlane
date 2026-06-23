@@ -81,9 +81,18 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
 ### Pending
 
-Task 07b — feedback fixes on Task 07. **Prompt drafted** at `docs/cursor-prompts/mvp-test-runs/task-07b-runs-ui-polish.md`. 9 fixes covering: Details pane reorganisation, step scroll/height, shortcut bar, create-run guard, TR-XXXXX tooltip format, case ID blue/underline, row font sizes, Summary collapsible, tab reorder + Requirements tab.
+Task 07b — **Complete** (Cursor confirmed build passes, all 9 fixes applied). Commit prompt at `task-07b-commit.md` — may still need to be run.
 
-### Task 07c / 07d — pending bug fixes
+Task 07c — feedback fixes on Task 07b. **Prompt drafted** at `docs/cursor-prompts/mvp-test-runs/task-07c-runs-ui-polish-2.md`. 5 fixes verified against live Testiny:
+1. Step-comment hyperlinking in Comments tab (click step label → jump to step in Details)
+2. Defects/Requirements tabs corrected per context (interactive in correct screen, read-only in the other)
+3. Create test run button fully guarded (run picker dropdown missed in 07b)
+4. Team/Defects/Details tabbed panel next to pie chart; ec-pane min width → 475px, default → 500px
+5. Delete safeguard: modal warning listing affected open runs; DELETE_CASE cascades to unsealed runs
+
+**Key Testiny finding (item 5):** Deleting a test case removes it from open (unsealed) runs. Sealed runs are left untouched as immutable historical records. Warning dialog lists affected run keys.
+
+### Task legacy 07c / 07d — legacy bug fixes
 
 After Task 07b ran, two additional bugs were found:
 
