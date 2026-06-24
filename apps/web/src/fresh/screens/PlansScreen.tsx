@@ -1,232 +1,774 @@
 'use client'
 
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
-import { PLANS } from '../data/seed'
-import type { DemoPlan } from '../data/types'
+import { useFresh } from '../data/FreshProvider'
+import type { DemoRun, TestPlan } from '../data/demo-model'
+import { formatRelativeTime, resolvePlanCases, runSummary } from '../data/demo-model'
+import { parsePlanKey, planPath, testRunPath } from '../lib/project-routes'
 
-type PlanTab = 'overview' | 'suites' | 'runs'
-
-function planStatusPill(status: DemoPlan['status']) {
-  if (status === 'draft') return 'p-draft'
-  return 'p-act'
+function planRunsForPlan(runs: DemoRun[], planId: string): DemoRun[] {
+  return runs.filter((r) => r.planId === planId)
 }
 
-function avgPass(modules: DemoPlan['modules']) {
-  const passes = modules.map((m) => m.pass).filter((p): p is number => p !== null)
-  if (!passes.length) return '-'
-  return `${Math.round(passes.reduce((a, b) => a + b, 0) / passes.length)}%`
+function openRunForPlan(runs: DemoRun[], planId: string): DemoRun | undefined {
+  return planRunsForPlan(runs, planId)
+    .filter((r) => !r.sealed && !r.archivedAt)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+}
+
+function lastRunForPlan(runs: DemoRun[], planId: string): DemoRun | undefined {
+  return planRunsForPlan(runs, planId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+}
+
+function openRunCount(runs: DemoRun[], planId: string): number {
+  return planRunsForPlan(runs, planId).filter((r) => !r.sealed && !r.archivedAt).length
+}
+
+function RunResultBar({ run }: { run: DemoRun }) {
+  const s = runSummary(run)
+  const total = s.total || 1
+  const segments = [
+    { count: s.passed, color: '#2E7D32' },
+    { count: s.failed, color: '#C62828' },
+    { count: s.blocked, color: '#E65100' },
+    { count: s.notRun, color: 'var(--border2, #ccc)' },
+  ]
+  return (
+    <div className="pl-run-bar">
+      {segments.map((seg, i) =>
+        seg.count > 0 ? (
+          <div
+            key={i}
+            className="pl-run-bar-seg"
+            style={{ width: `${(seg.count / total) * 100}%`, background: seg.color }}
+          />
+        ) : null,
+      )}
+    </div>
+  )
 }
 
 export function PlansScreen() {
+  const router = useRouter()
+  const pathname = usePathname()
   const projectHref = useProjectHref()
-  const [selIdx, setSelIdx] = useState(0)
-  const [tab, setTab] = useState<PlanTab>('overview')
-  const plan = PLANS[selIdx]
+  const {
+    activeProject,
+    activePlans,
+    activeCases,
+    activeFolders,
+    activeRuns,
+    addPlan,
+    updatePlan,
+    deletePlan,
+    duplicatePlan,
+    spawnRunFromPlan,
+  } = useFresh()
 
-  const activePlans = PLANS.filter((p) => p.status === 'active')
-  const draftPlans = PLANS.filter((p) => p.status === 'draft')
+  const planKeyFromUrl = parsePlanKey(pathname)
+  const urlProjectKey = pathname.split('/').filter(Boolean)[0]?.toUpperCase() ?? ''
+  const projectMismatch = !!urlProjectKey && urlProjectKey !== activeProject.key.toUpperCase()
 
-  const coverage = useMemo(
-    () =>
-      plan.modules.map((m) => {
-        const short = m.name.replace(/^.*? — /, '')
-        const color =
-          m.pass === null
-            ? 'var(--border2)'
-            : m.pass >= 80
-              ? '#2E7D32'
-              : m.pass >= 70
-                ? '#E65100'
-                : '#C62828'
-        return { short, pass: m.pass, color }
-      }),
-    [plan.modules],
+  const selectedPlan = useMemo(
+    () => activePlans.find((p) => p.planKey === planKeyFromUrl) ?? null,
+    [activePlans, planKeyFromUrl],
   )
+
+  const [tab, setTab] = useState<'overview' | 'testcases'>('overview')
+  const [listSearch, setListSearch] = useState('')
+  const [createPlanOpen, setCreatePlanOpen] = useState(false)
+  const [createPlanTitle, setCreatePlanTitle] = useState('')
+  const [createPlanDesc, setCreatePlanDesc] = useState('')
+  const [editPlanOpen, setEditPlanOpen] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [spawnRunOpen, setSpawnRunOpen] = useState(false)
+  const [spawnRunName, setSpawnRunName] = useState('')
+  const [spawnRunDesc, setSpawnRunDesc] = useState('')
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null)
+  const [rowMenuPos, setRowMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
+  const rowMenuRef = useRef<HTMLDivElement>(null)
+
+  const filteredPlans = useMemo(() => {
+    const q = listSearch.trim().toLowerCase()
+    if (!q) return activePlans
+    return activePlans.filter(
+      (p) => p.title.toLowerCase().includes(q) || p.planKey.toLowerCase().includes(q),
+    )
+  }, [activePlans, listSearch])
+
+  const resolvedCases = useMemo(() => {
+    if (!selectedPlan) return []
+    return resolvePlanCases(selectedPlan, activeCases, activeFolders)
+  }, [selectedPlan, activeCases, activeFolders])
+
+  const planRunHistory = useMemo(() => {
+    if (!selectedPlan) return []
+    return planRunsForPlan(activeRuns, selectedPlan.id).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    )
+  }, [selectedPlan, activeRuns])
+
+  const coveragePct =
+    activeCases.length > 0 ? Math.round((resolvedCases.length / activeCases.length) * 100) : 0
+
+  const openRun = selectedPlan ? openRunForPlan(activeRuns, selectedPlan.id) : undefined
+
+  useEffect(() => {
+    if (projectMismatch) return
+    if (planKeyFromUrl && !selectedPlan) {
+      router.replace(planPath(activeProject.key))
+    }
+  }, [projectMismatch, planKeyFromUrl, selectedPlan, activeProject.key, router])
+
+  useEffect(() => {
+    if (!moreMenuOpen && !rowMenuOpen) return
+    function onClick(e: MouseEvent) {
+      if (moreMenuOpen && moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false)
+      }
+      if (rowMenuOpen && rowMenuRef.current && !rowMenuRef.current.contains(e.target as Node)) {
+        setRowMenuOpen(null)
+        setRowMenuPos(null)
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [moreMenuOpen, rowMenuOpen])
+
+  const navigateToPlan = useCallback(
+    (plan: TestPlan) => {
+      router.push(planPath(activeProject.key, plan.planKey))
+    },
+    [router, activeProject.key],
+  )
+
+  const navigateToPlansList = useCallback(() => {
+    router.push(planPath(activeProject.key))
+  }, [router, activeProject.key])
+
+  const handleDeletePlan = useCallback(
+    (plan: TestPlan) => {
+      if (!window.confirm(`Delete plan "${plan.title}"? This cannot be undone.`)) return
+      deletePlan(plan.id)
+      if (selectedPlan?.id === plan.id) navigateToPlansList()
+    },
+    [deletePlan, selectedPlan?.id, navigateToPlansList],
+  )
+
+  const handleDuplicatePlan = useCallback(
+    (planId: string) => {
+      const result = duplicatePlan(planId)
+      if (result) router.push(planPath(activeProject.key, result.planKey))
+    },
+    [duplicatePlan, router, activeProject.key],
+  )
+
+  const openEditModal = useCallback((plan: TestPlan) => {
+    setEditTitle(plan.title)
+    setEditDesc(plan.description ?? '')
+    setEditPlanOpen(true)
+    setRowMenuOpen(null)
+    setMoreMenuOpen(false)
+  }, [])
+
+  const openSpawnModal = useCallback(() => {
+    if (!selectedPlan) return
+    const dateStr = new Date().toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+    })
+    setSpawnRunName(`${selectedPlan.title} ${dateStr}`)
+    setSpawnRunDesc('')
+    setSpawnRunOpen(true)
+  }, [selectedPlan])
+
+  const handleCreatePlan = useCallback(() => {
+    const title = createPlanTitle.trim()
+    if (!title) return
+    const { planKey } = addPlan(title, createPlanDesc.trim() || undefined)
+    setCreatePlanTitle('')
+    setCreatePlanDesc('')
+    setCreatePlanOpen(false)
+    router.push(planPath(activeProject.key, planKey))
+  }, [createPlanTitle, createPlanDesc, addPlan, router, activeProject.key])
+
+  const handleEditPlan = useCallback(() => {
+    if (!selectedPlan || !editTitle.trim()) return
+    updatePlan(selectedPlan.id, {
+      title: editTitle.trim(),
+      description: editDesc.trim() || undefined,
+    })
+    setEditPlanOpen(false)
+  }, [selectedPlan, editTitle, editDesc, updatePlan])
+
+  const handleSpawnRun = useCallback(() => {
+    if (!selectedPlan || !spawnRunName.trim()) return
+    const result = spawnRunFromPlan(
+      selectedPlan.id,
+      spawnRunName.trim(),
+      spawnRunDesc.trim() || undefined,
+    )
+    if (result) {
+      setSpawnRunOpen(false)
+      router.push(testRunPath(activeProject.key, result.runKey))
+    }
+  }, [selectedPlan, spawnRunName, spawnRunDesc, spawnRunFromPlan, router, activeProject.key])
 
   return (
     <div className="view">
       <FreshTopbar
         breadcrumbs={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'TI-Core Platform' },
+          { label: 'Dashboard', href: projectHref('dashboard') },
+          { label: activeProject.name },
           { label: 'Test plans' },
         ]}
         searchPlaceholder="Search plans…"
         searchWidth={200}
-        actions={
-          <button type="button" className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New plan</button>
-        }
       />
       <PrototypeBanner />
-      <div className="tp-lay">
-        <div className="tp-list-pane">
-          <div className="tpl-hd">
+
+      <div className="pl-lay">
+        <div className="pl-list-pane">
+          <div className="pl-list-hd">
             <i className="ti ti-clipboard-list" style={{ fontSize: 13, color: 'var(--text2)' }} />
             <span className="st-ttl">Plans</span>
-            <span className="pnl-ct">{PLANS.length}</span>
+            <span className="pnl-ct">{activePlans.length}</span>
+            <button
+              type="button"
+              className="btn btn-p"
+              style={{ fontSize: 11, padding: '3px 8px' }}
+              onClick={() => setCreatePlanOpen(true)}
+            >
+              <i className="ti ti-plus" style={{ fontSize: 11 }} /> New plan
+            </button>
           </div>
-          <div className="tpl-body">
-            <div className="divider-lbl">Active</div>
-            {activePlans.map((p) => {
-              const idx = PLANS.indexOf(p)
-              const passPct = p.modules.find((m) => m.pass !== null)?.pass ?? 0
-              return (
+          <div className="pl-list-search">
+            <input
+              type="text"
+              placeholder="Filter plans…"
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
+            />
+          </div>
+          <div className="pl-list-body">
+            {filteredPlans.length === 0 ? (
+              <div className="pl-empty-list">
+                {activePlans.length === 0 ? 'No test plans yet.' : 'No plans match your search.'}
+              </div>
+            ) : (
+              filteredPlans.map((plan) => (
                 <div
-                  key={p.title}
-                  className={`tpl-item${selIdx === idx ? ' on' : ''}`}
-                  onClick={() => setSelIdx(idx)}
+                  key={plan.id}
+                  className={`pl-list-item${selectedPlan?.id === plan.id ? ' on' : ''}`}
+                  onClick={() => navigateToPlan(plan)}
                 >
-                  <div className="tpl-nm">{p.title}</div>
-                  <div className="tpl-mt">
-                    <span className="pill p-act" style={{ fontSize: 10, padding: '1px 5px' }}>Active</span>
-                    <span style={{ fontSize: 9.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{p.cases} cases</span>
+                  <div className="pl-item-key">{plan.planKey}</div>
+                  <div className="pl-item-title">{plan.title}</div>
+                  <div className="pl-item-meta">
+                    <span>{openRunCount(activeRuns, plan.id)} open</span>
+                    <span>
+                      Last:{' '}
+                      {(() => {
+                        const lr = lastRunForPlan(activeRuns, plan.id)
+                        return lr ? formatRelativeTime(lr.createdAt) : '—'
+                      })()}
+                    </span>
                   </div>
-                  <div className="rl-pg">
-                    <div className="prog" style={{ flex: 1, height: 3 }}>
-                      <div className="pg-p" style={{ width: `${passPct}%` }} />
+                  <div className="pl-item-actions">
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ padding: '2px 6px', fontSize: 11 }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                        if (rowMenuOpen === plan.id) {
+                          setRowMenuOpen(null)
+                          setRowMenuPos(null)
+                        } else {
+                          setRowMenuOpen(plan.id)
+                          setRowMenuPos({ x: rect.right, y: rect.bottom + 4 })
+                        }
+                      }}
+                    >
+                      <i className="ti ti-dots" />
+                    </button>
+                  </div>
+                  {rowMenuOpen === plan.id && rowMenuPos ? (
+                    <div
+                      ref={rowMenuRef}
+                      className="ctx-menu"
+                      style={{
+                        position: 'fixed',
+                        top: rowMenuPos.y,
+                        left: rowMenuPos.x - 160,
+                        zIndex: 1000,
+                        width: 160,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button type="button" className="ctx-item" onClick={() => openEditModal(plan)}>
+                        <i className="ti ti-edit" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="ctx-item"
+                        onClick={() => {
+                          setRowMenuOpen(null)
+                          setRowMenuPos(null)
+                          handleDuplicatePlan(plan.id)
+                        }}
+                      >
+                        <i className="ti ti-copy" /> Duplicate
+                      </button>
+                      <div className="ctx-sep" />
+                      <button
+                        type="button"
+                        className="ctx-item ctx-item-danger"
+                        onClick={() => {
+                          setRowMenuOpen(null)
+                          setRowMenuPos(null)
+                          handleDeletePlan(plan)
+                        }}
+                      >
+                        <i className="ti ti-trash" /> Delete
+                      </button>
                     </div>
-                    <span className="rl-pt">{p.runs.length} runs</span>
-                  </div>
+                  ) : null}
                 </div>
-              )
-            })}
-            <div className="divider-lbl">Draft</div>
-            {draftPlans.map((p) => {
-              const idx = PLANS.indexOf(p)
-              return (
-                <div
-                  key={p.title}
-                  className={`tpl-item${selIdx === idx ? ' on' : ''}`}
-                  onClick={() => setSelIdx(idx)}
-                >
-                  <div className="tpl-nm">{p.title}</div>
-                  <div className="tpl-mt">
-                    <span className="pill p-draft" style={{ fontSize: 10, padding: '1px 5px' }}>Draft</span>
-                    <span style={{ fontSize: 9.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{p.cases} cases</span>
-                  </div>
-                  <div className="rl-pg">
-                    <div className="prog" style={{ flex: 1, height: 3 }} />
-                    <span className="rl-pt">{p.runs.length} runs</span>
-                  </div>
-                </div>
-              )
-            })}
+              ))
+            )}
           </div>
         </div>
 
-        <div className="resizer-v" data-resize="plan-list" data-min="190" data-max="360" />
-
-        <div className="tp-detail">
-          <div className="tpd-hd">
-            <div className="tpd-ttl">{plan.title}</div>
-            <div className="tpd-meta">
-              <span className={`pill ${planStatusPill(plan.status)}`}>
-                <span className="pill-dot" />
-                {plan.status === 'draft' ? 'Draft' : 'Active'}
-              </span>
-              <span><i className="ti ti-server" style={{ fontSize: 12 }} /> Environment: {plan.env}</span>
-              <span><i className="ti ti-user" style={{ fontSize: 12 }} /> Owner: {plan.owner}</span>
-              <span style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text3)' }}>
-                {plan.cases} cases across {plan.suiteCt}
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{plan.desc}</div>
-          </div>
-
-          <div className="nav-tab-bar">
-            {(['overview', 'suites', 'runs'] as const).map((t) => (
-              <div key={t} className={`nav-tab${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
-                {t === 'suites' ? 'Included suites' : t === 'runs' ? 'Run history' : 'Overview'}
-              </div>
-            ))}
-          </div>
-
-          <div className="tpd-body">
-            <div className={`tp-tab-pane${tab === 'overview' ? ' on' : ''}`}>
-              <div className="tp-overview-grid">
-                <div className="tp-stat"><strong>{plan.cases}</strong><span>Cases</span></div>
-                <div className="tp-stat"><strong>{plan.modules.length}</strong><span>Suites</span></div>
-                <div className="tp-stat"><strong>{avgPass(plan.modules)}</strong><span>Avg pass</span></div>
-                <div className="tp-stat"><strong>{plan.runs.length}</strong><span>Runs</span></div>
-              </div>
-              <div className="tpd-panel">
-                <div className="tpd-panel-hd">
-                  <i className="ti ti-chart-donut" style={{ fontSize: 13, color: 'var(--accent)' }} />
-                  <span className="tpd-panel-title">Coverage / metrics</span>
-                  <span style={{ fontSize: 10.5, color: 'var(--text3)', marginLeft: 'auto' }}>Release validation readiness</span>
+        <div className="pl-detail">
+          {!selectedPlan ? (
+            <div className="pl-no-selection">Select a plan to view details</div>
+          ) : (
+            <>
+              <div className="pl-detail-hd">
+                <div className="pl-detail-title-row">
+                  <span className="dp-id">{selectedPlan.planKey}</span>
+                  <h2>{selectedPlan.title}</h2>
                 </div>
-                <div className="cov-grid">
-                  {coverage.map((c) => (
-                    <div key={c.short}>
-                      <div className="cov-lbl">{c.short}</div>
-                      <div className="cov-bar">
-                        <div className="cov-fill" style={{ width: `${c.pass ?? 0}%`, background: c.color }} />
+                <div className="pl-detail-meta">
+                  <span>Created by: Shaun Sevume</span>
+                  <span>Created: {formatRelativeTime(selectedPlan.createdAt)}</span>
+                </div>
+                <div className="pl-detail-actions">
+                  <button type="button" className="btn btn-p" onClick={openSpawnModal}>
+                    <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
+                  </button>
+                  <button type="button" className="btn" onClick={() => openEditModal(selectedPlan)}>
+                    <i className="ti ti-edit" style={{ fontSize: 12 }} /> Edit
+                  </button>
+                  <div style={{ position: 'relative' }} ref={moreMenuRef}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setMoreMenuOpen((v) => !v)}
+                    >
+                      More…
+                    </button>
+                    {moreMenuOpen ? (
+                      <div
+                        className="ctx-menu"
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: 0,
+                          marginTop: 4,
+                          zIndex: 100,
+                          width: 160,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="ctx-item"
+                          onClick={() => {
+                            setMoreMenuOpen(false)
+                            handleDuplicatePlan(selectedPlan.id)
+                          }}
+                        >
+                          <i className="ti ti-copy" /> Duplicate
+                        </button>
+                        <div className="ctx-sep" />
+                        <button
+                          type="button"
+                          className="ctx-item ctx-item-danger"
+                          onClick={() => {
+                            setMoreMenuOpen(false)
+                            handleDeletePlan(selectedPlan)
+                          }}
+                        >
+                          <i className="ti ti-trash" /> Delete
+                        </button>
                       </div>
-                      <div className="cov-pct">{c.pass !== null ? `${c.pass}%` : 'Not run'}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="validation-note">
-                <strong>Validation involvement:</strong> 2-3 QA users validate sample real workflows weekly, focused on execution, search, folders, run sealing, and clear acceptance criteria for MVP readiness.
-              </div>
-            </div>
-
-            <div className={`tp-tab-pane${tab === 'suites' ? ' on' : ''}`}>
-              <div className="tpd-panel">
-                <div className="tpd-panel-hd">
-                  <i className="ti ti-folder" style={{ fontSize: 13, color: 'var(--accent)' }} />
-                  <span className="tpd-panel-title">Included suites</span>
-                  <span className="pnl-ct">{plan.suiteCt}</span>
-                </div>
-                {plan.modules.map((m) => (
-                  <div key={m.name} className="tp-module-row">
-                    <span className="tp-mod-name">{m.name}</span>
-                    <span className="tp-mod-count">{m.ct} cases</span>
-                    {m.pass !== null ? (
-                      <span className={`pill ${m.pass >= 80 ? 'p-pass' : 'p-fail'}`} style={{ fontSize: 10 }}>{m.pass}% pass</span>
-                    ) : (
-                      <span className="pill p-notrun" style={{ fontSize: 10 }}>Not run</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className={`tp-tab-pane${tab === 'runs' ? ' on' : ''}`}>
-              <div className="tpd-panel">
-                <div className="tpd-panel-hd">
-                  <i className="ti ti-history" style={{ fontSize: 13, color: 'var(--text2)' }} />
-                  <span className="tpd-panel-title">Run history</span>
-                  <span className="pnl-ct">{plan.runs.length} runs</span>
-                </div>
-                {plan.runs.map((r) => (
-                  <div key={r.name} className="tp-run-row">
-                    <span className={`pill ${r.status === 'act' ? 'p-act' : 'p-pass'}`} style={{ fontSize: 10 }}>
-                      {r.status === 'act' ? 'Active' : 'Sealed'}
-                    </span>
-                    <span className="tp-run-name">{r.name}</span>
-                    <span className="tp-run-date">{r.meta}</span>
-                    {r.status === 'act' ? (
-                      <Link href={projectHref('testruns')} className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Open →</Link>
                     ) : null}
                   </div>
+                </div>
+              </div>
+
+              <div className="nav-tab-bar">
+                {(['overview', 'testcases'] as const).map((t) => (
+                  <div
+                    key={t}
+                    className={`nav-tab${tab === t ? ' on' : ''}`}
+                    onClick={() => setTab(t)}
+                  >
+                    {t === 'overview' ? 'Overview' : 'Test cases'}
+                  </div>
                 ))}
               </div>
-            </div>
-          </div>
 
-          <div className="tpd-cta">
-            <Link href={projectHref('testruns')} className="btn btn-p"><i className="ti ti-player-play" style={{ fontSize: 13 }} /> Spawn new run from this plan</Link>
-            <button type="button" className="btn"><i className="ti ti-edit" style={{ fontSize: 12 }} /> Edit plan</button>
-            <button type="button" className="btn"><i className="ti ti-copy" style={{ fontSize: 12 }} /> Clone plan</button>
-          </div>
+              <div className="pl-detail-body">
+                {tab === 'overview' ? (
+                  <>
+                    <div className="pl-overview-cards">
+                      <div className="pl-card">
+                        <div className="pl-card-hd">
+                          <i className="ti ti-info-circle" style={{ fontSize: 13 }} />
+                          Test plan details
+                        </div>
+                        <div className="pl-card-row">
+                          <label>Created by</label>
+                          <span>Shaun Sevume</span>
+                        </div>
+                        <div className="pl-card-row">
+                          <label>Created at</label>
+                          <span>{formatRelativeTime(selectedPlan.createdAt)}</span>
+                        </div>
+                        <div className="pl-card-row">
+                          <label>Case count</label>
+                          <span>{resolvedCases.length}</span>
+                        </div>
+                      </div>
+
+                      <div className="pl-card">
+                        <div className="pl-card-hd">
+                          <i className="ti ti-player-play" style={{ fontSize: 13 }} />
+                          Open test run
+                        </div>
+                        <div className="pl-open-run">
+                          {openRun ? (
+                            <>
+                              <span style={{ fontSize: 11, color: 'var(--text3)' }}>Open test run</span>
+                              <Link
+                                className="pl-open-run-key"
+                                href={testRunPath(activeProject.key, openRun.runKey)}
+                              >
+                                TR-{openRun.runKey}
+                              </Link>
+                            </>
+                          ) : (
+                            <button type="button" className="btn btn-p" onClick={openSpawnModal}>
+                              <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pl-card">
+                        <div className="pl-card-hd">
+                          <i className="ti ti-chart-donut" style={{ fontSize: 13 }} />
+                          Test case coverage
+                        </div>
+                        <div className="pl-coverage-donut">
+                          <div className="pl-donut-pct">{coveragePct}%</div>
+                          <div className="pl-donut-label">
+                            {resolvedCases.length} of {activeCases.length} test cases in this project
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pl-panel">
+                      <div className="pl-panel-hd">
+                        <i className="ti ti-history" style={{ fontSize: 13, color: 'var(--text2)' }} />
+                        Run history
+                      </div>
+                      {planRunHistory.length === 0 ? (
+                        <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--text3)' }}>
+                          No test runs created from this plan yet.
+                        </div>
+                      ) : (
+                        <table className="pl-run-table">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Title</th>
+                              <th>Results</th>
+                              <th>Created</th>
+                              <th>Closed</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {planRunHistory.map((run) => (
+                              <tr key={run.id}>
+                                <td>
+                                  <Link
+                                    className="pl-run-key"
+                                    href={testRunPath(activeProject.key, run.runKey)}
+                                  >
+                                    TR-{run.runKey}
+                                  </Link>
+                                </td>
+                                <td>{run.name}</td>
+                                <td>
+                                  <RunResultBar run={run} />
+                                </td>
+                                <td>{formatRelativeTime(run.createdAt)}</td>
+                                <td>
+                                  {run.sealed
+                                    ? formatRelativeTime(run.archivedAt ?? run.createdAt)
+                                    : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="pl-tc-placeholder">
+                    <i
+                      className="ti ti-checklist"
+                      style={{ fontSize: 24, marginBottom: 8, display: 'block' }}
+                    />
+                    Test case selection will be available in the next update.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {createPlanOpen ? (
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            setCreatePlanOpen(false)
+            setCreatePlanTitle('')
+            setCreatePlanDesc('')
+          }}
+        >
+          <div
+            className="create-dialog"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setCreatePlanOpen(false)
+                setCreatePlanTitle('')
+                setCreatePlanDesc('')
+              }
+              if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement)) {
+                e.preventDefault()
+                handleCreatePlan()
+              }
+            }}
+          >
+            <div className="shortcuts-hd">
+              <div className="shortcuts-title">New test plan</div>
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: '2px 6px' }}
+                onClick={() => {
+                  setCreatePlanOpen(false)
+                  setCreatePlanTitle('')
+                  setCreatePlanDesc('')
+                }}
+              >
+                <i className="ti ti-x" style={{ fontSize: 13 }} />
+              </button>
+            </div>
+            <div className="create-body">
+              <div className="form-field">
+                <label>Title</label>
+                <input
+                  value={createPlanTitle}
+                  onChange={(e) => setCreatePlanTitle(e.target.value)}
+                  placeholder="e.g. Sprint regression"
+                  autoFocus
+                />
+              </div>
+              <div className="form-field">
+                <label>Description</label>
+                <textarea
+                  rows={3}
+                  value={createPlanDesc}
+                  onChange={(e) => setCreatePlanDesc(e.target.value)}
+                  placeholder="Optional plan description"
+                />
+              </div>
+            </div>
+            <div className="create-foot">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setCreatePlanOpen(false)
+                  setCreatePlanTitle('')
+                  setCreatePlanDesc('')
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-p"
+                disabled={!createPlanTitle.trim()}
+                onClick={handleCreatePlan}
+              >
+                Create plan
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editPlanOpen && selectedPlan ? (
+        <div className="modal-backdrop" onClick={() => setEditPlanOpen(false)}>
+          <div
+            className="create-dialog"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setEditPlanOpen(false)
+              if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement)) {
+                e.preventDefault()
+                handleEditPlan()
+              }
+            }}
+          >
+            <div className="shortcuts-hd">
+              <div className="shortcuts-title">Edit test plan</div>
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: '2px 6px' }}
+                onClick={() => setEditPlanOpen(false)}
+              >
+                <i className="ti ti-x" style={{ fontSize: 13 }} />
+              </button>
+            </div>
+            <div className="create-body">
+              <div className="form-field">
+                <label>Title</label>
+                <input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="form-field">
+                <label>Description</label>
+                <textarea
+                  rows={3}
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  placeholder="Optional plan description"
+                />
+              </div>
+            </div>
+            <div className="create-foot">
+              <button type="button" className="btn" onClick={() => setEditPlanOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-p"
+                disabled={!editTitle.trim()}
+                onClick={handleEditPlan}
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {spawnRunOpen && selectedPlan ? (
+        <div className="modal-backdrop" onClick={() => setSpawnRunOpen(false)}>
+          <div
+            className="create-dialog"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setSpawnRunOpen(false)
+              if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement)) {
+                e.preventDefault()
+                handleSpawnRun()
+              }
+            }}
+          >
+            <div className="shortcuts-hd">
+              <div className="shortcuts-title">Create test run from plan</div>
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: '2px 6px' }}
+                onClick={() => setSpawnRunOpen(false)}
+              >
+                <i className="ti ti-x" style={{ fontSize: 13 }} />
+              </button>
+            </div>
+            <div className="create-body">
+              <div className="form-field">
+                <label>Title</label>
+                <input
+                  value={spawnRunName}
+                  onChange={(e) => setSpawnRunName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="form-field">
+                <label>Description</label>
+                <textarea
+                  rows={3}
+                  value={spawnRunDesc}
+                  onChange={(e) => setSpawnRunDesc(e.target.value)}
+                  placeholder="Optional run description"
+                />
+              </div>
+              <div
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--text3)',
+                  background: 'var(--hover)',
+                  borderRadius: 4,
+                  padding: '6px 10px',
+                }}
+              >
+                The test run will contain {resolvedCases.length} test cases.
+              </div>
+            </div>
+            <div className="create-foot">
+              <button type="button" className="btn" onClick={() => setSpawnRunOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-p"
+                disabled={!spawnRunName.trim()}
+                onClick={handleSpawnRun}
+              >
+                Create run
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

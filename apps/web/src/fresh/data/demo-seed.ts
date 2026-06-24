@@ -1,8 +1,9 @@
-import type { Case, CaseExecution, CasePriority, CaseStep, DemoRun, DemoState, ExecStatus, Folder, Project } from './demo-model'
+import type { Case, CaseExecution, CasePriority, CaseStep, DemoRun, DemoState, ExecStatus, Folder, Project, TestPlan } from './demo-model'
 import {
   DEFAULT_SEED_PROJECT_ID,
   DEFAULT_SEED_PROJECT_KEY,
   DEMO_SCHEMA_VERSION,
+  formatPlanKey,
   formatRunKey,
   LEGACY_TO_EXEC,
   LEGACY_TO_PRIORITY,
@@ -58,6 +59,49 @@ export const SEED_PROJECT: Project = {
   activeCustomFieldIds: [...SEED_DP_ACTIVE_CUSTOM_FIELD_IDS],
   createdAt: NOW,
 }
+
+const NOW_PLANS = '2026-06-19T09:00:00.000Z'
+
+export const SEED_PLANS: TestPlan[] = [
+  {
+    id: 'plan-smoke',
+    planKey: formatPlanKey(1),
+    projectId: DEFAULT_SEED_PROJECT_ID,
+    title: 'Smoketest',
+    description: 'Critical and high priority cases covering core workflows.',
+    createdAt: NOW_PLANS,
+    queries: [
+      {
+        id: 'tq-smoke-critical',
+        title: 'Critical priority cases',
+        type: 'condition',
+        conditions: [{ field: 'priority', operator: 'equals', value: 'Critical' }],
+      },
+    ],
+  },
+  {
+    id: 'plan-regression',
+    planKey: formatPlanKey(2),
+    projectId: DEFAULT_SEED_PROJECT_ID,
+    title: 'Full Regression',
+    description: 'Complete coverage of all CTMS, eTMF, and Viewer test cases.',
+    createdAt: NOW_PLANS,
+    queries: [
+      {
+        id: 'tq-regression-ctms',
+        title: 'CTMS cases',
+        type: 'folder',
+        folderIds: ['f-ctms'],
+      },
+      {
+        id: 'tq-regression-etmf',
+        title: 'eTMF cases',
+        type: 'folder',
+        folderIds: ['f-etmf'],
+      },
+    ],
+  },
+]
 
 const FOLDER_BY_SUITE: Record<string, string> = {
   CTMS: 'f-rec',
@@ -383,6 +427,8 @@ export function buildInitialDemoState(): DemoState {
     nextRunNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextRunNum },
     adminSettings: initialAdminSettings,
     currentActorUserId: SEED_ADMIN_USER_ID,
+    plansById: Object.fromEntries(SEED_PLANS.map((p) => [p.id, p])),
+    nextPlanNumByProject: { [DEFAULT_SEED_PROJECT_ID]: SEED_PLANS.length + 1 },
   }
 }
 

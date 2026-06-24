@@ -1,5 +1,7 @@
 /** Project-key-prefixed route helpers for the FRESH prototype */
 
+import { planKeyToSlug, slugToPlanKey } from '../data/demo-model'
+
 export const DEFAULT_PROJECT_KEY = 'DP'
 
 export const MODULE_SLUGS = {
@@ -91,7 +93,22 @@ export function testCasePath(projectKey: string, caseKey?: string): string {
 export function parseTestCaseKey(pathname: string): string | null {
   const parts = pathname.split('/').filter(Boolean)
   if (parts.length === 4 && parts[1] === MODULE_SLUGS.cases && parts[2] === 'tc') {
-    return parts[3]
+    return slugToCaseKey(parts[3])
+  }
+  return null
+}
+
+/** Canonical plan path — with or without selected plan key. */
+export function planPath(projectKey: string, planKey?: string): string {
+  const base = projectPath(projectKey, 'plans')
+  return planKey ? `${base}/tp/${planKeyToSlug(planKey)}` : base
+}
+
+/** Extract planKey from /:projectKey/plans/tp/:planKey paths. */
+export function parsePlanKey(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts.length === 4 && parts[1] === MODULE_SLUGS.plans && parts[2] === 'tp') {
+    return slugToPlanKey(parts[3])
   }
   return null
 }
@@ -116,6 +133,7 @@ export function getModuleFromPathname(pathname: string): ModuleSlug | null {
 export function switchProjectPath(pathname: string, newProjectKey: string): string {
   if (parseTestCaseKey(pathname)) return projectPath(newProjectKey, 'cases')
   if (parseTestRunKey(pathname)) return projectPath(newProjectKey, 'testruns')
+  if (parsePlanKey(pathname)) return projectPath(newProjectKey, 'plans')
   const parsed = parseProjectPath(pathname)
   if (parsed) return projectPath(newProjectKey, parsed.module)
   const legacy = LEGACY_PATH_TO_MODULE[pathname]
