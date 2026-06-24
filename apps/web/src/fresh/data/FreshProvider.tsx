@@ -105,7 +105,7 @@ export type FreshAction =
   | { type: 'ARCHIVE_RUN'; runId: string }
   | { type: 'DELETE_RUN'; runId: string }
   | { type: 'ADD_PLAN'; plan: TestPlan }
-  | { type: 'UPDATE_PLAN'; planId: string; patch: Partial<Pick<TestPlan, 'title' | 'description'>> }
+  | { type: 'UPDATE_PLAN'; planId: string; patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>> }
   | { type: 'DELETE_PLAN'; planId: string }
   | { type: 'DUPLICATE_PLAN'; newPlan: TestPlan }
   | { type: 'ADD_FOLDER'; folder: Folder }
@@ -606,7 +606,7 @@ interface FreshContextValue {
   editRun: (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => void
   addCasesToRun: (runId: string, caseIds: string[]) => void
   addPlan: (title: string, description?: string) => { planKey: string; planId: string }
-  updatePlan: (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description'>>) => void
+  updatePlan: (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>>) => void
   deletePlan: (planId: string) => void
   duplicatePlan: (planId: string) => { planKey: string; planId: string } | null
   spawnRunFromPlan: (planId: string, name: string, description?: string) => { runKey: string } | null
@@ -792,7 +792,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   )
 
   const updatePlan = useCallback(
-    (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description'>>) => {
+    (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>>) => {
       dispatch({ type: 'UPDATE_PLAN', planId, patch })
     },
     [],

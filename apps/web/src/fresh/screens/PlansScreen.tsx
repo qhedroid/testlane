@@ -7,8 +7,22 @@ import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
-import type { DemoRun, TestPlan } from '../data/demo-model'
-import { formatRelativeTime, resolvePlanCases, runSummary } from '../data/demo-model'
+import type {
+  Case,
+  DemoRun,
+  Folder,
+  QueryCondition,
+  QueryField,
+  QueryOperator,
+  TestPlan,
+  TestQuery,
+} from '../data/demo-model'
+import {
+  formatRelativeTime,
+  newId,
+  resolvePlanCases,
+  runSummary,
+} from '../data/demo-model'
 import { parsePlanKey, planPath, testRunPath } from '../lib/project-routes'
 
 function planRunsForPlan(runs: DemoRun[], planId: string): DemoRun[] {
@@ -50,6 +64,282 @@ function RunResultBar({ run }: { run: DemoRun }) {
           />
         ) : null,
       )}
+    </div>
+  )
+}
+
+const FIELD_OPTIONS: { value: QueryField; label: string }[] = [
+  { value: 'title', label: 'Title' },
+  { value: 'priority', label: 'Priority' },
+  { value: 'type', label: 'Type' },
+  { value: 'assignee', label: 'Assignee' },
+  { value: 'tags', label: 'Tags' },
+  { value: 'caseKey', label: 'Case key' },
+]
+
+const OPERATOR_OPTIONS: { value: QueryOperator; label: string }[] = [
+  { value: 'equals', label: 'equals' },
+  { value: 'not_equals', label: 'not equals' },
+  { value: 'contains', label: 'contains' },
+  { value: 'not_contains', label: 'not contains' },
+]
+
+function ConditionQueryBody({
+  query,
+  onUpdate,
+}: {
+  query: TestQuery
+  onUpdate: (patch: Partial<TestQuery>) => void
+}) {
+  const conditions = query.conditions ?? []
+
+  function updateCondition(i: number, patch: Partial<QueryCondition>) {
+    const next = conditions.map((c, idx) => (idx === i ? { ...c, ...patch } : c))
+    onUpdate({ conditions: next })
+  }
+
+  function removeCondition(i: number) {
+    onUpdate({ conditions: conditions.filter((_, idx) => idx !== i) })
+  }
+
+  function addCondition() {
+    onUpdate({ conditions: [...conditions, { field: 'priority', operator: 'equals', value: '' }] })
+  }
+
+  return (
+    <>
+      {conditions.map((cond, i) => (
+        <div key={i} className="pl-cond-row">
+          <select
+            value={cond.field}
+            onChange={(e) => updateCondition(i, { field: e.target.value as QueryField })}
+          >
+            {FIELD_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={cond.operator}
+            onChange={(e) => updateCondition(i, { operator: e.target.value as QueryOperator })}
+          >
+            {OPERATOR_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="Value…"
+            value={cond.value}
+            onChange={(e) => updateCondition(i, { value: e.target.value })}
+          />
+          <button
+            type="button"
+            className="pl-cond-remove"
+            title="Remove condition"
+            onClick={() => removeCondition(i)}
+          >
+            <i className="ti ti-x" />
+          </button>
+        </div>
+      ))}
+      <button type="button" className="pl-add-cond" onClick={addCondition}>
+        <i className="ti ti-plus" /> Add condition
+      </button>
+    </>
+  )
+}
+
+function FolderQueryBody({
+  query,
+  activeFolders,
+  onUpdate,
+}: {
+  query: TestQuery
+  activeFolders: Folder[]
+  onUpdate: (patch: Partial<TestQuery>) => void
+}) {
+  const selectedIds = new Set(query.folderIds ?? [])
+  const unselectedFolders = activeFolders.filter((f) => !selectedIds.has(f.id))
+
+  function addFolder(folderId: string) {
+    if (!selectedIds.has(folderId)) {
+      onUpdate({ folderIds: [...(query.folderIds ?? []), folderId] })
+    }
+  }
+
+  function removeFolder(folderId: string) {
+    onUpdate({ folderIds: (query.folderIds ?? []).filter((id) => id !== folderId) })
+  }
+
+  return (
+    <>
+      <div className="pl-folder-chips">
+        {(query.folderIds ?? []).map((fid) => {
+          const folder = activeFolders.find((f) => f.id === fid)
+          return (
+            <div key={fid} className="pl-folder-chip">
+              <i className="ti ti-folder" style={{ fontSize: 11, color: 'var(--accent)' }} />
+              {folder?.name ?? fid}
+              <button type="button" title="Remove folder" onClick={() => removeFolder(fid)}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      {unselectedFolders.length > 0 && (
+        <select
+          className="pl-folder-select"
+          value=""
+          onChange={(e) => {
+            if (e.target.value) addFolder(e.target.value)
+          }}
+        >
+          <option value="">+ Add folder…</option>
+          {unselectedFolders.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </>
+  )
+}
+
+function StaticQueryBody({
+  query,
+  activeCases,
+  search,
+  onSearch,
+  onUpdate,
+}: {
+  query: TestQuery
+  activeCases: Case[]
+  search: string
+  onSearch: (v: string) => void
+  onUpdate: (patch: Partial<TestQuery>) => void
+}) {
+  const selected = new Set(query.caseIds ?? [])
+
+  function toggle(caseId: string) {
+    if (selected.has(caseId)) {
+      onUpdate({ caseIds: (query.caseIds ?? []).filter((id) => id !== caseId) })
+    } else {
+      onUpdate({ caseIds: [...(query.caseIds ?? []), caseId] })
+    }
+  }
+
+  const filtered = activeCases.filter((c) => {
+    const q = search.toLowerCase()
+    if (!q) return true
+    return (
+      c.title?.toLowerCase().includes(q) || (c.caseKey ?? '').toLowerCase().includes(q)
+    )
+  })
+
+  return (
+    <>
+      <div className="pl-static-search">
+        <input
+          type="text"
+          placeholder="Search cases…"
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </div>
+      <div className="pl-static-list">
+        {filtered.map((c) => (
+          <label key={c.id} className="pl-static-case-row">
+            <input
+              type="checkbox"
+              checked={selected.has(c.id)}
+              onChange={() => toggle(c.id)}
+              style={{ flexShrink: 0 }}
+            />
+            <span className="pl-case-key">{c.caseKey ?? c.id}</span>
+            <span
+              style={{
+                flex: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {c.title}
+            </span>
+          </label>
+        ))}
+        {filtered.length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--text3)', padding: '4px 0' }}>
+            No cases match.
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+interface QueryGroupCardProps {
+  query: TestQuery
+  resolvedCount: number
+  activeCases: Case[]
+  activeFolders: Folder[]
+  staticSearch: string
+  onStaticSearch: (v: string) => void
+  onUpdate: (patch: Partial<TestQuery>) => void
+  onRemove: () => void
+}
+
+function QueryGroupCard({
+  query,
+  resolvedCount,
+  activeCases,
+  activeFolders,
+  staticSearch,
+  onStaticSearch,
+  onUpdate,
+  onRemove,
+}: QueryGroupCardProps) {
+  const typeLabel =
+    query.type === 'condition' ? 'CONDITION' : query.type === 'folder' ? 'FOLDER' : 'STATIC'
+
+  return (
+    <div className="pl-query-card">
+      <div className="pl-query-card-hd">
+        <span className="pl-query-type-badge">{typeLabel}</span>
+        <span className="pl-query-title">{query.title}</span>
+        <span className="pl-query-count">{resolvedCount}</span>
+        <button
+          type="button"
+          className="pl-query-remove"
+          title="Remove query group"
+          onClick={onRemove}
+        >
+          <i className="ti ti-x" />
+        </button>
+      </div>
+      <div className="pl-query-card-body">
+        {query.type === 'condition' && (
+          <ConditionQueryBody query={query} onUpdate={onUpdate} />
+        )}
+        {query.type === 'folder' && (
+          <FolderQueryBody query={query} activeFolders={activeFolders} onUpdate={onUpdate} />
+        )}
+        {query.type === 'static' && (
+          <StaticQueryBody
+            query={query}
+            activeCases={activeCases}
+            search={staticSearch}
+            onSearch={onStaticSearch}
+            onUpdate={onUpdate}
+          />
+        )}
+      </div>
     </div>
   )
 }
@@ -96,6 +386,11 @@ export function PlansScreen() {
   const [rowMenuPos, setRowMenuPos] = useState<{ x: number; y: number } | null>(null)
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const rowMenuRef = useRef<HTMLDivElement>(null)
+  const addQueryRef = useRef<HTMLDivElement>(null)
+
+  const [pendingQueries, setPendingQueries] = useState<TestQuery[] | null>(null)
+  const [addQueryMenuOpen, setAddQueryMenuOpen] = useState(false)
+  const [staticSearch, setStaticSearch] = useState<Record<string, string>>({})
 
   const filteredPlans = useMemo(() => {
     const q = listSearch.trim().toLowerCase()
@@ -120,7 +415,39 @@ export function PlansScreen() {
   const coveragePct =
     activeCases.length > 0 ? Math.round((resolvedCases.length / activeCases.length) * 100) : 0
 
+  const queries = pendingQueries ?? selectedPlan?.queries ?? []
+
+  const queryResolvedCases = useMemo(() => {
+    if (!selectedPlan) return {}
+    const fakePlan = { ...selectedPlan, queries }
+    const result: Record<string, Case[]> = {}
+    for (const q of queries) {
+      const fakeSinglePlan = { ...fakePlan, queries: [q] }
+      result[q.id] = resolvePlanCases(fakeSinglePlan, activeCases, activeFolders)
+    }
+    return result
+  }, [selectedPlan, queries, activeCases, activeFolders])
+
+  const resolvedCasesAll = useMemo(() => {
+    if (!selectedPlan) return []
+    const fakePlan = { ...selectedPlan, queries }
+    return resolvePlanCases(fakePlan, activeCases, activeFolders)
+  }, [selectedPlan, queries, activeCases, activeFolders])
+
+  const commitQueries = useCallback(
+    (next: TestQuery[]) => {
+      setPendingQueries(next)
+      if (selectedPlan) updatePlan(selectedPlan.id, { queries: next })
+    },
+    [selectedPlan, updatePlan],
+  )
+
   const openRun = selectedPlan ? openRunForPlan(activeRuns, selectedPlan.id) : undefined
+
+  useEffect(() => {
+    setPendingQueries(null)
+    setStaticSearch({})
+  }, [selectedPlan?.id])
 
   useEffect(() => {
     if (projectMismatch) return
@@ -130,7 +457,7 @@ export function PlansScreen() {
   }, [projectMismatch, planKeyFromUrl, selectedPlan, activeProject.key, router])
 
   useEffect(() => {
-    if (!moreMenuOpen && !rowMenuOpen) return
+    if (!moreMenuOpen && !rowMenuOpen && !addQueryMenuOpen) return
     function onClick(e: MouseEvent) {
       if (moreMenuOpen && moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
         setMoreMenuOpen(false)
@@ -139,10 +466,17 @@ export function PlansScreen() {
         setRowMenuOpen(null)
         setRowMenuPos(null)
       }
+      if (
+        addQueryMenuOpen &&
+        addQueryRef.current &&
+        !addQueryRef.current.contains(e.target as Node)
+      ) {
+        setAddQueryMenuOpen(false)
+      }
     }
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
-  }, [moreMenuOpen, rowMenuOpen])
+  }, [moreMenuOpen, rowMenuOpen, addQueryMenuOpen])
 
   const navigateToPlan = useCallback(
     (plan: TestPlan) => {
@@ -541,12 +875,142 @@ export function PlansScreen() {
                     </div>
                   </>
                 ) : (
-                  <div className="pl-tc-placeholder">
-                    <i
-                      className="ti ti-checklist"
-                      style={{ fontSize: 24, marginBottom: 8, display: 'block' }}
-                    />
-                    Test case selection will be available in the next update.
+                  <div className="pl-tc-lay">
+                    <div className="pl-tc-queries">
+                      {queries.map((q) => (
+                        <QueryGroupCard
+                          key={q.id}
+                          query={q}
+                          resolvedCount={queryResolvedCases[q.id]?.length ?? 0}
+                          activeCases={activeCases}
+                          activeFolders={activeFolders}
+                          staticSearch={staticSearch[q.id] ?? ''}
+                          onStaticSearch={(v) =>
+                            setStaticSearch((prev) => ({ ...prev, [q.id]: v }))
+                          }
+                          onUpdate={(patch) => {
+                            commitQueries(
+                              queries.map((x) => (x.id === q.id ? { ...x, ...patch } : x)),
+                            )
+                          }}
+                          onRemove={() => {
+                            commitQueries(queries.filter((x) => x.id !== q.id))
+                          }}
+                        />
+                      ))}
+
+                      <div style={{ position: 'relative' }} ref={addQueryRef}>
+                        <button
+                          type="button"
+                          className="pl-add-query"
+                          onClick={() => setAddQueryMenuOpen((v) => !v)}
+                        >
+                          <i className="ti ti-plus" /> Add query group
+                        </button>
+                        {addQueryMenuOpen ? (
+                          <div className="pl-add-query-menu">
+                            {[
+                              {
+                                type: 'condition' as const,
+                                icon: 'ti-filter',
+                                title: 'Condition query',
+                                desc: 'Filter cases by field, operator, and value',
+                              },
+                              {
+                                type: 'folder' as const,
+                                icon: 'ti-folder',
+                                title: 'Folder query',
+                                desc: 'Include all cases in selected folders',
+                              },
+                              {
+                                type: 'static' as const,
+                                icon: 'ti-checklist',
+                                title: 'Static selection',
+                                desc: 'Hand-pick individual test cases',
+                              },
+                            ].map(({ type, icon, title, desc }) => (
+                              <div
+                                key={type}
+                                className="pl-add-query-menu-item"
+                                onClick={() => {
+                                  const newQuery: TestQuery = {
+                                    id: newId('tq'),
+                                    title,
+                                    type,
+                                    ...(type === 'condition'
+                                      ? {
+                                          conditions: [
+                                            { field: 'priority', operator: 'equals', value: '' },
+                                          ],
+                                        }
+                                      : {}),
+                                    ...(type === 'folder' ? { folderIds: [] } : {}),
+                                    ...(type === 'static' ? { caseIds: [] } : {}),
+                                  }
+                                  commitQueries([...queries, newQuery])
+                                  setAddQueryMenuOpen(false)
+                                }}
+                              >
+                                <i className={`ti ${icon} pl-aqm-icon`} />
+                                <div className="pl-aqm-body">
+                                  <div className="pl-aqm-title">{title}</div>
+                                  <div className="pl-aqm-desc">{desc}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="pl-tc-resolved">
+                      <div className="pl-resolved-hd">
+                        <i className="ti ti-list-check" />
+                        Resolved test cases
+                        <span className="pl-resolved-count">{resolvedCasesAll.length} total</span>
+                      </div>
+                      <div className="pl-panel">
+                        {resolvedCasesAll.length === 0 ? (
+                          <div className="pl-resolved-empty">
+                            No test cases match the current query groups.
+                          </div>
+                        ) : (
+                          <table className="pl-resolved-table">
+                            <thead>
+                              <tr>
+                                <th>Key</th>
+                                <th>Title</th>
+                                <th>Priority</th>
+                                <th>Source</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {resolvedCasesAll.map((c) => {
+                                const sourceQuery = queries.find((q) =>
+                                  queryResolvedCases[q.id]?.some((rc) => rc.id === c.id),
+                                )
+                                return (
+                                  <tr key={c.id}>
+                                    <td>
+                                      <span className="pl-resolved-case-key">
+                                        {c.caseKey ?? c.id}
+                                      </span>
+                                    </td>
+                                    <td>{c.title}</td>
+                                    <td>{c.priority}</td>
+                                    <td>
+                                      <span className="pl-resolved-source">
+                                        {sourceQuery?.title ?? '—'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
