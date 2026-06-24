@@ -16,23 +16,42 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-user-role-access` (rebased onto `origin/mvp-main`)
+`mvp-test-plans` (branched from `mvp-test-runs`)
 
 ---
 
 ## Schema version
-**Current: v12**
+**Current: v11** (task-01 of mvp-test-plans will bump to v12)
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
-| v12 | User/role access MVP: `currentActorUserId`, `AdminUser.firstName/lastName/projectAccess`, statuses (Pending invite, Silent created, Disabled), `AdminRole.permissions`, built-in role set | v11→v12 via `migrateUserAccessV12` |
+| v5 | Baseline before admin panel work | — |
+| v6 | Added `activeCustomFieldIds: string[]` and `projectSettings?: ProjectSettings` to `Project` | v5→v6 adds `activeCustomFieldIds: []` to any project missing it |
+| v7 | Added `template`, `references`, `summary`, `customFieldValues` to `Case` | v6→v7 backfills new fields with defaults on existing cases |
+| v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
+| v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
+| v10 | Added `resultNotes/testedAt/testedBy` to `CaseExecution`; `executionLog: ExecutionLogEntry[]` to `DemoRun` | v9→v10 adds `executionLog: []` to all runs; backfills missing execution fields with defaults |
 | v11 | Added `createdAt?: string` to `Case` | v10→v11 sets `createdAt = updatedAt` for all existing cases |
+| v12 | (task-01, mvp-test-plans) Added `TestPlan`, `TestQuery`, `QueryCondition` types; added `plansById: Record<string, TestPlan>` and `nextPlanNumByProject: Record<string, number>` to `DemoState`; added `formatPlanKey`, `planKeyToSlug`, `slugToPlanKey`, `resolvePlanCases` to `demo-model.ts`; seeds two demo plans (TP-00001 Smoketest, TP-00002 Full Regression) | v11→v12 adds `plansById` and `nextPlanNumByProject`; backfills seed plans for demo projects |
 
 ---
 
-## Completed work (this branch)
+## Completed work (this branch — mvp-test-plans)
 
-### Tasks 01–08 — all complete ✅
+### Tasks 01–02 — Prompts drafted ✅
+
+| Task | File | What it delivers |
+|------|------|-----------------|
+| Task 01 | `docs/cursor-prompts/mvp-test-plans/task-01-plans-data-model-screen.md` | Schema v12: `TestPlan`/`TestQuery`/`QueryCondition` types, `formatPlanKey`/`planKeyToSlug`/`slugToPlanKey`/`resolvePlanCases` in `demo-model.ts`; v11→v12 migration; seed plans (TP-00001 Smoketest, TP-00002 Full Regression); `listActiveProjectPlans` selector; `planPath`/`parsePlanKey` route helpers; `ADD_PLAN`/`UPDATE_PLAN`/`DELETE_PLAN`/`DUPLICATE_PLAN` + `spawnRunFromPlan` in FreshProvider; complete `PlansScreen.tsx` rebuild with URL routing, list pane, Overview tab (3 cards + run history), CRUD modals, spawn-run modal |
+| Task 02 | `docs/cursor-prompts/mvp-test-plans/task-02-plans-test-case-selection.md` | Test cases tab: `QueryGroupCard` + `ConditionQueryBody`/`FolderQueryBody`/`StaticQueryBody` sub-components; live `resolvePlanCases` preview (right panel); add/edit/remove query groups; auto-save via `updatePlan({ queries })`; CSS for all new elements in `prototype-plans.css` |
+
+Neither task has been executed by Cursor yet.
+
+---
+
+## Completed work (previous branches)
+
+### mvp-test-runs — Tasks 01–08 — all complete ✅
 
 Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
@@ -119,6 +138,11 @@ After Task 07b ran, two additional bugs were found:
 - **Commit after each task** as a checkpoint for easy rollback.
 - **Committing doc changes** — after providing a commit message for `docs/claude/**` or `docs/cursor-prompts/**` edits, always offer to run the commit directly. Append `Co-authored-by: Claude <claude@anthropic.com>` to the message body. The repo has a local git config (`user.name=CrimsonDelta`, `user.email=30307439+CrimsonDelta@users.noreply.github.com`) — do NOT override it with `GIT_AUTHOR_*` or `GIT_COMMITTER_*` env vars; just run `git commit` directly and the local config will be used.
 - **No backend work.** If a task appears to require it, stop and ask for confirmation.
+- **Test Plans routing** — uses URL routing like RunsScreen (`/plans/tp/[planKey]`), not two-pane like CasesScreen. Route: `/:projectKey/plans` (list) / `/:projectKey/plans/tp/:planKey` (detail).
+- **Condition query fields** — limited to existing `Case` fields (`title`, `priority`, `type`, `assignee`, `tags`, `caseKey`). Custom fields are NOT in scope for mvp-test-plans.
+- **Cross-run heatmap** — deferred; not in MVP requirements. Coverage donut (% of project cases covered by plan) is in scope.
+- **`planKey` format** — `TP-00001`; URL slug strips the `TP-` prefix (e.g., `/plans/tp/00001`). Use `planKeyToSlug`/`slugToPlanKey` for conversion.
+- **Task granularity (mvp-test-plans)** — two larger tasks (task-01: data model + screen; task-02: test case tab) rather than five smaller ones.
 
 ---
 
