@@ -22,7 +22,7 @@ Schema version does NOT change — this is UI-only work.
 - `UPDATE_PLAN` takes `{ planId, patch: Partial<Pick<TestPlan, 'title' | 'description'>> }`. **Extend the patch type** to also accept `queries?: TestQuery[]` so the Test Cases tab can persist query changes.
 - `resolvePlanCases(plan, cases, folders)` is already implemented in `demo-model.ts` — use it.
 - `activeCases`, `activeFolders`, and the selected plan's data are already available in `PlansScreen` via `useFresh()`.
-- `newId(prefix)` is available in `FreshProvider` — re-export or import it into `PlansScreen` if needed.
+- `newId(prefix)` is already exported from `demo-model.ts` — import it directly in `PlansScreen.tsx`: `import { ..., newId } from '../data/demo-model'`.
 - CSS: all new styles go into the existing `prototype-plans.css`.
 - No backend, no new state management libraries, no Tailwind.
 
@@ -40,12 +40,7 @@ Extend the `UPDATE_PLAN` patch type:
 
 The reducer already spreads the patch onto the plan — no other change needed once the type is widened.
 
-Also expose `newId` on the context value (or as an exported utility), since `PlansScreen` needs to generate `TestQuery` ids client-side without dispatching:
-
-```ts
-// In FreshContextValue and the value object:
-newQueryId: () => newId('tq')
-```
+No other changes to `FreshProvider.tsx` are needed — `newId` is imported directly in `PlansScreen` from `demo-model.ts`.
 
 ---
 
@@ -544,7 +539,7 @@ Reset `pendingQueries` to `null` whenever `selectedPlan` changes (use a `useEffe
               className="pl-add-query-menu-item"
               onClick={() => {
                 const q: TestQuery = {
-                  id: newQueryId(),
+                  id: newId('tq'),
                   title: title,
                   type,
                   ...(type === 'condition' ? { conditions: [{ field: 'priority', operator: 'equals', value: '' }] } : {}),
@@ -902,9 +897,9 @@ Read apps/web/src/fresh/data/demo-model.ts
 ## Step 2 — Make changes
 
 Apply in order:
-1. `FreshProvider.tsx` — widen `UPDATE_PLAN` patch type; expose `newQueryId` on context
+1. `FreshProvider.tsx` — widen `UPDATE_PLAN` patch type to include `queries?: TestQuery[]`
 2. `prototype-plans.css` — append new `.pl-tc-*` classes
-3. `PlansScreen.tsx` — add `QueryGroupCard` and sub-components; replace Test cases tab placeholder; add new local state; add `commitQueries` helper; add click-outside effect; add `pendingQueries` reset effect
+3. `PlansScreen.tsx` — add `import { ..., newId } from '../data/demo-model'`; add `QueryGroupCard` and sub-components; replace Test cases tab placeholder; add new local state; add `commitQueries` helper; add click-outside effect; add `pendingQueries` reset effect
 
 ---
 
@@ -946,7 +941,6 @@ Test plans: Test cases tab with static, folder, and condition queries
 
 `FreshProvider.tsx`
 * Widened `UPDATE_PLAN` patch type to accept `queries?: TestQuery[]`
-* Exposed `newQueryId` helper on context value
 
 `prototype-plans.css`
 * Added `.pl-tc-lay`, `.pl-tc-queries`, `.pl-tc-resolved` layout classes
