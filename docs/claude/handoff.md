@@ -16,42 +16,36 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-test-plans` (branched from `mvp-test-runs`)
+`mvp-test-plans` (pending rebase onto `origin/mvp-main`)
 
 ---
 
 ## Schema version
-**Current: v11** (task-01 of mvp-test-plans will bump to v12)
+**Current on this branch: v12 (Test Plans) — will become v13 after rebase**
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
-| v5 | Baseline before admin panel work | — |
-| v6 | Added `activeCustomFieldIds: string[]` and `projectSettings?: ProjectSettings` to `Project` | v5→v6 adds `activeCustomFieldIds: []` to any project missing it |
-| v7 | Added `template`, `references`, `summary`, `customFieldValues` to `Case` | v6→v7 backfills new fields with defaults on existing cases |
-| v8 | Added `caseKey: string` to `Case`; added `nextCaseNumByProject` to `DemoState` | v7→v8 generates `TC-XXXXX` keys for all existing cases; seeds `nextCaseNumByProject` from existing case counts |
-| v9 | Fixed `addCase` to use `newId('case')` — case ids are now globally unique across projects | v8→v9 remaps any case id matching `/^TC-\d{4}$/` to a fresh `newId('case')`; rewrites matching keys in `run.executions` and `run.caseOrder` |
-| v10 | Added `resultNotes/testedAt/testedBy` to `CaseExecution`; `executionLog: ExecutionLogEntry[]` to `DemoRun` | v9→v10 adds `executionLog: []` to all runs; backfills missing execution fields with defaults |
+| v12 | **Already on `mvp-main`:** User/role access MVP — `currentActorUserId`, `AdminUser.firstName/lastName/projectAccess`, statuses (Pending invite, Silent created, Disabled), `AdminRole.permissions`, built-in role set | v11→v12 via `migrateUserAccessV12` |
+| v12¹ | **This branch (pre-rebase):** Test Plans — `TestPlan`, `TestQuery`, `QueryCondition`, `plansById`, `nextPlanNumByProject`, `resolvePlanCases()`, `formatPlanKey()` | v11→v12 introduces plansById/nextPlanNumByProject, seeds demo plans |
+| v13 | **This branch (post-rebase):** Test Plans migration renumbered — same content as v12¹ above, bumped to v13 to avoid collision with main's v12 | v12→v13 |
 | v11 | Added `createdAt?: string` to `Case` | v10→v11 sets `createdAt = updatedAt` for all existing cases |
-| v12 | (task-01, mvp-test-plans) Added `TestPlan`, `TestQuery`, `QueryCondition` types; added `plansById: Record<string, TestPlan>` and `nextPlanNumByProject: Record<string, number>` to `DemoState`; added `formatPlanKey`, `planKeyToSlug`, `slugToPlanKey`, `resolvePlanCases` to `demo-model.ts`; seeds two demo plans (TP-00001 Smoketest, TP-00002 Full Regression) | v11→v12 adds `plansById` and `nextPlanNumByProject`; backfills seed plans for demo projects |
 
 ---
 
 ## Completed work (this branch — mvp-test-plans)
 
-### Tasks 01–02 — Prompts drafted ✅
+### Test Plans — Tasks 01–02 complete ✅
 
-| Task | File | What it delivers |
-|------|------|-----------------|
-| Task 01 | `docs/cursor-prompts/mvp-test-plans/task-01-plans-data-model-screen.md` | Schema v12: `TestPlan`/`TestQuery`/`QueryCondition` types, `formatPlanKey`/`planKeyToSlug`/`slugToPlanKey`/`resolvePlanCases` in `demo-model.ts`; v11→v12 migration; seed plans (TP-00001 Smoketest, TP-00002 Full Regression); `listActiveProjectPlans` selector; `planPath`/`parsePlanKey` route helpers; `ADD_PLAN`/`UPDATE_PLAN`/`DELETE_PLAN`/`DUPLICATE_PLAN` + `spawnRunFromPlan` in FreshProvider; complete `PlansScreen.tsx` rebuild with URL routing, list pane, Overview tab (3 cards + run history), CRUD modals, spawn-run modal |
-| Task 02 | `docs/cursor-prompts/mvp-test-plans/task-02-plans-test-case-selection.md` | Test cases tab: `QueryGroupCard` + `ConditionQueryBody`/`FolderQueryBody`/`StaticQueryBody` sub-components; live `resolvePlanCases` preview (right panel); add/edit/remove query groups; auto-save via `updatePlan({ queries })`; CSS for all new elements in `prototype-plans.css` |
-
-Neither task has been executed by Cursor yet.
+| Task | What it delivered | Commit |
+|------|------------------|--------|
+| Task 01 | Schema v12 (→v13 post-rebase): `TestPlan`, `TestQuery`, `QueryCondition`, `plansById`/`nextPlanNumByProject` on `DemoState`; `formatPlanKey()`/`resolvePlanCases()`/`evaluateCondition()`; FreshProvider CRUD (`ADD_PLAN`, `UPDATE_PLAN`, `DELETE_PLAN`, `DUPLICATE_PLAN`); `spawnRunFromPlan`; PlansScreen full rebuild; prototype-plans.css; `/plans` + `/plans/tp/[planKey]` routes | `b51eace` |
+| Task 02 | Test cases tab on PlansScreen: condition query groups (field/operator/value), folder query groups, static case selection, live resolved-case panel | `6bc11ea` |
 
 ---
 
-## Completed work (previous branches)
+### Previous branches (for historical reference)
 
-### mvp-test-runs — Tasks 01–08 — all complete ✅
+#### Tasks 01–08 — all complete ✅ (mvp-test-cases)
 
 Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
@@ -102,28 +96,50 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
 ### Pending
 
-Task 07b — **Complete** (Cursor confirmed build passes, all 9 fixes applied). Commit prompt at `task-07b-commit.md` — may still need to be run.
+**Rebase `mvp-test-plans` onto `origin/mvp-main`** — not yet complete. See "Rebase notes" below.
 
-Task 07c — feedback fixes on Task 07b. **Prompt drafted** at `docs/cursor-prompts/mvp-test-runs/task-07c-runs-ui-polish-2.md`. 5 fixes verified against live Testiny:
-1. Step-comment hyperlinking in Comments tab (click step label → jump to step in Details)
-2. Defects/Requirements tabs corrected per context (interactive in correct screen, read-only in the other)
-3. Create test run button fully guarded (run picker dropdown missed in 07b)
-4. Team/Defects/Details tabbed panel next to pie chart; ec-pane min width → 475px, default → 500px
-5. Delete safeguard: modal warning listing affected open runs; DELETE_CASE cascades to unsealed runs
+---
 
-**Key Testiny finding (item 5):** Deleting a test case removes it from open (unsealed) runs. Sealed runs are left untouched as immutable historical records. Warning dialog lists affected run keys.
+## Rebase notes (mvp-test-plans onto mvp-main)
 
-Task 07d — feedback fixes on Task 07b/07c. **Prompt drafted** at `docs/cursor-prompts/mvp-test-runs/task-07d-runs-ui-polish-3.md`. 2 fixes:
-1. Track "Record was created" in History tab when a case is added to a run — `ExecutionLogEntry` gains `event?: 'created'`; `ADD_CASES_TO_RUN` appends creation log entries; History tab renders "Record was created" with `var(--accent)` dot
-2. Summary tabbed panel height to match donut chart (`align-items: stretch` on parent); Team tab shows "N cases assigned" per member; clicking a member toggles `advFilter.assignee` to filter the run list
+Previous attempt was blocked by a `.git/index.lock` file (user had to remove manually). Working tree was left with unstaged changes from the interrupted rebase — these must be discarded before retrying.
 
-### Task legacy 07c / 07d — legacy bug fixes
+### Steps
 
-After Task 07b ran, two additional bugs were found:
+```bash
+# 1. Discard partial working-tree changes from previous attempt
+git restore .
+git clean -fd   # removes untracked ActorSwitcher.tsx, PermissionGate.tsx, rbac.ts, useActorRbac.ts
 
-**Edit/save creates duplicate case (07c)** — `addCase` in `FreshProvider` uses `nextCaseId(num)` which returns `TC-${1000+num}`. Every new project starts at counter 1, so all projects generate `TC-1001`, `TC-1002`, etc. `REPLACE_CASE` matches across all projects by id, corrupting cases from other projects and producing duplicate ids in `activeCases`. Fix: use `newId('case')` in `addCase`; add schema v9 migration to remap existing collision-prone ids. Addressed in `task-07c`.
+# 2. Rebase
+git rebase origin/mvp-main
+```
 
-**Project switch flicker / first attempt stays on P1 (07d)** — `ProjectRouteSync` includes `state.activeProjectId` in its effect deps. When `handleSelect` calls `setActiveProject(P2)` + `router.push('/P2/cases')`, the state change fires the effect immediately while `usePathname()` still reads `/P1/cases`. The effect sees URL=P1 vs state=P2 and calls `setActiveProject(P1)` — reverting the state. The reversion then causes `CasesScreen`'s URL sync effect to call `window.history.replaceState('/P1/cases')` mid-navigation, which aborts the `router.push` in Next.js 15. Fix: remove `state.activeProjectId` from the effect deps; read it via a ref instead. Addressed in `task-07d`.
+### Expected conflicts and resolutions
+
+**`apps/web/src/fresh/data/demo-model.ts`**
+Both branches bump `DEMO_SCHEMA_VERSION` from 11 → 12. Resolution:
+- Accept main's v12 additions (user/role access types: `AdminUserStatus`, `AdminUser` with `firstName/lastName/projectAccess`, `AdminRole.permissions`, `currentActorUserId`, `rbac` import)
+- Keep our TestPlan additions (`QueryOperator`, `QueryField`, `QueryCondition`, `TestQuery`, `TestPlan`, `formatPlanKey()`, `planKeyToSlug()`, `slugToPlanKey()`, `resolvePlanCases()`, `evaluateCondition()`, `plansById`/`nextPlanNumByProject` on `DemoState`)
+- Set `DEMO_SCHEMA_VERSION = 13`
+
+**`apps/web/src/fresh/data/migrate-demo-state.ts`**
+Both have a `if (state.schemaVersion < 12)` block. Resolution:
+- Keep main's v12 block as-is (`migrateUserAccessV12`)
+- Add our TestPlan migration as a new `if (state.schemaVersion < 13)` block below it
+- Import `SEED_PLANS` and `TestPlan` back if they were dropped
+
+**`apps/web/src/fresh/data/FreshProvider.tsx`**
+Both modify this file. Standard merge — keep all additions from both sides. No version number conflict.
+
+**`docs/claude/handoff.md`**
+Accept ours (this file has already been updated this session).
+
+### Post-rebase checklist
+- [ ] `DEMO_SCHEMA_VERSION = 13` in `demo-model.ts`
+- [ ] v12 migration = user/role access, v13 migration = Test Plans
+- [ ] `pnpm build` passes (zero TS errors)
+- [ ] Smoke test: `/DP/plans`, `/admin/users`, `/admin/roles`, `/DP/testcases`, `/DP/testruns`
 
 ---
 
@@ -138,11 +154,6 @@ After Task 07b ran, two additional bugs were found:
 - **Commit after each task** as a checkpoint for easy rollback.
 - **Committing doc changes** — after providing a commit message for `docs/claude/**` or `docs/cursor-prompts/**` edits, always offer to run the commit directly. Append `Co-authored-by: Claude <claude@anthropic.com>` to the message body. The repo has a local git config (`user.name=CrimsonDelta`, `user.email=30307439+CrimsonDelta@users.noreply.github.com`) — do NOT override it with `GIT_AUTHOR_*` or `GIT_COMMITTER_*` env vars; just run `git commit` directly and the local config will be used.
 - **No backend work.** If a task appears to require it, stop and ask for confirmation.
-- **Test Plans routing** — uses URL routing like RunsScreen (`/plans/tp/[planKey]`), not two-pane like CasesScreen. Route: `/:projectKey/plans` (list) / `/:projectKey/plans/tp/:planKey` (detail).
-- **Condition query fields** — limited to existing `Case` fields (`title`, `priority`, `type`, `assignee`, `tags`, `caseKey`). Custom fields are NOT in scope for mvp-test-plans.
-- **Cross-run heatmap** — deferred; not in MVP requirements. Coverage donut (% of project cases covered by plan) is in scope.
-- **`planKey` format** — `TP-00001`; URL slug strips the `TP-` prefix (e.g., `/plans/tp/00001`). Use `planKeyToSlug`/`slugToPlanKey` for conversion.
-- **Task granularity (mvp-test-plans)** — two larger tasks (task-01: data model + screen; task-02: test case tab) rather than five smaller ones.
 
 ---
 
@@ -184,5 +195,7 @@ See **`docs/claude/known-bugs.md`** for the full investigation log. Summary:
 ## What to do at the start of a new session
 
 1. Read this file.
-2. Ask the user which task Cursor has just finished (or is about to start) to calibrate the current state.
-3. Update the "Completed work" and "Schema version" sections if tasks have been executed since this was last written.
+2. Check the current git state (`git status`, `git log --oneline -5`) to verify the branch and whether the rebase has been completed.
+3. If rebase is still pending, follow the steps in "Rebase notes" above.
+4. Ask the user which task Cursor has just finished (or is about to start) to calibrate the current state.
+5. Update "Completed work" and "Schema version" if tasks have been executed since this was last written.
