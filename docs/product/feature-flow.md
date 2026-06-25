@@ -117,7 +117,7 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 | Field | Value |
 |-------|-------|
 | Key | `relay-demo-v2` |
-| Current version | **`12`** (`DEMO_SCHEMA_VERSION` in `demo-model.ts`) |
+| Current version | **`13`** (`DEMO_SCHEMA_VERSION` in `demo-model.ts`) |
 | Migration file | `migrate-demo-state.ts` |
 | On failure | Reset to seed (`buildInitialDemoState()`) |
 
@@ -136,10 +136,11 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 | v10 | `executionLog`, execution metadata on runs |
 | v11 | `Case.createdAt` |
 | v12 | `currentActorUserId`, user access fields, role permissions, silent invite statuses |
+| v13 | `plansById`, `nextPlanNumByProject`, `TestPlan`/`TestQuery`/`QueryCondition` types, seed plans |
 
 **Rule:** bump `DEMO_SCHEMA_VERSION` and add a migration step for every shape change.
 
-**Key state fields:** `projectsById`, `activeProjectId`, `foldersById`, `casesById`, `runsById`, `currentRunIdByProject`, `nextRunNumByProject`, `nextCaseNumByProject`, `adminSettings`, `currentActorUserId`.
+**Key state fields:** `projectsById`, `activeProjectId`, `foldersById`, `casesById`, `runsById`, `currentRunIdByProject`, `nextRunNumByProject`, `nextCaseNumByProject`, `adminSettings`, `currentActorUserId`, `plansById`, `nextPlanNumByProject`.
 
 Detail: [`docs/_authoritative/DOMAIN_MODEL.md`](../_authoritative/DOMAIN_MODEL.md), [`docs/claude/handoff.md`](../claude/handoff.md).
 
@@ -182,8 +183,9 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 | Test cases — tree & table | **Implemented** | localStorage | Filters, pagination, search |
 | Test cases — detail & CRUD | **Implemented** | localStorage | Tabs, custom fields, context menu |
 | Test cases — URL sync | **Implemented** | — | `/testcases/tc/:caseKey` |
-| Test plans — list & detail | **Partial** | Seed | View only; no edit |
-| Test plans — spawn run | **Partial** | — | Navigates to testruns; no auto-create |
+| Test plans — list & detail | **Implemented** | localStorage | URL routing; CRUD modals; Overview + Test cases tabs |
+| Test plans — test case query groups | **Implemented** | localStorage | Condition/folder/static; live resolved-case preview |
+| Test plans — spawn run | **Implemented** | localStorage | Modal pre-fills title + count; stamps planId on run |
 | Test runs — list & picker | **Implemented** | localStorage | Search, archive hide |
 | Test runs — create / edit / duplicate / delete | **Implemented** | localStorage | |
 | Test runs — add cases to run | **Implemented** | localStorage | `AddCasesToRunModal` |
@@ -216,7 +218,7 @@ flowchart LR
   Admin[Admin panel] --> CF[Custom fields]
   CF --> TC[Test cases]
   TC --> TR[Test runs]
-  TP[Test plans] -.->|navigate only| TR
+  TP[Test plans] -->|spawn run stamps planId| TR
   TR --> Dash[Dashboard metrics]
   TR --> Audit[Audit mock]
   TR -.->|in-run only| Def[Defects]
@@ -227,7 +229,7 @@ flowchart LR
 |------------|--------|
 | Admin → Test cases | `activeCustomFieldIds` controls which custom fields render |
 | Test cases → Test runs | Cases referenced in `run.caseOrder`; create-run from cases toolbar |
-| Test plans → Test runs | Spawn link navigates; no data coupling in state |
+| Test plans → Test runs | Spawn run creates a run with `planId`/`planName` stamped; plan's query groups resolve case list for scope display |
 | Test runs → Dashboard | Run cards read seed metrics, not live run state |
 | Project scope | All case/run/folder selectors filter by `activeProjectId` |
 | Schema migrations | Any model change affects all modules using `FreshProvider` |
@@ -238,7 +240,7 @@ flowchart LR
 
 - Frontend-only phase — no demo UI API wiring ([`MVP_FRONTEND_ONLY_SCOPE.md`](../_authoritative/MVP_FRONTEND_ONLY_SCOPE.md))
 - `/DP/cases` 404; use `/DP/testcases`
-- Plans not in `DemoState` — cannot reflect user-created cases
+- Run spawn does not snapshot case steps immutably (edits to cases after spawn affect the same case objects in a run)
 - Run spawn does not snapshot case steps immutably (edits affect same case objects)
 - Project settings in switcher disabled
 - CasesScreen project-switch flicker (BUG-02) — deferred
@@ -287,8 +289,15 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Test plans — `/:key/plans`
 
-- [ ] Plan list selects and shows detail tabs
-- [ ] Spawn link navigates to testruns
+- [ ] Plan list renders; row select navigates to `/plans/tp/:planKey`
+- [ ] Create plan modal — saves and selects new plan
+- [ ] Edit plan modal — updates title/description
+- [ ] Duplicate plan — copies with incremented key
+- [ ] Delete plan — removes from list
+- [ ] Overview tab — three cards (details, open run, coverage %); run history table
+- [ ] Test cases tab — add condition/folder/static query groups; live resolved-case preview updates
+- [ ] Spawn run modal — shows case count, pre-fills title, creates run, navigates to testruns
+- [ ] Project switch clears plan selection; URL updates correctly
 
 ### Test runs — `/:key/testruns`
 

@@ -65,26 +65,37 @@ This document defines what each visible screen shows, what data powers it today,
 
 ## Test Plans
 
-**Route:** `/:projectKey/plans` (legacy `/plans`, `/test-plans` → redirect)
+**Route:** `/:projectKey/plans` · `/:projectKey/plans/tp/:planKey` (legacy `/plans`, `/test-plans` → redirect)
 
-**Current state:** Frontend prototype only.
+**Current state:** Frontend prototype — fully implemented with localStorage persistence.
 
-**Real/API-backed, mock-backed, or placeholder:** Mock-backed.
+**Real/API-backed, mock-backed, or placeholder:** Mock-backed (FreshProvider + localStorage).
 
-**Data source:** `fresh/data/seed.ts` (`PLANS`).
+**Data source:** `FreshProvider` — `plansById: Record<string, TestPlan>`, `nextPlanNumByProject: Record<string, number>`. Seeded with two demo plans (TP-00001 Smoketest, TP-00002 Full Regression) for `seedTemplate: 'demo'` projects.
 
-**Data shown:** Plan list (active/draft), status pill, case count, owner, last updated, detail tabs (overview, included suites, run history).
+**Data shown:**
+- Left pane: filterable plan list — TP key, title, open run count, last run date; row ⋯ menu (Edit, Duplicate, Delete)
+- Right pane: plan detail with two tabs:
+  - *Overview* — three cards (details, open run, coverage %); run history table with result bars
+  - *Test cases* — query group cards (condition/folder/static); live resolved-case preview panel
 
-**User actions:** Select plan; switch tabs; spawn run link navigates to `/:projectKey/testruns` (does **not** call `POST /api/runs`).
+**User actions:** Create plan (modal); edit plan; duplicate plan; delete plan; add/edit/remove test query groups; spawn run from plan (modal pre-fills title + case count, creates run via `CREATE_RUN` with `planId`/`planName` stamped, navigates to `/testruns`).
+
+**FreshProvider actions:** `ADD_PLAN`, `UPDATE_PLAN`, `DELETE_PLAN`, `DUPLICATE_PLAN`; `CREATE_RUN` extended with optional `planId`/`planName`.
+
+**URL routing:** Plan key stripped to slug in URL (`TP-00001` → `/plans/tp/00001`). `planKeyToSlug`/`slugToPlanKey` in `demo-model.ts`. Project-switch guard (`projectMismatch`) on URL sync effects.
 
 **Future API contract:**
 - `GET /api/test-plans`
 - `GET /api/test-plans/:planId`
+- `POST /api/test-plans` (create)
+- `PUT /api/test-plans/:planId` (update)
+- `DELETE /api/test-plans/:planId`
 - `POST /api/test-plans/:planId/spawn-run` (or reuse `POST /api/runs`)
 
 **Known backend dependency:** `test_plans`, `test_plan_cases` tables exist; `createRun` service implements spawn.
 
-**Out of scope:** Plan edit, clone, export, version history.
+**Out of scope:** Plan clone/export, version history, cross-plan coverage heatmap.
 
 ---
 

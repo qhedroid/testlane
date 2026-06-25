@@ -95,17 +95,28 @@ User-created cases **persist** in localStorage per project.
 
 ## Test plans
 
-**Route:** `/DP/plans`
+**Route:** `/DP/plans` · `/DP/plans/tp/<planKey>` (e.g. `TP-00001`)
 
 **Legacy redirects:** `/plans`, `/test-plans`.
 
-Static demo plans (Active / Draft) with status, case count, owner, and last updated.
+Test plans organise test cases into named groups (queries) and let you spawn a targeted test run from them.
 
-**Plan detail tabs:** Overview, Included suites, Run history.
+**Plan list:** Shows TP key, title, open run count, and last run date. Click a row to open the plan detail. The ⋯ menu on each row lets you Edit, Duplicate, or Delete.
 
-**Spawn run:** link navigates to `/DP/testruns` — it does **not** create a run automatically. Use Test Runs to create or select a run.
+**Create a plan:** Click *New plan* to open the create modal. Enter a title and optional description.
 
-Plan editing, cloning, and export are not available in the prototype.
+**Plan detail — Overview tab:** Three summary cards (plan details, current open run, coverage %). Run history table shows past runs spawned from this plan with result bars.
+
+**Plan detail — Test cases tab:** Add query groups to define which cases the plan covers. Three query types:
+- *Condition* — field/operator/value filter (e.g. Priority = Critical). All conditions on a group use AND logic.
+- *Folder* — all cases inside a selected folder (descendants included).
+- *Static* — an explicit hand-picked list of cases.
+
+The right panel shows a live preview of all resolved cases across all query groups (deduplicated).
+
+**Spawn run:** Click *Spawn run* to open the spawn modal. It pre-fills a run title and shows the case count in scope. Confirming creates a new run (stamped with this plan's ID) and navigates directly to Test Runs.
+
+Plan export and version history are not available in the prototype.
 
 ---
 

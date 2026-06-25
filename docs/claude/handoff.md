@@ -16,18 +16,17 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-test-plans` (pending rebase onto `origin/mvp-main`)
+`mvp-test-plans` (rebased onto `origin/mvp-main` ✅)
 
 ---
 
 ## Schema version
-**Current on this branch: v12 (Test Plans) — will become v13 after rebase**
+**Current: v13**
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
-| v12 | **Already on `mvp-main`:** User/role access MVP — `currentActorUserId`, `AdminUser.firstName/lastName/projectAccess`, statuses (Pending invite, Silent created, Disabled), `AdminRole.permissions`, built-in role set | v11→v12 via `migrateUserAccessV12` |
-| v12¹ | **This branch (pre-rebase):** Test Plans — `TestPlan`, `TestQuery`, `QueryCondition`, `plansById`, `nextPlanNumByProject`, `resolvePlanCases()`, `formatPlanKey()` | v11→v12 introduces plansById/nextPlanNumByProject, seeds demo plans |
-| v13 | **This branch (post-rebase):** Test Plans migration renumbered — same content as v12¹ above, bumped to v13 to avoid collision with main's v12 | v12→v13 |
+| v13 | Test Plans — `TestPlan`, `TestQuery`, `QueryCondition`, `plansById`, `nextPlanNumByProject`, `resolvePlanCases()`, `formatPlanKey()`, `planKeyToSlug()`, `slugToPlanKey()`; seed plans (TP-00001 Smoketest, TP-00002 Full Regression) | v12→v13 introduces `plansById`/`nextPlanNumByProject`; seeds demo plans for demo projects |
+| v12 | User/role access MVP: `currentActorUserId`, `AdminUser.firstName/lastName/projectAccess`, statuses (Pending invite, Silent created, Disabled), `AdminRole.permissions`, built-in role set | v11→v12 via `migrateUserAccessV12` |
 | v11 | Added `createdAt?: string` to `Case` | v10→v11 sets `createdAt = updatedAt` for all existing cases |
 
 ---
@@ -96,50 +95,7 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
 ### Pending
 
-**Rebase `mvp-test-plans` onto `origin/mvp-main`** — not yet complete. See "Rebase notes" below.
-
----
-
-## Rebase notes (mvp-test-plans onto mvp-main)
-
-Previous attempt was blocked by a `.git/index.lock` file (user had to remove manually). Working tree was left with unstaged changes from the interrupted rebase — these must be discarded before retrying.
-
-### Steps
-
-```bash
-# 1. Discard partial working-tree changes from previous attempt
-git restore .
-git clean -fd   # removes untracked ActorSwitcher.tsx, PermissionGate.tsx, rbac.ts, useActorRbac.ts
-
-# 2. Rebase
-git rebase origin/mvp-main
-```
-
-### Expected conflicts and resolutions
-
-**`apps/web/src/fresh/data/demo-model.ts`**
-Both branches bump `DEMO_SCHEMA_VERSION` from 11 → 12. Resolution:
-- Accept main's v12 additions (user/role access types: `AdminUserStatus`, `AdminUser` with `firstName/lastName/projectAccess`, `AdminRole.permissions`, `currentActorUserId`, `rbac` import)
-- Keep our TestPlan additions (`QueryOperator`, `QueryField`, `QueryCondition`, `TestQuery`, `TestPlan`, `formatPlanKey()`, `planKeyToSlug()`, `slugToPlanKey()`, `resolvePlanCases()`, `evaluateCondition()`, `plansById`/`nextPlanNumByProject` on `DemoState`)
-- Set `DEMO_SCHEMA_VERSION = 13`
-
-**`apps/web/src/fresh/data/migrate-demo-state.ts`**
-Both have a `if (state.schemaVersion < 12)` block. Resolution:
-- Keep main's v12 block as-is (`migrateUserAccessV12`)
-- Add our TestPlan migration as a new `if (state.schemaVersion < 13)` block below it
-- Import `SEED_PLANS` and `TestPlan` back if they were dropped
-
-**`apps/web/src/fresh/data/FreshProvider.tsx`**
-Both modify this file. Standard merge — keep all additions from both sides. No version number conflict.
-
-**`docs/claude/handoff.md`**
-Accept ours (this file has already been updated this session).
-
-### Post-rebase checklist
-- [ ] `DEMO_SCHEMA_VERSION = 13` in `demo-model.ts`
-- [ ] v12 migration = user/role access, v13 migration = Test Plans
-- [ ] `pnpm build` passes (zero TS errors)
-- [ ] Smoke test: `/DP/plans`, `/admin/users`, `/admin/roles`, `/DP/testcases`, `/DP/testruns`
+Nothing. Rebase is complete — branch is clean on top of `origin/mvp-main`. Next step is PR.
 
 ---
 
