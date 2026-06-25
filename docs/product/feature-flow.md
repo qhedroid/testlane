@@ -336,6 +336,28 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ---
 
+## Mandatory post-change smoke test (agents)
+
+After every user-visible feature change, route change, schema/localStorage change, RBAC change, or module flow change, agents must:
+
+1. Run `pnpm build`
+2. Start `pnpm dev`
+3. Browser smoke test affected routes **and** core regression routes (below)
+4. Record WebM evidence where tooling supports it
+5. Capture screenshots for failures
+6. Write `/tmp/relay-qa-<branch-or-feature>/qa-report.md` with pass/fail summary, bugs, known limitations, push readiness
+7. Do not push until evidence is reviewed or explicitly waived
+
+Evidence lives under `/tmp/relay-qa-...` (not committed). Temporary Playwright scripts under `/tmp/` are fine; do not add permanent test dependencies in feature PRs unless already present.
+
+**Core regression routes:** `/admin/users`, `/admin/roles`, `/admin/audit-log`, `/DP/settings`, `/DP/dashboard`, `/DP/testcases`, `/DP/testruns`, `/DP/plans`
+
+**Admin / RBAC smoke behaviours:** user table load; silent invite → Silent created; normal invite → Pending invite; edit/disable/reactivate; final Owner/Admin guard; actor switcher; Editor/Viewer blocked; built-in roles + custom CRUD; audit entries; refresh preserves localStorage v12.
+
+**Project smoke behaviours:** testcases/testruns/plans load; create/open run and add cases; project switch without flicker (when switcher available).
+
+---
+
 ## Related documentation
 
 | Doc | Role |

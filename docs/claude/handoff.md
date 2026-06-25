@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-user-role-access` (branched from `mvp-test-runs`)
+`mvp-user-role-access` (rebased onto `origin/mvp-main`)
 
 ---
 
@@ -114,6 +114,7 @@ After Task 07b ran, two additional bugs were found:
 - **Panel opens maximized by default.** `AdminProjectPanel` initialises `isMaximized: true` when `selectedProjectId` is set.
 - **One Cursor agent per task.** Each prompt has a "Context from previous task" section for fresh agents. Remove that section when continuing with the same agent.
 - **Always run `pnpm build` before committing.** Zero TS errors required.
+- **Mandatory post-change smoke test** — after user-visible, route, schema, RBAC, or flow changes: build, dev server, browser smoke test with WebM/screenshots, QA report under `/tmp/relay-qa-<branch>/qa-report.md`. Do not push until reviewed or waived. See `CLAUDE.md` and `docs/product/feature-flow.md`.
 - **Dev server restart command:** `cd /Users/shaun.sevume/Projects/Relay && bash scripts/reset-web-dev.sh && pnpm dev`
 - **Commit after each task** as a checkpoint for easy rollback.
 - **Committing doc changes** — after providing a commit message for `docs/claude/**` or `docs/cursor-prompts/**` edits, always offer to run the commit directly. Append `Co-authored-by: Claude <claude@anthropic.com>` to the message body. The repo has a local git config (`user.name=CrimsonDelta`, `user.email=30307439+CrimsonDelta@users.noreply.github.com`) — do NOT override it with `GIT_AUTHOR_*` or `GIT_COMMITTER_*` env vars; just run `git commit` directly and the local config will be used.
