@@ -1,4 +1,4 @@
-/** Consistent demo data model for /cases and /runs */
+import type { AdminUserRole, PermissionKey, RolePermissions } from './rbac'
 
 export type ExecStatus = 'Not run' | 'Passed' | 'Failed' | 'Blocked' | 'Skipped'
 export type CasePriority = 'Critical' | 'High' | 'Medium' | 'Low'
@@ -131,7 +131,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 11
+export const DEMO_SCHEMA_VERSION = 12
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -176,14 +176,21 @@ export interface AdminApiKey {
   userId: string
 }
 
+export type AdminUserStatus = 'Active' | 'Pending invite' | 'Silent created' | 'Disabled'
+
 export interface AdminUser {
   id: string
+  firstName: string
+  lastName: string
+  /** Display name — kept for backwards compatibility in audit strings. */
   name: string
   email: string
   twoFa: boolean
-  role: 'Owner' | 'Administrator' | 'Editor' | 'Viewer'
-  status: 'Active' | 'Inactive'
+  role: AdminUserRole
+  status: AdminUserStatus
   lastLoginAt: number
+  /** Project keys, or `__all__` for all projects. */
+  projectAccess: string[]
 }
 
 export interface AdminRole {
@@ -191,8 +198,9 @@ export interface AdminRole {
   name: string
   description: string
   userCount: number
-  isOrgLevel: boolean
+  isProjectLevel: boolean
   isBuiltIn: boolean
+  permissions: RolePermissions
 }
 
 export interface AdminCustomField {
@@ -271,6 +279,8 @@ export interface DemoState {
   nextCaseNumByProject: Record<string, number>
   nextRunNumByProject: Record<string, number>
   adminSettings: AdminSettings
+  /** Demo actor for RBAC — persisted in localStorage. */
+  currentActorUserId: string
 }
 
 export interface RunSummary {

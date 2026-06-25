@@ -8,7 +8,7 @@ import {
   LEGACY_TO_PRIORITY,
   newId,
 } from './demo-model'
-import { initialAdminSettings } from './admin-initial-settings'
+import { initialAdminSettings, SEED_ADMIN_USER_ID } from './admin-initial-settings'
 
 function customFieldIdsByNames(names: string[]): string[] {
   return names
@@ -382,6 +382,7 @@ export function buildInitialDemoState(): DemoState {
     nextCaseNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextCaseNum },
     nextRunNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextRunNum },
     adminSettings: initialAdminSettings,
+    currentActorUserId: SEED_ADMIN_USER_ID,
   }
 }
 

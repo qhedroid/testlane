@@ -8,6 +8,12 @@ import type {
   AdminUser,
   AuditLogEntry,
 } from './demo-model'
+import {
+  ADMIN_USER_ROLES,
+  BUILTIN_ROLE_META,
+  BUILTIN_ROLE_PERMISSIONS,
+  type AdminUserRole,
+} from './rbac'
 
 const NOW = Date.now()
 const MIN = 60_000
@@ -42,6 +48,30 @@ export const SEED_CUSTOM_FIELD_IDS = [
   'admin-cf-component',
 ] as const
 
+function user(
+  id: string,
+  firstName: string,
+  lastName: string,
+  email: string,
+  role: AdminUserRole,
+  status: AdminUser['status'],
+  lastLoginAt: number,
+  projectAccess: string[] = ['__all__'],
+): AdminUser {
+  return {
+    id,
+    firstName,
+    lastName,
+    name: `${firstName} ${lastName}`,
+    email,
+    twoFa: false,
+    role,
+    status,
+    lastLoginAt,
+    projectAccess,
+  }
+}
+
 function seedApiKeys(): AdminApiKey[] {
   const rows: Omit<AdminApiKey, 'id'>[] = [
     { name: 'my-api-key', maskedKey: 'Ab2XYZ***', project: 'All Projects', permissions: 'comment, manage…', expiration: 'No expiration', createdAt: ago(45 * MIN), userId: SEED_ADMIN_USER_ID },
@@ -58,27 +88,41 @@ function seedApiKeys(): AdminApiKey[] {
 
 function seedUsers(): AdminUser[] {
   return [
-    { id: SEED_USER_IDS.demo, name: 'Demo User', email: 'demo@relay.app', twoFa: false, role: 'Owner', status: 'Active', lastLoginAt: NOW },
-    { id: SEED_USER_IDS.alice, name: 'Alice Chen', email: 'alice@relay.app', twoFa: false, role: 'Administrator', status: 'Active', lastLoginAt: ago(2 * DAY) },
-    { id: SEED_USER_IDS.bob, name: 'Bob Smith', email: 'bob@relay.app', twoFa: false, role: 'Editor', status: 'Active', lastLoginAt: ago(7 * DAY) },
-    { id: SEED_USER_IDS.carol, name: 'Carol Jones', email: 'carol@relay.app', twoFa: false, role: 'Editor', status: 'Active', lastLoginAt: ago(3 * DAY) },
-    { id: SEED_USER_IDS.david, name: 'David Park', email: 'david@relay.app', twoFa: false, role: 'Viewer', status: 'Active', lastLoginAt: ago(5 * DAY) },
-    { id: SEED_USER_IDS.eva, name: 'Eva Martinez', email: 'eva@relay.app', twoFa: false, role: 'Editor', status: 'Active', lastLoginAt: ago(12 * HOUR) },
-    { id: SEED_USER_IDS.frank, name: 'Frank Liu', email: 'frank@relay.app', twoFa: false, role: 'Editor', status: 'Inactive', lastLoginAt: ago(30 * DAY) },
-    { id: SEED_USER_IDS.grace, name: 'Grace Kim', email: 'grace@relay.app', twoFa: false, role: 'Viewer', status: 'Active', lastLoginAt: ago(DAY) },
+    user(SEED_USER_IDS.demo, 'Demo', 'User', 'demo@relay.app', 'Owner', 'Active', NOW),
+    user(SEED_USER_IDS.alice, 'Alice', 'Chen', 'alice@relay.app', 'Administrator', 'Active', ago(2 * DAY)),
+    user(SEED_USER_IDS.bob, 'Bob', 'Smith', 'bob@relay.app', 'Editor', 'Active', ago(7 * DAY), ['DP', 'CTMS']),
+    user(SEED_USER_IDS.carol, 'Carol', 'Jones', 'carol@relay.app', 'Editor', 'Active', ago(3 * DAY), ['DP']),
+    user(SEED_USER_IDS.david, 'David', 'Park', 'david@relay.app', 'Viewer', 'Active', ago(5 * DAY), ['CTMS']),
+    user(SEED_USER_IDS.eva, 'Eva', 'Martinez', 'eva@relay.app', 'Run Manager', 'Active', ago(12 * HOUR), ['DP']),
+    user(SEED_USER_IDS.frank, 'Frank', 'Liu', 'frank@relay.app', 'Run Executor', 'Disabled', ago(30 * DAY), ['DP']),
+    user(SEED_USER_IDS.grace, 'Grace', 'Kim', 'grace@relay.app', 'Viewer', 'Active', ago(DAY), ['IAM']),
+    user('admin-user-pending', 'Jordan', 'Lee', 'jordan@relay.app', 'Editor', 'Pending invite', 0, ['DP']),
+    user('admin-user-silent', 'Internal', 'Bot', 'internal-bot@relay.app', 'Run Executor', 'Silent created', ago(HOUR), ['__all__']),
   ]
 }
 
 function seedRoles(): AdminRole[] {
-  return [
-    { id: 'admin-role-viewer', name: 'Viewer', description: 'Built-in - Can view project data.', userCount: 1, isOrgLevel: false, isBuiltIn: true },
-    { id: 'admin-role-run-exec', name: 'Run Executor', description: 'Built-in - Can execute test runs.', userCount: 0, isOrgLevel: false, isBuiltIn: true },
-    { id: 'admin-role-run-mgr', name: 'Run Manager', description: 'Built-in - Can manage and execute test runs.', userCount: 0, isOrgLevel: false, isBuiltIn: true },
-    { id: 'admin-role-editor', name: 'Editor', description: 'Built-in - Can manage test case folders and cases.', userCount: 4, isOrgLevel: false, isBuiltIn: true },
-    { id: 'admin-role-billing', name: 'Billing Administrator', description: 'Built-in - Can manage billing.', userCount: 0, isOrgLevel: true, isBuiltIn: true },
-    { id: 'admin-role-proj-admin', name: 'Project Administrator', description: 'Built-in - Administrator for a specific project.', userCount: 0, isOrgLevel: true, isBuiltIn: true },
-    { id: 'admin-role-admin', name: 'Administrator', description: 'Built-in - Includes all permissions.', userCount: 1, isOrgLevel: true, isBuiltIn: true },
-  ]
+  return ADMIN_USER_ROLES.map((roleName, i) => {
+    const meta = BUILTIN_ROLE_META[roleName]
+    return {
+      id: `admin-role-builtin-${i + 1}`,
+      name: roleName,
+      description: meta.description,
+      userCount: 0,
+      isProjectLevel: meta.isProjectLevel,
+      isBuiltIn: true,
+      permissions: { ...BUILTIN_ROLE_PERMISSIONS[roleName] },
+    }
+  })
+}
+
+export function syncRoleUserCounts(users: AdminUser[], roles: AdminRole[]): AdminRole[] {
+  const counts = new Map<string, number>()
+  for (const u of users) {
+    if (u.status === 'Disabled') continue
+    counts.set(u.role, (counts.get(u.role) ?? 0) + 1)
+  }
+  return roles.map((r) => ({ ...r, userCount: counts.get(r.name) ?? 0 }))
 }
 
 function seedCustomFields(): AdminCustomField[] {
@@ -137,6 +181,9 @@ function seedAuditLog(): AuditLogEntry[] {
   }))
 }
 
+const seedUsersList = seedUsers()
+const seedRolesList = syncRoleUserCounts(seedUsersList, seedRoles())
+
 export const initialAdminSettings: AdminSettings = {
   profile: {
     displayName: 'Demo User',
@@ -161,8 +208,8 @@ export const initialAdminSettings: AdminSettings = {
     oauthEnabled: false,
   },
   apiKeys: seedApiKeys(),
-  users: seedUsers(),
-  roles: seedRoles(),
+  users: seedUsersList,
+  roles: seedRolesList,
   customFields: seedCustomFields(),
   automation: {
     retentionPeriod: '90 days',
@@ -178,4 +225,9 @@ export function isSeedCustomFieldId(id: string): boolean {
 
 export function isInvitedUser(user: AdminUser): boolean {
   return user.id.startsWith('admin-user-inv-')
+}
+
+export function formatAdminUserName(u: Pick<AdminUser, 'firstName' | 'lastName' | 'name'>): string {
+  const combined = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim()
+  return combined || u.name
 }

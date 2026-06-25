@@ -67,7 +67,7 @@ Roles (capability, not job title): `super_admin` > `admin` > `contributor` > `vi
 
 ## Prototype model (FRESH / localStorage)
 
-State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 8`).
+State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 12`).
 
 | Entity | Prototype type | Notes |
 |--------|----------------|-------|

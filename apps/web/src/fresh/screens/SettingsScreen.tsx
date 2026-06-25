@@ -1,10 +1,17 @@
 'use client'
 
+import Link from 'next/link'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { MOCK_WORKSPACE_MODULES, MOCK_WORKSPACE_USERS } from '@/lib/relay/mock-data'
+import { MOCK_WORKSPACE_MODULES } from '@/lib/relay/mock-data'
+import { useFresh } from '../data/FreshProvider'
+import { formatAdminUserName } from '../data/admin-initial-settings'
+import { formatProjectAccess } from '../data/rbac'
 
 export function SettingsScreen() {
+  const { adminSettings } = useFresh()
+  const previewUsers = adminSettings.users.slice(0, 5)
+
   return (
     <div className="view">
       <FreshTopbar
@@ -19,22 +26,18 @@ export function SettingsScreen() {
       <div className="settings-wrap">
         <section className="panel settings-section">
           <div className="pnl-hd">
-            <i className="ti ti-building" style={{ fontSize: 13, color: 'var(--accent)' }} />
-            <span className="pnl-ttl">Workspace</span>
+            <i className="ti ti-settings" style={{ fontSize: 13, color: 'var(--accent)' }} />
+            <span className="pnl-ttl">Organisation settings</span>
           </div>
-          <div className="pnl-body settings-grid">
-            <label className="settings-field">
-              <span>Organisation</span>
-              <input className="inp" type="text" value="relay-dev" readOnly />
-            </label>
-            <label className="settings-field">
-              <span>Display name</span>
-              <input className="inp" type="text" value="Relay QA Workspace" readOnly />
-            </label>
-            <label className="settings-field">
-              <span>Default environment</span>
-              <input className="inp" type="text" value="UAT" readOnly />
-            </label>
+          <div className="pnl-body settings-status">
+            <p>
+              Manage users, roles, organisation profile, and audit log in the{' '}
+              <Link href="/admin/profile" className="admin-link">Relay settings area</Link>.
+            </p>
+            <p>
+              <strong>{adminSettings.organization.fullName}</strong> — frontend prototype; changes persist in{' '}
+              <code>relay-demo-v2</code> localStorage.
+            </p>
           </div>
         </section>
 
@@ -62,7 +65,10 @@ export function SettingsScreen() {
         <section className="panel settings-section">
           <div className="pnl-hd">
             <i className="ti ti-users" style={{ fontSize: 13, color: 'var(--accent)' }} />
-            <span className="pnl-ttl">Users &amp; roles (preview)</span>
+            <span className="pnl-ttl">Users &amp; roles</span>
+            <Link href="/admin/users" className="btn btn-p" style={{ marginLeft: 'auto', fontSize: 11, padding: '4px 10px' }}>
+              Open user management
+            </Link>
           </div>
           <div className="pnl-body settings-table-wrap">
             <table className="defects-table">
@@ -71,21 +77,18 @@ export function SettingsScreen() {
                   <th>User</th>
                   <th>Email</th>
                   <th>Role</th>
-                  <th>Modules</th>
+                  <th>Status</th>
+                  <th>Project access</th>
                 </tr>
               </thead>
               <tbody>
-                {MOCK_WORKSPACE_USERS.map((u) => (
-                  <tr key={u.email}>
-                    <td>
-                      <span className="settings-user">
-                        <span className="settings-av">{u.initials}</span>
-                        {u.name}
-                      </span>
-                    </td>
+                {previewUsers.map((u) => (
+                  <tr key={u.id}>
+                    <td>{formatAdminUserName(u)}</td>
                     <td className="mono">{u.email}</td>
                     <td>{u.role}</td>
-                    <td>{u.modules.join(', ')}</td>
+                    <td>{u.status}</td>
+                    <td>{formatProjectAccess(u.projectAccess)}</td>
                   </tr>
                 ))}
               </tbody>
