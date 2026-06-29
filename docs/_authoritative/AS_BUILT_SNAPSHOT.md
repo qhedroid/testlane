@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 12`, multi-project + admin access + actor) |
+| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 13`, multi-project + admin access + actor + test plans) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
 | Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
@@ -28,7 +28,8 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 |-------|------------|-----------|-------|
 | `/:projectKey/dashboard` | mock | `DashboardScreen` | Full metrics when `seedTemplate === 'demo'`; placeholder for other projects |
 | `/:projectKey/cases` | mock + localStorage | `CasesScreen` | Scoped to active project |
-| `/:projectKey/plans` | mock | `PlansScreen` | Spawn → testruns |
+| `/:projectKey/plans` | mock + localStorage | `PlansScreen` | Plan list + URL routing; CRUD modals; test case query groups; spawn run |
+| `/:projectKey/plans/tp/:planKey` | mock + localStorage | `PlansScreen` | Plan detail (Overview + Test cases tabs) |
 | **`/:projectKey/testruns`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — run list; no run selected |
 | **`/:projectKey/testruns/tr/:runKey`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX for selected run |
 | **`/runs/api`** | **api** | **`ApiRunsWorkspace`** | MySQL; not project-prefixed |
@@ -58,7 +59,7 @@ Machine-readable contracts: `apps/web/src/lib/relay/prototype-contracts.ts`.
 
 1. Open `http://localhost:3000` → `/DP/dashboard` (demo metrics).
 2. Browse/create test cases (`/DP/cases`) — persists in localStorage; isolated per project.
-3. View plans (`/DP/plans`) — spawn link opens `/DP/testruns`.
+3. Create/browse plans (`/DP/plans`) — full CRUD; test case query groups (condition/folder/static); spawn run modal pre-fills title and case count, creates run and navigates to `/DP/testruns`.
 4. Execute runs — open `/DP/testruns/tr/00001` (or pick a run); full execution UX; scoped to active project. Run keys are per-project (`00001` …).
 5. **Create / duplicate / delete runs** — modal create, More… menu duplicate/delete, topbar seal toggle.
 6. **Project switching** — switcher rewrites URL (`/DP/testruns/tr/00001` → `/CTMS/testruns`; run selection stripped); create via modal (name/key/description); **Add demo project** clones template as `DP1`, `DP2`, …
@@ -132,7 +133,7 @@ pnpm api:validate                 # needs dev server + seeded DB
 
 Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-v2'); location.reload()`
 
-**Migration:** v1→v2 multi-project; v2→v3 adds required `key`, `description`, renames seed to Demo Project / `DP`; v3→v4 adds `runKey`, `nextRunNumByProject`, URL run selection; v4→v5 adds `adminSettings` (global admin panel state). Failed migration resets to seed.
+**Migration:** v1→v2 multi-project; v2→v3 adds `key`/`description`; v3→v4 adds `runKey`/URL run selection; v4→v5 adds `adminSettings`; v6–v11 case/run field additions; v12 user/role access (`currentActorUserId`, expanded admin models); v13 test plans (`plansById`, `nextPlanNumByProject`, seed plans). Failed migration resets to seed.
 
 ---
 

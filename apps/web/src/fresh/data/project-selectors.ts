@@ -1,4 +1,4 @@
-import type { Case, DemoRun, DemoState, Folder, Project } from './demo-model'
+import type { Case, DemoRun, DemoState, Folder, Project, TestPlan } from './demo-model'
 
 export function listProjects(state: DemoState): Project[] {
   return Object.values(state.projectsById).sort((a, b) => a.name.localeCompare(b.name))
@@ -32,6 +32,12 @@ export function listActiveProjectRuns(state: DemoState): DemoRun[] {
   return state.runs.filter(
     (r) => r.projectId === state.activeProjectId && !r.archivedAt,
   )
+}
+
+export function listActiveProjectPlans(state: DemoState): TestPlan[] {
+  return Object.values(state.plansById).filter(
+    (p) => p.projectId === state.activeProjectId,
+  ).sort((a, b) => a.planKey.localeCompare(b.planKey))
 }
 
 export function getActiveProjectNextRunNum(state: DemoState): number {

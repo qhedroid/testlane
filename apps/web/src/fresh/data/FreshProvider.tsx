@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings } from './demo-model'
+import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -22,12 +22,13 @@ import {
   getProjectByKey,
   isProjectKeyUnique,
   listActiveProjectFolders,
+  listActiveProjectPlans,
   listActiveProjectRuns,
   listActiveProjectTestCases,
   listProjects,
 } from './project-selectors'
 import { findRunById } from './run-utils'
-import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatRunKey, newId } from './demo-model'
+import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatPlanKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
 
 const STORAGE_KEY = 'relay-demo-v2'
@@ -99,10 +100,14 @@ export type FreshAction =
   | { type: 'SEAL_RUN'; runId: string }
   | { type: 'UNSEAL_RUN'; runId: string }
   | { type: 'SET_CURRENT_RUN'; runId: string }
-  | { type: 'CREATE_RUN'; name: string; description?: string; caseIds?: string[] }
+  | { type: 'CREATE_RUN'; name: string; description?: string; caseIds?: string[]; planId?: string; planName?: string }
   | { type: 'DUPLICATE_RUN'; runId: string }
   | { type: 'ARCHIVE_RUN'; runId: string }
   | { type: 'DELETE_RUN'; runId: string }
+  | { type: 'ADD_PLAN'; plan: TestPlan }
+  | { type: 'UPDATE_PLAN'; planId: string; patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>> }
+  | { type: 'DELETE_PLAN'; planId: string }
+  | { type: 'DUPLICATE_PLAN'; newPlan: TestPlan }
   | { type: 'ADD_FOLDER'; folder: Folder }
   | { type: 'HYDRATE'; state: DemoState }
 
@@ -137,6 +142,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         currentRunIdByProject: { ...state.currentRunIdByProject, [project.id]: '' },
         nextCaseNumByProject: { ...state.nextCaseNumByProject, [project.id]: 1 },
         nextRunNumByProject: { ...state.nextRunNumByProject, [project.id]: 1 },
+        nextPlanNumByProject: { ...state.nextPlanNumByProject, [project.id]: 1 },
       }
       break
     }
@@ -182,12 +188,14 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const { [projectId]: _run, ...restRunIds } = state.currentRunIdByProject
       const { [projectId]: _num, ...restNums } = state.nextCaseNumByProject
       const { [projectId]: _runNum, ...restRunNums } = state.nextRunNumByProject
+      const { [projectId]: _planNum, ...restPlanNums } = state.nextPlanNumByProject
 
       let projectsById = restProjects
       let activeProjectId = state.activeProjectId
       let currentRunIdByProject = restRunIds
       let nextCaseNumByProject = restNums
       let nextRunNumByProject = restRunNums
+      let nextPlanNumByProject = restPlanNums
 
       if (state.activeProjectId === projectId) {
         const remaining = Object.keys(restProjects)
@@ -200,8 +208,15 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           currentRunIdByProject = { [fallback.id]: '' }
           nextCaseNumByProject = { [fallback.id]: 1 }
           nextRunNumByProject = { [fallback.id]: 1 }
+          nextPlanNumByProject = { [fallback.id]: 1 }
         }
       }
+
+      const remainingPlanIds = new Set(
+        Object.values(state.plansById)
+          .filter((p) => p.projectId !== projectId)
+          .map((p) => p.id),
+      )
 
       next = {
         ...state,
@@ -210,9 +225,13 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         folders: state.folders.filter((f) => f.projectId !== projectId),
         cases: state.cases.filter((c) => c.projectId !== projectId),
         runs: state.runs.filter((r) => r.projectId !== projectId),
+        plansById: Object.fromEntries(
+          Object.entries(state.plansById).filter(([id]) => remainingPlanIds.has(id)),
+        ),
         currentRunIdByProject,
         nextCaseNumByProject,
         nextRunNumByProject,
+        nextPlanNumByProject,
       }
       break
     }
@@ -394,6 +413,8 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         runKey,
         name: action.name.trim() || 'Untitled run',
         description: action.description?.trim() || undefined,
+        planId: action.planId,
+        planName: action.planName,
         createdAt: new Date().toISOString(),
         sealed: false,
         caseOrder,
@@ -473,6 +494,45 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
     case 'ADD_FOLDER':
       next = { ...state, folders: [...state.folders, action.folder] }
       break
+    case 'ADD_PLAN': {
+      next = {
+        ...state,
+        plansById: { ...state.plansById, [action.plan.id]: action.plan },
+        nextPlanNumByProject: {
+          ...state.nextPlanNumByProject,
+          [action.plan.projectId]: (state.nextPlanNumByProject[action.plan.projectId] ?? 1) + 1,
+        },
+      }
+      break
+    }
+    case 'UPDATE_PLAN': {
+      const existing = state.plansById[action.planId]
+      if (!existing) return state
+      next = {
+        ...state,
+        plansById: {
+          ...state.plansById,
+          [action.planId]: { ...existing, ...action.patch },
+        },
+      }
+      break
+    }
+    case 'DELETE_PLAN': {
+      const { [action.planId]: _removed, ...rest } = state.plansById
+      next = { ...state, plansById: rest }
+      break
+    }
+    case 'DUPLICATE_PLAN': {
+      next = {
+        ...state,
+        plansById: { ...state.plansById, [action.newPlan.id]: action.newPlan },
+        nextPlanNumByProject: {
+          ...state.nextPlanNumByProject,
+          [action.newPlan.projectId]: (state.nextPlanNumByProject[action.newPlan.projectId] ?? 1) + 1,
+        },
+      }
+      break
+    }
     default:
       return state
   }
@@ -488,6 +548,7 @@ interface FreshContextValue {
   activeFolders: Folder[]
   activeCases: Case[]
   activeRuns: DemoRun[]
+  activePlans: TestPlan[]
   currentRun: DemoRun | undefined
   getActiveProject: () => Project | undefined
   listProjects: () => Project[]
@@ -544,6 +605,11 @@ interface FreshContextValue {
   deleteRun: (runId: string) => void
   editRun: (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => void
   addCasesToRun: (runId: string, caseIds: string[]) => void
+  addPlan: (title: string, description?: string) => { planKey: string; planId: string }
+  updatePlan: (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>>) => void
+  deletePlan: (planId: string) => void
+  duplicatePlan: (planId: string) => { planKey: string; planId: string } | null
+  spawnRunFromPlan: (planId: string, name: string, description?: string) => { runKey: string } | null
   addFolder: (name: string, parentId?: string | null) => string
   isRunSealed: boolean
 }
@@ -561,6 +627,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const activeFolders = useMemo(() => listActiveProjectFolders(state), [state])
   const activeCases = useMemo(() => listActiveProjectTestCases(state), [state])
   const activeRuns = useMemo(() => listActiveProjectRuns(state), [state])
+  const activePlans = useMemo(() => listActiveProjectPlans(state), [state])
   const currentRun = useMemo(() => getCurrentRun(state), [state])
   const currentActor = useMemo(() => {
     const id = state.currentActorUserId ?? SEED_ADMIN_USER_ID
@@ -702,6 +769,80 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       return id
     },
     [state.activeProjectId],
+  )
+
+  const addPlan = useCallback(
+    (title: string, description?: string) => {
+      const projectId = state.activeProjectId
+      const num = state.nextPlanNumByProject[projectId] ?? 1
+      const planKey = formatPlanKey(num)
+      const plan: TestPlan = {
+        id: newId('plan'),
+        planKey,
+        projectId,
+        title,
+        description,
+        createdAt: new Date().toISOString(),
+        queries: [],
+      }
+      dispatch({ type: 'ADD_PLAN', plan })
+      return { planKey, planId: plan.id }
+    },
+    [state],
+  )
+
+  const updatePlan = useCallback(
+    (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>>) => {
+      dispatch({ type: 'UPDATE_PLAN', planId, patch })
+    },
+    [],
+  )
+
+  const deletePlan = useCallback((planId: string) => {
+    dispatch({ type: 'DELETE_PLAN', planId })
+  }, [])
+
+  const duplicatePlan = useCallback(
+    (planId: string) => {
+      const original = state.plansById[planId]
+      if (!original) return null
+      const projectId = state.activeProjectId
+      const num = state.nextPlanNumByProject[projectId] ?? 1
+      const planKey = formatPlanKey(num)
+      const newPlan: TestPlan = {
+        ...original,
+        id: newId('plan'),
+        planKey,
+        title: `Copy of ${original.title}`,
+        createdAt: new Date().toISOString(),
+        queries: original.queries.map((q) => ({ ...q, id: newId('tq') })),
+      }
+      dispatch({ type: 'DUPLICATE_PLAN', newPlan })
+      return { planKey, planId: newPlan.id }
+    },
+    [state],
+  )
+
+  const spawnRunFromPlan = useCallback(
+    (planId: string, name: string, description?: string) => {
+      const plan = state.plansById[planId]
+      if (!plan) return null
+      const projectCases = listActiveProjectTestCases(state)
+      const projectFolders = listActiveProjectFolders(state)
+      const caseIds = resolvePlanCases(plan, projectCases, projectFolders).map((c) => c.id)
+      const num = state.nextRunNumByProject[state.activeProjectId] ?? 1
+      const runKey = formatRunKey(num)
+      dispatch({
+        type: 'CREATE_RUN',
+        name,
+        description,
+        caseIds,
+        planId,
+        planName: plan.title,
+      })
+      return { runKey }
+    },
+    [state],
   )
 
   const addDemoProject = useCallback(() => {
@@ -856,6 +997,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       activeFolders,
       activeCases,
       activeRuns,
+      activePlans,
       currentRun,
       getActiveProject: () => getActiveProject(state),
       listProjects: () => listProjects(state),
@@ -912,6 +1054,11 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       deleteRun,
       editRun,
       addCasesToRun,
+      addPlan,
+      updatePlan,
+      deletePlan,
+      duplicatePlan,
+      spawnRunFromPlan,
       addFolder,
       isRunSealed,
     }),
@@ -922,6 +1069,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       activeFolders,
       activeCases,
       activeRuns,
+      activePlans,
       currentRun,
       getProjectByKeyFn,
       isProjectKeyUniqueFn,
@@ -972,6 +1120,11 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       deleteRun,
       editRun,
       addCasesToRun,
+      addPlan,
+      updatePlan,
+      deletePlan,
+      duplicatePlan,
+      spawnRunFromPlan,
       addFolder,
       isRunSealed,
     ],

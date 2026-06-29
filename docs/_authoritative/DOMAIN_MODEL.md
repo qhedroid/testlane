@@ -67,14 +67,14 @@ Roles (capability, not job title): `super_admin` > `admin` > `contributor` > `vi
 
 ## Prototype model (FRESH / localStorage)
 
-State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 12`).
+State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 13`).
 
 | Entity | Prototype type | Notes |
 |--------|----------------|-------|
 | **Project** | `Project { id, name, key, description?, activeCustomFieldIds, projectSettings?, seedTemplate?, createdAt }` in `projectsById` | User-managed: **name** (required), **key** (required, uppercase, unique, `[A-Z0-9_-]`), **description** (optional). **activeCustomFieldIds** — subset of global `adminSettings.customFields` ids active for this project (seed DP: Priority, References, Is Automated). **projectSettings** — optional per-project inherit/override for org policies (re-open runs/milestones, edit results, report logo). Seed project: **Demo Project** / key **DP**. `seedTemplate: 'demo'` marks projects that show the seeded dashboard UI and were created from the immutable demo template (initial seed `DP` or clones `DP1`, `DP2`, …). URL routing uses `key` as first path segment. |
 | **Folder** | `Folder { id, projectId, name, parentId? }` | Scoped to `projectId`. |
 | **TestCase** | `Case { id, caseKey?, projectId, title, folderId, priority, type, steps[], tags[], assignee, template?, references?, summary?, customFieldValues?, … }` | **caseKey** — project-scoped human-readable id (e.g. `TC-00001`), assigned on `ADD_CASE` via `formatCaseKey(nextCaseNumByProject[projectId])`. Steps embed comments. **template** — `'text'` (Action/Expected) or `'bdd'` (Given/When/Then). **references** — free-text issue/doc links. **summary** — one-line description. **customFieldValues** — keyed by `AdminCustomField.id` for active project custom fields. |
-| **TestPlan** | Static `PLANS` in seed | Not in `DemoState`; not linked to cases in state. |
+| **TestPlan** | `TestPlan { id, planKey, projectId, title, description?, createdAt, queries: TestQuery[] }` in `plansById` | **planKey** — project-scoped 5-digit key (e.g. `TP-00001`). **queries** — array of `TestQuery` (type: `condition`/`folder`/`static`); resolved to case lists via `resolvePlanCases()`. CRUD via `ADD_PLAN`, `UPDATE_PLAN`, `DELETE_PLAN`, `DUPLICATE_PLAN`. Seeded with TP-00001 and TP-00002 for demo projects. Spawn run stamps `planId`/`planName` on the created `DemoRun`. |
 | **TestRun** | `DemoRun { id, projectId, runKey, name, description?, planId, sealed, archivedAt?, caseOrder[], executions }` | `runKey` is project-scoped 5-digit display id for URLs. `executions` keyed by case id. `currentRunIdByProject` tracks picker per project (synced from URL when `/tr/:runKey` present). |
 | **Execution** | `CaseExecution { status, stepResults, defects[], assignee }` | Full step-level in demo `/runs`. |
 | **Defect** | String IDs on execution + `MOCK_DEFECTS` screen | Not a first-class entity in state. |

@@ -16,23 +16,35 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-user-role-access` (rebased onto `origin/mvp-main`)
+`mvp-test-plans` (rebased onto `origin/mvp-main` ✅)
 
 ---
 
 ## Schema version
-**Current: v12**
+**Current: v13**
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
+| v13 | Test Plans — `TestPlan`, `TestQuery`, `QueryCondition`, `plansById`, `nextPlanNumByProject`, `resolvePlanCases()`, `formatPlanKey()`, `planKeyToSlug()`, `slugToPlanKey()`; seed plans (TP-00001 Smoketest, TP-00002 Full Regression) | v12→v13 introduces `plansById`/`nextPlanNumByProject`; seeds demo plans for demo projects |
 | v12 | User/role access MVP: `currentActorUserId`, `AdminUser.firstName/lastName/projectAccess`, statuses (Pending invite, Silent created, Disabled), `AdminRole.permissions`, built-in role set | v11→v12 via `migrateUserAccessV12` |
 | v11 | Added `createdAt?: string` to `Case` | v10→v11 sets `createdAt = updatedAt` for all existing cases |
 
 ---
 
-## Completed work (this branch)
+## Completed work (this branch — mvp-test-plans)
 
-### Tasks 01–08 — all complete ✅
+### Test Plans — Tasks 01–02 complete ✅
+
+| Task | What it delivered | Commit |
+|------|------------------|--------|
+| Task 01 | Schema v12 (→v13 post-rebase): `TestPlan`, `TestQuery`, `QueryCondition`, `plansById`/`nextPlanNumByProject` on `DemoState`; `formatPlanKey()`/`resolvePlanCases()`/`evaluateCondition()`; FreshProvider CRUD (`ADD_PLAN`, `UPDATE_PLAN`, `DELETE_PLAN`, `DUPLICATE_PLAN`); `spawnRunFromPlan`; PlansScreen full rebuild; prototype-plans.css; `/plans` + `/plans/tp/[planKey]` routes | `b51eace` |
+| Task 02 | Test cases tab on PlansScreen: condition query groups (field/operator/value), folder query groups, static case selection, live resolved-case panel | `6bc11ea` |
+
+---
+
+### Previous branches (for historical reference)
+
+#### Tasks 01–08 — all complete ✅ (mvp-test-cases)
 
 Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
@@ -83,28 +95,7 @@ Cursor prompts are now organised under `docs/cursor-prompts/mvp-test-cases/`.
 
 ### Pending
 
-Task 07b — **Complete** (Cursor confirmed build passes, all 9 fixes applied). Commit prompt at `task-07b-commit.md` — may still need to be run.
-
-Task 07c — feedback fixes on Task 07b. **Prompt drafted** at `docs/cursor-prompts/mvp-test-runs/task-07c-runs-ui-polish-2.md`. 5 fixes verified against live Testiny:
-1. Step-comment hyperlinking in Comments tab (click step label → jump to step in Details)
-2. Defects/Requirements tabs corrected per context (interactive in correct screen, read-only in the other)
-3. Create test run button fully guarded (run picker dropdown missed in 07b)
-4. Team/Defects/Details tabbed panel next to pie chart; ec-pane min width → 475px, default → 500px
-5. Delete safeguard: modal warning listing affected open runs; DELETE_CASE cascades to unsealed runs
-
-**Key Testiny finding (item 5):** Deleting a test case removes it from open (unsealed) runs. Sealed runs are left untouched as immutable historical records. Warning dialog lists affected run keys.
-
-Task 07d — feedback fixes on Task 07b/07c. **Prompt drafted** at `docs/cursor-prompts/mvp-test-runs/task-07d-runs-ui-polish-3.md`. 2 fixes:
-1. Track "Record was created" in History tab when a case is added to a run — `ExecutionLogEntry` gains `event?: 'created'`; `ADD_CASES_TO_RUN` appends creation log entries; History tab renders "Record was created" with `var(--accent)` dot
-2. Summary tabbed panel height to match donut chart (`align-items: stretch` on parent); Team tab shows "N cases assigned" per member; clicking a member toggles `advFilter.assignee` to filter the run list
-
-### Task legacy 07c / 07d — legacy bug fixes
-
-After Task 07b ran, two additional bugs were found:
-
-**Edit/save creates duplicate case (07c)** — `addCase` in `FreshProvider` uses `nextCaseId(num)` which returns `TC-${1000+num}`. Every new project starts at counter 1, so all projects generate `TC-1001`, `TC-1002`, etc. `REPLACE_CASE` matches across all projects by id, corrupting cases from other projects and producing duplicate ids in `activeCases`. Fix: use `newId('case')` in `addCase`; add schema v9 migration to remap existing collision-prone ids. Addressed in `task-07c`.
-
-**Project switch flicker / first attempt stays on P1 (07d)** — `ProjectRouteSync` includes `state.activeProjectId` in its effect deps. When `handleSelect` calls `setActiveProject(P2)` + `router.push('/P2/cases')`, the state change fires the effect immediately while `usePathname()` still reads `/P1/cases`. The effect sees URL=P1 vs state=P2 and calls `setActiveProject(P1)` — reverting the state. The reversion then causes `CasesScreen`'s URL sync effect to call `window.history.replaceState('/P1/cases')` mid-navigation, which aborts the `router.push` in Next.js 15. Fix: remove `state.activeProjectId` from the effect deps; read it via a ref instead. Addressed in `task-07d`.
+Nothing. Rebase is complete — branch is clean on top of `origin/mvp-main`. Next step is PR.
 
 ---
 
@@ -160,5 +151,7 @@ See **`docs/claude/known-bugs.md`** for the full investigation log. Summary:
 ## What to do at the start of a new session
 
 1. Read this file.
-2. Ask the user which task Cursor has just finished (or is about to start) to calibrate the current state.
-3. Update the "Completed work" and "Schema version" sections if tasks have been executed since this was last written.
+2. Check the current git state (`git status`, `git log --oneline -5`) to verify the branch and whether the rebase has been completed.
+3. If rebase is still pending, follow the steps in "Rebase notes" above.
+4. Ask the user which task Cursor has just finished (or is about to start) to calibrate the current state.
+5. Update "Completed work" and "Schema version" if tasks have been executed since this was last written.

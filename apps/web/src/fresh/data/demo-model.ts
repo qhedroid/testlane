@@ -92,6 +92,40 @@ export interface Folder {
   parentId?: string | null
 }
 
+export type QueryOperator = 'contains' | 'not_contains' | 'equals' | 'not_equals'
+export type QueryField = 'title' | 'priority' | 'type' | 'assignee' | 'tags' | 'caseKey'
+
+export interface QueryCondition {
+  field: QueryField
+  operator: QueryOperator
+  value: string
+}
+
+export interface TestQuery {
+  id: string
+  /** Human-readable name for this query group, e.g. "High Priority Cases". */
+  title: string
+  /** 'condition' = field/operator/value filter; 'folder' = folder-based; 'static' = explicit case list. */
+  type: 'condition' | 'folder' | 'static'
+  /** For type='condition': all conditions must match (AND logic). */
+  conditions?: QueryCondition[]
+  /** For type='folder': folder IDs whose cases are included (descendants included). */
+  folderIds?: string[]
+  /** For type='static': explicit internal Case.id values selected by the user. */
+  caseIds?: string[]
+}
+
+export interface TestPlan {
+  id: string
+  /** Project-scoped human-readable key, e.g. TP-00001. */
+  planKey: string
+  projectId: string
+  title: string
+  description?: string
+  createdAt: string
+  queries: TestQuery[]
+}
+
 export interface CaseExecution {
   status: ExecStatus
   assignee?: string
@@ -131,7 +165,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 12
+export const DEMO_SCHEMA_VERSION = 13
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -141,6 +175,21 @@ export function formatRunKey(n: number): string {
 /** Format a per-project case counter as a 5-digit key, e.g. TC-00001. */
 export function formatCaseKey(n: number): string {
   return `TC-${n.toString().padStart(5, '0')}`
+}
+
+/** Format a per-project plan counter as a 5-digit key, e.g. TP-00001. */
+export function formatPlanKey(n: number): string {
+  return `TP-${n.toString().padStart(5, '0')}`
+}
+
+/** Strip TP- prefix for use in URL slugs, e.g. TP-00001 → 00001. */
+export function planKeyToSlug(planKey: string): string {
+  return planKey.replace(/^TP-/i, '')
+}
+
+/** Restore TP- prefix from a URL slug, e.g. 00001 → TP-00001. */
+export function slugToPlanKey(slug: string): string {
+  return /^TP-/i.test(slug) ? slug : `TP-${slug}`
 }
 
 export const DEFAULT_SEED_PROJECT_ID = 'proj-ti-core'
@@ -281,6 +330,8 @@ export interface DemoState {
   adminSettings: AdminSettings
   /** Demo actor for RBAC — persisted in localStorage. */
   currentActorUserId: string
+  plansById: Record<string, TestPlan>
+  nextPlanNumByProject: Record<string, number>
 }
 
 export interface RunSummary {
@@ -385,6 +436,57 @@ export function casesInFolder(cases: Case[], folders: Folder[], folderId: string
   }
   const allowed = folderDescendantIds(folders, folderId)
   return cases.filter((c) => allowed.has(c.folderId ?? null))
+}
+
+function evaluateCondition(c: Case, cond: QueryCondition): boolean {
+  const v = cond.value.toLowerCase()
+  let fv = ''
+  if (cond.field === 'title') fv = c.title
+  else if (cond.field === 'priority') fv = c.priority
+  else if (cond.field === 'type') fv = c.type
+  else if (cond.field === 'assignee') fv = c.assignee ?? ''
+  else if (cond.field === 'tags') fv = (c.tags ?? []).join(',')
+  else if (cond.field === 'caseKey') fv = c.caseKey ?? c.id
+  fv = fv.toLowerCase()
+  if (cond.operator === 'equals') return fv === v
+  if (cond.operator === 'not_equals') return fv !== v
+  if (cond.operator === 'contains') return fv.includes(v)
+  if (cond.operator === 'not_contains') return !fv.includes(v)
+  return false
+}
+
+/**
+ * Resolve all case IDs referenced by a plan's query groups.
+ * Returns cases in their original order, deduplicated.
+ */
+export function resolvePlanCases(plan: TestPlan, cases: Case[], folders: Folder[]): Case[] {
+  const seen = new Set<string>()
+  const result: Case[] = []
+  for (const query of plan.queries) {
+    let matched: Case[] = []
+    if (query.type === 'static') {
+      const ids = new Set(query.caseIds ?? [])
+      matched = cases.filter((c) => ids.has(c.id))
+    } else if (query.type === 'folder') {
+      const allowed = new Set<string | null>()
+      for (const fid of query.folderIds ?? []) {
+        folderDescendantIds(folders, fid).forEach((id) => allowed.add(id))
+      }
+      matched = cases.filter((c) => allowed.has(c.folderId ?? null))
+    } else if (query.type === 'condition') {
+      const conditions = query.conditions ?? []
+      if (conditions.length > 0) {
+        matched = cases.filter((c) => conditions.every((cond) => evaluateCondition(c, cond)))
+      }
+    }
+    for (const c of matched) {
+      if (!seen.has(c.id)) {
+        seen.add(c.id)
+        result.push(c)
+      }
+    }
+  }
+  return result
 }
 
 export function folderLabel(folders: Folder[], folderId: string | null | undefined): string {

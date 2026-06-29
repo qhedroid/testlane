@@ -1,7 +1,7 @@
 import { initialAdminSettings, SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import { migrateUserAccessV12 } from './admin-reducer'
-import { buildInitialDemoState } from './demo-seed'
-import type { Case, DemoRun, DemoState, Folder, LegacyDemoState, Project } from './demo-model'
+import { buildInitialDemoState, SEED_PLANS } from './demo-seed'
+import type { Case, DemoRun, DemoState, Folder, LegacyDemoState, Project, TestPlan } from './demo-model'
 import { formatCaseKey } from './demo-model'
 import {
   DEFAULT_SEED_PROJECT_ID,
@@ -107,6 +107,8 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     nextRunNumByProject: { [projectId]: 1 },
     adminSettings: initialAdminSettings,
     currentActorUserId: SEED_ADMIN_USER_ID,
+    plansById: {},
+    nextPlanNumByProject: { [projectId]: 1 },
   }
 }
 
@@ -315,6 +317,29 @@ export function migrateDemoState(raw: unknown): DemoState {
     // v11 → v12: user/role access MVP — permissions, actor, silent invite statuses
     if (state.schemaVersion < 12) {
       state = migrateUserAccessV12(state)
+    }
+    // v12 → v13: introduce plansById and nextPlanNumByProject; backfill seed plans for demo projects
+    if (state.schemaVersion < 13) {
+      const existingPlans = (state as unknown as { plansById?: Record<string, TestPlan> }).plansById ?? {}
+      const existingCounters = (state as unknown as { nextPlanNumByProject?: Record<string, number> }).nextPlanNumByProject ?? {}
+
+      const plansById: Record<string, TestPlan> = { ...existingPlans }
+      const nextPlanNumByProject: Record<string, number> = { ...existingCounters }
+
+      for (const [projectId, project] of Object.entries(state.projectsById)) {
+        const hasPlans = Object.values(plansById).some((p) => p.projectId === projectId)
+        if (!hasPlans && project.seedTemplate === 'demo') {
+          for (const plan of SEED_PLANS) {
+            const seededPlan = { ...plan, projectId }
+            plansById[seededPlan.id + '-' + projectId] = seededPlan
+          }
+          nextPlanNumByProject[projectId] = SEED_PLANS.length + 1
+        } else if (!nextPlanNumByProject[projectId]) {
+          nextPlanNumByProject[projectId] = 1
+        }
+      }
+
+      state = { ...state, plansById, nextPlanNumByProject, schemaVersion: 13 }
     }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
