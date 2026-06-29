@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { FreshTopbar } from '../components/FreshTopbar'
+import { useFresh } from '../data/FreshProvider'
+import { formatRelativeTime } from '../data/demo-model'
 import {
   MOCK_DEFECTS,
   type DefectSeverity,
@@ -35,14 +37,30 @@ type StatusFilter = 'all' | DefectStatus
 type SeverityFilter = 'all' | DefectSeverity
 
 export function DefectsScreen() {
+  const { activeDefects, activeProject } = useFresh()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
-  const [selectedId, setSelectedId] = useState<string | null>(MOCK_DEFECTS[0]?.id ?? null)
+
+  const allDefects = useMemo(() => {
+    const local: MockDefect[] = activeDefects.map((d) => ({
+      id: d.defectKey,
+      title: d.title,
+      severity: 'medium' as DefectSeverity,
+      status: (d.status === 'In progress' ? 'in_progress' : d.status.toLowerCase()) as DefectStatus,
+      module: activeProject.name,
+      owner: 'Local demo',
+      createdAt: formatRelativeTime(d.createdAt),
+      updatedAt: formatRelativeTime(d.createdAt),
+    }))
+    return [...local, ...MOCK_DEFECTS]
+  }, [activeDefects, activeProject.name])
+
+  const [selectedId, setSelectedId] = useState<string | null>(allDefects[0]?.id ?? null)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return MOCK_DEFECTS.filter((d) => {
+    return allDefects.filter((d) => {
       if (statusFilter !== 'all' && d.status !== statusFilter) return false
       if (severityFilter !== 'all' && d.severity !== severityFilter) return false
       if (!q) return true
@@ -54,7 +72,7 @@ export function DefectsScreen() {
         (d.linkedCaseRef?.toLowerCase().includes(q) ?? false)
       )
     })
-  }, [search, statusFilter, severityFilter])
+  }, [search, statusFilter, severityFilter, allDefects])
 
   const selected = filtered.find((d) => d.id === selectedId) ?? filtered[0] ?? null
 
@@ -209,7 +227,7 @@ function DefectDetail({ defect }: { defect: MockDefect }) {
           ) : null}
         </dl>
         <p className="defects-detail-note">
-          Create, edit, and Jira sync are placeholder actions in this prototype.
+          Local demo defects (DEF-*) are created from failed/blocked test run executions. Mock TI-* rows remain static. No Jira sync in this prototype.
         </p>
       </div>
     </div>

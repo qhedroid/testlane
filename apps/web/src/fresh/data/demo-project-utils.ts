@@ -61,5 +61,8 @@ export function appendClonedDemoProject(state: DemoState, meta: ClonedDemoProjec
     currentRunIdByProject: { ...state.currentRunIdByProject, [project.id]: defaultRunId },
     nextCaseNumByProject: { ...state.nextCaseNumByProject, [project.id]: nextCaseNum },
     nextRunNumByProject: { ...state.nextRunNumByProject, [project.id]: nextRunNum },
+    nextPlanNumByProject: { ...state.nextPlanNumByProject, [project.id]: 1 },
+    nextRequirementNumByProject: { ...state.nextRequirementNumByProject, [project.id]: 1 },
+    nextDefectNumByProject: { ...state.nextDefectNumByProject, [project.id]: 1 },
   }
 }

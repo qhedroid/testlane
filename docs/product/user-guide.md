@@ -1,6 +1,6 @@
 # Relay — User Guide
 
-*Living document · Last verified: June 2026 · Branch: `mvp-user-role-access`*
+*Living document · Last verified: June 2026 · Branch: `mvp-requirements-defects-slice`*
 
 This guide explains how to use Relay from a user perspective. It describes the **frontend prototype** as it works today in the browser.
 
@@ -22,7 +22,7 @@ The current app is a **frontend prototype**: most data lives in your browser (de
 |------------|-------------------|
 | Full UI walkthrough without Docker | No real login or SSO |
 | Create/edit cases and runs in the browser | Data is not shared across users or machines |
-| Step-level execution, sealing, project switching | Plans, defects list, and some audit data are static seed |
+| Step-level execution, sealing, project switching | Legacy seed TI-* defect refs on some runs; no real Jira sync |
 | Admin panel forms persist in localStorage | **Demo RBAC** on user/role admin screens via actor switcher |
 | `/runs/api` persists to MySQL when Docker is running | Demo test runs UI is not wired to MySQL |
 
@@ -81,7 +81,11 @@ Three-pane layout: **folder tree** (left) → **case table** (centre) → **deta
 - *Quick create* — paste titles, press Enter to add multiple cases quickly.
 - *New case* modal — full fields including steps (Action/Expected or BDD Given/When/Then).
 
-**Case detail:** metadata (assignee, template, priority, custom fields), tabs (Details, History, etc.), ← → arrows to move between cases. Deep link: `/DP/testcases/tc/<caseKey>` (URL omits the `TC-` prefix).
+**Case detail:** metadata (assignee, template, priority, custom fields), tabs (Details, Attachments, Defects, Requirements, Runs, History, Activity), ← → arrows to move between cases. Deep link: `/DP/testcases/tc/<caseKey>` (URL omits the `TC-` prefix).
+
+**Requirements tab (create/link):** From the selected case, open *Requirements*. Create a local demo requirement (title + optional description) — it is saved to localStorage and linked to the case automatically. Use *Link existing…* to attach another project requirement. Requirements use keys like `REQ-00001`. No external Jira or integration sync.
+
+**Defects tab (view-only):** Shows defects linked to this case from test run executions (including legacy seed `TI-*` references). You cannot create or link defects here — use Test Runs when a case fails or is blocked.
 
 **Row actions (⋯ menu):** Duplicate, Edit, Copy to, Move to, Open folder, Delete.
 
@@ -155,7 +159,9 @@ Open a run at `/DP/testruns/tr/<runKey>`.
 
 **Seal run:** *Close test run* in the top bar locks mutations — results and steps become read-only. *Re-open* reverses this (prototype has no role check).
 
-**Defect linking:** link defects from within a case execution (in-memory IDs; not synced to the Defects module screen).
+**Defect linking (Failed/Blocked only):** On the execution panel *Defects* tab, create a local demo defect (`DEF-00001`, …) or link an existing one — only when the case result is **Failed** or **Blocked** and the run is not sealed. Passed, Skipped, and Not run disable create/link with helper text. Defects persist in localStorage and appear on the case Defects tab (view-only) and Defects module list.
+
+**Requirements (view-only in runs):** The execution panel *Requirements* tab shows requirements linked to the underlying test case. Manage requirements from Test Cases — no create/link controls in Test Runs.
 
 **More… menu items:** Edit run, duplicate, reset results, export/report options — many are UI placeholders; create, duplicate, delete, and seal/re-open are functional.
 
@@ -165,9 +171,9 @@ Open a run at `/DP/testruns/tr/<runKey>`.
 
 **Route:** `/DP/defects`
 
-Mock defect table (ID, title, severity, status, module, owner) with search and filters. Detail panel shows linked case/run.
+Mock defect table (ID, title, severity, status, module, owner) with search and filters. Detail panel shows linked case/run. Locally created demo defects (`DEF-*` from failed/blocked executions) appear at the top of the list for the active project alongside static `TI-*` mock rows.
 
-**New defect** button is disabled. In-run defect linking during execution works separately from this screen.
+**New defect** button remains disabled — create defects from Test Runs during execution instead. No Jira sync.
 
 ---
 

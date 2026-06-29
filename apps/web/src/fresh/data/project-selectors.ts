@@ -1,4 +1,4 @@
-import type { Case, DemoRun, DemoState, Folder, Project, TestPlan } from './demo-model'
+import type { Case, Defect, DemoRun, DemoState, Folder, Project, Requirement, TestPlan } from './demo-model'
 
 export function listProjects(state: DemoState): Project[] {
   return Object.values(state.projectsById).sort((a, b) => a.name.localeCompare(b.name))
@@ -62,4 +62,24 @@ export function getActiveProjectCurrentRunId(state: DemoState): string {
 
 export function getActiveProjectNextCaseNum(state: DemoState): number {
   return state.nextCaseNumByProject[state.activeProjectId] ?? 1
+}
+
+export function listActiveProjectRequirements(state: DemoState): Requirement[] {
+  return Object.values(state.requirementsById ?? {})
+    .filter((r) => r.projectId === state.activeProjectId)
+    .sort((a, b) => a.requirementKey.localeCompare(b.requirementKey))
+}
+
+export function listActiveProjectDefects(state: DemoState): Defect[] {
+  return Object.values(state.defectsById ?? {})
+    .filter((d) => d.projectId === state.activeProjectId)
+    .sort((a, b) => a.defectKey.localeCompare(b.defectKey))
+}
+
+export function getActiveProjectNextRequirementNum(state: DemoState): number {
+  return state.nextRequirementNumByProject?.[state.activeProjectId] ?? 1
+}
+
+export function getActiveProjectNextDefectNum(state: DemoState): number {
+  return state.nextDefectNumByProject?.[state.activeProjectId] ?? 1
 }

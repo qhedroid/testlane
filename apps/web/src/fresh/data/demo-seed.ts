@@ -429,6 +429,10 @@ export function buildInitialDemoState(): DemoState {
     currentActorUserId: SEED_ADMIN_USER_ID,
     plansById: Object.fromEntries(SEED_PLANS.map((p) => [p.id, p])),
     nextPlanNumByProject: { [DEFAULT_SEED_PROJECT_ID]: SEED_PLANS.length + 1 },
+    requirementsById: {},
+    defectsById: {},
+    nextRequirementNumByProject: { [DEFAULT_SEED_PROJECT_ID]: 1 },
+    nextDefectNumByProject: { [DEFAULT_SEED_PROJECT_ID]: 1 },
   }
 }
 

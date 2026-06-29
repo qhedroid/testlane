@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, TestPlan } from './demo-model'
+import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, Requirement, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -18,17 +18,21 @@ import {
   getActiveProject,
   getActiveProjectCurrentRunId,
   getActiveProjectNextCaseNum,
+  getActiveProjectNextDefectNum,
+  getActiveProjectNextRequirementNum,
   getActiveProjectNextRunNum,
   getProjectByKey,
   isProjectKeyUnique,
+  listActiveProjectDefects,
   listActiveProjectFolders,
   listActiveProjectPlans,
+  listActiveProjectRequirements,
   listActiveProjectRuns,
   listActiveProjectTestCases,
   listProjects,
 } from './project-selectors'
 import { findRunById } from './run-utils'
-import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatPlanKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
+import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatDefectKey, formatPlanKey, formatRequirementKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
 
 const STORAGE_KEY = 'relay-demo-v2'
@@ -109,6 +113,10 @@ export type FreshAction =
   | { type: 'DELETE_PLAN'; planId: string }
   | { type: 'DUPLICATE_PLAN'; newPlan: TestPlan }
   | { type: 'ADD_FOLDER'; folder: Folder }
+  | { type: 'CREATE_REQUIREMENT'; requirement: Requirement }
+  | { type: 'LINK_REQUIREMENT_TO_CASE'; caseId: string; requirementId: string }
+  | { type: 'CREATE_DEFECT_AND_LINK'; defect: Defect; runId: string; caseId: string }
+  | { type: 'LINK_DEFECT_TO_EXECUTION'; runId: string; caseId: string; defectId: string }
   | { type: 'HYDRATE'; state: DemoState }
 
 function reducer(state: DemoState, action: FreshAction): DemoState {
@@ -143,6 +151,8 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         nextCaseNumByProject: { ...state.nextCaseNumByProject, [project.id]: 1 },
         nextRunNumByProject: { ...state.nextRunNumByProject, [project.id]: 1 },
         nextPlanNumByProject: { ...state.nextPlanNumByProject, [project.id]: 1 },
+        nextRequirementNumByProject: { ...state.nextRequirementNumByProject, [project.id]: 1 },
+        nextDefectNumByProject: { ...state.nextDefectNumByProject, [project.id]: 1 },
       }
       break
     }
@@ -189,6 +199,8 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const { [projectId]: _num, ...restNums } = state.nextCaseNumByProject
       const { [projectId]: _runNum, ...restRunNums } = state.nextRunNumByProject
       const { [projectId]: _planNum, ...restPlanNums } = state.nextPlanNumByProject
+      const { [projectId]: _reqNum, ...restReqNums } = state.nextRequirementNumByProject ?? {}
+      const { [projectId]: _defNum, ...restDefNums } = state.nextDefectNumByProject ?? {}
 
       let projectsById = restProjects
       let activeProjectId = state.activeProjectId
@@ -196,6 +208,8 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       let nextCaseNumByProject = restNums
       let nextRunNumByProject = restRunNums
       let nextPlanNumByProject = restPlanNums
+      let nextRequirementNumByProject = restReqNums
+      let nextDefectNumByProject = restDefNums
 
       if (state.activeProjectId === projectId) {
         const remaining = Object.keys(restProjects)
@@ -209,6 +223,8 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           nextCaseNumByProject = { [fallback.id]: 1 }
           nextRunNumByProject = { [fallback.id]: 1 }
           nextPlanNumByProject = { [fallback.id]: 1 }
+          nextRequirementNumByProject = { [fallback.id]: 1 }
+          nextDefectNumByProject = { [fallback.id]: 1 }
         }
       }
 
@@ -216,6 +232,16 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         Object.values(state.plansById)
           .filter((p) => p.projectId !== projectId)
           .map((p) => p.id),
+      )
+      const remainingRequirementIds = new Set(
+        Object.values(state.requirementsById ?? {})
+          .filter((r) => r.projectId !== projectId)
+          .map((r) => r.id),
+      )
+      const remainingDefectIds = new Set(
+        Object.values(state.defectsById ?? {})
+          .filter((d) => d.projectId !== projectId)
+          .map((d) => d.id),
       )
 
       next = {
@@ -228,10 +254,18 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         plansById: Object.fromEntries(
           Object.entries(state.plansById).filter(([id]) => remainingPlanIds.has(id)),
         ),
+        requirementsById: Object.fromEntries(
+          Object.entries(state.requirementsById ?? {}).filter(([id]) => remainingRequirementIds.has(id)),
+        ),
+        defectsById: Object.fromEntries(
+          Object.entries(state.defectsById ?? {}).filter(([id]) => remainingDefectIds.has(id)),
+        ),
         currentRunIdByProject,
         nextCaseNumByProject,
         nextRunNumByProject,
         nextPlanNumByProject,
+        nextRequirementNumByProject,
+        nextDefectNumByProject,
       }
       break
     }
@@ -533,6 +567,76 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     }
+    case 'CREATE_REQUIREMENT': {
+      next = {
+        ...state,
+        requirementsById: { ...(state.requirementsById ?? {}), [action.requirement.id]: action.requirement },
+        nextRequirementNumByProject: {
+          ...(state.nextRequirementNumByProject ?? {}),
+          [action.requirement.projectId]:
+            (state.nextRequirementNumByProject[action.requirement.projectId] ?? 1) + 1,
+        },
+      }
+      break
+    }
+    case 'LINK_REQUIREMENT_TO_CASE': {
+      next = {
+        ...state,
+        cases: state.cases.map((c) => {
+          if (c.id !== action.caseId) return c
+          const existing = c.requirementIds ?? []
+          if (existing.includes(action.requirementId)) return c
+          return { ...c, requirementIds: [...existing, action.requirementId], updatedAt: new Date().toISOString() }
+        }),
+      }
+      break
+    }
+    case 'CREATE_DEFECT_AND_LINK': {
+      if (!runIsMutable(state, action.runId)) return state
+      const runs = state.runs.map((r) => {
+        if (r.id !== action.runId) return r
+        const prev = r.executions[action.caseId] ?? { status: 'Not run' as ExecStatus, stepResults: {} }
+        const defects = prev.defects ?? []
+        const defectIds = defects.includes(action.defect.id) ? defects : [...defects, action.defect.id]
+        return {
+          ...r,
+          executions: {
+            ...r.executions,
+            [action.caseId]: { ...prev, defects: defectIds },
+          },
+        }
+      })
+      next = {
+        ...state,
+        runs,
+        defectsById: { ...(state.defectsById ?? {}), [action.defect.id]: action.defect },
+        nextDefectNumByProject: {
+          ...(state.nextDefectNumByProject ?? {}),
+          [action.defect.projectId]: (state.nextDefectNumByProject[action.defect.projectId] ?? 1) + 1,
+        },
+      }
+      break
+    }
+    case 'LINK_DEFECT_TO_EXECUTION': {
+      if (!runIsMutable(state, action.runId)) return state
+      const defect = state.defectsById?.[action.defectId]
+      if (!defect) return state
+      const runs = state.runs.map((r) => {
+        if (r.id !== action.runId) return r
+        const prev = r.executions[action.caseId] ?? { status: 'Not run' as ExecStatus, stepResults: {} }
+        const defects = prev.defects ?? []
+        if (defects.includes(action.defectId)) return r
+        return {
+          ...r,
+          executions: {
+            ...r.executions,
+            [action.caseId]: { ...prev, defects: [...defects, action.defectId] },
+          },
+        }
+      })
+      next = { ...state, runs }
+      break
+    }
     default:
       return state
   }
@@ -612,6 +716,14 @@ interface FreshContextValue {
   spawnRunFromPlan: (planId: string, name: string, description?: string) => { runKey: string } | null
   addFolder: (name: string, parentId?: string | null) => string
   isRunSealed: boolean
+  activeRequirements: Requirement[]
+  activeDefects: Defect[]
+  createRequirement: (input: { title: string; description?: string; status?: Requirement['status'] }) => { requirementKey: string; requirementId: string }
+  linkRequirementToCase: (caseId: string, requirementId: string) => void
+  createDefectFromExecution: (runId: string, caseId: string, input: { title: string; description?: string }) => { defectKey: string } | null
+  linkDefectToExecution: (runId: string, caseId: string, defectId: string) => void
+  getDefect: (defectId: string) => Defect | undefined
+  getRequirement: (requirementId: string) => Requirement | undefined
 }
 
 const FreshContext = createContext<FreshContextValue | null>(null)
@@ -628,6 +740,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const activeCases = useMemo(() => listActiveProjectTestCases(state), [state])
   const activeRuns = useMemo(() => listActiveProjectRuns(state), [state])
   const activePlans = useMemo(() => listActiveProjectPlans(state), [state])
+  const activeRequirements = useMemo(() => listActiveProjectRequirements(state), [state])
+  const activeDefects = useMemo(() => listActiveProjectDefects(state), [state])
   const currentRun = useMemo(() => getCurrentRun(state), [state])
   const currentActor = useMemo(() => {
     const id = state.currentActorUserId ?? SEED_ADMIN_USER_ID
@@ -851,6 +965,67 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     return { key: meta.key, name: meta.name }
   }, [state])
 
+  const getRequirement = useCallback(
+    (requirementId: string) => state.requirementsById?.[requirementId],
+    [state.requirementsById],
+  )
+
+  const getDefect = useCallback(
+    (defectId: string) => state.defectsById?.[defectId],
+    [state.defectsById],
+  )
+
+  const createRequirement = useCallback(
+    (input: { title: string; description?: string; status?: Requirement['status'] }) => {
+      const projectId = state.activeProjectId
+      const num = getActiveProjectNextRequirementNum(state)
+      const requirementKey = formatRequirementKey(num)
+      const requirement: Requirement = {
+        id: newId('req'),
+        requirementKey,
+        projectId,
+        title: input.title.trim() || 'Untitled requirement',
+        description: input.description?.trim() || undefined,
+        status: input.status ?? 'Draft',
+        source: 'Local',
+        createdAt: new Date().toISOString(),
+      }
+      dispatch({ type: 'CREATE_REQUIREMENT', requirement })
+      return { requirementKey, requirementId: requirement.id }
+    },
+    [state],
+  )
+
+  const linkRequirementToCase = useCallback((caseId: string, requirementId: string) => {
+    dispatch({ type: 'LINK_REQUIREMENT_TO_CASE', caseId, requirementId })
+  }, [])
+
+  const createDefectFromExecution = useCallback(
+    (runId: string, caseId: string, input: { title: string; description?: string }) => {
+      if (!runIsMutable(state, runId)) return null
+      const projectId = state.activeProjectId
+      const num = getActiveProjectNextDefectNum(state)
+      const defectKey = formatDefectKey(num)
+      const defect: Defect = {
+        id: newId('defect'),
+        defectKey,
+        projectId,
+        title: input.title.trim() || 'Untitled defect',
+        description: input.description?.trim() || undefined,
+        status: 'Open',
+        source: 'Local',
+        createdAt: new Date().toISOString(),
+      }
+      dispatch({ type: 'CREATE_DEFECT_AND_LINK', defect, runId, caseId })
+      return { defectKey }
+    },
+    [state],
+  )
+
+  const linkDefectToExecution = useCallback((runId: string, caseId: string, defectId: string) => {
+    dispatch({ type: 'LINK_DEFECT_TO_EXECUTION', runId, caseId, defectId })
+  }, [])
+
   const createProject = useCallback((input: { name: string; key: string; description?: string }) => {
     dispatch({ type: 'CREATE_PROJECT', ...input })
   }, [])
@@ -998,6 +1173,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       activeCases,
       activeRuns,
       activePlans,
+      activeRequirements,
+      activeDefects,
       currentRun,
       getActiveProject: () => getActiveProject(state),
       listProjects: () => listProjects(state),
@@ -1061,6 +1238,12 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       spawnRunFromPlan,
       addFolder,
       isRunSealed,
+      createRequirement,
+      linkRequirementToCase,
+      createDefectFromExecution,
+      linkDefectToExecution,
+      getDefect,
+      getRequirement,
     }),
     [
       state,
@@ -1070,6 +1253,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       activeCases,
       activeRuns,
       activePlans,
+      activeRequirements,
+      activeDefects,
       currentRun,
       getProjectByKeyFn,
       isProjectKeyUniqueFn,
@@ -1127,6 +1312,12 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       spawnRunFromPlan,
       addFolder,
       isRunSealed,
+      createRequirement,
+      linkRequirementToCase,
+      createDefectFromExecution,
+      linkDefectToExecution,
+      getDefect,
+      getRequirement,
     ],
   )
 

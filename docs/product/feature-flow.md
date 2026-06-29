@@ -1,6 +1,6 @@
 # Relay — Feature Flow Map
 
-*Living document · Last verified: June 2026 · Branch: `mvp-user-role-access`*
+*Living document · Last verified: June 2026 · Branch: `mvp-requirements-defects-slice`*
 
 Product and implementation flow map for the team. Complements authoritative contracts in `docs/_authoritative/**` with journey-oriented status and test checklists.
 
@@ -18,7 +18,7 @@ Product and implementation flow map for the team. Complements authoritative cont
 | Test cases | `testcases` | `CasesScreen` | `/:key/testcases`, `/:key/testcases/tc/:caseKey` | Mock + localStorage |
 | Test plans | `plans` | `PlansScreen` | `/:key/plans` | Mock seed |
 | Test runs | `testruns` | `RunsScreen` | `/:key/testruns`, `/:key/testruns/tr/:runKey`, `/:key/testruns/tr/:runKey/tc/:caseKey` | Mock + localStorage |
-| Defects | `defects` | `DefectsScreen` | `/:key/defects` | Static mock |
+| Defects | `defects` | `DefectsScreen` | `/:key/defects` | Mock + localStorage (local DEF-*) |
 | Settings | `settings` | `SettingsScreen` | `/:key/settings` | Static mock (read-only) |
 | Reports | `reports` | `PlaceholderScreen` | `/:key/reports` | Placeholder |
 | Integrations | `integrations` | `PlaceholderScreen` | `/:key/integrations` | Placeholder |
@@ -117,7 +117,7 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 | Field | Value |
 |-------|-------|
 | Key | `relay-demo-v2` |
-| Current version | **`13`** (`DEMO_SCHEMA_VERSION` in `demo-model.ts`) |
+| Current version | **`14`** (`DEMO_SCHEMA_VERSION` in `demo-model.ts`) |
 | Migration file | `migrate-demo-state.ts` |
 | On failure | Reset to seed (`buildInitialDemoState()`) |
 
@@ -137,10 +137,11 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 | v11 | `Case.createdAt` |
 | v12 | `currentActorUserId`, user access fields, role permissions, silent invite statuses |
 | v13 | `plansById`, `nextPlanNumByProject`, `TestPlan`/`TestQuery`/`QueryCondition` types, seed plans |
+| v14 | `requirementsById`, `defectsById`, `Case.requirementIds`, `nextRequirementNumByProject`, `nextDefectNumByProject`, local REQ/DEF keys |
 
 **Rule:** bump `DEMO_SCHEMA_VERSION` and add a migration step for every shape change.
 
-**Key state fields:** `projectsById`, `activeProjectId`, `foldersById`, `casesById`, `runsById`, `currentRunIdByProject`, `nextRunNumByProject`, `nextCaseNumByProject`, `adminSettings`, `currentActorUserId`, `plansById`, `nextPlanNumByProject`.
+**Key state fields:** `projectsById`, `activeProjectId`, `folders`, `cases`, `runs`, `currentRunIdByProject`, `nextRunNumByProject`, `nextCaseNumByProject`, `adminSettings`, `currentActorUserId`, `plansById`, `nextPlanNumByProject`, `requirementsById`, `defectsById`, `nextRequirementNumByProject`, `nextDefectNumByProject`.
 
 Detail: [`docs/_authoritative/DOMAIN_MODEL.md`](../_authoritative/DOMAIN_MODEL.md), [`docs/claude/handoff.md`](../claude/handoff.md).
 
@@ -193,8 +194,11 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 | Test runs — execution UX | **Implemented** | localStorage | Steps, results, shortcuts |
 | Test runs — seal / reopen | **Implemented** | localStorage | No RBAC gate |
 | Test runs — URL sync | **Implemented** | — | `/tr/:runKey`, `/tc/:caseKey` |
-| Defects module screen | **Partial** | Static mock | Create disabled |
-| Defects in-run linking | **Partial** | In-memory | Not synced to defects screen |
+| Test cases — requirements create/link | **Implemented** | localStorage | Requirements tab; REQ-* keys |
+| Test cases — defects view-only | **Implemented** | localStorage | Derived from run execution links |
+| Test runs — requirements view-only | **Implemented** | localStorage | From linked case requirements |
+| Defects module screen | **Partial** | Mock + localStorage | Static TI-* + local DEF-*; create disabled |
+| Defects in-run create/link | **Implemented** | localStorage | Failed/Blocked + unsealed only |
 | Reports | **Placeholder** | — | |
 | Integrations (project) | **Placeholder** | — | |
 | Settings (project) | **Partial** | Static mock | Read-only |
@@ -207,7 +211,7 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 | Demo UI → MySQL wiring | **Missing** | — | Use `/runs/api` separately |
 | Global search (OpenSearch) | **Missing** | — | Cmd+K is in-memory |
 | Export PDF/CSV | **Missing** | — | Buttons are visual |
-| Requirements / traceability | **Missing** | — | |
+| Requirements / traceability | **Partial** | localStorage | Local create/link on cases; no coverage dashboards |
 
 ---
 

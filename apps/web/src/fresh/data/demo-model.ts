@@ -83,6 +83,8 @@ export interface Case {
   summary?: string
   /** Values for active custom fields. Key = AdminCustomField.id */
   customFieldValues?: Record<string, string | boolean | string[]>
+  /** Linked local requirement entity ids. */
+  requirementIds?: string[]
 }
 
 export interface Folder {
@@ -126,10 +128,38 @@ export interface TestPlan {
   queries: TestQuery[]
 }
 
+export type RequirementStatus = 'Draft' | 'Approved' | 'Implemented' | 'Obsolete'
+export type DefectStatus = 'Open' | 'In progress' | 'Resolved' | 'Closed'
+
+export interface Requirement {
+  id: string
+  /** Project-scoped display key, e.g. REQ-00001 */
+  requirementKey: string
+  projectId: string
+  title: string
+  description?: string
+  status: RequirementStatus
+  source: 'Local'
+  createdAt: string
+}
+
+export interface Defect {
+  id: string
+  /** Project-scoped display key, e.g. DEF-00001 */
+  defectKey: string
+  projectId: string
+  title: string
+  description?: string
+  status: DefectStatus
+  source: 'Local'
+  createdAt: string
+}
+
 export interface CaseExecution {
   status: ExecStatus
   assignee?: string
   stepResults: Record<string, ExecStatus>
+  /** Defect entity ids (local demo) or legacy external keys (e.g. TI-4419). */
   defects?: string[]
   resultNotes?: string
   testedAt?: string
@@ -165,7 +195,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 13
+export const DEMO_SCHEMA_VERSION = 14
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -180,6 +210,16 @@ export function formatCaseKey(n: number): string {
 /** Format a per-project plan counter as a 5-digit key, e.g. TP-00001. */
 export function formatPlanKey(n: number): string {
   return `TP-${n.toString().padStart(5, '0')}`
+}
+
+/** Format a per-project requirement counter as a 5-digit key, e.g. REQ-00001. */
+export function formatRequirementKey(n: number): string {
+  return `REQ-${n.toString().padStart(5, '0')}`
+}
+
+/** Format a per-project defect counter as a 5-digit key, e.g. DEF-00001. */
+export function formatDefectKey(n: number): string {
+  return `DEF-${n.toString().padStart(5, '0')}`
 }
 
 /** Strip TP- prefix for use in URL slugs, e.g. TP-00001 → 00001. */
@@ -332,6 +372,10 @@ export interface DemoState {
   currentActorUserId: string
   plansById: Record<string, TestPlan>
   nextPlanNumByProject: Record<string, number>
+  requirementsById: Record<string, Requirement>
+  defectsById: Record<string, Defect>
+  nextRequirementNumByProject: Record<string, number>
+  nextDefectNumByProject: Record<string, number>
 }
 
 export interface RunSummary {
@@ -529,4 +573,14 @@ export function formatRelativeTime(iso: string): string {
   if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
   return `${days}d ago`
+}
+
+/** Collect unique defect ids linked to a test case across run executions. */
+export function defectIdsForCaseFromRuns(runs: DemoRun[], caseId: string): string[] {
+  const ids = new Set<string>()
+  for (const run of runs) {
+    const ex = run.executions[caseId]
+    for (const id of ex?.defects ?? []) ids.add(id)
+  }
+  return [...ids]
 }
