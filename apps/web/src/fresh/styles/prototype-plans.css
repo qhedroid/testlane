@@ -10,22 +10,12 @@
 /* ─── Left pane: plan list ─────────────────────────────────────────────── */
 
 .pl-list-pane {
-  width: 280px;
+  width: var(--plan-list-width, 280px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
   overflow: hidden;
-}
-
-.pl-list-pane.collapsed {
-  width: 32px;
-  overflow: hidden;
-}
-
-.pl-list-pane.collapsed .pl-list-search,
-.pl-list-pane.collapsed .pl-list-body {
-  display: none;
 }
 
 .pl-list-hd {
@@ -138,6 +128,10 @@
 }
 
 .pl-lay.pl-maximized .pl-list-pane {
+  display: none;
+}
+
+.pl-lay.pl-maximized .resizer-v {
   display: none;
 }
 
@@ -367,7 +361,7 @@
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.18);
   padding: 10px;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /* ─── Test cases tab placeholder ───────────────────────────────────────── */

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { RunDonut } from '../components/RunDonut'
+import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
@@ -392,6 +393,7 @@ export function PlansScreen() {
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const rowMenuRef = useRef<HTMLDivElement>(null)
   const addQueryRef = useRef<HTMLDivElement>(null)
+  const runBarHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [pendingQueries, setPendingQueries] = useState<TestQuery[] | null>(null)
   const [addQueryMenuOpen, setAddQueryMenuOpen] = useState(false)
@@ -402,7 +404,6 @@ export function PlansScreen() {
     y: number
   } | null>(null)
   const [planMaximized, setPlanMaximized] = useState(false)
-  const [listCollapsed, setListCollapsed] = useState(false)
 
   const filteredPlans = useMemo(() => {
     const q = listSearch.trim().toLowerCase()
@@ -582,46 +583,28 @@ export function PlansScreen() {
       <PrototypeBanner />
 
       <div className={`pl-lay${planMaximized ? ' pl-maximized' : ''}`}>
-        <div className={`pl-list-pane${listCollapsed ? ' collapsed' : ''}`}>
+        <div className="pl-list-pane">
           <div className="pl-list-hd">
-            {!listCollapsed && (
-              <>
-                <i className="ti ti-clipboard-list" style={{ fontSize: 13, color: 'var(--text2)' }} />
-                <span className="st-ttl">Plans</span>
-                <span className="pnl-ct">{activePlans.length}</span>
-                <button
-                  type="button"
-                  className="btn btn-p"
-                  style={{ fontSize: 11, padding: '3px 8px' }}
-                  onClick={() => setCreatePlanOpen(true)}
-                >
-                  <i className="ti ti-plus" style={{ fontSize: 11 }} /> New plan
-                </button>
-              </>
-            )}
+            <i className="ti ti-clipboard-list" style={{ fontSize: 13, color: 'var(--text2)' }} />
+            <span className="st-ttl">Plans</span>
+            <span className="pnl-ct">{activePlans.length}</span>
             <button
               type="button"
-              className="btn"
-              style={{ padding: '2px 6px', fontSize: 11 }}
-              title={listCollapsed ? 'Expand plan list' : 'Collapse plan list'}
-              onClick={() => setListCollapsed((v) => !v)}
+              className="btn btn-p"
+              style={{ fontSize: 11, padding: '3px 8px' }}
+              onClick={() => setCreatePlanOpen(true)}
             >
-              <i
-                className={`ti ${listCollapsed ? 'ti-layout-sidebar-left-expand' : 'ti-layout-sidebar-left-collapse'}`}
-              />
+              <i className="ti ti-plus" style={{ fontSize: 11 }} /> New plan
             </button>
           </div>
-          {!listCollapsed && (
-            <div className="pl-list-search">
-              <input
-                type="text"
-                placeholder="Filter plans…"
-                value={listSearch}
-                onChange={(e) => setListSearch(e.target.value)}
-              />
-            </div>
-          )}
-          {!listCollapsed && (
+          <div className="pl-list-search">
+            <input
+              type="text"
+              placeholder="Filter plans…"
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
+            />
+          </div>
           <div className="pl-list-body">
             {filteredPlans.length === 0 ? (
               <div className="pl-empty-list">
@@ -711,8 +694,9 @@ export function PlansScreen() {
               ))
             )}
           </div>
-          )}
         </div>
+
+        <div className="resizer-v" data-resize="plan-list" data-min="220" data-max="420" />
 
         <div className="pl-detail">
           {!selectedPlan ? (
@@ -862,6 +846,7 @@ export function PlansScreen() {
                             fail={0}
                             blocked={0}
                             notrun={activeCases.length - resolvedCases.length}
+                            notrunColor="#555556"
                             size={100}
                             interactive={false}
                             showCompleteLabel={false}
@@ -907,10 +892,13 @@ export function PlansScreen() {
                                 <td>{run.name}</td>
                                 <td
                                   onMouseEnter={(e) => {
+                                    if (runBarHideTimer.current) clearTimeout(runBarHideTimer.current)
                                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                                     setRunBarTooltip({ run, x: rect.left, y: rect.bottom + 6 })
                                   }}
-                                  onMouseLeave={() => setRunBarTooltip(null)}
+                                  onMouseLeave={() => {
+                                    runBarHideTimer.current = setTimeout(() => setRunBarTooltip(null), 300)
+                                  }}
                                 >
                                   <RunResultBar run={run} />
                                 </td>
@@ -1081,18 +1069,26 @@ export function PlansScreen() {
             left: runBarTooltip.x,
             zIndex: 300,
           }}
+          onMouseEnter={() => {
+            if (runBarHideTimer.current) clearTimeout(runBarHideTimer.current)
+          }}
+          onMouseLeave={() => {
+            runBarHideTimer.current = setTimeout(() => setRunBarTooltip(null), 300)
+          }}
         >
           {(() => {
             const s = runSummary(runBarTooltip.run)
             return (
-              <RunDonut
+              <RunStatusInfographic
                 pass={s.passed}
                 fail={s.failed}
                 blocked={s.blocked}
                 notrun={s.notRun}
-                size={100}
-                interactive={false}
-                showCompleteLabel={false}
+                skipped={s.skipped}
+                size={80}
+                compact
+                interactive
+                showCompleteLabel
               />
             )
           })()}

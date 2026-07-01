@@ -45,15 +45,15 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
 
-### Test Plans screen follow-up feedback — task-04 drafted ✅ (not yet implemented)
+### Test Plans screen follow-up — task-04 implemented ✅
 
-`docs/cursor-prompts/mvp-test-plans/task-04-plans-screen-followup.md` — 3 follow-up items on top of task-03:
+`docs/cursor-prompts/mvp-test-plans/task-04-plans-screen-follow-up.md` — 3 feedback items:
 
-1. Coverage donut "not covered" wedge color → `#555556` (adds an optional `notrunColor` prop to `RunDonut.tsx`, defaulting to the existing gray so no other usage is affected)
-2. Plan list sidebar: replaced collapsible behavior with resizable, matching Test Cases/Test Runs (fixes a stale `.tp-list-pane` selector in the shared `useResizablePanes.ts` hook that never matched the current `.pl-list-pane` markup)
-3. Run history hover popup: swapped bare `<RunDonut>` for `<RunStatusInfographic>` (same component used in the Test Runs Summary section) for interactive per-segment tooltips + status columns; popup now stays open on hover via a delayed-hide timer pattern mirrored from `RunsScreen.tsx`'s `caseIdTooltip`
+1. Coverage donut uncovered wedge uses `#555556` via new `notrunColor` prop on `RunDonut`
+2. Plan list sidebar resizable (replaces task-03 collapse); wired `useResizablePanes` `'plan-list'` to `.pl-list-pane`
+3. Run history hover popup uses `RunStatusInfographic` with delayed hide timer and `pointer-events: auto`
 
-Scope expanded beyond the original 3 files to include `RunDonut.tsx` and `useResizablePanes.ts` — both small, backward-compatible, additive changes, called out explicitly in the prompt's "Files that will change" section.
+Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
 
 ---
 
