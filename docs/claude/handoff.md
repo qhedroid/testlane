@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-requirements-defects-slice` (based on `origin/mvp-main` @ 50c0e1e)
+`mvp-test-plans` (rebased onto latest `origin/mvp-main`, which now includes merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`)
 
 ---
 
@@ -31,7 +31,23 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 ---
 
-## Completed work (this branch — mvp-requirements-defects-slice)
+## Completed work (this branch — mvp-test-plans, post-rebase)
+
+### Test Plans screen polish — Cursor prompt drafted ✅
+
+`docs/cursor-prompts/mvp-test-plans/task-03-plans-screen-polish.md` — covers 5 feedback items on `PlansScreen.tsx`, scoped to `PlansScreen.tsx`, `prototype-plans.css`, and `demo-model.ts` only:
+
+1. Unfiled cases in Folder Query (`resolvePlanCases()` folder branch + `'__unfiled__'` sentinel; `FolderQueryBody` picker + chip label)
+2. Hover donut popup on run history `.pl-run-bar` (mirrors `RunsScreen.tsx` case-id tooltip pattern)
+3. Test case coverage card replaced with `<RunDonut>` (pass = resolvedCases, notrun = uncovered)
+4. Plan detail maximize/minimize (mirrors `CasesScreen.tsx` `detailMaximized` pattern; reuses `.dp-max-btn` from `fresh.css`)
+5. Collapsible plan list sidebar (new pattern, 32px collapsed width)
+
+Not yet implemented — task-03 prompt is ready for a Cursor agent to execute.
+
+---
+
+## Completed work (previous branch — mvp-requirements-defects-slice)
 
 ### Requirements & Defects frontend slice ✅ (uncommitted)
 
