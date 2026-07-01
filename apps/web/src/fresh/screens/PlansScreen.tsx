@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FreshTopbar } from '../components/FreshTopbar'
+import { RunDonut } from '../components/RunDonut'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
@@ -179,11 +180,14 @@ function FolderQueryBody({
     <>
       <div className="pl-folder-chips">
         {(query.folderIds ?? []).map((fid) => {
-          const folder = activeFolders.find((f) => f.id === fid)
+          const label =
+            fid === '__unfiled__'
+              ? 'Unfiled'
+              : (activeFolders.find((f) => f.id === fid)?.name ?? fid)
           return (
             <div key={fid} className="pl-folder-chip">
               <i className="ti ti-folder" style={{ fontSize: 11, color: 'var(--accent)' }} />
-              {folder?.name ?? fid}
+              {label}
               <button type="button" title="Remove folder" onClick={() => removeFolder(fid)}>
                 <i className="ti ti-x" />
               </button>
@@ -191,7 +195,7 @@ function FolderQueryBody({
           )
         })}
       </div>
-      {unselectedFolders.length > 0 && (
+      {(unselectedFolders.length > 0 || !selectedIds.has('__unfiled__')) && (
         <select
           className="pl-folder-select"
           value=""
@@ -200,6 +204,7 @@ function FolderQueryBody({
           }}
         >
           <option value="">+ Add folder…</option>
+          {!selectedIds.has('__unfiled__') && <option value="__unfiled__">Unfiled</option>}
           {unselectedFolders.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
@@ -391,6 +396,13 @@ export function PlansScreen() {
   const [pendingQueries, setPendingQueries] = useState<TestQuery[] | null>(null)
   const [addQueryMenuOpen, setAddQueryMenuOpen] = useState(false)
   const [staticSearch, setStaticSearch] = useState<Record<string, string>>({})
+  const [runBarTooltip, setRunBarTooltip] = useState<{
+    run: DemoRun
+    x: number
+    y: number
+  } | null>(null)
+  const [planMaximized, setPlanMaximized] = useState(false)
+  const [listCollapsed, setListCollapsed] = useState(false)
 
   const filteredPlans = useMemo(() => {
     const q = listSearch.trim().toLowerCase()
@@ -411,9 +423,6 @@ export function PlansScreen() {
       b.createdAt.localeCompare(a.createdAt),
     )
   }, [selectedPlan, activeRuns])
-
-  const coveragePct =
-    activeCases.length > 0 ? Math.round((resolvedCases.length / activeCases.length) * 100) : 0
 
   const queries = pendingQueries ?? selectedPlan?.queries ?? []
 
@@ -447,6 +456,7 @@ export function PlansScreen() {
   useEffect(() => {
     setPendingQueries(null)
     setStaticSearch({})
+    setPlanMaximized(false)
   }, [selectedPlan?.id])
 
   useEffect(() => {
@@ -571,29 +581,47 @@ export function PlansScreen() {
       />
       <PrototypeBanner />
 
-      <div className="pl-lay">
-        <div className="pl-list-pane">
+      <div className={`pl-lay${planMaximized ? ' pl-maximized' : ''}`}>
+        <div className={`pl-list-pane${listCollapsed ? ' collapsed' : ''}`}>
           <div className="pl-list-hd">
-            <i className="ti ti-clipboard-list" style={{ fontSize: 13, color: 'var(--text2)' }} />
-            <span className="st-ttl">Plans</span>
-            <span className="pnl-ct">{activePlans.length}</span>
+            {!listCollapsed && (
+              <>
+                <i className="ti ti-clipboard-list" style={{ fontSize: 13, color: 'var(--text2)' }} />
+                <span className="st-ttl">Plans</span>
+                <span className="pnl-ct">{activePlans.length}</span>
+                <button
+                  type="button"
+                  className="btn btn-p"
+                  style={{ fontSize: 11, padding: '3px 8px' }}
+                  onClick={() => setCreatePlanOpen(true)}
+                >
+                  <i className="ti ti-plus" style={{ fontSize: 11 }} /> New plan
+                </button>
+              </>
+            )}
             <button
               type="button"
-              className="btn btn-p"
-              style={{ fontSize: 11, padding: '3px 8px' }}
-              onClick={() => setCreatePlanOpen(true)}
+              className="btn"
+              style={{ padding: '2px 6px', fontSize: 11 }}
+              title={listCollapsed ? 'Expand plan list' : 'Collapse plan list'}
+              onClick={() => setListCollapsed((v) => !v)}
             >
-              <i className="ti ti-plus" style={{ fontSize: 11 }} /> New plan
+              <i
+                className={`ti ${listCollapsed ? 'ti-layout-sidebar-left-expand' : 'ti-layout-sidebar-left-collapse'}`}
+              />
             </button>
           </div>
-          <div className="pl-list-search">
-            <input
-              type="text"
-              placeholder="Filter plans…"
-              value={listSearch}
-              onChange={(e) => setListSearch(e.target.value)}
-            />
-          </div>
+          {!listCollapsed && (
+            <div className="pl-list-search">
+              <input
+                type="text"
+                placeholder="Filter plans…"
+                value={listSearch}
+                onChange={(e) => setListSearch(e.target.value)}
+              />
+            </div>
+          )}
+          {!listCollapsed && (
           <div className="pl-list-body">
             {filteredPlans.length === 0 ? (
               <div className="pl-empty-list">
@@ -683,6 +711,7 @@ export function PlansScreen() {
               ))
             )}
           </div>
+          )}
         </div>
 
         <div className="pl-detail">
@@ -700,6 +729,16 @@ export function PlansScreen() {
                   <span>Created: {formatRelativeTime(selectedPlan.createdAt)}</span>
                 </div>
                 <div className="pl-detail-actions">
+                  <button
+                    type="button"
+                    className="dp-max-btn"
+                    title={planMaximized ? 'Restore panel width' : 'Maximize panel'}
+                    onClick={() => setPlanMaximized((v) => !v)}
+                  >
+                    <i
+                      className={`ti ${planMaximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`}
+                    />
+                  </button>
                   <button type="button" className="btn btn-p" onClick={openSpawnModal}>
                     <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
                   </button>
@@ -818,7 +857,15 @@ export function PlansScreen() {
                           Test case coverage
                         </div>
                         <div className="pl-coverage-donut">
-                          <div className="pl-donut-pct">{coveragePct}%</div>
+                          <RunDonut
+                            pass={resolvedCases.length}
+                            fail={0}
+                            blocked={0}
+                            notrun={activeCases.length - resolvedCases.length}
+                            size={100}
+                            interactive={false}
+                            showCompleteLabel={false}
+                          />
                           <div className="pl-donut-label">
                             {resolvedCases.length} of {activeCases.length} test cases in this project
                           </div>
@@ -858,7 +905,13 @@ export function PlansScreen() {
                                   </Link>
                                 </td>
                                 <td>{run.name}</td>
-                                <td>
+                                <td
+                                  onMouseEnter={(e) => {
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                    setRunBarTooltip({ run, x: rect.left, y: rect.bottom + 6 })
+                                  }}
+                                  onMouseLeave={() => setRunBarTooltip(null)}
+                                >
                                   <RunResultBar run={run} />
                                 </td>
                                 <td>{formatRelativeTime(run.createdAt)}</td>
@@ -1018,6 +1071,33 @@ export function PlansScreen() {
           )}
         </div>
       </div>
+
+      {runBarTooltip ? (
+        <div
+          className="pl-run-bar-popup"
+          style={{
+            position: 'fixed',
+            top: runBarTooltip.y,
+            left: runBarTooltip.x,
+            zIndex: 300,
+          }}
+        >
+          {(() => {
+            const s = runSummary(runBarTooltip.run)
+            return (
+              <RunDonut
+                pass={s.passed}
+                fail={s.failed}
+                blocked={s.blocked}
+                notrun={s.notRun}
+                size={100}
+                interactive={false}
+                showCompleteLabel={false}
+              />
+            )
+          })()}
+        </div>
+      ) : null}
 
       {createPlanOpen ? (
         <div

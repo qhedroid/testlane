@@ -18,6 +18,16 @@
   overflow: hidden;
 }
 
+.pl-list-pane.collapsed {
+  width: 32px;
+  overflow: hidden;
+}
+
+.pl-list-pane.collapsed .pl-list-search,
+.pl-list-pane.collapsed .pl-list-body {
+  display: none;
+}
+
 .pl-list-hd {
   display: flex;
   align-items: center;
@@ -125,6 +135,14 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.pl-lay.pl-maximized .pl-list-pane {
+  display: none;
+}
+
+.pl-lay.pl-maximized .pl-detail {
+  flex: 1;
 }
 
 .pl-no-selection {
@@ -341,6 +359,15 @@
 
 .pl-run-bar-seg {
   height: 100%;
+}
+
+.pl-run-bar-popup {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  padding: 10px;
+  pointer-events: none;
 }
 
 /* ─── Test cases tab placeholder ───────────────────────────────────────── */
