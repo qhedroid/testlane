@@ -39,7 +39,7 @@ export async function runSeed(): Promise<void> {
   console.log('[seed] Done.')
   console.log('')
   console.log('Organisation:', SEED_ORG_SLUG)
-  console.log('Users: 6 (Noel, Shaun, Priya, Marcus, James, Alex Viewer)')
+  console.log('Users: 6 (Noel, Shaun, Monica, Nasir, Jamil, Arvindh)')
   console.log('Projects: CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway')
   console.log('CTMS plan:', ids.plans.ctmsRegression, '(PLAN-001, active, 4 cases)')
   console.log('')
