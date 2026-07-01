@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 13`, multi-project + admin access + actor + test plans) |
+| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 14`, multi-project + admin access + actor + test plans + local requirements/defects) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
 | Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
@@ -34,7 +34,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | **`/:projectKey/testruns/tr/:runKey`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX for selected run |
 | **`/runs/api`** | **api** | **`ApiRunsWorkspace`** | MySQL; not project-prefixed |
 | `/:projectKey/audit` | mock | `AuditScreen` | Static seed |
-| `/:projectKey/defects` | mock | `DefectsScreen` | `MOCK_DEFECTS` |
+| `/:projectKey/defects` | mock + localStorage | `DefectsScreen` | Static `MOCK_DEFECTS` + local `DEF-*` from executions |
 | `/:projectKey/settings` | mock | `SettingsScreen` | Read-only preview |
 | `/:projectKey/reports` | placeholder | `PlaceholderScreen` | |
 | `/:projectKey/integrations` | placeholder | `PlaceholderScreen` | |

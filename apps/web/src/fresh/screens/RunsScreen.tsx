@@ -93,11 +93,16 @@ export function RunsScreen() {
     activeCases,
     activeFolders,
     activeRuns,
+    activeDefects,
     state,
     getCase,
+    getDefect,
+    getRequirement,
     updateExecution,
     addStepComment,
     addGeneralComment,
+    createDefectFromExecution,
+    linkDefectToExecution,
     setCurrentRun,
     isRunSealed,
     sealRun,
@@ -219,6 +224,20 @@ export function RunsScreen() {
   const resolvedCaseId = activeCaseId || currentRun?.caseOrder[0] || ''
   const active = getCase(resolvedCaseId)
   const activeEx = currentRun?.executions[resolvedCaseId]
+  const canMutateDefects =
+    !isRunSealed &&
+    !!currentRun &&
+    (activeEx?.status === 'Failed' || activeEx?.status === 'Blocked')
+
+  const caseLinkedRequirements = useMemo(() => {
+    const ids = active?.requirementIds ?? []
+    return ids.map((id) => getRequirement(id)).filter(Boolean) as import('../data/demo-model').Requirement[]
+  }, [active?.requirementIds, getRequirement])
+
+  const linkableDefects = useMemo(() => {
+    const linked = new Set(activeEx?.defects ?? [])
+    return activeDefects.filter((d) => !linked.has(d.id))
+  }, [activeDefects, activeEx?.defects])
 
   const pickerRuns = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase()
@@ -402,14 +421,27 @@ export function RunsScreen() {
     [currentRun, updateExecution, isRunSealed],
   )
 
-  const linkDefect = useCallback(() => {
-    if (isRunSealed || !activeEx) return
-    const caseId = activeCaseId || currentRun?.caseOrder[0] || ''
-    if (!caseId) return
-    const newId = `TI-${4420 + Math.floor(Math.random() * 80)}`
-    updateExecution(caseId, { defects: [...(activeEx.defects ?? []), newId] })
-    setEdTab('defects')
-  }, [activeCaseId, currentRun, activeEx, updateExecution, isRunSealed])
+  const handleCreateDefect = useCallback(
+    (title: string, description?: string) => {
+      if (!currentRun || !canMutateDefects) return
+      const caseId = activeCaseId || currentRun.caseOrder[0] || ''
+      if (!caseId || !title.trim()) return
+      createDefectFromExecution(currentRun.id, caseId, { title, description })
+      setEdTab('defects')
+    },
+    [activeCaseId, currentRun, canMutateDefects, createDefectFromExecution],
+  )
+
+  const handleLinkDefect = useCallback(
+    (defectId: string) => {
+      if (!currentRun || !canMutateDefects || !defectId) return
+      const caseId = activeCaseId || currentRun.caseOrder[0] || ''
+      if (!caseId) return
+      linkDefectToExecution(currentRun.id, caseId, defectId)
+      setEdTab('defects')
+    },
+    [activeCaseId, currentRun, canMutateDefects, linkDefectToExecution],
+  )
 
   const navCase = useCallback(
     (dir: number) => {
@@ -441,11 +473,11 @@ export function RunsScreen() {
       if (map[k]) setResult(map[k])
       if (e.key === 'ArrowDown') { e.preventDefault(); navCase(1) }
       if (e.key === 'ArrowUp') { e.preventDefault(); navCase(-1) }
-      if (k === 'd') linkDefect()
+      if (k === 'd' && canMutateDefects) setEdTab('defects')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [linkDefect, navCase, openShortcuts, setResult, isRunSealed])
+  }, [navCase, openShortcuts, setResult, isRunSealed, canMutateDefects])
 
   const prototypeBanner = (
     <PrototypeBanner>
@@ -948,6 +980,8 @@ export function RunsScreen() {
               caseData={active}
               execution={activeEx}
               executionLog={currentRun.executionLog ?? []}
+              linkedRequirements={caseLinkedRequirements}
+              linkableDefects={linkableDefects}
               tab={edTab}
               onTab={setEdTab}
               onNav={navCase}
@@ -956,7 +990,10 @@ export function RunsScreen() {
               onStepR={(stepId, r) => setStepR(resolvedCaseId, stepId, r)}
               onAddStepComment={(stepId, body) => addStepComment(resolvedCaseId, stepId, body)}
               onAddGeneralComment={(body) => addGeneralComment(resolvedCaseId, body)}
-              onLinkDefect={linkDefect}
+              onCreateDefect={handleCreateDefect}
+              onLinkDefect={handleLinkDefect}
+              getDefect={getDefect}
+              canMutateDefects={canMutateDefects}
               onAssigneeChange={(name) => updateExecution(resolvedCaseId, { assignee: name })}
               onSaveResultNotes={(notes) => updateExecution(resolvedCaseId, { resultNotes: notes })}
               onOpenShortcuts={openShortcuts}
@@ -1033,6 +1070,8 @@ function ExecDetailPane({
   caseData,
   execution,
   executionLog,
+  linkedRequirements,
+  linkableDefects,
   tab,
   onTab,
   onNav,
@@ -1041,7 +1080,10 @@ function ExecDetailPane({
   onStepR,
   onAddStepComment,
   onAddGeneralComment,
+  onCreateDefect,
   onLinkDefect,
+  getDefect,
+  canMutateDefects,
   onAssigneeChange,
   onSaveResultNotes,
   onOpenShortcuts,
@@ -1053,6 +1095,8 @@ function ExecDetailPane({
   caseData: Case
   execution?: { status: ExecStatus; stepResults: Record<string, ExecStatus>; defects?: string[]; assignee?: string; resultNotes?: string }
   executionLog?: ExecutionLogEntry[]
+  linkedRequirements: import('../data/demo-model').Requirement[]
+  linkableDefects: import('../data/demo-model').Defect[]
   tab: EdTab
   onTab: (t: EdTab) => void
   onNav: (dir: number) => void
@@ -1061,7 +1105,10 @@ function ExecDetailPane({
   onStepR: (stepId: string, r: ExecStatus) => void
   onAddStepComment: (stepId: string, body: string) => void
   onAddGeneralComment: (body: string) => void
-  onLinkDefect: () => void
+  onCreateDefect: (title: string, description?: string) => void
+  onLinkDefect: (defectId: string) => void
+  getDefect: (defectId: string) => import('../data/demo-model').Defect | undefined
+  canMutateDefects: boolean
   onAssigneeChange: (name: string) => void
   onSaveResultNotes: (notes: string) => void
   onOpenShortcuts: () => void
@@ -1080,7 +1127,17 @@ function ExecDetailPane({
   const [customFieldsOpen, setCustomFieldsOpen] = useState(true)
   const [notesOpen, setNotesOpen] = useState(false)
   const [notesDraft, setNotesDraft] = useState(execution?.resultNotes ?? '')
+  const [defectCreateOpen, setDefectCreateOpen] = useState(false)
+  const [defectTitle, setDefectTitle] = useState('')
+  const [defectDescription, setDefectDescription] = useState('')
+  const [linkDefectId, setLinkDefectId] = useState('')
   const scrollToStepRef = useRef<string | null>(null)
+
+  const defectMutationHint = sealed
+    ? 'This run is sealed — defect changes are disabled.'
+    : status === 'Failed' || status === 'Blocked'
+    ? 'Create or link a local demo defect for this failed/blocked execution.'
+    : 'Set the result to Failed or Blocked to create or link defects.'
 
   useEffect(() => {
     setNotesDraft(execution?.resultNotes ?? '')
@@ -1330,46 +1387,127 @@ function ExecDetailPane({
 
       <div className={`ed-tp${tab === 'defects' ? ' on' : ''}`}>
         <div className="ed-defects">
-          {(execution?.defects ?? []).length === 0 ? (
-            <>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6, fontWeight: 500 }}>Create defect</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>Test runs can be linked to defects from configured integrations.</div>
-            </>
+          {(execution?.defects ?? []).length > 0 ? (
+            (execution?.defects ?? []).map((d) => {
+              const defect = getDefect(d)
+              const label = defect?.defectKey ?? d
+              const title = defect?.title ?? DEFECT_NAMES[d] ?? 'Linked defect'
+              return (
+                <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span className="ed-dtag"><i className="ti ti-bug" style={{ fontSize: 10 }} />{label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text2)' }}>{title}</span>
+                </div>
+              )
+            })
           ) : (
-            (execution?.defects ?? []).map((d) => (
-              <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <span className="ed-dtag"><i className="ti ti-bug" style={{ fontSize: 10 }} />{d}</span>
-                <span style={{ fontSize: 11, color: 'var(--text2)' }}>{DEFECT_NAMES[d] || 'Open defect'}</span>
-              </div>
-            ))
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>No defects linked to this execution yet.</div>
           )}
-          <div style={{ display: 'flex', gap: 6, marginTop: (execution?.defects ?? []).length > 0 ? 8 : 0 }}>
-            <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px' }} disabled>
-              <i className="ti ti-bug" style={{ fontSize: 11 }} /> Create defect
-            </button>
+          <div style={{ fontSize: 11, color: canMutateDefects ? 'var(--text2)' : 'var(--text3)', marginBottom: 8 }}>
+            {defectMutationHint}
+          </div>
+          {defectCreateOpen && canMutateDefects ? (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 5, padding: 8, marginBottom: 8, background: 'var(--surface2)' }}>
+              <input
+                type="text"
+                placeholder="Defect title…"
+                value={defectTitle}
+                onChange={(e) => setDefectTitle(e.target.value)}
+                style={{ width: '100%', fontSize: 12, marginBottom: 6 }}
+              />
+              <textarea
+                rows={2}
+                placeholder="Optional description…"
+                value={defectDescription}
+                onChange={(e) => setDefectDescription(e.target.value)}
+                style={{ width: '100%', fontSize: 12, marginBottom: 6 }}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  className="btn btn-p"
+                  style={{ fontSize: 11, padding: '2px 8px' }}
+                  disabled={!defectTitle.trim()}
+                  onClick={() => {
+                    onCreateDefect(defectTitle, defectDescription)
+                    setDefectTitle('')
+                    setDefectDescription('')
+                    setDefectCreateOpen(false)
+                  }}
+                >
+                  Create &amp; link
+                </button>
+                <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setDefectCreateOpen(false)}>Cancel</button>
+              </div>
+            </div>
+          ) : null}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               type="button"
               className="btn"
               style={{ fontSize: 11, padding: '2px 8px' }}
-              disabled={sealed}
-              onClick={() => !sealed && onLinkDefect()}
+              disabled={!canMutateDefects}
+              onClick={() => canMutateDefects && setDefectCreateOpen((v) => !v)}
             >
-              <i className="ti ti-link" style={{ fontSize: 11 }} /> Link defect
+              <i className="ti ti-bug" style={{ fontSize: 11 }} /> Create defect
             </button>
+            {linkableDefects.length > 0 ? (
+              <>
+                <select
+                  value={linkDefectId}
+                  disabled={!canMutateDefects}
+                  onChange={(e) => setLinkDefectId(e.target.value)}
+                  style={{ fontSize: 11, flex: 1, minWidth: 120 }}
+                >
+                  <option value="">Link existing…</option>
+                  {linkableDefects.map((d) => (
+                    <option key={d.id} value={d.id}>{d.defectKey} — {d.title}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: 11, padding: '2px 8px' }}
+                  disabled={!canMutateDefects || !linkDefectId}
+                  onClick={() => {
+                    if (!linkDefectId) return
+                    onLinkDefect(linkDefectId)
+                    setLinkDefectId('')
+                  }}
+                >
+                  <i className="ti ti-link" style={{ fontSize: 11 }} /> Link defect
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px' }} disabled={!canMutateDefects}>
+                <i className="ti ti-link" style={{ fontSize: 11 }} /> Link defect
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       <div className={`ed-tp${tab === 'requirements' ? ' on' : ''}`}>
-        {caseData.references ? (
+        {linkedRequirements.length > 0 ? (
           <div style={{ padding: '8px 10px' }}>
-            <div className="ed-sl" style={{ marginBottom: 6 }}>Linked requirements</div>
-            <div className="ed-pt" style={{ whiteSpace: 'pre-wrap' }}>{caseData.references}</div>
+            <div className="ed-sl" style={{ marginBottom: 6 }}>Linked requirements (from test case)</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>View-only — manage requirements on the test case.</div>
+            {linkedRequirements.map((req) => (
+              <div key={req.id} style={{ marginBottom: 8, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 5 }}>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{req.requirementKey}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>{req.title}</div>
+                {req.description ? (
+                  <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4 }}>{req.description}</div>
+                ) : null}
+                <div style={{ fontSize: 10.5, color: 'var(--text3)', marginTop: 4 }}>{req.status} · Local</div>
+              </div>
+            ))}
           </div>
         ) : (
           <div style={{ padding: '8px 10px' }}>
             <div style={{ fontWeight: 600, fontSize: 13 }}>No requirements</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>No requirements have been linked.</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+              Link requirements to this test case from the Test Cases module. Requirements appear here read-only during execution.
+            </div>
           </div>
         )}
       </div>

@@ -43,9 +43,9 @@ This document defines what each visible screen shows, what data powers it today,
 
 **Data source:** `fresh/data/seed.ts` + `FreshProvider` + localStorage key `relay-demo-v2`. Cases and folders are filtered to **active project** via `listActiveProjectTestCases()` / `listActiveProjectFolders()`.
 
-**Data shown:** Suite/folder tree, case table (ref, title, priority, type, last result, owner, steps), detail panel (details/history/activity), bulk selection bar. Breadcrumb uses active project name.
+**Data shown:** Suite/folder tree, case table (ref, title, priority, type, last result, owner, steps), detail panel (details/attachments/**requirements create+link**/**defects view-only**/runs/history/activity), bulk selection bar. Breadcrumb uses active project name.
 
-**User actions:** Folder navigation; status filter chips; search (toolbar); quick create; new case modal; row select / bulk bar; import shows empty state only. **Project switcher** in top bar (shared `ProjectSwitcher` component).
+**User actions:** Folder navigation; status filter chips; search (toolbar); quick create; new case modal; row select / bulk bar; import shows empty state only; **Requirements tab** — create local REQ-* requirement and link to case; **Defects tab** — view-only list from run execution links. **Project switcher** in top bar (shared `ProjectSwitcher` component).
 
 **Future API contract:**
 - `GET /api/test-cases`
@@ -57,7 +57,7 @@ This document defines what each visible screen shows, what data powers it today,
 
 **Known backend dependency:** `test_cases`, `test_case_steps`, `folders` tables exist; no read API.
 
-**Out of scope:** Step execution, defects workflow, audit history write, bulk import, clone/export.
+**Out of scope:** Step execution, full defects CRUD, external requirement sync, audit history write, bulk import, clone/export.
 
 **Notes for future backend implementation:** Align folder tree with `folders` table; preserve case ref generation pattern from seed.
 
@@ -115,7 +115,11 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 **Run keys:** Project-scoped 5-digit keys (`00001` … `99999`), stored on `DemoRun.runKey`. Seeded demo runs R1–R6 map to `00001`–`00006`. Counter: `nextRunNumByProject`.
 
-**Data shown:** Run picker (with run key), header donuts, case list with filters, step results, keyboard shortcuts, tabs (details/steps/activity/history/comments/defects). Runs and cases are **active-project scoped**. Archived runs (`archivedAt`) hidden from default picker.
+**Data shown:** Run picker (with run key), header donuts, case list with filters, step results, keyboard shortcuts, tabs (details/comments/**defects create+link (Failed/Blocked)**/**requirements view-only**/history). Runs and cases are **active-project scoped**. Archived runs (`archivedAt`) hidden from default picker.
+
+**Defects tab:** Create local `DEF-*` defect or link existing — enabled only when execution status is Failed or Blocked and run is not sealed. Persisted via `defectsById` + `CaseExecution.defects[]`.
+
+**Requirements tab:** Read-only list from `Case.requirementIds[]` → `requirementsById`. No create/link in runs.
 
 **User actions:**
 - **Create run** — modal (name required, description optional); assigns next `runKey`, snapshots active project case ids into `caseOrder`, navigates to `/tr/:runKey`.
@@ -189,23 +193,13 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 **Real/API-backed, mock-backed, or placeholder:** Mock-backed.
 
-**Data source:** `apps/web/src/lib/relay/mock-data.ts` (`MOCK_DEFECTS`).
+**Data source:** `apps/web/src/lib/relay/mock-data.ts` (`MOCK_DEFECTS`) + `FreshProvider.defectsById` (local `DEF-*` from executions).
 
-**Data shown:** Defect table (ID, title, severity, status, module, owner); detail panel with linked case/run, timestamps.
+**Data shown:** Defect table (ID, title, severity, status, module, owner); detail panel. Local demo defects appear alongside static TI-* rows.
 
-**User actions:** Search; filter by status/severity; select row for detail; new defect button disabled (placeholder).
+**User actions:** Search; filter by status/severity; select row for detail; new defect button disabled — create from Test Runs instead.
 
-**Future API contract:**
-- `GET /api/defects`
-- `POST /api/defects`
-- `PATCH /api/defects/:defectId`
-- `POST /api/defects/:defectId/link-case`
-
-**Known backend dependency:** No defects schema or API.
-
-**Out of scope:** Jira sync, workflow transitions, attachments.
-
-**Notes:** In-run defect linking works in demo `/runs` (in-memory IDs) but is not wired to this screen.
+**Notes:** In-run defect create/link persists to localStorage and surfaces here for the active project. No Jira sync.
 
 ---
 

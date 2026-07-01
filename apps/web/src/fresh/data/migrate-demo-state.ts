@@ -109,6 +109,10 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     currentActorUserId: SEED_ADMIN_USER_ID,
     plansById: {},
     nextPlanNumByProject: { [projectId]: 1 },
+    requirementsById: {},
+    defectsById: {},
+    nextRequirementNumByProject: { [projectId]: 1 },
+    nextDefectNumByProject: { [projectId]: 1 },
   }
 }
 
@@ -341,8 +345,38 @@ export function migrateDemoState(raw: unknown): DemoState {
 
       state = { ...state, plansById, nextPlanNumByProject, schemaVersion: 13 }
     }
+    // v13 → v14: local requirements and defects collections; case.requirementIds
+    if (state.schemaVersion < 14) {
+      const requirementsById = (state as unknown as { requirementsById?: Record<string, import('./demo-model').Requirement> }).requirementsById ?? {}
+      const defectsById = (state as unknown as { defectsById?: Record<string, import('./demo-model').Defect> }).defectsById ?? {}
+      const nextRequirementNumByProject = (state as unknown as { nextRequirementNumByProject?: Record<string, number> }).nextRequirementNumByProject ?? {}
+      const nextDefectNumByProject = (state as unknown as { nextDefectNumByProject?: Record<string, number> }).nextDefectNumByProject ?? {}
+
+      for (const projectId of Object.keys(state.projectsById)) {
+        if (!nextRequirementNumByProject[projectId]) nextRequirementNumByProject[projectId] = 1
+        if (!nextDefectNumByProject[projectId]) nextDefectNumByProject[projectId] = 1
+      }
+
+      state = {
+        ...state,
+        cases: state.cases.map((c) => ({ ...c, requirementIds: c.requirementIds ?? [] })),
+        requirementsById,
+        defectsById,
+        nextRequirementNumByProject,
+        nextDefectNumByProject,
+        schemaVersion: 14,
+      }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
+    }
+    state = {
+      ...state,
+      requirementsById: state.requirementsById ?? {},
+      defectsById: state.defectsById ?? {},
+      nextRequirementNumByProject: state.nextRequirementNumByProject ?? {},
+      nextDefectNumByProject: state.nextDefectNumByProject ?? {},
+      cases: state.cases.map((c) => ({ ...c, requirementIds: c.requirementIds ?? [] })),
     }
     return state
   } catch (err) {

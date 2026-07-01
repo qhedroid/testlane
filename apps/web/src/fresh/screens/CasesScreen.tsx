@@ -8,6 +8,7 @@ import { useFresh } from '../data/FreshProvider'
 import type { AdminCustomField, Case, CaseExecution, CasePriority, CaseStep, DemoRun, ExecStatus, Folder } from '../data/demo-model'
 import {
   casesInFolder,
+  defectIdsForCaseFromRuns,
   EXEC_TO_LEGACY,
   folderLabel,
   formatRelativeTime,
@@ -15,6 +16,7 @@ import {
   PRIORITY_TO_LEGACY,
   TYPE_PLACEHOLDER_TAGS,
 } from '../data/demo-model'
+import { DEFECT_NAMES } from '../data/seed'
 import { EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, TEAM_USERS } from '../data/team-users'
 import { useProjectHref } from '../hooks/useProjectHref'
@@ -224,7 +226,7 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const pathname = usePathname()
@@ -1081,10 +1083,16 @@ export function CasesScreen() {
             <CaseDetail
               caseData={detail}
               folders={activeFolders}
+              activeRuns={activeRuns}
+              activeRequirements={activeRequirements}
               tab={detailTab}
               onTab={setDetailTab}
               onClose={() => setDetailCaseId(null)}
               onSave={replaceCase}
+              onCreateRequirement={createRequirement}
+              onLinkRequirement={linkRequirementToCase}
+              getDefect={getDefect}
+              getRequirement={getRequirement}
               maximized={detailMaximized}
               onToggleMaximize={toggleMaximize}
               activeCustomFieldIds={activeProject.activeCustomFieldIds}
@@ -1388,10 +1396,16 @@ function NewFolderInput({
 function CaseDetail({
   caseData,
   folders,
+  activeRuns,
+  activeRequirements,
   tab,
   onTab,
   onClose,
   onSave,
+  onCreateRequirement,
+  onLinkRequirement,
+  getDefect,
+  getRequirement,
   maximized,
   onToggleMaximize,
   activeCustomFieldIds,
@@ -1404,10 +1418,16 @@ function CaseDetail({
 }: {
   caseData: Case
   folders: Folder[]
+  activeRuns: DemoRun[]
+  activeRequirements: import('../data/demo-model').Requirement[]
   tab: DetailTab
   onTab: (t: DetailTab) => void
   onClose: () => void
   onSave: (c: Case) => void
+  onCreateRequirement: (input: { title: string; description?: string }) => { requirementKey: string; requirementId: string }
+  onLinkRequirement: (caseId: string, requirementId: string) => void
+  getDefect: (defectId: string) => import('../data/demo-model').Defect | undefined
+  getRequirement: (requirementId: string) => import('../data/demo-model').Requirement | undefined
   maximized: boolean
   onToggleMaximize: () => void
   activeCustomFieldIds: string[]
@@ -1422,11 +1442,34 @@ function CaseDetail({
   const [draft, setDraft] = useState(caseData)
   const [tagInput, setTagInput] = useState('')
   const tagInputRef = useRef<HTMLInputElement>(null)
+  const [reqCreateOpen, setReqCreateOpen] = useState(false)
+  const [reqTitle, setReqTitle] = useState('')
+  const [reqDescription, setReqDescription] = useState('')
+  const [linkReqId, setLinkReqId] = useState('')
+
+  const linkedRequirements = useMemo(
+    () => (caseData.requirementIds ?? []).map((id) => getRequirement(id)).filter(Boolean) as import('../data/demo-model').Requirement[],
+    [caseData.requirementIds, getRequirement],
+  )
+
+  const linkableRequirements = useMemo(
+    () => activeRequirements.filter((r) => !(caseData.requirementIds ?? []).includes(r.id)),
+    [activeRequirements, caseData.requirementIds],
+  )
+
+  const linkedDefectIds = useMemo(
+    () => defectIdsForCaseFromRuns(activeRuns, caseData.id),
+    [activeRuns, caseData.id],
+  )
 
   useEffect(() => {
     setDraft(caseData)
     setEditing(false)
     setTagInput('')
+    setReqCreateOpen(false)
+    setReqTitle('')
+    setReqDescription('')
+    setLinkReqId('')
   }, [caseData])
 
   function addTag(value: string) {
@@ -1770,28 +1813,143 @@ function CaseDetail({
           </div>
         ) : null}
         {tab === 'defects' ? (
-          <div className="dp-empty-tab">
-            <i className="ti ti-bug" style={{ fontSize: 28, color: 'var(--text3)', marginBottom: 8 }} />
-            <div style={{ fontWeight: 600, fontSize: 13 }}>No defects</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
-              No defects have yet been linked to this test case in a test run.
-            </div>
+          <div style={{ padding: '12px 14px' }}>
+            {linkedDefectIds.length === 0 ? (
+              <div className="dp-empty-tab">
+                <i className="ti ti-bug" style={{ fontSize: 28, color: 'var(--text3)', marginBottom: 8 }} />
+                <div style={{ fontWeight: 600, fontSize: 13 }}>No defects linked</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4, maxWidth: 280 }}>
+                  Defects are created or linked during test run execution when a case fails or is blocked. This view is read-only.
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>
+                  View-only — linked from test run executions
+                </div>
+                {linkedDefectIds.map((defectId) => {
+                  const defect = getDefect(defectId)
+                  const label = defect?.defectKey ?? defectId
+                  const title = defect?.title ?? DEFECT_NAMES[defectId] ?? 'Linked defect'
+                  return (
+                    <div key={defectId} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface2)' }}>
+                      <i className="ti ti-bug" style={{ fontSize: 14, color: 'var(--fail)', marginTop: 2 }} />
+                      <div>
+                        <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{label}</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{title}</div>
+                        {defect?.status ? (
+                          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{defect.status} · Local demo</div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Legacy seed reference</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </>
+            )}
           </div>
         ) : null}
         {tab === 'requirements' ? (
           <div style={{ padding: '12px 14px' }}>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>Create requirement</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4, marginBottom: 10 }}>
-              Link requirements from configured integrations with test cases.
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Requirements</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>
+              Create local demo requirements or link existing ones to this test case. No external sync.
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button type="button" className="btn" style={{ fontSize: 12 }} disabled>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-p"
+                style={{ fontSize: 12 }}
+                onClick={() => setReqCreateOpen((v) => !v)}
+              >
                 <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create requirement
               </button>
-              <button type="button" className="btn" style={{ fontSize: 12 }} disabled>
-                <i className="ti ti-link" style={{ fontSize: 12 }} /> Link requirement
-              </button>
+              {linkableRequirements.length > 0 ? (
+                <>
+                  <select
+                    value={linkReqId}
+                    onChange={(e) => setLinkReqId(e.target.value)}
+                    style={{ fontSize: 12, flex: 1, minWidth: 140 }}
+                  >
+                    <option value="">Link existing…</option>
+                    {linkableRequirements.map((r) => (
+                      <option key={r.id} value={r.id}>{r.requirementKey} — {r.title}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ fontSize: 12 }}
+                    disabled={!linkReqId}
+                    onClick={() => {
+                      if (!linkReqId) return
+                      onLinkRequirement(caseData.id, linkReqId)
+                      setLinkReqId('')
+                    }}
+                  >
+                    <i className="ti ti-link" style={{ fontSize: 12 }} /> Link
+                  </button>
+                </>
+              ) : null}
             </div>
+            {reqCreateOpen ? (
+              <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 10, marginBottom: 12, background: 'var(--surface2)' }}>
+                <div className="form-field" style={{ marginBottom: 8 }}>
+                  <label style={{ fontSize: 11 }}>Title</label>
+                  <input
+                    type="text"
+                    value={reqTitle}
+                    onChange={(e) => setReqTitle(e.target.value)}
+                    placeholder="Requirement title…"
+                    style={{ width: '100%', fontSize: 12 }}
+                  />
+                </div>
+                <div className="form-field" style={{ marginBottom: 8 }}>
+                  <label style={{ fontSize: 11 }}>Description</label>
+                  <textarea
+                    rows={2}
+                    value={reqDescription}
+                    onChange={(e) => setReqDescription(e.target.value)}
+                    placeholder="Optional summary…"
+                    style={{ width: '100%', fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="btn btn-p"
+                    style={{ fontSize: 12 }}
+                    disabled={!reqTitle.trim()}
+                    onClick={() => {
+                      if (!reqTitle.trim()) return
+                      const { requirementId } = onCreateRequirement({ title: reqTitle, description: reqDescription })
+                      onLinkRequirement(caseData.id, requirementId)
+                      setReqTitle('')
+                      setReqDescription('')
+                      setReqCreateOpen(false)
+                    }}
+                  >
+                    Create &amp; link
+                  </button>
+                  <button type="button" className="btn" style={{ fontSize: 12 }} onClick={() => setReqCreateOpen(false)}>Cancel</button>
+                </div>
+              </div>
+            ) : null}
+            {linkedRequirements.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--text3)', padding: '8px 0' }}>No requirements linked yet.</div>
+            ) : (
+              linkedRequirements.map((req) => (
+                <div key={req.id} style={{ marginBottom: 8, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 5 }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{req.requirementKey}</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>{req.title}</div>
+                  {req.description ? (
+                    <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4 }}>{req.description}</div>
+                  ) : null}
+                  <div style={{ fontSize: 10.5, color: 'var(--text3)', marginTop: 4 }}>{req.status} · Local · {formatRelativeTime(req.createdAt)}</div>
+                </div>
+              ))
+            )}
           </div>
         ) : null}
         {tab === 'runs' ? (
