@@ -45,6 +45,16 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
 
+### Test Plans screen follow-up feedback — task-04 drafted ✅ (not yet implemented)
+
+`docs/cursor-prompts/mvp-test-plans/task-04-plans-screen-followup.md` — 3 follow-up items on top of task-03:
+
+1. Coverage donut "not covered" wedge color → `#555556` (adds an optional `notrunColor` prop to `RunDonut.tsx`, defaulting to the existing gray so no other usage is affected)
+2. Plan list sidebar: replaced collapsible behavior with resizable, matching Test Cases/Test Runs (fixes a stale `.tp-list-pane` selector in the shared `useResizablePanes.ts` hook that never matched the current `.pl-list-pane` markup)
+3. Run history hover popup: swapped bare `<RunDonut>` for `<RunStatusInfographic>` (same component used in the Test Runs Summary section) for interactive per-segment tooltips + status columns; popup now stays open on hover via a delayed-hide timer pattern mirrored from `RunsScreen.tsx`'s `caseIdTooltip`
+
+Scope expanded beyond the original 3 files to include `RunDonut.tsx` and `useResizablePanes.ts` — both small, backward-compatible, additive changes, called out explicitly in the prompt's "Files that will change" section.
+
 ---
 
 ## Completed work (previous branch — mvp-requirements-defects-slice)
