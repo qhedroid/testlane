@@ -65,7 +65,30 @@ When starting work on a new branch, always create a new sub-folder. Never place 
 - Do not create commits unless asked.
 
 ## After editing any markdown files
-Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit. It must also ask the user whether they want Claude to perform the commit directly. If yes, commit with `Co-authored-by: Claude <claude@anthropic.com>` in the message body.
+Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit. It must also ask the user whether they want Claude to perform the commit directly. If yes, commit with `Co-authored-by: Claude <claude@anthropic.com>` in the message body — **in addition to**, not instead of, the commit identity rule below.
+
+## Git commit identity (MANDATORY — read before any commit)
+Never trust the ambient `git config user.name`/`user.email` on this machine as correct by default. This repo's local config has previously been found pinned to a stale identity (`CrimsonDelta`) left over from earlier setup, which silently misattributed commits and broke Netlify's Git-contributor check on the personal GitHub repo. Before committing:
+
+1. Run `git config user.name && git config user.email` and state the result to the user before committing.
+2. Confirm whose work this actually is. Default assumption for this environment: work done through Noel's Cowork session is Noel's, and should be authored/committed as him, **not** whatever the local config happens to say.
+3. Set identity **per commit only** via env vars — do not persist a new default with `git config`, since that just swaps which identity is wrong by default for the next person/session:
+   ```bash
+   GIT_AUTHOR_NAME='Noel Quadri' GIT_AUTHOR_EMAIL='56097048+qhedroid@users.noreply.github.com' \
+   GIT_COMMITTER_NAME='Noel Quadri' GIT_COMMITTER_EMAIL='56097048+qhedroid@users.noreply.github.com' \
+   git commit -m "..."
+   ```
+4. Verify after committing: `git log -1 --format='author=%an <%ae>%ncommitter=%cn <%ce>'`.
+5. If a commit lands with the wrong identity and hasn't been pushed yet, fix with `git commit --amend --author='Noel Quadri <56097048+qhedroid@users.noreply.github.com>'` plus matching `GIT_COMMITTER_*` env vars on the amend.
+
+**Known identities for this project** (update this table if either person's account changes):
+
+| Person | Name | Email | GitHub login |
+|---|---|---|---|
+| Noel | Noel Quadri | `56097048+qhedroid@users.noreply.github.com` | `qhedroid` |
+| Shaun | (CrimsonDelta account) | `30307439+CrimsonDelta@users.noreply.github.com` | `CrimsonDelta` |
+
+Only use Shaun's identity when a commit is genuinely his work being committed on his behalf — that must be a stated, deliberate choice for that commit, never the silent default.
 
 ## localStorage
 - Key: `relay-demo-v2`
