@@ -54,9 +54,9 @@ Partial answer already found by reading the code (not yet confirmed with Shaun):
 - Test Cases tab under Test Plans needs comparison against Testiny.
   - **Finding:** Relay's `TestPlan.queries: TestQuery[]` (condition/folder/static, `resolvePlanCases()`) already supports multiple named dynamic queries unioned with a static list — structurally close to what Testiny does (multiple named queries + a static "Add from list" bucket, each shown as its own chip, unioned with an Origin column showing which query matched each case). Needs a closer side-by-side before scoping — may be more polish (e.g. an Origin column, richer condition builder) than net-new architecture.
 - "Open Test Run" should be "Open Test Runs" and show a scrollable list when multiple runs are open for a plan.
-  - **Unverified on Testiny** — neither of the two demo test plans had more than one simultaneously open run, so only the singular single-run card UI was observed. Needs revisiting once a plan with 2+ open runs is available (see "Open verification items" in `testiny-recon-notes.md`).
+  - **Resolved on Testiny (verified 2026-07-02):** it's not a scrollable list. With 2+ open runs, the card retitles to plural "Open test runs" and shows a stacked-card icon with an "N of M" count (open of total runs) that acts as a filter shortcut to the runs table below, rather than linking to or listing individual runs. With exactly 1 open run it shows that run's ID directly. Relay's fix should mirror this filter-link pattern, not build a scrollable list.
 - TODO: should runs be creatable from an empty test plan (0 resolved cases)?
-  - **Unverified on Testiny** — neither demo plan had 0 resolved cases. This may need to just be a Shaun product decision rather than something to observe in Testiny.
+  - **Resolved on Testiny (verified 2026-07-02):** no — Testiny has no "Create test run" option anywhere (header or "More…" menu) until a plan has at least one resolved case. Shaun still needs to decide whether Relay should match this constraint or intentionally diverge.
 
 ### Test Runs Extra
 - Filter tabs above the case list are missing Passed/Skipped; should match the status order next to the summary donut (Passed, Failed, Blocked, Skipped, Not Run).
@@ -79,7 +79,7 @@ Keep the current stale demo project, but add a second one with real, non-static 
 ## Lesser Improvements (backlog, not urgent)
 
 - **Test Runs Lesser:** redesign the Steps window to a left/right split (steps | expected results), matching Testiny.
-  - **Confirmed on Testiny:** exactly this layout — Steps column with icon on the left, Expected Results column with icon + bulleted list on the right. Only observed on single-step cases so far; multi-step row-by-row alignment not yet confirmed.
+  - **Resolved on Testiny (verified 2026-07-02):** this only applies to Testiny's default "Text" case template, where Steps/Expected Results are two freeform numbered-text blocks side by side (not discrete per-step rows — see `testiny-recon-notes.md`). Testiny also has a separate "Steps" template that looked like discrete per-step rows but wasn't populated with real content to confirm. Net effect: Relay's existing discrete `CaseStep[]` row model is likely already more structured than Testiny's common case, so this item may not need work — recommend closing or re-scoping as "verify Relay's current steps UI is fine as-is" rather than a redesign, next time it's picked up.
 - **Test Runs Lesser:** grey out the "Create run" button when no cases exist in the project (the big blue button shown when no runs exist yet).
 - **Test Runs Lesser:** improve commenting to be closer to Testiny's add/edit/view style, especially from a step's Details tab.
 - **Searching:** remove the raw internal case ID (long number) from global search results — only show friendly ids (TC-XXXX, TR-XXXX, etc).
