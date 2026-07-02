@@ -16,7 +16,9 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-test-plans` (rebased onto latest `origin/mvp-main`, which now includes merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`)
+`mvp-main` — clean, up to date with `origin/mvp-main`. PR #16 (`mvp-test-plans` polish round) merged (`7199115`), on top of previously merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`.
+
+`mvp-test-plans` branch still exists locally/remotely but is fully merged — no outstanding work on it.
 
 ---
 
@@ -31,7 +33,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 ---
 
-## Completed work (this branch — mvp-test-plans, post-rebase)
+## Completed work (merged via PR #16, `mvp-test-plans` → `mvp-main`)
 
 ### Test Plans screen polish — task-03 implemented ✅
 
@@ -89,6 +91,21 @@ Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`
 - Admin audit log does not record project-level requirement/defect activity (admin Settings/Data area only)
 - Legacy seed `TI-*` strings on executions remain as display-only external refs
 - Defects module: create button still disabled; no full CRUD
+
+---
+
+## Planned work — full backlog moved to `docs/claude/roadmap.md`
+
+Shaun dictated a full roadmap this session (Next Steps / Improvements / Lesser Improvements). It now lives in `docs/claude/roadmap.md` with status tags per item — treat that as the source of truth for "what's next," not this file. A live Testiny instance was also browsed for reference (via Claude in Chrome); full findings are in `docs/claude/testiny-recon-notes.md`, including an "open verification items" list of things that need specific data/access to check.
+
+Current state in brief:
+
+- **`mvp-custom-fields`** `[~in progress]` — three real task prompts drafted at `docs/cursor-prompts/mvp-custom-fields/` (task-01 field type parity, task-02 Owner mandatory field, task-03 per-field project assignment). Not yet run in Cursor. Would bump schema v14 → v15 (task-01) and possibly further (see each prompt).
+- **`mvp-dashboard-metrics`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-dashboard-metrics/draft-notes.md`.
+- **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.
+- Everything else (User Management, Role Management, Test Cases/Plans/Runs Extra items, live demo project, Lesser Improvements) — captured in `roadmap.md` with relevant code findings annotated, not yet turned into prompts.
+
+This session's planning work (this file, `roadmap.md`, `testiny-recon-notes.md`, and the two branches' prompt/draft folders) was committed on a dedicated `mvp-further-planning` branch rather than directly on `mvp-main`, since it doesn't correspond to one feature branch.
 
 ---
 
