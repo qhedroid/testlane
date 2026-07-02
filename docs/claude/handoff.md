@@ -45,15 +45,22 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
 
-### Test Plans screen follow-up — task-04 implemented ✅
+### Test Plans screen follow-up — task-3b implemented ✅ (renamed from task-04)
 
-`docs/cursor-prompts/mvp-test-plans/task-04-plans-screen-follow-up.md` — 3 feedback items:
+`docs/cursor-prompts/mvp-test-plans/task-3b-plans-screen-followup.md` — 3 feedback items:
 
 1. Coverage donut uncovered wedge uses `#555556` via new `notrunColor` prop on `RunDonut`
 2. Plan list sidebar resizable (replaces task-03 collapse); wired `useResizablePanes` `'plan-list'` to `.pl-list-pane`
 3. Run history hover popup uses `RunStatusInfographic` with delayed hide timer and `pointer-events: auto`
 
 Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
+
+### Run history hover tooltip fixes — task-3c drafted ✅ (not yet implemented)
+
+`docs/cursor-prompts/mvp-test-plans/task-3c-run-history-tooltip.md` — 2 feedback items on top of task 3b, `PlansScreen.tsx` only:
+
+1. Increase hover tooltip size ~15% (`RunStatusInfographic` `size` prop 80 → 92) — donut and status list stay proportional automatically since both scale off the same `--pieSize` CSS variable; fixes bottom-row clipping in the status list
+2. Reposition tooltip to the mouse cursor (`e.clientX/clientY + 6`) instead of the hovered `<td>`'s bounding rect, so dragging the mouse down into the popup doesn't cross into the next run's row and swap tooltips
 
 ---
 
