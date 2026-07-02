@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Relay — Wireframe Concepts (2026-07-02)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --ink:#2b2b2b; --mid:#777; --lt:#aaa; --line:#9a9a9a; --line-lt:#c9c9c9;
+    --fill:#e9e9e9; --fill-lt:#f4f4f4; --paper:#fff; --page:#f0f0ee;
+    --ann:#1a1a1a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; background:var(--page); color:var(--ink); padding:36px 28px 80px; font-size:14px; line-height:1.45;}
+  .doc{max-width:1180px; margin:0 auto;}
+  h1{font-size:22px; margin-bottom:4px;}
+  h2{font-size:17px; margin:44px 0 4px; padding-top:24px; border-top:2px solid var(--line);}
+  h3{font-size:13px; margin:22px 0 8px; text-transform:uppercase; letter-spacing:.06em; color:var(--mid);}
+  .meta{color:var(--mid); font-size:12.5px; margin-bottom:10px;}
+  .intro{font-size:13px; color:#444; max-width:860px; margin-bottom:6px;}
+  .scope{font-size:12px; color:var(--mid); background:#e8e8e4; border:1px dashed var(--line-lt); padding:8px 12px; border-radius:4px; margin:10px 0 0; max-width:860px;}
+
+  /* == wireframe primitives ================================================= */
+  .frame{background:var(--paper); border:1.5px solid var(--line); border-radius:6px; padding:0; margin:14px 0 8px; overflow:hidden; box-shadow:3px 3px 0 rgba(0,0,0,.06);}
+  .frame-hd{font-size:11px; color:var(--mid); text-transform:uppercase; letter-spacing:.07em; padding:6px 12px; border-bottom:1px solid var(--line-lt); background:var(--fill-lt); display:flex; gap:10px; align-items:center;}
+  .frame-hd .fid{font-weight:700; color:var(--ink);}
+  .cv{padding:14px; font-size:11.5px; color:#333;}
+  .row{display:flex; gap:10px; align-items:stretch;}
+  .col{display:flex; flex-direction:column; gap:10px;}
+  .box{border:1px solid var(--line); border-radius:4px; background:var(--paper); padding:8px;}
+  .box.dash{border-style:dashed;}
+  .box.fill{background:var(--fill-lt);}
+  .hd{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--mid); margin-bottom:6px;}
+  .bar{height:8px; background:var(--fill); border-radius:3px; margin:4px 0;}
+  .bar.w40{width:40%;} .bar.w60{width:60%;} .bar.w80{width:80%;} .bar.w25{width:25%;}
+  .lbl{font-size:11px; color:#333;}
+  .sub{font-size:10px; color:var(--lt);}
+  .btn{display:inline-block; border:1px solid var(--line); border-radius:3px; padding:3px 10px; font-size:10.5px; background:var(--paper); white-space:nowrap;}
+  .btn.pri{background:#d9d9d9; border-color:#8a8a8a; font-weight:700;}
+  .btn.ghost{border-style:dashed; color:var(--mid);}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:3px; overflow:hidden; font-size:10.5px;}
+  .seg span{padding:3px 9px; border-right:1px solid var(--line-lt);}
+  .seg span:last-child{border-right:0;}
+  .seg .on{background:#dcdcdc; font-weight:700;}
+  .chip{display:inline-block; border:1px solid var(--line-lt); border-radius:9px; padding:1px 8px; font-size:10px; color:#444; background:var(--fill-lt); white-space:nowrap;}
+  .drop{display:inline-block; border:1px solid var(--line); border-radius:3px; padding:3px 8px; font-size:10.5px; background:var(--paper); white-space:nowrap;}
+  .drop::after{content:" ▾"; color:var(--mid);}
+  .check::before{content:"☑ ";} .uncheck::before{content:"☐ "; color:var(--mid);}
+  .radio-on::before{content:"◉ ";} .radio-off::before{content:"○ "; color:var(--mid);}
+  .tbl{width:100%; border-collapse:collapse; font-size:10.5px;}
+  .tbl th{font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--mid); text-align:left; border-bottom:1px solid var(--line); padding:4px 6px; background:var(--fill-lt);}
+  .tbl td{border-bottom:1px solid var(--line-lt); padding:4px 6px; color:#333;}
+  .mono{font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:10px; color:#555;}
+
+  /* annotation markers */
+  .ann{display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background:var(--ann); color:#fff; font-size:10px; font-weight:700; flex-shrink:0; vertical-align:middle; margin:0 2px;}
+  .legend{margin:8px 0 4px; padding:0 2px; max-width:1080px;}
+  .legend li{list-style:none; font-size:12px; color:#333; margin:5px 0; display:flex; gap:8px; align-items:baseline;}
+  .legend .ann{margin-top:1px;}
+
+  /* fake chart primitives */
+  .chart-line{height:110px; border-left:1px solid var(--line); border-bottom:1px solid var(--line); position:relative; margin:6px 4px 2px;}
+  .chart-line svg{position:absolute; inset:0; width:100%; height:100%;}
+  .chart-bars{height:110px; border-left:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; align-items:flex-end; gap:10px; padding:0 10px; margin:6px 4px 2px;}
+  .cbar{width:26px; display:flex; flex-direction:column-reverse;}
+  .cbar div{width:100%;}
+  .donut{width:64px; height:64px; border-radius:50%; border:10px solid var(--fill); border-top-color:#8a8a8a; border-right-color:#8a8a8a; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#444; margin:auto;}
+  .spark{display:inline-block; letter-spacing:2px; color:#8a8a8a; font-size:9px;}
+
+  .kpi{flex:1; text-align:left;}
+  .kpi .big{font-size:20px; font-weight:800; color:#2f2f2f;}
+  .callout{font-size:11px; color:var(--mid); border-left:3px solid var(--line); padding:2px 0 2px 10px; margin:8px 0;}
+  .modal-wrap{background:repeating-linear-gradient(45deg,#e4e4e0,#e4e4e0 8px,#dcdcd8 8px,#dcdcd8 16px); padding:26px; display:flex; justify-content:center;}
+  .modal{background:var(--paper); border:1.5px solid var(--line); border-radius:6px; width:560px; box-shadow:4px 4px 0 rgba(0,0,0,.12);}
+  .modal .m-hd{padding:10px 14px; border-bottom:1px solid var(--line-lt); font-weight:700; font-size:12.5px; display:flex; justify-content:space-between; align-items:center;}
+  .modal .m-bd{padding:12px 14px; display:flex; flex-direction:column; gap:10px;}
+  .modal .m-ft{padding:10px 14px; border-top:1px solid var(--line-lt); display:flex; justify-content:flex-end; gap:8px; background:var(--fill-lt);}
+  .drawer{width:400px; background:var(--paper); border:1.5px solid var(--line); border-radius:6px; box-shadow:4px 4px 0 rgba(0,0,0,.12);}
+  .sect-lbl{font-size:9.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--mid); margin:2px 0 4px;}
+  .tree{font-size:11px; line-height:1.9;}
+  .tree .f::before{content:"▸ 🗀 "; font-size:10px;}
+  .tree .fo::before{content:"▾ 🗀 "; font-size:10px;}
+  .tree .indent1{padding-left:16px;} .tree .indent2{padding-left:32px;}
+  .tree .sel{background:#e3e3e0; border-radius:3px; padding-left:4px;}
+  .grab{color:var(--lt); letter-spacing:-1px; cursor:grab;}
+  .dropline{border-top:2px solid #555; position:relative; margin:1px 0;}
+  .dropline::before{content:"●"; position:absolute; left:-4px; top:-6px; font-size:9px; color:#555;}
+  .ctx{border:1px solid var(--line); border-radius:4px; background:var(--paper); box-shadow:3px 3px 0 rgba(0,0,0,.1); font-size:10.5px; width:150px;}
+  .ctx div{padding:4px 10px; border-bottom:1px solid #eee;}
+  .ctx div:last-child{border-bottom:0;}
+  .flow{display:flex; gap:0; align-items:center; flex-wrap:wrap;}
+  .flow .node{border:1px solid var(--line); border-radius:4px; padding:6px 10px; background:var(--paper); font-size:10.5px; text-align:center;}
+  .flow .arr{padding:0 8px; color:var(--mid); font-size:14px;}
+  .toast{border:1px solid var(--line); border-left:4px solid #555; border-radius:4px; background:var(--paper); padding:8px 12px; font-size:11px; box-shadow:3px 3px 0 rgba(0,0,0,.1); width:320px;}
+</style>
+</head>
+<body>
+<div class="doc">
+
+<h1>Relay — Wireframe Concepts</h1>
+<div class="meta">2026-07-02 · Wireframe fidelity (structure &amp; flow, not visual design) · Companion to <span class="mono">ux-critique.md</span></div>
+<p class="intro">Four areas from the design brief: <b>A.</b> Reporting &amp; Analytics · <b>B.</b> Export &amp; Reporting · <b>C.</b> Re-Run Management · <b>D.</b> Test Case Organization. Grey boxes = existing patterns reused as-is; dashed borders = new surfaces. Numbered dots are annotated below each frame.</p>
+<p class="scope"><b>Constraints respected:</b> frontend-only MVP (no server push, no real integrations — anything needing them is marked <i>stub</i>); the three-pane Test Runs execution workspace is untouched — Re-Run concepts hook into the run header, summary card, and runs list only; admin (<span class="mono">/admin/*</span>) stays separate.</p>
+
+<!-- ============================================================ A -->
+<h2>A · Reporting &amp; Analytics — <span class="mono">/DP/reports</span></h2>
+<p class="intro">Replaces the "Planned module" placeholder. One page frame, one control bar that drives every widget, drill-down from any chart to a case-level table. Reuses the dashboard's existing KPI/donut vocabulary so it reads as the same product.</p>
+
+<div class="frame">
+  <div class="frame-hd"><span class="fid">WF-A1</span> Reports — Overview (default report)</div>
+  <div class="cv">
+    <!-- control bar -->
+    <div class="row" style="align-items:center; margin-bottom:10px;">
+      <span class="drop">Scope: Project — DP</span>
+      <span class="drop">Range: Last 6 sprints</span>
+      <span class="lbl check">Compare vs previous sprint <span class="ann">1</span></span>
+      <span style="flex:1"></span>
+      <span class="btn ghost">Save as report… <span class="ann">4</span></span>
+      <span class="btn pri">Export <span class="ann">5</span></span>
+    </div>
+    <!-- KPI strip -->
+    <div class="row" style="margin-bottom:10px;">
+      <div class="box kpi"><div class="hd">Pass rate</div><div class="big">74.2%</div><div class="sub">▲ 6.1 pp vs Sprint 43 <span class="ann">2</span></div></div>
+      <div class="box kpi"><div class="hd">Run coverage</div><div class="big">68%</div><div class="sub">312 / 458 cases executed</div></div>
+      <div class="box kpi"><div class="hd">Open failures</div><div class="big">23</div><div class="sub">▲ 4 since last sprint</div></div>
+      <div class="box kpi"><div class="hd">Blocked</div><div class="big">7</div><div class="sub">2 without linked defect</div></div>
+      <div class="box kpi"><div class="hd">Avg. cases run / day</div><div class="big">41</div><div class="sub">▼ 9 vs Sprint 43</div></div>
+    </div>
+    <!-- charts -->
+    <div class="row" style="margin-bottom:10px;">
+      <div class="box" style="flex:1.2;">
+        <div class="hd">Pass rate by sprint (line) <span class="ann">3</span></div>
+        <div class="chart-line">
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+            <polyline points="10,62 60,55 110,66 160,48 210,44 260,30" fill="none" stroke="#7a7a7a" stroke-width="2"/>
+            <polyline points="10,72 60,68 110,74 160,60 210,58 260,52" fill="none" stroke="#bbb" stroke-width="2" stroke-dasharray="4 3"/>
+            <circle cx="260" cy="30" r="3" fill="#555"/>
+          </svg>
+        </div>
+        <div class="sub" style="padding-left:6px;">— pass rate &nbsp;· &nbsp;╌ coverage &nbsp;·&nbsp; S39 → S44</div>
+      </div>
+      <div class="box" style="flex:1;">
+        <div class="hd">Failures by module per sprint (stacked) <span class="ann">3</span></div>
+        <div class="chart-bars">
+          <div class="cbar"><div style="height:18px;background:#c9c9c9"></div><div style="height:12px;background:#9a9a9a"></div><div style="height:8px;background:#6f6f6f"></div></div>
+          <div class="cbar"><div style="height:22px;background:#c9c9c9"></div><div style="height:10px;background:#9a9a9a"></div><div style="height:12px;background:#6f6f6f"></div></div>
+          <div class="cbar"><div style="height:14px;background:#c9c9c9"></div><div style="height:16px;background:#9a9a9a"></div><div style="height:6px;background:#6f6f6f"></div></div>
+          <div class="cbar"><div style="height:26px;background:#c9c9c9"></div><div style="height:14px;background:#9a9a9a"></div><div style="height:10px;background:#6f6f6f"></div></div>
+          <div class="cbar"><div style="height:30px;background:#c9c9c9"></div><div style="height:18px;background:#9a9a9a"></div><div style="height:14px;background:#6f6f6f"></div></div>
+          <div class="cbar" style="outline:2px solid #444; outline-offset:2px;"><div style="height:24px;background:#c9c9c9"></div><div style="height:20px;background:#9a9a9a"></div><div style="height:18px;background:#6f6f6f"></div></div>
+        </div>
+        <div class="sub" style="padding-left:6px;">▩ CTMS · ▨ eTMF · ▦ Viewer — click a segment to drill down <span class="ann">3</span></div>
+      </div>
+    </div>
+    <!-- lower row -->
+    <div class="row">
+      <div class="box" style="flex:1.3;">
+        <div class="hd">Run summaries — Sprint 44</div>
+        <table class="tbl">
+          <tr><th>Run</th><th>Plan</th><th>P / F / B / NR</th><th>Pass %</th><th>Δ vs prev <span class="ann">2</span></th><th>Status</th></tr>
+          <tr><td class="mono">00001 CTMS Regression</td><td>Full Regression</td><td>71 / 24 / 7 / 30</td><td>74%</td><td>▲ 6 pp</td><td><span class="chip">Active</span></td></tr>
+          <tr><td class="mono">00002 eTMF Smoke</td><td>Smoketest</td><td>32 / 4 / 0 / 4</td><td>90%</td><td>▬ 0</td><td><span class="chip">Active</span></td></tr>
+          <tr><td class="mono">00003 Viewer Functional</td><td>—</td><td>28 / 6 / 8 / 28</td><td>60%</td><td>▼ 3 pp</td><td><span class="chip">Stalled</span></td></tr>
+        </table>
+      </div>
+      <div class="box" style="flex:1;">
+        <div class="hd">Top failing cases — last 3 sprints <span class="ann">6</span></div>
+        <table class="tbl">
+          <tr><th>Case</th><th>Fails</th><th>Last 5</th><th>Defect</th></tr>
+          <tr><td class="mono">TC-2041 role mapping…</td><td>4</td><td><span class="spark">●●●○●</span></td><td class="mono">TI-4419</td></tr>
+          <tr><td class="mono">TC-1008 export skipped…</td><td>3</td><td><span class="spark">●○●●○</span></td><td class="mono">TI-4421</td></tr>
+          <tr><td class="mono">TC-2046 export blocks…</td><td>3</td><td><span class="spark">○●●○●</span></td><td class="mono">—</td></tr>
+        </table>
+        <div class="callout">Repeat-failure list = the "test effectiveness" starting point (tracker row 76) without new data model — computed from existing run history.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<ul class="legend">
+  <li><span class="ann">1</span> One control bar (scope · range · compare) drives every widget on the page. Scope accepts project / module / plan / single run — the same selector hierarchy that already exists in plan query groups.</li>
+  <li><span class="ann">2</span> Compare mode adds delta chips to KPIs and a Δ column to tables — the dashboard already speaks this language ("↑ 6.1 pp vs Sprint 43"); this generalises it.</li>
+  <li><span class="ann">3</span> Every chart is a filter: clicking a bar segment or line point replaces the lower tables with the matching case-level failure list (WF-A2). No dead ink.</li>
+  <li><span class="ann">4</span> "Save as report" stores the control-bar state as a named view (localStorage — fits schema-versioned store) and lists it in the left rail under Reports.</li>
+  <li><span class="ann">5</span> Export opens the shared export drawer (WF-B1) pre-scoped to the current report state — one export pattern product-wide.</li>
+  <li><span class="ann">6</span> Failure-trend need (tracker row 72) is served twice: trend by module (chart) and repeat-offender cases (table), both derivable from existing execution history.</li>
+</ul>
+
+<div class="frame">
+  <div class="frame-hd"><span class="fid">WF-A2</span> Drill-down state (after clicking Sprint 44 · eTMF segment)</div>
+  <div class="cv">
+    <div class="row" style="align-items:center; margin-bottom:8px;">
+      <span class="chip">Scope: DP</span><span class="chip">Sprint 44</span><span class="chip">Module: eTMF ✕</span><span class="chip">Result: Failed ✕</span>
+      <span class="lbl" style="color:var(--mid);">← breadcrumb chips; remove a chip to widen <span class="ann">1</span></span>
+      <span style="flex:1"></span><span class="btn">Export this view</span>
+    </div>
+    <div class="box">
+      <table class="tbl">
+        <tr><th>Case</th><th>Run</th><th>Step failed</th><th>Assignee</th><th>Defect</th><th></th></tr>
+        <tr><td class="mono">TC-2042 bulk upload classifications</td><td class="mono">00001</td><td>3 of 4</td><td>Nadim S.</td><td class="mono">—</td><td><span class="btn">Link defect</span> <span class="ann">2</span></td></tr>
+        <tr><td class="mono">TC-1005 bulk upload routes files</td><td class="mono">00002</td><td>2 of 3</td><td>Nasir D.</td><td class="mono">TI-4402</td><td><span class="btn">Open</span></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+<ul class="legend">
+  <li><span class="ann">1</span> Drill-down is expressed as removable filter chips, not a page navigation — same mental model as the case-table filter bar.</li>
+  <li><span class="ann">2</span> Rows keep the dashboard's "Link defect" affordance so the reports module is a working surface, not a read-only dead end.</li>
+</ul>
+
+<!-- ============================================================ B -->
+<h2>B · Export &amp; Reporting — shared export flow</h2>
+<p class="intro">Fixes the confirmed silent-failure exports (dashboard Export, run More…→CSV/Excel, audit Export). One drawer, invoked from anywhere, always producing a visible artifact — even in the prototype, where the artifact is generated client-side.</p>
+
+<div class="frame">
+  <div class="frame-hd"><span class="fid">WF-B1</span> Export drawer (opened from run 00001 · More… → Export)</div>
+  <div class="modal-wrap">
+    <div class="drawer">
+      <div class="m-hd">Export <span style="font-weight:400; color:var(--mid); font-size:11px;">✕</span></div>
+      <div class="m-bd">
+        <div>
+          <div class="sect-lbl">Scope <span class="ann">1</span></div>
+          <div class="lbl radio-on">This test run — 00001 CTMS Regression (132 cases)</div>
+          <div class="lbl radio-off">Current filter — Failed + Blocked (31 cases)</div>
+          <div class="lbl radio-off">Selected cases (0)</div>
+        </div>
+        <div>
+          <div class="sect-lbl">Format</div>
+          <span class="seg"><span class="on">PDF report</span><span>Excel</span><span>CSV</span></span>
+        </div>
+        <div>
+          <div class="sect-lbl">Contents <span class="ann">2</span></div>
+          <div class="lbl check">Run summary (status, team, totals)</div>
+          <div class="lbl check">Per-case results</div>
+          <div class="lbl uncheck">Step-level detail &amp; comments</div>
+          <div class="lbl check">Linked defects</div>
+          <div class="lbl uncheck">Requirements traceability</div>
+          <div class="lbl uncheck">Audit trail for this run</div>
+        </div>
+        <div>
+          <div class="sect-lbl">Preset</div>
+          <span class="drop">Release sign-off pack</span>
+          <span class="sub">sets format + contents; editable <span class="ann">3</span></span>
+        </div>
+        <div class="box dash" style="background:var(--fill-lt);">
+          <div class="lbl uncheck" style="color:var(--mid);">Also create shareable link (expires 30 days) — <i>stub, needs backend</i> <span class="ann">4</span></div>
+        </div>
+      </div>
+      <div class="m-ft"><span class="btn">Cancel</span><span class="btn pri">Generate export</span></div>
+    </div>
+  </div>
+</div>
+<ul class="legend">
+  <li><span class="ann">1</span> Scope pre-fills from wherever the drawer was opened (run header, reports control bar, case-table bulk bar). The three options are always the same trio: whole object / current filter / selection.</li>
+  <li><span class="ann">2</span> Content checkboxes map 1:1 to sections of the generated file — no mystery about what "Export" means. Step-level detail is off by default to keep sign-off PDFs short.</li>
+  <li><span class="ann">3</span> Presets encode the real recurring artefact (release sign-off pack — cf. seeded case TC-2049 "Export completed run evidence for release sign-off"). Custom presets can persist to localStorage.</li>
+  <li><span class="ann">4</span> Shareable links need a server; shown disabled-with-reason rather than hidden, matching the critique's "never silently dead" rule.</li>
+</ul>
+
+<div class="frame">
+  <div class="frame-hd"><span class="fid">WF-B2</span> After "Generate export" — visible artifact, never silence</div>
+  <div class="cv">
+    <div class="row" style="align-items:flex-start;">
+      <div class="col" style="flex:1;">
+        <div class="toast"><b>Export ready</b> — run-00001-signoff.pdf (0.4 MB)<br><span class="btn pri" style="margin-top:6px;">Download</span> <span class="btn">Open exports</span></div>
+        <div class="sub" style="max-width:320px;">Toast on completion. Generation is client-side in the prototype, so "ready" is near-instant; the pattern still holds when a backend makes it async.</div>
+      </div>
+      <div class="box" style="flex:1.4;">
+        <div class="hd">Exports (this browser) — panel under Reports <span class="ann">1</span></div>
+        <table class="tbl">
+          <tr><th>Artifact</th><th>Scope</th><th>Created</th><th>Status</th><th></th></tr>
+          <tr><td class="mono">run-00001-signoff.pdf</td><td>Run 00001</td><td>just now</td><td><span class="chip">Ready</span></td><td><span class="btn">Download</span></td></tr>
+          <tr><td class="mono">failed-cases-s44.csv</td><td>Report view</td><td>1 h ago</td><td><span class="chip">Ready</span></td><td><span class="btn">Download</span></td></tr>
+          <tr><td class="mono">audit-log.xlsx</td><td>Audit</td><td>2 d ago</td><td><span class="chip">Expired</span> <span class="ann">2</span></td><td><span class="btn">Re-generate</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<ul class="legend">
+  <li><span class="ann">1</span> An export history gives artefacts a home (re-download, re-generate) and doubles as the "archived test results" seed (tracker row 80) once results snapshots are exportable.</li>
+  <li><span class="ann">2</span> Prototype artefacts live in localStorage/blob URLs and expire on reload — stating that honestly beats pretending permanence.</li>
+</ul>
+
+<!-- ============================================================ C -->
+<h2>C · Re-Run Management — from any completed/closed run</h2>
+<p class="intro">Tracker: 0/4, all Not Started; only "Duplicate test run" exists. Concept: a re-run is a <i>linked, filtered</i> new run — created from the run header's existing More… menu and from the close-run moment. The three-pane execution UX is not touched; a re-run opens as an ordinary run.</p>
+
+<div class="frame">
+  <div class="frame-hd"><span class="fid">WF-C1</span> Create re-run modal (entry: More… → "Create re-run…", or CTA in close-run confirmation)</div>
+  <div class="modal-wrap">
+    <div class="modal">
+      <div class="m-hd">Create re-run from 00001 — CTMS Regression · Sprint 44 <span style="font-weight:400; color:var(--mid); font-size:11px;">✕</span></div>
+      <div class="m-bd">
+        <div class="box fill" style="display:flex; gap:14px; align-items:center;">
+          <div class="lbl">Source result:</div>
+          <span class="chip">71 Passed</span><span class="chip">24 Failed</span><span class="chip">7 Blocked</span><span class="chip">30 Not run</span>
+        </div>
+        <div>
+          <div class="sect-lbl">Cases to include <span class="ann">1</span></div>
+          <div class="lbl radio-on">Failed only (24)</div>
+          <div class="lbl radio-off">Failed + Blocked (31)</div>
+          <div class="lbl radio-off">Everything except Passed (61)</div>
+          <div class="lbl radio-off">Custom selection… <span class="sub">opens filterable case picker <span class="ann">2</span></span></div>
+        </div>
+        <div>
+          <div class="sect-lbl">Assignment</div>
+          <div class="lbl radio-on">Keep original assignees</div>
+          <div class="lbl radio-off">Reassign all to <span class="drop">Select tester</span></div>
+        </div>
+        <div>
+          <div class="sect-lbl">Name</div>
+          <div class="box" style="padding:5px 8px;"><span class="lbl">CTMS Regression — Sprint 44 · Re-run 1</span> <span class="sub">(auto) <span class="ann">3</span></span></div>
+        </div>
+        <div class="callout" style="margin:0;">Will be linked as <b>Re-run of 00001</b>. Original stays closed and untouched — results are never overwritten. <span class="ann">4</span></div>
+      </div>
+      <div class="m-ft"><span class="btn">Cancel</span><span class="btn pri">Create re-run (24 cases)</span></div>
+    </div>
+  </div>
+</div>
+<ul class="legend">
+  <li><span class="ann">1</span> Presets cover the three tracker rows directly (failed re-execution, blocked re-execution, selective regression) with live counts so the choice is informed before commit.</li>
+  <li><span class="ann">2</span> Custom selection reuses the existing "+ Add cases" picker from run creation — filter by folder/tag/priority — for selective regression subsets.</li>
+  <li><span class="ann">3</span> Auto-naming encodes lineage and generation; editable but consistent by default.</li>
+  <li><span class="ann">4</span> Immutability of the source run is stated in the moment of creation — this is the audit-trail story for QA sign-off, and distinguishes re-run from the existing Duplicate.</li>
+</ul>
+
+<div class="frame">
+  <div class="frame-hd"><span class="fid">WF-C2</span> Run lineage — summary card "Details" tab + runs list (execution panes unchanged)</div>
+  <div class="cv">
+    <div class="hd">a) Chain strip inside the run summary card (Details tab)</div>
+    <div class="flow" style="margin-bottom:4px;">
+      <div class="node"><b class="mono">00001</b> · origin<br><span class="sub">24 F · 7 B</span></div>
+      <div class="arr">→</div>
+      <div class="node"><b class="mono">00004</b> · Re-run 1<br><span class="sub">24 → 6 F <span class="ann">1</span></span></div>
+      <div class="arr">→</div>
+      <div class="node" style="outline:2px solid #444; outline-offset:2px;"><b class="mono">00006</b> · Re-run 2 (this run)<br><span class="sub">6 → 1 F</span></div>
+    </div>
+    <div class="sub" style="margin-bottom:12px;">Chain shows the burn-down of failures across generations — the regression story in one line. Clicking a node opens that run.</div>
+    <div class="hd">b) Runs list groups chains under the origin run <span class="ann">2</span></div>
+    <div class="box">
+      <table class="tbl">
+        <tr><th></th><th>Run</th><th>Result</th><th>Status</th><th>Assignees</th></tr>
+        <tr><td>▾</td><td class="mono">00001 CTMS Regression — Sprint 44</td><td>71 P · 24 F · 7 B</td><td><span class="chip">Closed</span></td><td>5</td></tr>
+        <tr><td style="padding-left:18px;">↳</td><td class="mono">00004 · Re-run 1</td><td>18 P · 6 F</td><td><span class="chip">Closed</span></td><td>3</td></tr>
+        <tr><td style="padding-left:18px;">↳</td><td class="mono">00006 · Re-run 2</td><td>5 P · 1 F</td><td><span class="chip">Active</span></td><td>1</td></tr>
+        <tr><td></td><td class="mono">00002 eTMF Document Workflow Smoke</td><td>32 P · 4 F</td><td><span class="chip">Active</span></td><td>2</td></tr>
+      </table>
+    </div>
+    <div class="hd" style="margin-top:12px;">c) Close-run confirmation offers the re-run moment <span class="ann">3</span></div>
+    <div class="box dash" style="max-width:420px;">
+      <div class="lbl"><b>Close test run 00001?</b></div>
+      <div class="sub" style="margin:4px 0 8px;">24 failed and 7 blocked cases will remain in this result set.</div>
+      <span class="btn pri">Close run</span> <span class="btn">Close &amp; create re-run (31)…</span> <span class="btn">Cancel</span>
+    </div>
+  </div>
+</div>
+<ul class="legend">
+  <li><span class="ann">1</span> Per-generation delta (24 → 6 → 1 failed) is computable from existing run results — no schema addition beyond a <span class="mono">rerunOf</span> pointer on the run record (one migration step).</li>
+  <li><span class="ann">2</span> Chain grouping keeps the runs index honest — re-runs don't masquerade as independent runs and don't inflate run counts in reports (Reports treats a chain as one logical regression by default, toggleable).</li>
+  <li><span class="ann">3</span> The close-run moment is where re-run intent actually occurs; offering it there means the flow is discovered without documentation. All three entry points lead to WF-C1.</li>
+</ul>
+
+<!-- ============================================================ D -->
+<h2>D · Test Case Organization — tree, ordering, move/copy</h2>
+<p class="intro">Tracker: 0/7 Completed. The bulk bar and row menu already <i>show</i> Move/Copy affordances that don't function — these concepts make the shown UI real and add the missing pieces: drag-and-drop, explicit ordering, folder operations, cross-project copy.</p>
+
+<div class="frame">
+  <div class="frame-hd"><span class="fid">WF-D1</span> Folder tree with drag-and-drop + explicit ordering mode</div>
+  <div class="cv">
+    <div class="row">
+      <div class="box" style="width:230px;">
+        <div class="hd">Folders <span style="float:right;">＋</span></div>
+        <div class="tree">
+          <div class="fo">CTMS <span class="sub">17</span> <span style="float:right;" class="sub">⋯ <span class="ann">2</span></span></div>
+          <div class="indent1 f">Audit history <span class="sub">0</span></div>
+          <div class="indent1 f sel">Record management <span class="sub">6</span></div>
+          <div class="dropline indent1"></div>
+          <div class="indent1 f">Role &amp; permissions <span class="sub">11</span> <span class="sub">◄ drop target <span class="ann">1</span></span></div>
+          <div class="fo">eTMF <span class="sub">3</span></div>
+          <div class="indent1 f">Classification &amp; QC <span class="sub">0</span></div>
+          <div class="f">Viewer <span class="sub">2</span></div>
+        </div>
+        <div style="margin-top:8px;">
+          <div class="ctx">
+            <div>New subfolder</div>
+            <div>Rename</div>
+            <div>Move to…</div>
+            <div>Copy to…</div>
+            <div style="color:var(--mid);">Archive folder</div>
+          </div>
+          <div class="sub" style="margin-top:3px;">folder ⋯ context menu <span class="ann">2</span></div>
+        </div>
+      </div>
+      <div class="box" style="flex:1;">
+        <div class="row" style="align-items:center; margin-bottom:6px;">
+          <span class="lbl">Order:</span>
+          <span class="seg"><span class="on">Manual ⇅</span><span>By column sort</span></span> <span class="ann">3</span>
+          <span style="flex:1"></span>
+          <span class="chip">3 selected — dragging <span class="ann">4</span></span>
+        </div>
+        <table class="tbl">
+          <tr><th style="width:20px;"></th><th style="width:18px;"></th><th>ID</th><th>Title</th><th>Priority</th><th>Assigned</th></tr>
+          <tr><td class="grab">⋮⋮</td><td>☑</td><td class="mono">TC-1001</td><td>Validate CTMS role permissions for Viewer user</td><td><span class="chip">Crit</span></td><td>Nadim S.</td></tr>
+          <tr><td class="grab">⋮⋮</td><td>☑</td><td class="mono">TC-1002</td><td>Create CTMS record with required fields</td><td><span class="chip">Crit</span></td><td>Nadim S.</td></tr>
+          <tr><td colspan="6"><div class="dropline"></div></td></tr>
+          <tr><td class="grab">⋮⋮</td><td>☐</td><td class="mono">TC-1004</td><td>CTMS user role mapping preserves Viewer perm…</td><td><span class="chip">High</span></td><td>Nadim S.</td></tr>
+          <tr><td class="grab">⋮⋮</td><td>☑</td><td class="mono">TC-1008</td><td>Reporting export includes skipped executions</td><td><span class="chip">Crit</span></td><td>Nadim S.</td></tr>
+        </table>
+        <div class="sub" style="margin-top:6px;">Rows show ⋮⋮ grab handles only in Manual mode; dragging 3 selected rows shows a count badge. Dropping onto a tree folder moves them. <span class="ann">1</span> <span class="ann">4</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<ul class="legend">
+  <li><span class="ann">1</span> One drag model everywhere: rows → folder (move), row → row (reorder), folder → folder (re-nest). Drop position is always shown with an insertion line, drop target with a highlight.</li>
+  <li><span class="ann">2</span> Folder operations live in a ⋯ context menu mirroring the existing case row menu — Move/Copy/Rename/Archive for folders closes tracker rows 23/24/28.</li>
+  <li><span class="ann">3</span> <b>Ordering is an explicit mode, not a side effect.</b> Manual order and column sort fight each other in every tool that hides this; the toggle makes state visible and answers the brief's open question ("should ordering be explicit and visible?" — yes). Manual order persists per folder; column sort is a temporary view.</li>
+  <li><span class="ann">4</span> Multi-select drag builds on the existing bulk-select bar, so bulk Move stops being a dead button and gains a direct-manipulation twin.</li>
+</ul>
+
+<div class="frame">
+  <div class="frame-hd"><span class="fid">WF-D2</span> Move / Copy dialog (from row menu, bulk bar, or folder menu)</div>
+  <div class="modal-wrap">
+    <div class="modal" style="width:480px;">
+      <div class="m-hd">Move or copy — 3 test cases <span style="font-weight:400; color:var(--mid); font-size:11px;">✕</span></div>
+      <div class="m-bd">
+        <div>
+          <span class="seg"><span class="on">Move</span><span>Copy</span></span> <span class="ann">1</span>
+        </div>
+        <div>
+          <div class="sect-lbl">Destination</div>
+          <div class="box" style="max-height:150px; overflow:hidden;">
+            <div class="tree">
+              <div class="fo"><b>Demo Project (DP)</b> — current</div>
+              <div class="indent1 f">CTMS</div>
+              <div class="indent1 fo sel">eTMF ✓</div>
+              <div class="indent2 f">Classification &amp; QC</div>
+              <div class="indent1 f">Viewer</div>
+              <div class="f"><b>CTMS Platform (CT)</b> — other project <span class="ann">2</span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="sect-lbl">Options</div>
+          <div class="lbl check">Keep tags</div>
+          <div class="lbl check">Keep linked requirements</div>
+          <div class="lbl uncheck">Keep run history <span class="sub">(copy only — history never moves across projects)</span></div>
+        </div>
+        <div class="box dash" style="background:var(--fill-lt);">
+          <span class="sub">⚠ Cross-project: cases receive new IDs in the destination project (TC-1001 → CT-…); links to this project's runs are dropped. Move across projects is disabled in MVP — copy only. <span class="ann">3</span></span>
+        </div>
+      </div>
+      <div class="m-ft"><span class="btn">Cancel</span><span class="btn pri">Move 3 cases to eTMF</span></div>
+    </div>
+  </div>
+</div>
+<ul class="legend">
+  <li><span class="ann">1</span> Move and Copy are one dialog with a mode switch — they share destination and options, and users routinely change their mind between the two mid-flow.</li>
+  <li><span class="ann">2</span> Destination tree shows other projects inline (tracker row 29) rather than a separate "cross-project" feature — the scope difference is communicated by consequence, not by hiding.</li>
+  <li><span class="ann">3</span> Cross-project consequences (ID re-issue, dropped run links) are stated before commit; restricting cross-project to Copy keeps the frontend-only data model consistent (no orphaned run references).</li>
+</ul>
+
+<div style="margin-top:40px; padding-top:14px; border-top:1px solid var(--line-lt); font-size:11.5px; color:var(--mid);">
+  Relay design review · 2026-07-02 · Wireframe fidelity — labels are real, geometry is not. Next step, on approval: high-fidelity passes per area, then Cursor prompts under <span class="mono">docs/cursor-prompts/&lt;branch&gt;/</span>.
+</div>
+
+</div>
+</body>
+</html>
