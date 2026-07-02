@@ -5,7 +5,7 @@ Relay is a QA test execution platform. The current focus is **Test Runs** and ex
 This repository contains a runnable monorepo (Next.js + Drizzle + MySQL), API-backed `/runs` UI, architecture and product documentation, and an interactive HTML prototype for UX reference.
 
 **Remote:** https://github.com/qhedroid/Relay.git  
-**Latest milestone:** Execution Experience workspace (commit `8f84e3a`)
+**Latest milestone:** Test Plans polish + Requirements & Defects slice (commit `7199115`)
 
 ---
 
