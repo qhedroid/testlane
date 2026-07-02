@@ -893,8 +893,7 @@ export function PlansScreen() {
                                 <td
                                   onMouseEnter={(e) => {
                                     if (runBarHideTimer.current) clearTimeout(runBarHideTimer.current)
-                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                                    setRunBarTooltip({ run, x: rect.left, y: rect.bottom + 6 })
+                                    setRunBarTooltip({ run, x: e.clientX + 6, y: e.clientY + 6 })
                                   }}
                                   onMouseLeave={() => {
                                     runBarHideTimer.current = setTimeout(() => setRunBarTooltip(null), 300)
@@ -1085,7 +1084,7 @@ export function PlansScreen() {
                 blocked={s.blocked}
                 notrun={s.notRun}
                 skipped={s.skipped}
-                size={80}
+                size={92}
                 compact
                 interactive
                 showCompleteLabel

@@ -55,12 +55,14 @@ Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`
 
 Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
 
-### Run history hover tooltip fixes — task-3c drafted ✅ (not yet implemented)
+### Run history hover tooltip fixes — task-3c implemented ✅
 
-`docs/cursor-prompts/mvp-test-plans/task-3c-run-history-tooltip.md` — 2 feedback items on top of task 3b, `PlansScreen.tsx` only:
+`docs/cursor-prompts/mvp-test-plans/task-3c-run-history-tooltip.md` — 2 feedback items, `PlansScreen.tsx` only:
 
-1. Increase hover tooltip size ~15% (`RunStatusInfographic` `size` prop 80 → 92) — donut and status list stay proportional automatically since both scale off the same `--pieSize` CSS variable; fixes bottom-row clipping in the status list
-2. Reposition tooltip to the mouse cursor (`e.clientX/clientY + 6`) instead of the hovered `<td>`'s bounding rect, so dragging the mouse down into the popup doesn't cross into the next run's row and swap tooltips
+1. Increased hover tooltip size 15% (`RunStatusInfographic` `size` 80 → 92) to fix status list bottom cropping
+2. Repositioned tooltip to mouse cursor (`e.clientX/clientY + 6`) instead of cell bounding rect
+
+Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
 
 ---
 
