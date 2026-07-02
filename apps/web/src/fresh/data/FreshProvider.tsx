@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
   type ReactNode,
@@ -36,6 +37,12 @@ import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatDefectKey, formatPlanKey
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
 
 const STORAGE_KEY = 'relay-demo-v2'
+const DEMO_RESET_PARAM = 'relay-reset'
+
+function isDemoResetRequested(): boolean {
+  if (typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).get(DEMO_RESET_PARAM) === '1'
+}
 
 function runIsMutable(state: DemoState, runId: string): boolean {
   const run = findRunById(state, runId)
@@ -44,6 +51,17 @@ function runIsMutable(state: DemoState, runId: string): boolean {
 
 function loadState(): DemoState {
   if (typeof window === 'undefined') return buildInitialDemoState()
+  if (isDemoResetRequested()) {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      const fresh = buildInitialDemoState()
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh))
+      return fresh
+    } catch (err) {
+      console.error('[relay-demo] Failed to reset persisted state:', err)
+      return buildInitialDemoState()
+    }
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
@@ -730,6 +748,15 @@ const FreshContext = createContext<FreshContextValue | null>(null)
 
 export function FreshProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadState)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isDemoResetRequested()) return
+    const params = new URLSearchParams(window.location.search)
+    params.delete(DEMO_RESET_PARAM)
+    const qs = params.toString()
+    const next = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`
+    window.history.replaceState(null, '', next)
+  }, [])
 
   const activeProject = useMemo(
     () => getActiveProject(state) ?? Object.values(state.projectsById)[0],

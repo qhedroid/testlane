@@ -514,7 +514,11 @@ export function resolvePlanCases(plan: TestPlan, cases: Case[], folders: Folder[
     } else if (query.type === 'folder') {
       const allowed = new Set<string | null>()
       for (const fid of query.folderIds ?? []) {
-        folderDescendantIds(folders, fid).forEach((id) => allowed.add(id))
+        if (fid === '__unfiled__') {
+          allowed.add(null)
+        } else {
+          folderDescendantIds(folders, fid).forEach((id) => allowed.add(id))
+        }
       }
       matched = cases.filter((c) => allowed.has(c.folderId ?? null))
     } else if (query.type === 'condition') {

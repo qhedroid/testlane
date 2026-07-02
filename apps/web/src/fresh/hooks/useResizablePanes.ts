@@ -23,7 +23,7 @@ export function useResizablePanes() {
         start = raw ? parseFloat(raw) : (document.querySelector('.dp.open')?.getBoundingClientRect().width ?? 360)
         document.querySelector('.dp.open')?.classList.add('no-transition')
       } else if (type === 'plan-list') {
-        start = document.querySelector('.tp-list-pane')?.getBoundingClientRect().width ?? 0
+        start = document.querySelector('.pl-list-pane')?.getBoundingClientRect().width ?? 0
       } else if (type === 'run-list') {
         start = document.querySelector('.ec-pane')?.getBoundingClientRect().width ?? 0
       }

@@ -22,6 +22,7 @@ export function RunDonut({
   size = 80,
   showCompleteLabel = true,
   interactive = false,
+  notrunColor = '#C5D1DE',
 }: {
   pass: number
   fail: number
@@ -31,6 +32,7 @@ export function RunDonut({
   size?: number
   showCompleteLabel?: boolean
   interactive?: boolean
+  notrunColor?: string
 }) {
   const total = pass + fail + blocked + notrun + skipped
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
@@ -56,13 +58,13 @@ export function RunDonut({
       { key: 'fail', count: fail, color: '#C62828', label: 'Failed', cumStart: pL, len: fL },
       { key: 'blocked', count: blocked, color: '#E65100', label: 'Blocked', cumStart: pL + fL, len: bL },
       { key: 'skipped', count: skipped, color: '#4527A0', label: 'Skipped', cumStart: pL + fL + bL, len: sL },
-      { key: 'notrun', count: notrun, color: '#C5D1DE', label: 'Not run', cumStart: pL + fL + bL + sL, len: nL },
+      { key: 'notrun', count: notrun, color: notrunColor, label: 'Not run', cumStart: pL + fL + bL + sL, len: nL },
     ].filter((s) => s.len > 0)
     const pctSize = showCompleteLabel ? 15 * scale : 18 * scale
     const labelSize = 7 * scale
     const pctY = showCompleteLabel ? cy - 3 * scale : cy
     return { scale, r, cx, cy, stroke, C, pctLabel, vb, segments, pctSize, labelSize, pctY }
-  }, [total, pass, fail, blocked, notrun, skipped, size, showCompleteLabel])
+  }, [total, pass, fail, blocked, notrun, skipped, size, showCompleteLabel, notrunColor])
 
   const showTip = useCallback(
     (seg: Segment, e: React.MouseEvent) => {

@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-requirements-defects-slice` (based on `origin/mvp-main` @ 50c0e1e)
+`mvp-test-plans` (rebased onto latest `origin/mvp-main`, which now includes merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`)
 
 ---
 
@@ -31,7 +31,42 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 ---
 
-## Completed work (this branch — mvp-requirements-defects-slice)
+## Completed work (this branch — mvp-test-plans, post-rebase)
+
+### Test Plans screen polish — task-03 implemented ✅
+
+`docs/cursor-prompts/mvp-test-plans/task-03-plans-screen-polish.md` — 5 feedback items on `PlansScreen.tsx`, scoped to `PlansScreen.tsx`, `prototype-plans.css`, and `demo-model.ts`:
+
+1. Unfiled cases in Folder Query — `resolvePlanCases()` handles `'__unfiled__'` sentinel; `FolderQueryBody` picker + chip label
+2. Hover donut popup on run history `.pl-run-bar` (mirrors `RunsScreen.tsx` case-id tooltip pattern)
+3. Test case coverage card replaced with `<RunDonut>` (pass = resolvedCases, notrun = uncovered)
+4. Plan detail maximize/minimize (mirrors `CasesScreen.tsx`; reuses `.dp-max-btn` from `fresh.css`)
+5. Collapsible plan list sidebar (32px collapsed width)
+
+Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
+
+### Test Plans screen follow-up — task-3b implemented ✅ (renamed from task-04)
+
+`docs/cursor-prompts/mvp-test-plans/task-3b-plans-screen-followup.md` — 3 feedback items:
+
+1. Coverage donut uncovered wedge uses `#555556` via new `notrunColor` prop on `RunDonut`
+2. Plan list sidebar resizable (replaces task-03 collapse); wired `useResizablePanes` `'plan-list'` to `.pl-list-pane`
+3. Run history hover popup uses `RunStatusInfographic` with delayed hide timer and `pointer-events: auto`
+
+Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
+
+### Run history hover tooltip fixes — task-3c implemented ✅
+
+`docs/cursor-prompts/mvp-test-plans/task-3c-run-history-tooltip.md` — 2 feedback items, `PlansScreen.tsx` only:
+
+1. Increased hover tooltip size 15% (`RunStatusInfographic` `size` 80 → 92) to fix status list bottom cropping
+2. Repositioned tooltip to mouse cursor (`e.clientX/clientY + 6`) instead of cell bounding rect
+
+Schema unchanged (v14). QA evidence: `/tmp/relay-qa-mvp-test-plans/qa-report.md`.
+
+---
+
+## Completed work (previous branch — mvp-requirements-defects-slice)
 
 ### Requirements & Defects frontend slice ✅ (uncommitted)
 

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FreshTopbar } from '../components/FreshTopbar'
+import { RunDonut } from '../components/RunDonut'
+import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
@@ -179,11 +181,14 @@ function FolderQueryBody({
     <>
       <div className="pl-folder-chips">
         {(query.folderIds ?? []).map((fid) => {
-          const folder = activeFolders.find((f) => f.id === fid)
+          const label =
+            fid === '__unfiled__'
+              ? 'Unfiled'
+              : (activeFolders.find((f) => f.id === fid)?.name ?? fid)
           return (
             <div key={fid} className="pl-folder-chip">
               <i className="ti ti-folder" style={{ fontSize: 11, color: 'var(--accent)' }} />
-              {folder?.name ?? fid}
+              {label}
               <button type="button" title="Remove folder" onClick={() => removeFolder(fid)}>
                 <i className="ti ti-x" />
               </button>
@@ -191,7 +196,7 @@ function FolderQueryBody({
           )
         })}
       </div>
-      {unselectedFolders.length > 0 && (
+      {(unselectedFolders.length > 0 || !selectedIds.has('__unfiled__')) && (
         <select
           className="pl-folder-select"
           value=""
@@ -200,6 +205,7 @@ function FolderQueryBody({
           }}
         >
           <option value="">+ Add folder…</option>
+          {!selectedIds.has('__unfiled__') && <option value="__unfiled__">Unfiled</option>}
           {unselectedFolders.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
@@ -387,10 +393,17 @@ export function PlansScreen() {
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const rowMenuRef = useRef<HTMLDivElement>(null)
   const addQueryRef = useRef<HTMLDivElement>(null)
+  const runBarHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [pendingQueries, setPendingQueries] = useState<TestQuery[] | null>(null)
   const [addQueryMenuOpen, setAddQueryMenuOpen] = useState(false)
   const [staticSearch, setStaticSearch] = useState<Record<string, string>>({})
+  const [runBarTooltip, setRunBarTooltip] = useState<{
+    run: DemoRun
+    x: number
+    y: number
+  } | null>(null)
+  const [planMaximized, setPlanMaximized] = useState(false)
 
   const filteredPlans = useMemo(() => {
     const q = listSearch.trim().toLowerCase()
@@ -411,9 +424,6 @@ export function PlansScreen() {
       b.createdAt.localeCompare(a.createdAt),
     )
   }, [selectedPlan, activeRuns])
-
-  const coveragePct =
-    activeCases.length > 0 ? Math.round((resolvedCases.length / activeCases.length) * 100) : 0
 
   const queries = pendingQueries ?? selectedPlan?.queries ?? []
 
@@ -447,6 +457,7 @@ export function PlansScreen() {
   useEffect(() => {
     setPendingQueries(null)
     setStaticSearch({})
+    setPlanMaximized(false)
   }, [selectedPlan?.id])
 
   useEffect(() => {
@@ -571,7 +582,7 @@ export function PlansScreen() {
       />
       <PrototypeBanner />
 
-      <div className="pl-lay">
+      <div className={`pl-lay${planMaximized ? ' pl-maximized' : ''}`}>
         <div className="pl-list-pane">
           <div className="pl-list-hd">
             <i className="ti ti-clipboard-list" style={{ fontSize: 13, color: 'var(--text2)' }} />
@@ -685,6 +696,8 @@ export function PlansScreen() {
           </div>
         </div>
 
+        <div className="resizer-v" data-resize="plan-list" data-min="220" data-max="420" />
+
         <div className="pl-detail">
           {!selectedPlan ? (
             <div className="pl-no-selection">Select a plan to view details</div>
@@ -700,6 +713,16 @@ export function PlansScreen() {
                   <span>Created: {formatRelativeTime(selectedPlan.createdAt)}</span>
                 </div>
                 <div className="pl-detail-actions">
+                  <button
+                    type="button"
+                    className="dp-max-btn"
+                    title={planMaximized ? 'Restore panel width' : 'Maximize panel'}
+                    onClick={() => setPlanMaximized((v) => !v)}
+                  >
+                    <i
+                      className={`ti ${planMaximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`}
+                    />
+                  </button>
                   <button type="button" className="btn btn-p" onClick={openSpawnModal}>
                     <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
                   </button>
@@ -818,7 +841,16 @@ export function PlansScreen() {
                           Test case coverage
                         </div>
                         <div className="pl-coverage-donut">
-                          <div className="pl-donut-pct">{coveragePct}%</div>
+                          <RunDonut
+                            pass={resolvedCases.length}
+                            fail={0}
+                            blocked={0}
+                            notrun={activeCases.length - resolvedCases.length}
+                            notrunColor="#555556"
+                            size={100}
+                            interactive={false}
+                            showCompleteLabel={false}
+                          />
                           <div className="pl-donut-label">
                             {resolvedCases.length} of {activeCases.length} test cases in this project
                           </div>
@@ -858,7 +890,15 @@ export function PlansScreen() {
                                   </Link>
                                 </td>
                                 <td>{run.name}</td>
-                                <td>
+                                <td
+                                  onMouseEnter={(e) => {
+                                    if (runBarHideTimer.current) clearTimeout(runBarHideTimer.current)
+                                    setRunBarTooltip({ run, x: e.clientX + 6, y: e.clientY + 6 })
+                                  }}
+                                  onMouseLeave={() => {
+                                    runBarHideTimer.current = setTimeout(() => setRunBarTooltip(null), 300)
+                                  }}
+                                >
                                   <RunResultBar run={run} />
                                 </td>
                                 <td>{formatRelativeTime(run.createdAt)}</td>
@@ -1018,6 +1058,41 @@ export function PlansScreen() {
           )}
         </div>
       </div>
+
+      {runBarTooltip ? (
+        <div
+          className="pl-run-bar-popup"
+          style={{
+            position: 'fixed',
+            top: runBarTooltip.y,
+            left: runBarTooltip.x,
+            zIndex: 300,
+          }}
+          onMouseEnter={() => {
+            if (runBarHideTimer.current) clearTimeout(runBarHideTimer.current)
+          }}
+          onMouseLeave={() => {
+            runBarHideTimer.current = setTimeout(() => setRunBarTooltip(null), 300)
+          }}
+        >
+          {(() => {
+            const s = runSummary(runBarTooltip.run)
+            return (
+              <RunStatusInfographic
+                pass={s.passed}
+                fail={s.failed}
+                blocked={s.blocked}
+                notrun={s.notRun}
+                skipped={s.skipped}
+                size={92}
+                compact
+                interactive
+                showCompleteLabel
+              />
+            )
+          })()}
+        </div>
+      ) : null}
 
       {createPlanOpen ? (
         <div
