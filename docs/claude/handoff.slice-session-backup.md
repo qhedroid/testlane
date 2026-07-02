@@ -16,13 +16,9 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-requirements-defects-slice` (based on `origin/mvp-main` @ 50c0e1e at time of cut)
+`mvp-requirements-defects-slice` (based on `origin/mvp-main` @ 50c0e1e)
 
-**PR #14 status (re-verified 2026-07-02, later same day):** MERGED. `origin/mvp-main` tip is now `ae554fc` ("Merge pull request #14 from qhedroid/mvp-requirements-defects-slice"), with `a9212fc` as a direct parent — confirmed via `git merge-base --is-ancestor a9212fc origin/mvp-main`. PR #13 (`mvp-test-plans`) was already merged earlier (`50c0e1e`) — not something that needed re-merging. A separate PR #15 ("Merge pull request #15 from qhedroid/mvp-main") synced `main` with `mvp-main` post-PR#14; it only touches `main`, not `mvp-main` itself, and needs no action.
-
-Note: this repo's remote-tracking refs updated via the user's own GitHub Desktop session on the shared mount — Claude/Cowork still has no GitHub credentials or push/fetch access in this sandbox.
-
-The next feature branch (`mvp-requirements-module`) can now be cut from `origin/mvp-main`. `chore/cursor-tracked-rules` is still unmerged separately.
+**PR #14 status (verified 2026-07-02):** commit `a9212fc` is pushed to `origin/mvp-requirements-defects-slice` but is NOT yet on `origin/mvp-main` (`mvp-main` still at `50c0e1e`). PR #14 is agreed to be merged but the merge has not happened yet. Next feature branch (`mvp-requirements-module`) must be cut from `mvp-main` only AFTER PR #14 lands.
 
 ---
 
@@ -39,7 +35,7 @@ The next feature branch (`mvp-requirements-module`) can now be cut from `origin/
 
 ## Completed work (this branch — mvp-requirements-defects-slice)
 
-### Requirements & Defects frontend slice ✅ (committed `a9212fc`, merged to `mvp-main` via PR #14)
+### Requirements & Defects frontend slice ✅ (committed `a9212fc`, pushed, PR #14 open — not yet merged)
 
 | Area | What it delivered |
 |------|------------------|
@@ -87,7 +83,7 @@ See `/tmp/relay-qa-mvp-requirements-defects-slice/qa-report.md` after smoke test
 
 ## Next target
 
-**Requirements module slice** — branch `mvp-requirements-module`, ready to cut from `origin/mvp-main` now that PR #14 is merged.
+**Requirements module slice** — branch `mvp-requirements-module` (cut from `mvp-main` after PR #14 merges).
 Prompt drafted: `docs/cursor-prompts/mvp-requirements-module/task-01-requirements-module-screen.md`.
 Scope: dedicated `/[projectKey]/requirements` screen, coverage summary, traceability tab, requirement edit/delete/unlink. No schema bump (stays v14).
 
@@ -97,15 +93,10 @@ Rationale: top three follow-ups from the requirements/defects slice (module rout
 
 ## Open questions / pending decisions (2026-07-02)
 
-1. **PR #14 merge** — DONE (merged 2026-07-02, commit `ae554fc`). No longer blocking. Note for future PRs: Claude/Cowork has no GitHub write access in this environment (no credentials, no authorized connector) — merges must be done by Noel via GitHub, or by authorizing a GitHub connector for Claude to act with explicit per-action approval.
-2. **Repo lifecycle (clarified 2026-07-02):** current repo (`github.com/qhedroid/Relay`) is Noel's **personal** GitHub, not company infrastructure. Plan is three stages:
-   - **Now → full-stack MVP:** keep building and pushing to this personal GitHub repo.
-   - **At full-stack MVP:** last update to this repo in its current form, then made **public** on Noel's personal account for portfolio purposes.
-   - **At company handover:** the company creates its own **GitLab** repo (regulated, company-owned); that is the eventual destination, not an imminent migration.
-   GitHub URLs in docs stay valid throughout stages 1–2; only need updating once the GitLab repo exists at handover.
-3. **Backend + frontend scope — resolved.** "Full-stack MVP" is the actual milestone (per repo lifecycle above), so backend work is expected, not a deviation from CLAUDE.md's frontend-only rule. CLAUDE.md's frontend-only clause should be revisited/updated to reflect this once Noel confirms the scope of backend work per increment — individual backend tasks still need scoping same as any feature slice.
+1. **PR #14 merge** — agreed, not yet executed. Blocks the next branch.
+2. **GitHub → internal GitLab migration** (mirror push, full history) — decided but not done. GitHub URLs in docs stay until the GitLab URL exists, then need a docs sweep.
+3. **Syed's suggestion to build backend + frontend** — conflicts with CLAUDE.md frontend-only phase rule. NOT approved; Noel to resolve with Syed. All planning stays frontend-only until then.
 4. **`chore/cursor-tracked-rules`** — merge into `mvp-main` around the PR #14 merge so Cursor rules stop drifting.
-5. **Backend persistence groundwork (Requirements/Defects)** — started investigation via Fable 2026-07-02, interrupted before any code was written. No new branch created, no changes to `packages/db`. Re-scope/resume pending Noel's direction.
 
 ---
 
