@@ -101,7 +101,7 @@ Shaun dictated a full roadmap this session (Next Steps / Improvements / Lesser I
 Current state in brief:
 
 - **`mvp-custom-fields`** `[~in progress]` — three real task prompts drafted at `docs/cursor-prompts/mvp-custom-fields/` (task-01 field type parity, task-02 Owner mandatory field, task-03 per-field project assignment). Not yet run in Cursor. Would bump schema v14 → v15 (task-01) and possibly further (see each prompt).
-- **`mvp-dashboard-metrics`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-dashboard-metrics/draft-notes.md`.
+- **`mvp-dashboard-metrics`** `[~in progress]` — four real task prompts drafted at `docs/cursor-prompts/mvp-dashboard-metrics/` (task-01 real metric cards + active runs, task-02 needs-attention panel, task-03 coverage-by-folder panel, task-04 remove the demo-only placeholder gate). Not yet run in Cursor. No schema change expected. Rebuilds `DashboardScreen.tsx` off real `FreshProvider` data instead of the static `seed.ts` mocks it uses today.
 - **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.
 - Everything else (User Management, Role Management, Test Cases/Plans/Runs Extra items, live demo project, Lesser Improvements) — captured in `roadmap.md` with relevant code findings annotated, not yet turned into prompts.
 

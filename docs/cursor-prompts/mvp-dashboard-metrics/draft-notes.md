@@ -1,24 +1,16 @@
-# DRAFT — Dashboard Metrics: Project Scope → Test Plans Scope (not a runnable task yet)
+# SUPERSEDED — see task-01 through task-04 in this folder
 
-> Provisional planning note, not a Cursor-ready task prompt. Branch name `mvp-dashboard-metrics` is a guess — confirm/rename when this actually starts.
+> This draft has been fleshed into real Cursor-ready task prompts (`task-01-real-metric-cards.md`, `task-02-needs-attention.md`, `task-03-coverage-panel.md`, `task-04-remove-placeholder-gate.md`) as of 2026-07-02. Kept here for the original ask and the clarification thread that shaped scope.
 
 ## Original ask
 
-"Do it: Project Scope → Test Plans Scope." (Terse — Shaun's own words. Read as: dashboard metrics currently scope to the whole active project; he wants them scoped to a selected Test Plan instead of/in addition to that.)
+"Do it: Project Scope → Test Plans Scope." (Shaun's own words.)
 
-## What's known so far
+## Clarification (2026-07-02)
 
-`docs/_authoritative/DOMAIN_MODEL.md` documents an existing invariant (#7, "Dashboard scoping"): dashboard metrics (`RUN_CARDS`, attention/coverage panels) currently render only when `activeProject.seedTemplate === 'demo'`; blank/user-created projects show a placeholder ("Dashboard coming soon"). So scoping today is purely at the **project** level — there's no plan-level filter at all yet.
+Reading `DashboardScreen.tsx` showed the dashboard has no "scope" concept at all — it's 100% static mock data (`RUN_CARDS`, `ATTENTION_ITEMS`, `COVERAGE_ITEMS` from `data/seed.ts`), gated to only show on the seed demo project (`projectHasDemoDashboard`). Asked Shaun what "Test Plans Scope" should mean given that. His answer:
 
-Testiny's own dashboard (seen during the recon pass) is also project-scoped by default ("Have a great day — here is an overview of your My Demo Project project") with no visible plan-scope selector on the dashboard screen itself — so this may be a Relay-specific enhancement request rather than something to copy from Testiny's dashboard directly. Testiny's *Test Plan* detail screen does have its own scoped metrics (test case coverage donut, "most frequently failed test cases" heatmap, open/all test runs) — that's the closer reference point, not the global dashboard.
+- Primary task: rebuild the dashboard on **real data first**, following the same real-data-over-mock pattern already applied to Test Cases, Test Runs, and Test Plans elsewhere in the MVP. Each project's dashboard should show metrics about test case results based on the cases actually present in that project.
+- "Test Plans Scope" was shorthand for a *follow-up verification*, not a new feature on the main dashboard: once the dashboard is real, confirm that each Test Plan's own Overview tab (which already has its own plan-scoped metrics — coverage donut, open test runs, etc., per the Testiny recon notes) also reflects live data, not stale/hardcoded content.
 
-## Not yet done
-
-- Haven't looked at `DashboardScreen.tsx` in detail to see what "scope" selector (if any) currently exists there, or how `RUN_CARDS`/coverage panels are computed.
-- Haven't clarified with Shaun exactly what "Test Plans Scope" means in practice: a dropdown to pick one plan and see its metrics instead of the whole project's? All plans' metrics side-by-side? Something else?
-
-## Suggested next steps when this is picked up
-
-1. Read `apps/web/src/fresh/screens/DashboardScreen.tsx` and whatever selector/data-fetching it uses today.
-2. Ask Shaun a quick clarifying question on what "scope" means here before drafting — this is small enough that a wrong guess wastes a whole task cycle.
-3. Given the small size, this could likely be a single-task branch (no multi-task split needed like `mvp-custom-fields`).
+This reframed the task from a small scope-toggle into a 4-part dashboard rebuild — see the numbered tasks in this folder. The Test Plan Overview verification pass is called out as a smaller, separate follow-up in task-04's Documentation section — not part of this branch.
