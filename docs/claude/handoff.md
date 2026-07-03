@@ -16,9 +16,11 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-main` — clean, up to date with `origin/mvp-main`. PR #16 (`mvp-test-plans` polish round) merged (`7199115`), on top of previously merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`.
+`mvp-main` — clean, up to date with `origin/mvp-main`. PR #16 (`mvp-test-plans` polish round) merged (`7199115`), on top of previously merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`. Since then, `mvp-further-planning` (roadmap capture, Testiny recon, and the `mvp-custom-fields`/`mvp-dashboard-metrics` task prompts — see "Planned work" below) has also been merged into `mvp-main`.
 
-`mvp-test-plans` branch still exists locally/remotely but is fully merged — no outstanding work on it.
+`mvp-test-plans` and `mvp-further-planning` branches still exist locally/remotely but are fully merged — no outstanding work on either.
+
+**Next up:** implementing `mvp-dashboard-metrics` (first) and `mvp-custom-fields` (second) as their own separate branches — see "Planned work" below for the execution approach.
 
 ---
 
@@ -105,7 +107,16 @@ Current state in brief:
 - **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.
 - Everything else (User Management, Role Management, Test Cases/Plans/Runs Extra items, live demo project, remaining Lesser Improvements) — light `[~draft]` provisional notes now exist per item under `docs/cursor-prompts/mvp-<area>/draft-notes.md` (see `roadmap.md` for the exact pointer per item), consolidating this session's findings without committing to full task prompts, per Shaun's own "batch at the end of MVP" plan for this tier.
 
-This session's planning work (this file, `roadmap.md`, `testiny-recon-notes.md`, and the two branches' prompt/draft folders) was committed on a dedicated `mvp-further-planning` branch rather than directly on `mvp-main`, since it doesn't correspond to one feature branch.
+This session's planning work (this file, `roadmap.md`, `testiny-recon-notes.md`, and the two branches' prompt/draft folders) was committed on a dedicated `mvp-further-planning` branch and has since been merged into `mvp-main`.
+
+### Execution order and approach (decided, not yet started)
+
+1. **`mvp-dashboard-metrics` first** — no schema risk (all 4 tasks say "no schema change expected"), single-file-cohesive scope (`DashboardScreen.tsx`), no dependency on Custom Fields. Good candidate to validate the batched-execution approach before trusting it with a schema-migration-heavy branch.
+2. **`mvp-custom-fields` second** — once the batching approach is validated. Bumps schema twice across its 3 tasks; higher blast radius (7 files vs. effectively 1 for Dashboard Metrics).
+3. **Keep them as two separate branches/PRs**, not one combined branch — each independently revertible.
+4. **Hand Cursor one kickoff message per branch** referencing all of that branch's numbered task files in `docs/cursor-prompts/<branch>/` and instructing it to run continuously through them (each task's own Verification section still gets run, but no stopping to ask for confirmation between tasks unless there's a genuine blocker) — rather than pasting each task prompt one at a time. Cursor's own `.cursor/rules/*.mdc` already covers the frontend-only-phase/smoke-test conventions, so the kickoff message doesn't need to repeat them.
+5. **For `mvp-custom-fields` specifically**, add one checkpoint: pause and report after task-01 (the first schema bump + rendering fixes) before continuing into task-02/03, given the two-migration risk. `mvp-dashboard-metrics` can run fully autonomous end-to-end.
+6. Cursor's Plan Mode (evidence of prior use in this repo: `.cursor/plans/test_runs_audit_f7170fbe.plan.md`) is a more resumable alternative to one long chat message, if preferred — it tracks progress against a todo list in a file rather than only in the chat.
 
 ---
 
