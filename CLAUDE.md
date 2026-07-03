@@ -8,8 +8,10 @@ Treat `docs/_authoritative/**` as the only source of truth for requirements and 
 ## Claude-specific files (read on every session start)
 All files under `docs/claude/` are for Claude (Cowork) only — not for Cursor agents.
 
-- **`docs/claude/handoff.md`** — Read this immediately after CLAUDE.md. Contains: active branch, current schema version, completed task log, key decisions, and known gotchas. Update it at the end of any session where meaningful work was done.
+- **`docs/claude/handoff.md`** — Read this immediately after CLAUDE.md. Contains: active branch, current schema version, completed task log, key decisions, and known gotchas. Update it at the end of any session where meaningful work was done. Keep it short — a session log and pointer to the files below, not the full detail.
 - **`docs/claude/known-bugs.md`** — Investigation log for bugs that are identified but not yet fully resolved. Read before drafting any bug-fix prompt. Update whenever a bug is partially fixed, deferred, or newly discovered.
+- **`docs/claude/roadmap.md`** — Read this next. The durable backlog: every outstanding feature/improvement Shaun has raised, each tagged `[ ]` not started / `[~draft]` provisional notes exist / `[~in progress]` real task prompts drafted / `[x]` done, with relevant code findings annotated inline as they're discovered. This is the source of truth for "what's next" — treat it as such rather than relying on chat history, which gets summarized/lost. Update it: whenever new roadmap items are raised, whenever a status tag changes (e.g. a branch's prompts get drafted, or a branch merges), and whenever a code investigation turns up a finding relevant to a listed item (annotate inline, don't just mention it in chat).
+- **`docs/claude/testiny-recon-notes.md`** — Reference findings from browsing the live Testiny instance (the tool this project benchmarks UX against), cross-referenced against Relay's actual code. Read before drafting any prompt for a roadmap item that involves matching Testiny's behavior — check here first before re-browsing Testiny. Contains an "open verification items" list of things that couldn't be checked (data limitations, not tool failures) — read that before asking Shaun to make specific data available in Testiny. Append new findings here whenever a future recon pass happens; don't let findings live only in chat.
 
 ## Claude's role in this project (MANDATORY)
 Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implementer.
@@ -33,6 +35,10 @@ docs/cursor-prompts/
 
 When starting work on a new branch, always create a new sub-folder. Never place prompts for one branch inside another branch's folder.
 - If unsure whether to implement or draft, **always ask first**.
+
+**Provisional / draft prompts.** When a roadmap item (see `docs/claude/roadmap.md`) has been discussed and researched but not yet scoped into real, ready-to-run tasks, capture that work as `docs/cursor-prompts/<likely-branch-name>/draft-notes.md` — not a numbered `task-NN` file. Mark it clearly as a draft, not runnable by Cursor as-is. It should capture: the original ask, relevant findings (code and/or Testiny recon), open questions, and suggested next steps. When the item is actually picked up, flesh `draft-notes.md` into real `task-01-*.md` etc. following the format of a previously-completed task in another folder (state-of-the-art example: `docs/cursor-prompts/mvp-custom-fields/task-01-field-type-parity.md` — Background → per-file changes with exact line references → Verification → Documentation → Out of scope), then update `roadmap.md`'s status tag.
+
+**Cross-cutting planning sessions.** If a session's work spans multiple future feature areas rather than one specific branch (e.g. a broad recon/roadmap-triage session), commit that work on its own planning branch (e.g. `mvp-further-planning`) rather than directly on `mvp-main` or shoehorning it into an unrelated feature branch. `roadmap.md`, `testiny-recon-notes.md`, and any `draft-notes.md` files are the kind of output that belongs there.
 
 ## Phase: Frontend-only prototype
 - Do NOT implement or modify backend, DB/schema, Docker, auth, or API routes.
