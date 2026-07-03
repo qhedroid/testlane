@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { DemoRun } from '../data/demo-model'
+import type { DemoRun, ExportFormatChoice } from '../data/demo-model'
 
 interface TestRunsTopbarProps {
   currentRun: DemoRun | undefined
@@ -10,6 +10,7 @@ interface TestRunsTopbarProps {
   onDelete: () => void
   onCreateRun: () => void
   onEdit?: () => void
+  onExport?: (format?: ExportFormatChoice) => void
   hasCases?: boolean
 }
 
@@ -20,6 +21,7 @@ export function TestRunsTopbar({
   onDelete,
   onCreateRun,
   onEdit,
+  onExport,
   hasCases = true,
 }: TestRunsTopbarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
@@ -61,6 +63,11 @@ export function TestRunsTopbar({
     onEdit?.()
   }
 
+  function handleExport(format?: ExportFormatChoice) {
+    closeMore()
+    onExport?.(format)
+  }
+
   return (
     <div className="ta tr-topbar-actions">
       <button
@@ -88,6 +95,7 @@ export function TestRunsTopbar({
         disabled={!hasRun}
         title="Create report"
         aria-label="Create report"
+        onClick={() => handleExport('pdf')}
       >
         <i className="ti ti-report-analytics" style={{ fontSize: 13 }} />
       </button>
@@ -113,9 +121,9 @@ export function TestRunsTopbar({
             <div className="tr-more-sep" />
             <button type="button" className="tr-more-item" disabled={!hasRun || sealed}>Reset all results</button>
             <div className="tr-more-sep" />
-            <button type="button" className="tr-more-item" disabled={!hasRun}>Create report</button>
-            <button type="button" className="tr-more-item" disabled={!hasRun}>Export test run as CSV</button>
-            <button type="button" className="tr-more-item" disabled={!hasRun}>Export test run as Excel</button>
+            <button type="button" className="tr-more-item" disabled={!hasRun} onClick={() => handleExport('pdf')}>Create report</button>
+            <button type="button" className="tr-more-item" disabled={!hasRun} onClick={() => handleExport('csv')}>Export test run as CSV</button>
+            <button type="button" className="tr-more-item" disabled={!hasRun} onClick={() => handleExport('excel')}>Export test run as Excel</button>
             <div className="tr-more-sep" />
             <button type="button" className="tr-more-item tr-more-danger" disabled={!hasRun} onClick={handleDelete}>
               Delete test run

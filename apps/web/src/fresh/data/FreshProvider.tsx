@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, Requirement, SavedReport, TestPlan } from './demo-model'
+import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedReport, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -27,6 +27,7 @@ import {
   listActiveProjectDefects,
   listActiveProjectFolders,
   listActiveProjectPlans,
+  listActiveProjectExports,
   listActiveProjectRequirements,
   listActiveProjectRuns,
   listActiveProjectSavedReports,
@@ -132,6 +133,8 @@ export type FreshAction =
   | { type: 'DELETE_PLAN'; planId: string }
   | { type: 'DUPLICATE_PLAN'; newPlan: TestPlan }
   | { type: 'ADD_FOLDER'; folder: Folder }
+  | { type: 'RECORD_EXPORT'; artifact: ExportArtifact }
+  | { type: 'DELETE_EXPORT'; exportId: string }
   | { type: 'SAVE_REPORT'; report: SavedReport }
   | { type: 'RENAME_SAVED_REPORT'; reportId: string; name: string }
   | { type: 'DELETE_SAVED_REPORT'; reportId: string }
@@ -284,6 +287,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         ),
         savedReportsById: Object.fromEntries(
           Object.entries(state.savedReportsById ?? {}).filter(([, r]) => r.projectId !== projectId),
+        ),
+        exportsById: Object.fromEntries(
+          Object.entries(state.exportsById ?? {}).filter(([, e]) => e.projectId !== projectId),
         ),
         currentRunIdByProject,
         nextCaseNumByProject,
@@ -592,6 +598,18 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     }
+    case 'RECORD_EXPORT': {
+      next = {
+        ...state,
+        exportsById: { ...(state.exportsById ?? {}), [action.artifact.id]: action.artifact },
+      }
+      break
+    }
+    case 'DELETE_EXPORT': {
+      const { [action.exportId]: _removedExport, ...restExports } = state.exportsById ?? {}
+      next = { ...state, exportsById: restExports }
+      break
+    }
     case 'SAVE_REPORT': {
       next = {
         ...state,
@@ -769,6 +787,9 @@ interface FreshContextValue {
   saveReport: (input: Omit<SavedReport, 'id' | 'projectId' | 'createdAt'>) => { reportId: string }
   renameSavedReport: (reportId: string, name: string) => void
   deleteSavedReport: (reportId: string) => void
+  activeExports: ExportArtifact[]
+  recordExport: (artifact: ExportArtifact) => void
+  deleteExport: (exportId: string) => void
   activeRequirements: Requirement[]
   activeDefects: Defect[]
   createRequirement: (input: { title: string; description?: string; status?: Requirement['status'] }) => { requirementKey: string; requirementId: string }
@@ -803,6 +824,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const activeRuns = useMemo(() => listActiveProjectRuns(state), [state])
   const activePlans = useMemo(() => listActiveProjectPlans(state), [state])
   const activeSavedReports = useMemo(() => listActiveProjectSavedReports(state), [state])
+  const activeExports = useMemo(() => listActiveProjectExports(state), [state])
   const activeRequirements = useMemo(() => listActiveProjectRequirements(state), [state])
   const activeDefects = useMemo(() => listActiveProjectDefects(state), [state])
   const currentRun = useMemo(() => getCurrentRun(state), [state])
@@ -1027,6 +1049,14 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'ADD_DEMO_PROJECT' })
     return { key: meta.key, name: meta.name }
   }, [state])
+
+  const recordExport = useCallback((artifact: ExportArtifact) => {
+    dispatch({ type: 'RECORD_EXPORT', artifact })
+  }, [])
+
+  const deleteExport = useCallback((exportId: string) => {
+    dispatch({ type: 'DELETE_EXPORT', exportId })
+  }, [])
 
   const saveReport = useCallback(
     (input: Omit<SavedReport, 'id' | 'projectId' | 'createdAt'>) => {
@@ -1327,6 +1357,9 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       saveReport,
       renameSavedReport,
       deleteSavedReport,
+      activeExports,
+      recordExport,
+      deleteExport,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,
@@ -1405,6 +1438,9 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       saveReport,
       renameSavedReport,
       deleteSavedReport,
+      activeExports,
+      recordExport,
+      deleteExport,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,

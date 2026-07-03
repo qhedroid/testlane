@@ -434,6 +434,7 @@ export function buildInitialDemoState(): DemoState {
     nextRequirementNumByProject: { [DEFAULT_SEED_PROJECT_ID]: 1 },
     nextDefectNumByProject: { [DEFAULT_SEED_PROJECT_ID]: 1 },
     savedReportsById: {},
+    exportsById: {},
   }
 }
 

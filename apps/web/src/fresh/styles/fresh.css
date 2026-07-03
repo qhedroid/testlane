@@ -734,3 +734,25 @@ button.module-item.on{background:var(--accent-lt);color:var(--accent);border-lef
 
 .audit-empty{padding:24px;text-align:center;color:var(--text3);font-size:12.5px}
 
+
+/* ── Export drawer (Area B, MVP close-out) ── */
+.exd-overlay{position:fixed;inset:0;background:rgba(15,28,46,.32);z-index:400;display:flex;justify-content:flex-end}
+.exd-drawer{width:400px;max-width:92vw;background:var(--surface);height:100%;display:flex;flex-direction:column;box-shadow:-8px 0 28px rgba(15,28,46,.18)}
+.exd-hd{display:flex;align-items:center;gap:7px;padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.exd-title{font-size:13px;font-weight:700;flex:1}
+.exd-close{border:none;background:none;color:var(--text3);cursor:pointer;padding:3px;border-radius:3px}
+.exd-close:hover{color:var(--text);background:var(--surface2)}
+.exd-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:14px}
+.exd-sec{display:flex;flex-direction:column;gap:5px}
+.exd-sec-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:2px}
+.exd-radio,.exd-check{display:flex;align-items:flex-start;gap:7px;font-size:11.5px;color:var(--text2);cursor:pointer;line-height:1.45}
+.exd-radio input,.exd-check input{margin-top:2px;flex-shrink:0}
+.exd-disabled{opacity:.55;cursor:not-allowed}
+.exd-dim{color:var(--text3);font-size:10.5px}
+.exd-seg{display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;width:fit-content}
+.exd-seg-btn{border:none;background:var(--surface);font-size:11px;padding:5px 12px;cursor:pointer;color:var(--text2);border-right:1px solid var(--border)}
+.exd-seg-btn:last-child{border-right:none}
+.exd-seg-btn.on{background:var(--accent-lt);color:var(--accent);font-weight:600}
+.exd-preset{font-size:10.5px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);text-transform:none;letter-spacing:0;font-weight:500}
+.exd-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 14px;border-top:1px solid var(--border);flex-shrink:0}
+.exd-toast{position:fixed;right:16px;bottom:16px;z-index:500;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);border-radius:7px;box-shadow:0 8px 28px rgba(15,28,46,.22);padding:10px 12px;max-width:460px}

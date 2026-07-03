@@ -3,6 +3,9 @@
 import { useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
+import { ExportDrawer, type ExportDrawerContext } from '../components/ExportDrawer'
+import { useFresh } from '../data/FreshProvider'
+import { stripHtmlTags } from '../data/export-utils'
 import { AUDIT_EVENTS } from '../data/seed'
 import type { AuditEvent } from '../data/types'
 
@@ -28,11 +31,25 @@ function matchesFilter(ev: AuditEvent, filter: AuditFilter): boolean {
 }
 
 export function AuditScreen() {
+  const { activeProject } = useFresh()
   const [activeFilter, setActiveFilter] = useState<AuditFilter>('All events')
+  const [exportOpen, setExportOpen] = useState(false)
 
   const filteredEvents = useMemo(
     () => AUDIT_EVENTS.filter((ev) => matchesFilter(ev, activeFilter)),
     [activeFilter],
+  )
+
+  const exportContext: ExportDrawerContext = useMemo(
+    () => ({
+      entry: 'audit' as const,
+      wholeLabel: `Audit timeline — ${activeFilter}`,
+      wholeCount: filteredEvents.length,
+      wholeCountUnit: 'events',
+      auditEvents: filteredEvents.map((ev) => ({ text: stripHtmlTags(ev.html), ctx: ev.ctx, time: ev.time })),
+      fileStem: `audit-${activeProject.key}`,
+    }),
+    [activeFilter, filteredEvents, activeProject.key],
   )
 
   return (
@@ -69,7 +86,7 @@ export function AuditScreen() {
             <span className="pnl-ttl">Audit log</span>
             <span className="pnl-ct">{filteredEvents.length}</span>
             <span style={{ fontSize: 10.5, color: 'var(--text3)', marginLeft: 'auto' }}>Append-only · mock timeline</span>
-            <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px', marginLeft: 6 }}>
+            <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px', marginLeft: 6 }} onClick={() => setExportOpen(true)}>
               <i className="ti ti-download" style={{ fontSize: 11 }} /> Export
             </button>
           </div>
@@ -93,6 +110,7 @@ export function AuditScreen() {
           </div>
         </div>
       </div>
+      <ExportDrawer open={exportOpen} onClose={() => setExportOpen(false)} context={exportContext} />
     </div>
   )
 }

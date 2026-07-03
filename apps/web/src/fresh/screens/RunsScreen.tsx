@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
-import type { Case, DemoRun, ExecStatus, ExecutionLogEntry } from '../data/demo-model'
+import type { Case, DemoRun, ExecStatus, ExecutionLogEntry, ExportFormatChoice } from '../data/demo-model'
+import { ExportDrawer, type ExportDrawerContext } from '../components/ExportDrawer'
 import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
@@ -127,6 +128,8 @@ export function RunsScreen() {
   const [createOpen, setCreateOpen] = useState(false)
   const [addCasesOpen, setAddCasesOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exportFormat, setExportFormat] = useState<ExportFormatChoice | undefined>(undefined)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [advFilter, setAdvFilter] = useState<RunFilter>(DEFAULT_ADV_FILTER)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -479,6 +482,41 @@ export function RunsScreen() {
     return () => window.removeEventListener('keydown', onKey)
   }, [navCase, openShortcuts, setResult, isRunSealed, canMutateDefects])
 
+  const handleExport = useCallback((format?: ExportFormatChoice) => {
+    setExportFormat(format)
+    setExportOpen(true)
+  }, [])
+
+  const filterSummaryLabel = useMemo(() => {
+    const parts: string[] = []
+    if (filter !== 'all') parts.push(filter)
+    if (advFilter.result !== 'all' && advFilter.result !== filter) parts.push(advFilter.result)
+    if (advFilter.assignee) parts.push(`Assignee: ${advFilter.assignee}`)
+    if (advFilter.priority) parts.push(advFilter.priority)
+    if (advFilter.type) parts.push(advFilter.type)
+    if (runSearch.trim()) parts.push(`“${runSearch.trim()}”`)
+    return parts.join(' + ')
+  }, [filter, advFilter, runSearch])
+
+  const exportContext: ExportDrawerContext | null = useMemo(() => {
+    if (!currentRun) return null
+    return {
+      entry: 'run' as const,
+      run: currentRun,
+      wholeLabel: `This test run — ${currentRun.runKey} ${currentRun.name}`,
+      wholeCount: currentRun.caseOrder.length,
+      filterLabel: filterSummaryLabel || undefined,
+      filteredCaseIds: filterSummaryLabel ? filteredRows.map((r) => r.caseId) : undefined,
+      selectedCaseIds: [],
+      fileStem: `run-${currentRun.runKey}`,
+      initialFormat: exportFormat,
+    }
+  }, [currentRun, filterSummaryLabel, filteredRows, exportFormat])
+
+  const exportDrawer = (
+    <ExportDrawer open={exportOpen} onClose={() => setExportOpen(false)} context={exportContext} />
+  )
+
   const prototypeBanner = (
     <PrototypeBanner>
       <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
@@ -559,6 +597,7 @@ export function RunsScreen() {
             onDelete={handleDelete}
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
+            onExport={handleExport}
             hasCases={hasCases}
           />
         </div>
@@ -599,6 +638,7 @@ export function RunsScreen() {
             onDelete={handleDelete}
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
+            onExport={handleExport}
             hasCases={hasCases}
           />
         </div>
@@ -644,6 +684,7 @@ export function RunsScreen() {
             onDelete={handleDelete}
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
+            onExport={handleExport}
             hasCases={hasCases}
           />
         </div>
@@ -673,6 +714,7 @@ export function RunsScreen() {
           runId={currentRun?.id}
           onClose={() => setAddCasesOpen(false)}
         />
+        {exportDrawer}
       </div>
     )
   }
@@ -695,6 +737,7 @@ export function RunsScreen() {
           onDelete={handleDelete}
           onCreateRun={() => setCreateOpen(true)}
           onEdit={() => setEditOpen(true)}
+          onExport={handleExport}
           hasCases={hasCases}
         />
       </div>
@@ -1012,6 +1055,7 @@ export function RunsScreen() {
         runId={currentRun?.id}
         onClose={() => setAddCasesOpen(false)}
       />
+      {exportDrawer}
       {caseIdTooltip ? (() => {
         const c = getCase(caseIdTooltip.caseId)
         if (!c) return null

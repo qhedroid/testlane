@@ -10,6 +10,7 @@ import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
 import { projectHasDemoDashboard } from '../data/demo-project-utils'
 import { ATTENTION_ITEMS, COVERAGE_ITEMS, DEFECT_NAMES, RUN_CARDS } from '../data/seed'
+import { ExportDrawer, type ExportDrawerContext } from '../components/ExportDrawer'
 import type { RunCard } from '../data/types'
 import { PRI_MAP } from '../data/ui-utils'
 
@@ -107,9 +108,27 @@ function DashboardPlaceholder({ projectName }: { projectName: string }) {
 
 function DemoDashboardView() {
   const projectHref = useProjectHref()
+  const { activeProject, state } = useFresh()
   const [cardFilter, setCardFilter] = useState<CardFilter>('all')
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [cardTabs, setCardTabs] = useState<Record<string, CardTab>>({})
+  const [exportOpen, setExportOpen] = useState(false)
+
+  const projectRunCount = useMemo(
+    () => state.runs.filter((r) => r.projectId === activeProject.id && !r.archivedAt).length,
+    [state.runs, activeProject.id],
+  )
+
+  const exportContext: ExportDrawerContext = useMemo(
+    () => ({
+      entry: 'dashboard' as const,
+      wholeLabel: `This project — ${activeProject.name}`,
+      wholeCount: projectRunCount,
+      wholeCountUnit: 'runs',
+      fileStem: `project-${activeProject.key}`,
+    }),
+    [activeProject.name, activeProject.key, projectRunCount],
+  )
 
   const filteredRuns = useMemo(() => {
     if (cardFilter === 'stalled') return RUN_CARDS.filter((r) => r.stalled)
@@ -145,7 +164,7 @@ function DemoDashboardView() {
         searchPlaceholder="Search everything…"
         actions={
           <>
-            <button type="button" className="btn"><i className="ti ti-download" style={{ fontSize: 12 }} /> Export</button>
+            <button type="button" className="btn" onClick={() => setExportOpen(true)}><i className="ti ti-download" style={{ fontSize: 12 }} /> Export</button>
             <Link href={projectHref('testruns')} className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run</Link>
           </>
         }
@@ -294,6 +313,7 @@ function DemoDashboardView() {
           </div>
         </div>
       </div>
+      <ExportDrawer open={exportOpen} onClose={() => setExportOpen(false)} context={exportContext} />
     </div>
   )
 }

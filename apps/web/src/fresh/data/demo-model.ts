@@ -172,6 +172,42 @@ export interface SavedReport {
   createdAt: string
 }
 
+export type ExportFormatChoice = 'pdf' | 'excel' | 'csv'
+/** What the prototype actually produces client-side (labelled honestly in the UI). */
+export type ExportArtifactKind = 'csv' | 'html'
+export type ExportSectionKey =
+  | 'summary'
+  | 'perCase'
+  | 'stepDetail'
+  | 'defects'
+  | 'requirements'
+  | 'auditTrail'
+
+export type ExportEntryPoint = 'run' | 'dashboard' | 'audit' | 'reports'
+
+/**
+ * Export history entry (Area B). Only metadata + a regeneration spec are
+ * persisted — the generated file lives in an in-memory blob URL and expires
+ * on reload (surfaced honestly as "Expired" with a Re-generate action).
+ */
+export interface ExportArtifact {
+  id: string
+  projectId: string
+  fileName: string
+  formatChoice: ExportFormatChoice
+  artifactKind: ExportArtifactKind
+  scopeLabel: string
+  sections: ExportSectionKey[]
+  createdAt: string
+  sizeBytes: number
+  regen: {
+    entry: ExportEntryPoint
+    runId?: string
+    /** Case ids captured for filter/selection scopes at generation time. */
+    caseIds?: string[]
+  }
+}
+
 export interface CaseExecution {
   status: ExecStatus
   assignee?: string
@@ -212,7 +248,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 15
+export const DEMO_SCHEMA_VERSION = 16
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -395,6 +431,8 @@ export interface DemoState {
   nextDefectNumByProject: Record<string, number>
   /** v15 — saved Reports-page views, keyed by SavedReport.id. */
   savedReportsById: Record<string, SavedReport>
+  /** v16 — export history (metadata only; artifacts are session blob URLs). */
+  exportsById: Record<string, ExportArtifact>
 }
 
 export interface RunSummary {

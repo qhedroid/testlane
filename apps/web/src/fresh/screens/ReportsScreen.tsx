@@ -1,11 +1,19 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
+import { ExportDrawer, type ExportDrawerContext } from '../components/ExportDrawer'
 import { useFresh } from '../data/FreshProvider'
 import type { ExecStatus, SavedReport } from '../data/demo-model'
 import { folderLabel } from '../data/demo-model'
+import {
+  artifactKindLabel,
+  downloadExport,
+  formatBytes,
+  getExportBlob,
+  regenerateExport,
+} from '../data/export-utils'
 import {
   computeDrillDownRows,
   computeReportKpis,
@@ -55,9 +63,21 @@ export function ReportsScreen() {
     deleteSavedReport,
     createDefectFromExecution,
     getDefect,
+    activeExports,
+    recordExport,
+    deleteExport,
   } = useFresh()
 
+  const [railView, setRailView] = useState<'report' | 'exports'>('report')
+  const [exportOpen, setExportOpen] = useState(false)
   const [controls, setControls] = useState<ControlState>(DEFAULT_CONTROLS)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (new URLSearchParams(window.location.search).get('view') === 'exports') {
+      setRailView('exports')
+    }
+  }, [])
   const [activeReportId, setActiveReportId] = useState<string | null>(null)
   const [drill, setDrill] = useState<DrillDownFilter | null>(null)
   const [saveOpen, setSaveOpen] = useState(false)
@@ -97,6 +117,24 @@ export function ReportsScreen() {
     setActiveReportId(null)
     setDrill(null)
   }
+
+  const scopeDescription =
+    controls.scopeType === 'project'
+      ? `whole project`
+      : controls.scopeType === 'plan'
+        ? `plan ${activePlans.find((p) => p.id === controls.scopeId)?.planKey ?? ''}`
+        : `run ${projectRuns.find((r) => r.id === controls.scopeId)?.runKey ?? ''}`
+
+  const exportContext: ExportDrawerContext = useMemo(
+    () => ({
+      entry: 'reports' as const,
+      wholeLabel: `Current report — ${scopeDescription}`,
+      wholeCount: scopedRuns.length,
+      wholeCountUnit: 'runs',
+      fileStem: `report-${activeProject.key}`,
+    }),
+    [scopeDescription, scopedRuns.length, activeProject.key],
+  )
 
   function applySavedReport(report: SavedReport) {
     setControls({
@@ -198,8 +236,8 @@ export function ReportsScreen() {
             <button
               type="button"
               className="btn"
-              disabled
-              title="Export drawer ships with the export slice of this branch"
+              onClick={() => setExportOpen(true)}
+              title="Export the current report scope"
             >
               <i className="ti ti-download" style={{ fontSize: 12 }} /> Export
             </button>
@@ -212,11 +250,12 @@ export function ReportsScreen() {
           <div className="rp-rail-lbl">Reports</div>
           <button
             type="button"
-            className={`rp-rail-item${activeReportId === null ? ' on' : ''}`}
+            className={`rp-rail-item${railView === 'report' && activeReportId === null ? ' on' : ''}`}
             onClick={() => {
               setControls(DEFAULT_CONTROLS)
               setActiveReportId(null)
               setDrill(null)
+              setRailView('report')
             }}
           >
             <i className="ti ti-chart-bar" style={{ fontSize: 12 }} /> Overview (default)
@@ -244,7 +283,7 @@ export function ReportsScreen() {
                   />
                 ) : (
                   <>
-                    <button type="button" className="rp-rail-name" onClick={() => applySavedReport(report)}>
+                    <button type="button" className="rp-rail-name" onClick={() => { applySavedReport(report); setRailView('report') }}>
                       <i className="ti ti-report-analytics" style={{ fontSize: 12 }} /> {report.name}
                     </button>
                     <button
@@ -276,8 +315,109 @@ export function ReportsScreen() {
               </div>
             ))
           )}
+          <div className="rp-rail-lbl" style={{ marginTop: 10 }}>Exports</div>
+          <button
+            type="button"
+            className={`rp-rail-item${railView === 'exports' ? ' on' : ''}`}
+            onClick={() => setRailView('exports')}
+          >
+            <i className="ti ti-file-export" style={{ fontSize: 12 }} /> Exports (this browser)
+          </button>
         </div>
 
+        {railView === 'exports' ? (
+          <div className="rp-main">
+            <div className="panel" style={{ flexShrink: 0 }}>
+              <div className="pnl-hd">
+                <i className="ti ti-file-export" style={{ fontSize: 13, color: 'var(--accent)' }} />
+                <span className="pnl-ttl">Exports (this browser)</span>
+                <span className="pnl-ct">{activeExports.length}</span>
+                <span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 'auto' }}>
+                  Prototype artifacts live in this browser session and expire on reload — expired entries can be re-generated from current data.
+                </span>
+              </div>
+              {activeExports.length === 0 ? (
+                <div className="rp-tbl-empty">
+                  No exports yet. Use the Export buttons on the Dashboard, Test Runs, Audit History, or this Reports page.
+                </div>
+              ) : (
+                <div className="rp-tbl-scroll" style={{ maxHeight: 'none' }}>
+                  <table className="rp-tbl">
+                    <thead>
+                      <tr>
+                        <th>Artifact</th>
+                        <th>Scope</th>
+                        <th>Created</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeExports.map((e) => {
+                        const ready = !!getExportBlob(e.id)
+                        return (
+                          <tr key={e.id}>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{e.fileName}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text3)' }}>{artifactKindLabel(e.formatChoice)}</div>
+                            </td>
+                            <td>{e.scopeLabel}</td>
+                            <td className="rp-mono">{new Date(e.createdAt).toLocaleString()}</td>
+                            <td className="rp-mono">{formatBytes(e.sizeBytes)}</td>
+                            <td>
+                              <span className={`pill ${ready ? 'p-pass' : 'p-notrun'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
+                                {ready ? 'Ready' : 'Expired'}
+                              </span>
+                            </td>
+                            <td style={{ whiteSpace: 'nowrap' }}>
+                              {ready ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-p"
+                                  style={{ fontSize: 10, padding: '2px 8px' }}
+                                  onClick={() => downloadExport(e.id, e.fileName)}
+                                >
+                                  Download
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  style={{ fontSize: 10, padding: '2px 8px' }}
+                                  title="Rebuild this artifact from current data"
+                                  onClick={() => {
+                                    const result = regenerateExport(e, state, activeProject.name)
+                                    if (!result) {
+                                      window.alert('The source run for this export no longer exists — it cannot be re-generated.')
+                                      return
+                                    }
+                                    recordExport({ ...e, createdAt: new Date().toISOString(), sizeBytes: result.sizeBytes })
+                                  }}
+                                >
+                                  Re-generate
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{ fontSize: 10, padding: '2px 8px', marginLeft: 4 }}
+                                title="Remove from history"
+                                onClick={() => deleteExport(e.id)}
+                              >
+                                <i className="ti ti-trash" style={{ fontSize: 10 }} />
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
         <div className="rp-main">
           {/* Control bar */}
           <div className="rp-controls">
@@ -548,7 +688,9 @@ export function ReportsScreen() {
             </>
           )}
         </div>
+        )}
       </div>
+      <ExportDrawer open={exportOpen} onClose={() => setExportOpen(false)} context={exportContext} />
     </div>
   )
 }
