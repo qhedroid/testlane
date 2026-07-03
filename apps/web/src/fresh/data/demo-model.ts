@@ -85,6 +85,10 @@ export interface Case {
   customFieldValues?: Record<string, string | boolean | string[]>
   /** Linked local requirement entity ids. */
   requirementIds?: string[]
+  /** v18 — manual sort position (project-wide float; rows sort ascending in Manual order mode). */
+  position?: number
+  /** v18 — when set, case is hidden from library views (still resolvable in historical runs). */
+  archivedAt?: string
 }
 
 export interface Folder {
@@ -92,6 +96,8 @@ export interface Folder {
   projectId: string
   name: string
   parentId?: string | null
+  /** v18 — when set, folder (and its subtree) is hidden from the library tree. */
+  archivedAt?: string
 }
 
 export type QueryOperator = 'contains' | 'not_contains' | 'equals' | 'not_equals'
@@ -250,7 +256,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 17
+export const DEMO_SCHEMA_VERSION = 18
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {

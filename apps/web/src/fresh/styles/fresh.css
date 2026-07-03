@@ -756,3 +756,22 @@ button.module-item.on{background:var(--accent-lt);color:var(--accent);border-lef
 .exd-preset{font-size:10.5px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);text-transform:none;letter-spacing:0;font-weight:500}
 .exd-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 14px;border-top:1px solid var(--border);flex-shrink:0}
 .exd-toast{position:fixed;right:16px;bottom:16px;z-index:500;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);border-radius:7px;box-shadow:0 8px 28px rgba(15,28,46,.22);padding:10px 12px;max-width:460px}
+
+/* ── Test case organization (Area D, MVP close-out) ── */
+.drag-handle{color:var(--text3);font-size:11px;letter-spacing:-1px;cursor:grab;user-select:none;padding:0 2px}
+.drag-handle:active{cursor:grabbing}
+tr.drag-insert td{border-top:2px solid var(--accent)!important}
+.drag-over-folder{outline:1.5px solid var(--accent);outline-offset:-1.5px;background:var(--accent-lt)!important;border-radius:3px}
+.th-sortable{cursor:pointer;user-select:none}
+.th-sortable:hover{color:var(--text)}
+.st-row-with-menu{position:relative}
+.st-menu-btn{border:none;background:none;color:var(--text3);cursor:pointer;padding:1px 3px;border-radius:3px;opacity:0;margin-left:2px;flex-shrink:0}
+.st-root:hover .st-menu-btn,.st-sec:hover .st-menu-btn{opacity:1}
+.st-menu-btn:hover{color:var(--text);background:var(--surface2)}
+.mcd-tree{border:1px solid var(--border);border-radius:5px;max-height:220px;overflow-y:auto}
+.mcd-row{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text2);cursor:pointer;padding:5px 8px;border-bottom:1px solid var(--border)}
+.mcd-row:last-child{border-bottom:none}
+.mcd-row:hover{background:var(--surface2)}
+.mcd-row.on{background:var(--accent-lt);color:var(--text)}
+.mcd-row.disabled{opacity:.5;cursor:not-allowed}
+.mcd-warn{display:flex;gap:7px;font-size:11px;color:var(--text2);background:var(--block-bg,#FFF3E6);border:1px solid var(--border);border-radius:5px;padding:8px 10px;line-height:1.5}

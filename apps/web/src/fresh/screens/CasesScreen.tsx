@@ -22,6 +22,7 @@ import { displayAssigneeName, TEAM_USERS } from '../data/team-users'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
 import { parseTestCaseKey, slugToCaseKey, testCasePath, testRunPath } from '../lib/project-routes'
+import { MoveCopyDialog, type MoveCopySubject } from '../components/MoveCopyDialog'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
 type DetailTab = 'details' | 'attachments' | 'defects' | 'requirements' | 'runs' | 'history' | 'activity'
@@ -131,6 +132,10 @@ function FolderTreeNode({
   onSelectFolder,
   onCommitNewFolder,
   onCancelNewFolder,
+  onFolderMenu,
+  dragOverFolderId,
+  onFolderDragOver,
+  onFolderDrop,
 }: {
   folder: Folder
   depth: number
@@ -146,6 +151,10 @@ function FolderTreeNode({
   onSelectFolder: (id: string) => void
   onCommitNewFolder: (name: string) => void
   onCancelNewFolder: () => void
+  onFolderMenu?: (folderId: string, x: number, y: number) => void
+  dragOverFolderId?: string | null
+  onFolderDragOver?: (e: React.DragEvent, folderId: string) => void
+  onFolderDrop?: (e: React.DragEvent, folderId: string) => void
 }) {
   if (visibleFolderIds && !visibleFolderIds.has(folder.id)) return null
 
@@ -163,8 +172,15 @@ function FolderTreeNode({
   return (
     <div>
       <div
-        className={rowClass}
+        className={`${rowClass}${dragOverFolderId === folder.id ? ' drag-over-folder' : ''} st-row-with-menu`}
         style={rowStyle}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData('application/x-relay-folder', folder.id)
+          e.dataTransfer.effectAllowed = 'move'
+        }}
+        onDragOver={(e) => onFolderDragOver?.(e, folder.id)}
+        onDrop={(e) => onFolderDrop?.(e, folder.id)}
         onClick={() => {
           if (hasKids && !isOpen) onToggleFolder(folder.id)
           onSelectFolder(folder.id)
@@ -188,8 +204,22 @@ function FolderTreeNode({
         ) : null}
         {folder.name}
         <span className="st-ct" style={isRoot ? undefined : { marginLeft: 'auto' }}>
-          {casesInFolder(cases, folders, folder.id).length}
+          {casesInFolder(cases, folders, folder.id).filter((c) => !c.archivedAt).length}
         </span>
+        {onFolderMenu ? (
+          <button
+            type="button"
+            className="st-menu-btn"
+            title="Folder options"
+            onClick={(e) => {
+              e.stopPropagation()
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              onFolderMenu(folder.id, rect.right, rect.bottom + 4)
+            }}
+          >
+            <i className="ti ti-dots" style={{ fontSize: 12 }} />
+          </button>
+        ) : null}
       </div>
       {showKids ? (
         <div className="st-kids open">
@@ -210,6 +240,10 @@ function FolderTreeNode({
               onSelectFolder={onSelectFolder}
               onCommitNewFolder={onCommitNewFolder}
               onCancelNewFolder={onCancelNewFolder}
+              onFolderMenu={onFolderMenu}
+              dragOverFolderId={dragOverFolderId}
+              onFolderDragOver={onFolderDragOver}
+              onFolderDrop={onFolderDrop}
             />
           ))}
           {draftingHere ? (
@@ -226,7 +260,7 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement, moveCases, reorderCases, assignCases, archiveCases, unarchiveCases, renameFolder, moveFolder, archiveFolder, addCasesToRun } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const pathname = usePathname()
@@ -275,6 +309,31 @@ export function CasesScreen() {
     scope: 'folder' | 'all'
     name: string
   } | null>(null)
+  // ── Area D: organisation state ──
+  const [orderMode, setOrderMode] = useState<'manual' | 'sorted'>('manual')
+  const [sortBy, setSortBy] = useState<'title' | 'priority' | 'updated'>('updated')
+  const [sortDir, setSortDir] = useState<1 | -1>(-1)
+  const [moveCopy, setMoveCopy] = useState<{ subject: MoveCopySubject; mode: 'move' | 'copy' } | null>(null)
+  const [assignMenuOpen, setAssignMenuOpen] = useState(false)
+  const assignMenuRef = useRef<HTMLDivElement>(null)
+  const [addToRunMenuOpen, setAddToRunMenuOpen] = useState(false)
+  const addToRunMenuRef = useRef<HTMLDivElement>(null)
+  const [folderMenu, setFolderMenu] = useState<{ folderId: string; x: number; y: number } | null>(null)
+  const folderMenuRef = useRef<HTMLDivElement>(null)
+  const [dragOverCaseId, setDragOverCaseId] = useState<string | null>(null)
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null)
+  const dragImageRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!assignMenuOpen && !addToRunMenuOpen && !folderMenu) return
+    function handleClick(e: MouseEvent) {
+      if (assignMenuRef.current && !assignMenuRef.current.contains(e.target as Node)) setAssignMenuOpen(false)
+      if (addToRunMenuRef.current && !addToRunMenuRef.current.contains(e.target as Node)) setAddToRunMenuOpen(false)
+      if (folderMenuRef.current && !folderMenuRef.current.contains(e.target as Node)) setFolderMenu(null)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [assignMenuOpen, addToRunMenuOpen, folderMenu])
 
   useEffect(() => {
     const slug = parseTestCaseKey(pathname)
@@ -342,14 +401,15 @@ export function CasesScreen() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [createRunMenuOpen])
 
+  const visibleFolders = useMemo(() => activeFolders.filter((f) => !f.archivedAt), [activeFolders])
   const rootFolders = useMemo(
-    () => activeFolders.filter((f) => !f.parentId).sort((a, b) => a.name.localeCompare(b.name)),
-    [activeFolders],
+    () => visibleFolders.filter((f) => !f.parentId).sort((a, b) => a.name.localeCompare(b.name)),
+    [visibleFolders],
   )
   const childFolders = useCallback(
     (parentId: string) =>
-      activeFolders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name)),
-    [activeFolders],
+      visibleFolders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name)),
+    [visibleFolders],
   )
 
   const visibleFolderIds = useMemo(() => {
@@ -362,10 +422,15 @@ export function CasesScreen() {
     return matched
   }, [folderSearch, activeFolders])
 
-  const folderCases = useMemo(
-    () => casesInFolder(activeCases, activeFolders, selectedFolderId),
-    [activeCases, activeFolders, selectedFolderId],
-  )
+  const archivedView = selectedFolderId === '__archived__'
+  const archivedCases = useMemo(() => activeCases.filter((c) => c.archivedAt), [activeCases])
+
+  const folderCases = useMemo(() => {
+    if (archivedView) return archivedCases
+    return casesInFolder(activeCases, activeFolders, selectedFolderId).filter((c) => !c.archivedAt)
+  }, [activeCases, activeFolders, selectedFolderId, archivedView, archivedCases])
+
+  const PRIORITY_RANK: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 }
 
   const displayedCases = useMemo(() => {
     let result = folderCases
@@ -405,8 +470,20 @@ export function CasesScreen() {
       )
     }
 
+    // Ordering: Manual = persisted position; Sorted = temporary column sort view
+    if (orderMode === 'manual') {
+      result = [...result].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    } else {
+      result = [...result].sort((a, b) => {
+        if (sortBy === 'title') return sortDir * a.title.localeCompare(b.title)
+        if (sortBy === 'priority') return sortDir * ((PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9))
+        return sortDir * a.updatedAt.localeCompare(b.updatedAt)
+      })
+    }
+
     return result
-  }, [folderCases, statusFilter, activeRuns, filterConditions, keywordSearch])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folderCases, statusFilter, activeRuns, filterConditions, keywordSearch, orderMode, sortBy, sortDir])
 
   const totalCases = displayedCases.length
   const pageSizeNum = pageSize === 'all' ? totalCases : pageSize
@@ -556,7 +633,119 @@ export function CasesScreen() {
     setNewFolderDraft(null)
   }
 
-  const unfiledCount = activeCases.filter((c) => !c.folderId).length
+  const unfiledCount = activeCases.filter((c) => !c.folderId && !c.archivedAt).length
+
+  // ── Area D: drag-and-drop + bulk action helpers ──
+
+  const dragIdsFor = useCallback(
+    (caseId: string): string[] => (selectedIds.has(caseId) ? [...selectedIds] : [caseId]),
+    [selectedIds],
+  )
+
+  const startCaseDrag = useCallback(
+    (e: React.DragEvent, caseId: string) => {
+      const ids = dragIdsFor(caseId)
+      e.dataTransfer.setData('application/x-relay-cases', JSON.stringify(ids))
+      e.dataTransfer.effectAllowed = 'move'
+      // Count badge as a custom drag image for multi-select drags.
+      const badge = document.createElement('div')
+      badge.textContent = ids.length === 1 ? '1 case' : `${ids.length} cases`
+      badge.style.cssText =
+        'position:fixed;top:-100px;left:-100px;background:#1565C0;color:#fff;font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;font-family:system-ui'
+      document.body.appendChild(badge)
+      dragImageRef.current = badge
+      e.dataTransfer.setDragImage(badge, 12, 12)
+    },
+    [dragIdsFor],
+  )
+
+  const endCaseDrag = useCallback(() => {
+    dragImageRef.current?.remove()
+    dragImageRef.current = null
+    setDragOverCaseId(null)
+    setDragOverFolderId(null)
+  }, [])
+
+  const readDraggedCaseIds = (e: React.DragEvent): string[] | null => {
+    const raw = e.dataTransfer.getData('application/x-relay-cases')
+    if (!raw) return null
+    try {
+      const ids = JSON.parse(raw) as string[]
+      return Array.isArray(ids) && ids.length > 0 ? ids : null
+    } catch {
+      return null
+    }
+  }
+
+  const handleDropOnRow = useCallback(
+    (e: React.DragEvent, targetCase: Case) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const ids = readDraggedCaseIds(e)
+      setDragOverCaseId(null)
+      if (!ids || ids.includes(targetCase.id)) return
+      // row → row = reorder (insert before target, adopting the target row's folder)
+      reorderCases(ids, targetCase.folderId ?? null, targetCase.id)
+      setSelectedIds(new Set())
+    },
+    [reorderCases],
+  )
+
+  const handleDropOnFolder = useCallback(
+    (e: React.DragEvent, folderId: string | null) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setDragOverFolderId(null)
+      const caseIds = readDraggedCaseIds(e)
+      if (caseIds) {
+        // row → folder = move
+        moveCases(caseIds, folderId)
+        setSelectedIds(new Set())
+        return
+      }
+      const folderIdDragged = e.dataTransfer.getData('application/x-relay-folder')
+      if (folderIdDragged && folderIdDragged !== folderId) {
+        // folder → folder = re-nest
+        moveFolder(folderIdDragged, folderId)
+      }
+    },
+    [moveCases, moveFolder],
+  )
+
+  function bulkAddToRun(runId: string) {
+    addCasesToRun(runId, [...selectedIds])
+    setAddToRunMenuOpen(false)
+    setSelectedIds(new Set())
+  }
+
+  function bulkClone() {
+    const sources = activeCases.filter((c) => selectedIds.has(c.id))
+    for (const src of sources) {
+      const { id: _id, updatedAt: _u, createdAt: _c, projectId: _p, caseKey: _k, position: _pos, ...copyData } = src
+      addCase({ ...copyData, title: `${src.title} (copy)` })
+    }
+    setSelectedIds(new Set())
+  }
+
+  function bulkAssign(assignee: string) {
+    assignCases([...selectedIds], assignee)
+    setAssignMenuOpen(false)
+    setSelectedIds(new Set())
+  }
+
+  function bulkArchive() {
+    const n = selectedIds.size
+    if (!window.confirm(`Archive ${n} case${n === 1 ? '' : 's'}? Archived cases are hidden from the library but remain in historical runs. You can restore them from the Archived view.`)) return
+    archiveCases([...selectedIds])
+    setSelectedIds(new Set())
+  }
+
+  function bulkUnarchive() {
+    unarchiveCases([...selectedIds])
+    setSelectedIds(new Set())
+  }
+
+  const openUnsealedRuns = useMemo(() => activeRuns.filter((r) => !r.sealed), [activeRuns])
 
   function openCreateRunModal(scope: 'folder' | 'all') {
     setCreateRunMenuOpen(false)
@@ -665,9 +854,16 @@ export function CasesScreen() {
           </div>
           <div className="st-body">
             <div
-              className={`st-sec${selectedFolderId === '__unfiled__' ? ' on' : ''}`}
+              className={`st-sec${selectedFolderId === '__unfiled__' ? ' on' : ''}${dragOverFolderId === '__unfiled__' ? ' drag-over-folder' : ''}`}
               style={{ marginBottom: 4 }}
               onClick={() => selectFolder('__unfiled__')}
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes('application/x-relay-cases')) {
+                  e.preventDefault()
+                  setDragOverFolderId('__unfiled__')
+                }
+              }}
+              onDrop={(e) => handleDropOnFolder(e, null)}
             >
               Unfiled
               <span className="st-ct" style={{ marginLeft: 'auto' }}>{unfiledCount}</span>
@@ -689,6 +885,18 @@ export function CasesScreen() {
                 onSelectFolder={selectFolder}
                 onCommitNewFolder={commitNewFolder}
                 onCancelNewFolder={cancelNewFolder}
+                onFolderMenu={(folderId, x, y) => setFolderMenu({ folderId, x, y })}
+                dragOverFolderId={dragOverFolderId}
+                onFolderDragOver={(e, folderId) => {
+                  if (
+                    e.dataTransfer.types.includes('application/x-relay-cases') ||
+                    e.dataTransfer.types.includes('application/x-relay-folder')
+                  ) {
+                    e.preventDefault()
+                    setDragOverFolderId(folderId)
+                  }
+                }}
+                onFolderDrop={(e, folderId) => handleDropOnFolder(e, folderId)}
               />
             ))}
             {newFolderDraft && newFolderDraftParentId === null ? (
@@ -697,6 +905,17 @@ export function CasesScreen() {
                 onCommit={commitNewFolder}
                 onCancel={cancelNewFolder}
               />
+            ) : null}
+            {archivedCases.length > 0 || archivedView ? (
+              <div
+                className={`st-sec${archivedView ? ' on' : ''}`}
+                style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}
+                onClick={() => selectFolder('__archived__')}
+              >
+                <i className="ti ti-archive" style={{ fontSize: 11, marginRight: 3, color: 'var(--text3)' }} />
+                Archived
+                <span className="st-ct" style={{ marginLeft: 'auto' }}>{archivedCases.length}</span>
+              </div>
             ) : null}
           </div>
         </div>
@@ -867,6 +1086,11 @@ export function CasesScreen() {
                 }}
               />
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="Manual order persists per project; column sort is a temporary view">
+              <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>Order:</span>
+              <span className={`chip${orderMode === 'manual' ? ' on' : ''}`} onClick={() => setOrderMode('manual')}>Manual ⇅</span>
+              <span className={`chip${orderMode === 'sorted' ? ' on' : ''}`} onClick={() => setOrderMode('sorted')}>By column sort</span>
+            </div>
             <span style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
               {displayedCases.length} cases
             </span>
@@ -874,11 +1098,66 @@ export function CasesScreen() {
 
           <div className={`bulk${selectedIds.size > 0 ? ' on' : ''}`}>
             <span className="bulk-n">{selectedIds.size} selected</span>
-            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Add to run</button>
-            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Clone</button>
-            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Move</button>
-            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Assign</button>
-            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', color: 'var(--fail)', borderColor: 'rgba(198,40,40,.3)' }}>Archive</button>
+            {archivedView ? (
+              <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }} onClick={bulkUnarchive}>
+                <i className="ti ti-archive-off" style={{ fontSize: 11 }} /> Unarchive
+              </button>
+            ) : (
+              <>
+                <div style={{ position: 'relative' }} ref={addToRunMenuRef}>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ fontSize: 10.5, padding: '2px 7px' }}
+                    disabled={openUnsealedRuns.length === 0}
+                    title={openUnsealedRuns.length === 0 ? 'No open (unsealed) runs in this project' : undefined}
+                    onClick={() => setAddToRunMenuOpen((v) => !v)}
+                  >
+                    Add to run
+                  </button>
+                  {addToRunMenuOpen ? (
+                    <div className="ctx-menu" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 300, width: 240 }}>
+                      {openUnsealedRuns.map((r) => (
+                        <button key={r.id} type="button" className="ctx-item" onClick={() => bulkAddToRun(r.id)}>
+                          <i className="ti ti-player-play" /> {r.runKey} — {r.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }} onClick={bulkClone}>Clone</button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: 10.5, padding: '2px 7px' }}
+                  onClick={() => setMoveCopy({ subject: { kind: 'cases', caseIds: [...selectedIds] }, mode: 'move' })}
+                >
+                  Move
+                </button>
+                <div style={{ position: 'relative' }} ref={assignMenuRef}>
+                  <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }} onClick={() => setAssignMenuOpen((v) => !v)}>
+                    Assign
+                  </button>
+                  {assignMenuOpen ? (
+                    <div className="ctx-menu" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 300, width: 180 }}>
+                      {TEAM_USERS.map((u) => (
+                        <button key={u} type="button" className="ctx-item" onClick={() => bulkAssign(u)}>
+                          <i className="ti ti-user" /> {u}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: 10.5, padding: '2px 7px', color: 'var(--fail)', borderColor: 'rgba(198,40,40,.3)' }}
+                  onClick={bulkArchive}
+                >
+                  Archive
+                </button>
+              </>
+            )}
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', marginLeft: 'auto' }} onClick={() => setSelectedIds(new Set())}>
               <i className="ti ti-x" style={{ fontSize: 11 }} /> Clear
             </button>
@@ -908,19 +1187,37 @@ export function CasesScreen() {
               <table className="tbl">
                 <thead>
                   <tr>
+                    {orderMode === 'manual' && !archivedView ? <th style={{ width: 20 }} /> : null}
                     <th style={{ width: 28 }}><input type="checkbox" onChange={(e) => {
                       if (e.target.checked) setSelectedIds(new Set(displayedCases.map((c) => c.id)))
                       else setSelectedIds(new Set())
                     }} /></th>
                     <th style={{ width: 68 }}>ID</th>
-                    <th>Title</th>
-                    <th style={{ width: 72 }}>Priority</th>
+                    <th
+                      className={orderMode === 'sorted' ? 'th-sortable' : undefined}
+                      onClick={orderMode === 'sorted' ? () => { setSortBy('title'); setSortDir((d) => (sortBy === 'title' ? (d === 1 ? -1 : 1) : 1)) } : undefined}
+                    >
+                      Title{orderMode === 'sorted' && sortBy === 'title' ? (sortDir === 1 ? ' ▲' : ' ▼') : ''}
+                    </th>
+                    <th
+                      style={{ width: 72 }}
+                      className={orderMode === 'sorted' ? 'th-sortable' : undefined}
+                      onClick={orderMode === 'sorted' ? () => { setSortBy('priority'); setSortDir((d) => (sortBy === 'priority' ? (d === 1 ? -1 : 1) : 1)) } : undefined}
+                    >
+                      Priority{orderMode === 'sorted' && sortBy === 'priority' ? (sortDir === 1 ? ' ▲' : ' ▼') : ''}
+                    </th>
                     <th style={{ width: 100 }}>Folder</th>
                     <th style={{ width: 88 }}>Type</th>
                     <th style={{ width: 120 }}>Last results</th>
                     <th style={{ width: 100 }}>Assigned</th>
                     <th style={{ width: 50, textAlign: 'center' }}>Steps</th>
-                    <th style={{ width: 70 }}>Updated</th>
+                    <th
+                      style={{ width: 70 }}
+                      className={orderMode === 'sorted' ? 'th-sortable' : undefined}
+                      onClick={orderMode === 'sorted' ? () => { setSortBy('updated'); setSortDir((d) => (sortBy === 'updated' ? (d === 1 ? -1 : 1) : -1)) } : undefined}
+                    >
+                      Updated{orderMode === 'sorted' && sortBy === 'updated' ? (sortDir === 1 ? ' ▲' : ' ▼') : ''}
+                    </th>
                     <th style={{ width: 28 }} />
                   </tr>
                 </thead>
@@ -929,9 +1226,34 @@ export function CasesScreen() {
                     return (
                       <tr
                         key={c.id}
-                        className={detailCaseId === c.id ? 'sel' : ''}
+                        className={`${detailCaseId === c.id ? 'sel' : ''}${dragOverCaseId === c.id ? ' drag-insert' : ''}`}
                         onClick={() => setDetailCaseId(c.id)}
+                        onDragOver={
+                          orderMode === 'manual' && !archivedView
+                            ? (e) => {
+                                if (e.dataTransfer.types.includes('application/x-relay-cases')) {
+                                  e.preventDefault()
+                                  setDragOverCaseId(c.id)
+                                }
+                              }
+                            : undefined
+                        }
+                        onDragLeave={orderMode === 'manual' ? () => setDragOverCaseId((prev) => (prev === c.id ? null : prev)) : undefined}
+                        onDrop={orderMode === 'manual' && !archivedView ? (e) => handleDropOnRow(e, c) : undefined}
                       >
+                        {orderMode === 'manual' && !archivedView ? (
+                          <td onClick={(e) => e.stopPropagation()} style={{ width: 20, cursor: 'grab' }}>
+                            <span
+                              className="drag-handle"
+                              title="Drag to reorder or move to a folder"
+                              draggable
+                              onDragStart={(e) => startCaseDrag(e, c.id)}
+                              onDragEnd={endCaseDrag}
+                            >
+                              ⋮⋮
+                            </span>
+                          </td>
+                        ) : null}
                         <td onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
@@ -1138,17 +1460,32 @@ export function CasesScreen() {
             </button>
             <div className="ctx-sep" />
             <button type="button" className="ctx-item" onClick={() => {
-              alert('Copy to… — coming soon')
+              setMoveCopy({ subject: { kind: 'cases', caseIds: [menuCase.id] }, mode: 'copy' })
               setContextMenu(null)
             }}>
               <i className="ti ti-copy-plus" /> Copy to…
             </button>
             <button type="button" className="ctx-item" onClick={() => {
-              alert('Move to… — coming soon')
+              setMoveCopy({ subject: { kind: 'cases', caseIds: [menuCase.id] }, mode: 'move' })
               setContextMenu(null)
             }}>
               <i className="ti ti-arrows-move" /> Move to…
             </button>
+            {menuCase.archivedAt ? (
+              <button type="button" className="ctx-item" onClick={() => {
+                unarchiveCases([menuCase.id])
+                setContextMenu(null)
+              }}>
+                <i className="ti ti-archive-off" /> Unarchive
+              </button>
+            ) : (
+              <button type="button" className="ctx-item" onClick={() => {
+                archiveCases([menuCase.id])
+                setContextMenu(null)
+              }}>
+                <i className="ti ti-archive" /> Archive
+              </button>
+            )}
             <button type="button" className="ctx-item" onClick={() => {
               if (menuCase.folderId) selectFolder(menuCase.folderId)
               setContextMenu(null)
@@ -1168,6 +1505,62 @@ export function CasesScreen() {
           </div>
         )
       })() : null}
+      {folderMenu ? (() => {
+        const menuFolder = activeFolders.find((f) => f.id === folderMenu.folderId)
+        if (!menuFolder) return null
+        return (
+          <div
+            ref={folderMenuRef}
+            className="ctx-menu"
+            style={{ position: 'fixed', top: folderMenu.y, left: folderMenu.x - 170, zIndex: 1000, width: 170 }}
+          >
+            <button type="button" className="ctx-item" onClick={() => {
+              setNewFolderDraft({ parentId: menuFolder.id })
+              setFolderMenu(null)
+            }}>
+              <i className="ti ti-folder-plus" /> New subfolder
+            </button>
+            <button type="button" className="ctx-item" onClick={() => {
+              const name = window.prompt('Rename folder', menuFolder.name)
+              if (name && name.trim()) renameFolder(menuFolder.id, name.trim())
+              setFolderMenu(null)
+            }}>
+              <i className="ti ti-pencil" /> Rename
+            </button>
+            <div className="ctx-sep" />
+            <button type="button" className="ctx-item" onClick={() => {
+              setMoveCopy({ subject: { kind: 'folder', folderId: menuFolder.id }, mode: 'move' })
+              setFolderMenu(null)
+            }}>
+              <i className="ti ti-arrows-move" /> Move to…
+            </button>
+            <button type="button" className="ctx-item" onClick={() => {
+              setMoveCopy({ subject: { kind: 'folder', folderId: menuFolder.id }, mode: 'copy' })
+              setFolderMenu(null)
+            }}>
+              <i className="ti ti-copy-plus" /> Copy to…
+            </button>
+            <div className="ctx-sep" />
+            <button type="button" className="ctx-item ctx-item-danger" onClick={() => {
+              const count = casesInFolder(activeCases, activeFolders, menuFolder.id).filter((c) => !c.archivedAt).length
+              if (window.confirm(`Archive folder “${menuFolder.name}” and its ${count} case${count === 1 ? '' : 's'} (including subfolders)? They move to the Archived view and can be restored case-by-case.`)) {
+                archiveFolder(menuFolder.id)
+                if (selectedFolderId === menuFolder.id) selectFolder('__unfiled__')
+              }
+              setFolderMenu(null)
+            }}>
+              <i className="ti ti-archive" /> Archive folder
+            </button>
+          </div>
+        )
+      })() : null}
+      <MoveCopyDialog
+        open={!!moveCopy}
+        subject={moveCopy?.subject ?? null}
+        initialMode={moveCopy?.mode ?? 'move'}
+        onClose={() => setMoveCopy(null)}
+        onDone={() => setSelectedIds(new Set())}
+      />
       {sparkTooltip ? (() => {
         const lr = caseBarRun(activeRuns, sparkTooltip.caseId, sparkTooltip.barIndex)
         if (!lr) return null

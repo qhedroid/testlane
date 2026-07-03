@@ -390,6 +390,21 @@ export function migrateDemoState(raw: unknown): DemoState {
     if (state.schemaVersion < 17) {
       state = { ...state, schemaVersion: 17 }
     }
+    // v17 → v18: manual ordering (Case.position backfilled from current array
+    // order per project) + Case.archivedAt / Folder.archivedAt (left unset)
+    if (state.schemaVersion < 18) {
+      const counterByProject: Record<string, number> = {}
+      state = {
+        ...state,
+        cases: state.cases.map((c) => {
+          if (c.position != null) return c
+          const n = (counterByProject[c.projectId] ?? 0) + 1
+          counterByProject[c.projectId] = n
+          return { ...c, position: n }
+        }),
+        schemaVersion: 18,
+      }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }

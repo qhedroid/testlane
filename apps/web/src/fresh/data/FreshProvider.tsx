@@ -134,6 +134,16 @@ export type FreshAction =
   | { type: 'DELETE_PLAN'; planId: string }
   | { type: 'DUPLICATE_PLAN'; newPlan: TestPlan }
   | { type: 'ADD_FOLDER'; folder: Folder }
+  | { type: 'MOVE_CASES'; caseIds: string[]; targetFolderId: string | null }
+  | { type: 'COPY_CASES'; caseIds: string[]; targetProjectId: string; targetFolderId: string | null; keepTags: boolean; keepRequirements: boolean }
+  | { type: 'REORDER_CASES'; caseIds: string[]; targetFolderId: string | null; beforeCaseId?: string }
+  | { type: 'ASSIGN_CASES'; caseIds: string[]; assignee: string }
+  | { type: 'ARCHIVE_CASES'; caseIds: string[] }
+  | { type: 'UNARCHIVE_CASES'; caseIds: string[] }
+  | { type: 'UPDATE_FOLDER'; folderId: string; patch: Partial<Pick<Folder, 'name'>> }
+  | { type: 'MOVE_FOLDER'; folderId: string; newParentId: string | null }
+  | { type: 'COPY_FOLDER'; folderId: string; targetParentId: string | null }
+  | { type: 'ARCHIVE_FOLDER'; folderId: string }
   | { type: 'RECORD_EXPORT'; artifact: ExportArtifact }
   | { type: 'DELETE_EXPORT'; exportId: string }
   | { type: 'SAVE_REPORT'; report: SavedReport }
@@ -309,9 +319,12 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const projectId = state.activeProjectId
       const num = getActiveProjectNextCaseNum(state)
       const caseKey = formatCaseKey(num)
+      const maxPos = state.cases
+        .filter((c) => c.projectId === projectId)
+        .reduce((m, c) => Math.max(m, c.position ?? 0), 0)
       next = {
         ...state,
-        cases: [...state.cases, { ...action.case, caseKey }],
+        cases: [...state.cases, { ...action.case, caseKey, position: action.case.position ?? maxPos + 1 }],
         nextCaseNumByProject: { ...state.nextCaseNumByProject, [projectId]: num + 1 },
       }
       break
@@ -472,7 +485,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const num = getActiveProjectNextRunNum(state)
       const runKey = formatRunKey(num)
       const id = newId('run')
-      const caseOrder = action.caseIds ?? listActiveProjectTestCases(state).map((c) => c.id)
+      const caseOrder = action.caseIds ?? listActiveProjectTestCases(state).filter((c) => !c.archivedAt).map((c) => c.id)
       const run: DemoRun = {
         id,
         projectId,
@@ -600,6 +613,232 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
     case 'ADD_FOLDER':
       next = { ...state, folders: [...state.folders, action.folder] }
       break
+    case 'MOVE_CASES': {
+      const ids = new Set(action.caseIds)
+      const now = new Date().toISOString()
+      next = {
+        ...state,
+        cases: state.cases.map((c) =>
+          ids.has(c.id) ? { ...c, folderId: action.targetFolderId, updatedAt: now } : c,
+        ),
+      }
+      break
+    }
+    case 'COPY_CASES': {
+      const sources = action.caseIds
+        .map((id) => state.cases.find((c) => c.id === id))
+        .filter((c): c is Case => !!c)
+      if (sources.length === 0) return state
+      const now = new Date().toISOString()
+      let nextNum = state.nextCaseNumByProject[action.targetProjectId] ?? 1
+      let nextPos = state.cases
+        .filter((c) => c.projectId === action.targetProjectId)
+        .reduce((m, c) => Math.max(m, c.position ?? 0), 0)
+      const crossProject = sources.some((c) => c.projectId !== action.targetProjectId)
+      const copies: Case[] = sources.map((src) => {
+        nextPos += 1
+        const copy: Case = {
+          ...src,
+          id: newId('case'),
+          caseKey: formatCaseKey(nextNum),
+          projectId: action.targetProjectId,
+          folderId: action.targetFolderId,
+          createdAt: now,
+          updatedAt: now,
+          position: nextPos,
+          archivedAt: undefined,
+          tags: action.keepTags ? src.tags : [],
+          // Requirements are project-scoped — links can only be kept same-project.
+          requirementIds: action.keepRequirements && !crossProject ? src.requirementIds : [],
+          steps: src.steps.map((s) => ({ ...s, id: newId('step'), comments: [] })),
+          generalComments: [],
+        }
+        nextNum += 1
+        return copy
+      })
+      next = {
+        ...state,
+        cases: [...state.cases, ...copies],
+        nextCaseNumByProject: { ...state.nextCaseNumByProject, [action.targetProjectId]: nextNum },
+      }
+      break
+    }
+    case 'REORDER_CASES': {
+      const moving = new Set(action.caseIds)
+      const projectCases = state.cases
+        .filter((c) => c.projectId === state.activeProjectId && !moving.has(c.id))
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      const beforePos = action.beforeCaseId
+        ? projectCases.find((c) => c.id === action.beforeCaseId)?.position ?? null
+        : null
+      let insertAfter: number
+      if (beforePos == null) {
+        insertAfter = projectCases.reduce((m, c) => Math.max(m, c.position ?? 0), 0)
+      } else {
+        const beforeIdx = projectCases.findIndex((c) => c.id === action.beforeCaseId)
+        insertAfter = beforeIdx > 0 ? projectCases[beforeIdx - 1].position ?? 0 : 0
+      }
+      const span = beforePos == null ? 1 : (beforePos - insertAfter) / (action.caseIds.length + 1)
+      const positionById = new Map<string, number>()
+      action.caseIds.forEach((id, i) => {
+        positionById.set(id, insertAfter + span * (i + 1))
+      })
+      next = {
+        ...state,
+        cases: state.cases.map((c) =>
+          positionById.has(c.id)
+            ? { ...c, position: positionById.get(c.id)!, folderId: action.targetFolderId }
+            : c,
+        ),
+      }
+      break
+    }
+    case 'ASSIGN_CASES': {
+      const ids = new Set(action.caseIds)
+      const now = new Date().toISOString()
+      next = {
+        ...state,
+        cases: state.cases.map((c) => (ids.has(c.id) ? { ...c, assignee: action.assignee, updatedAt: now } : c)),
+      }
+      break
+    }
+    case 'ARCHIVE_CASES': {
+      const ids = new Set(action.caseIds)
+      const now = new Date().toISOString()
+      next = {
+        ...state,
+        cases: state.cases.map((c) => (ids.has(c.id) ? { ...c, archivedAt: now } : c)),
+      }
+      break
+    }
+    case 'UNARCHIVE_CASES': {
+      const ids = new Set(action.caseIds)
+      // Also unarchive ancestor folders so restored cases are reachable again.
+      const foldersToRestore = new Set<string>()
+      for (const c of state.cases) {
+        if (!ids.has(c.id)) continue
+        let folderId = c.folderId ?? null
+        let guard = 0
+        while (folderId && guard < 50) {
+          const f = state.folders.find((x) => x.id === folderId)
+          if (!f) break
+          if (f.archivedAt) foldersToRestore.add(f.id)
+          folderId = f.parentId ?? null
+          guard += 1
+        }
+      }
+      next = {
+        ...state,
+        cases: state.cases.map((c) => (ids.has(c.id) ? { ...c, archivedAt: undefined } : c)),
+        folders: state.folders.map((f) =>
+          foldersToRestore.has(f.id) ? { ...f, archivedAt: undefined } : f,
+        ),
+      }
+      break
+    }
+    case 'UPDATE_FOLDER': {
+      next = {
+        ...state,
+        folders: state.folders.map((f) => (f.id === action.folderId ? { ...f, ...action.patch } : f)),
+      }
+      break
+    }
+    case 'MOVE_FOLDER': {
+      // Guard against re-nesting a folder into itself or its own subtree.
+      if (action.newParentId) {
+        let cur: string | null | undefined = action.newParentId
+        let guard = 0
+        while (cur && guard < 50) {
+          if (cur === action.folderId) return state
+          cur = state.folders.find((f) => f.id === cur)?.parentId
+          guard += 1
+        }
+      }
+      next = {
+        ...state,
+        folders: state.folders.map((f) =>
+          f.id === action.folderId ? { ...f, parentId: action.newParentId } : f,
+        ),
+      }
+      break
+    }
+    case 'COPY_FOLDER': {
+      const source = state.folders.find((f) => f.id === action.folderId)
+      if (!source) return state
+      const projectId = source.projectId
+      // Collect subtree folders breadth-first.
+      const subtree: Folder[] = []
+      const queue = [source]
+      while (queue.length > 0) {
+        const f = queue.shift()!
+        subtree.push(f)
+        queue.push(...state.folders.filter((x) => x.parentId === f.id))
+      }
+      const idMap = new Map<string, string>()
+      const newFolders: Folder[] = subtree.map((f) => {
+        const cloneId = newId('folder')
+        idMap.set(f.id, cloneId)
+        return {
+          ...f,
+          id: cloneId,
+          name: f.id === source.id ? `${f.name} (copy)` : f.name,
+          parentId: f.id === source.id ? action.targetParentId : idMap.get(f.parentId ?? '') ?? action.targetParentId,
+          archivedAt: undefined,
+        }
+      })
+      const subtreeIds = new Set(subtree.map((f) => f.id))
+      const sourceCases = state.cases.filter((c) => c.folderId && subtreeIds.has(c.folderId) && !c.archivedAt)
+      const now = new Date().toISOString()
+      let nextNum = state.nextCaseNumByProject[projectId] ?? 1
+      let nextPos = state.cases
+        .filter((c) => c.projectId === projectId)
+        .reduce((m, c) => Math.max(m, c.position ?? 0), 0)
+      const caseCopies: Case[] = sourceCases.map((src) => {
+        nextPos += 1
+        const copy: Case = {
+          ...src,
+          id: newId('case'),
+          caseKey: formatCaseKey(nextNum),
+          folderId: idMap.get(src.folderId!) ?? action.targetParentId,
+          createdAt: now,
+          updatedAt: now,
+          position: nextPos,
+          steps: src.steps.map((s) => ({ ...s, id: newId('step'), comments: [] })),
+          generalComments: [],
+        }
+        nextNum += 1
+        return copy
+      })
+      next = {
+        ...state,
+        folders: [...state.folders, ...newFolders],
+        cases: [...state.cases, ...caseCopies],
+        nextCaseNumByProject: { ...state.nextCaseNumByProject, [projectId]: nextNum },
+      }
+      break
+    }
+    case 'ARCHIVE_FOLDER': {
+      const now = new Date().toISOString()
+      const subtreeIds = new Set<string>([action.folderId])
+      let changed = true
+      while (changed) {
+        changed = false
+        for (const f of state.folders) {
+          if (f.parentId && subtreeIds.has(f.parentId) && !subtreeIds.has(f.id)) {
+            subtreeIds.add(f.id)
+            changed = true
+          }
+        }
+      }
+      next = {
+        ...state,
+        folders: state.folders.map((f) => (subtreeIds.has(f.id) ? { ...f, archivedAt: now } : f)),
+        cases: state.cases.map((c) =>
+          c.folderId && subtreeIds.has(c.folderId) ? { ...c, archivedAt: now } : c,
+        ),
+      }
+      break
+    }
     case 'ADD_PLAN': {
       next = {
         ...state,
@@ -824,6 +1063,16 @@ interface FreshContextValue {
   duplicatePlan: (planId: string) => { planKey: string; planId: string } | null
   spawnRunFromPlan: (planId: string, name: string, description?: string) => { runKey: string } | null
   addFolder: (name: string, parentId?: string | null) => string
+  moveCases: (caseIds: string[], targetFolderId: string | null) => void
+  copyCases: (input: { caseIds: string[]; targetProjectId: string; targetFolderId: string | null; keepTags: boolean; keepRequirements: boolean }) => void
+  reorderCases: (caseIds: string[], targetFolderId: string | null, beforeCaseId?: string) => void
+  assignCases: (caseIds: string[], assignee: string) => void
+  archiveCases: (caseIds: string[]) => void
+  unarchiveCases: (caseIds: string[]) => void
+  renameFolder: (folderId: string, name: string) => void
+  moveFolder: (folderId: string, newParentId: string | null) => void
+  copyFolder: (folderId: string, targetParentId: string | null) => void
+  archiveFolder: (folderId: string) => void
   isRunSealed: boolean
   activeSavedReports: SavedReport[]
   saveReport: (input: Omit<SavedReport, 'id' | 'projectId' | 'createdAt'>) => { reportId: string }
@@ -1023,6 +1272,49 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     },
     [state.activeProjectId],
   )
+
+  const moveCases = useCallback((caseIds: string[], targetFolderId: string | null) => {
+    dispatch({ type: 'MOVE_CASES', caseIds, targetFolderId })
+  }, [])
+
+  const copyCases = useCallback(
+    (input: { caseIds: string[]; targetProjectId: string; targetFolderId: string | null; keepTags: boolean; keepRequirements: boolean }) => {
+      dispatch({ type: 'COPY_CASES', ...input })
+    },
+    [],
+  )
+
+  const reorderCases = useCallback((caseIds: string[], targetFolderId: string | null, beforeCaseId?: string) => {
+    dispatch({ type: 'REORDER_CASES', caseIds, targetFolderId, beforeCaseId })
+  }, [])
+
+  const assignCases = useCallback((caseIds: string[], assignee: string) => {
+    dispatch({ type: 'ASSIGN_CASES', caseIds, assignee })
+  }, [])
+
+  const archiveCases = useCallback((caseIds: string[]) => {
+    dispatch({ type: 'ARCHIVE_CASES', caseIds })
+  }, [])
+
+  const unarchiveCases = useCallback((caseIds: string[]) => {
+    dispatch({ type: 'UNARCHIVE_CASES', caseIds })
+  }, [])
+
+  const renameFolder = useCallback((folderId: string, name: string) => {
+    dispatch({ type: 'UPDATE_FOLDER', folderId, patch: { name } })
+  }, [])
+
+  const moveFolder = useCallback((folderId: string, newParentId: string | null) => {
+    dispatch({ type: 'MOVE_FOLDER', folderId, newParentId })
+  }, [])
+
+  const copyFolder = useCallback((folderId: string, targetParentId: string | null) => {
+    dispatch({ type: 'COPY_FOLDER', folderId, targetParentId })
+  }, [])
+
+  const archiveFolder = useCallback((folderId: string) => {
+    dispatch({ type: 'ARCHIVE_FOLDER', folderId })
+  }, [])
 
   const addPlan = useCallback(
     (title: string, description?: string) => {
@@ -1407,6 +1699,16 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       duplicatePlan,
       spawnRunFromPlan,
       addFolder,
+      moveCases,
+      copyCases,
+      reorderCases,
+      assignCases,
+      archiveCases,
+      unarchiveCases,
+      renameFolder,
+      moveFolder,
+      copyFolder,
+      archiveFolder,
       isRunSealed,
       activeSavedReports,
       saveReport,
@@ -1489,6 +1791,16 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       duplicatePlan,
       spawnRunFromPlan,
       addFolder,
+      moveCases,
+      copyCases,
+      reorderCases,
+      assignCases,
+      archiveCases,
+      unarchiveCases,
+      renameFolder,
+      moveFolder,
+      copyFolder,
+      archiveFolder,
       isRunSealed,
       activeSavedReports,
       saveReport,
