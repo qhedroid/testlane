@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedReport, ScheduledRun, TestPlan } from './demo-model'
+import type { Case, CaseExecution, DashboardLayout, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedReport, ScheduledRun, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -150,6 +150,7 @@ export type FreshAction =
   | { type: 'UPDATE_SCHEDULED_RUN'; scheduleId: string; patch: Partial<Pick<ScheduledRun, 'name' | 'cadence' | 'nextRunAt' | 'defaultAssignee' | 'active'>> }
   | { type: 'DELETE_SCHEDULED_RUN'; scheduleId: string }
   | { type: 'FIRE_DUE_SCHEDULED_RUNS'; now: string }
+  | { type: 'SET_DASHBOARD_LAYOUT'; actorUserId: string; layout: DashboardLayout }
   | { type: 'RECORD_EXPORT'; artifact: ExportArtifact }
   | { type: 'DELETE_EXPORT'; exportId: string }
   | { type: 'SAVE_REPORT'; report: SavedReport }
@@ -993,6 +994,16 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       next = { ...working, scheduledRunsById }
       break
     }
+    case 'SET_DASHBOARD_LAYOUT': {
+      next = {
+        ...state,
+        dashboardLayoutByActor: {
+          ...(state.dashboardLayoutByActor ?? {}),
+          [action.actorUserId]: action.layout,
+        },
+      }
+      break
+    }
     case 'RECORD_EXPORT': {
       next = {
         ...state,
@@ -1203,6 +1214,9 @@ interface FreshContextValue {
   deleteScheduledRun: (scheduleId: string) => void
   /** Simulated firing — returns how many schedules were due before dispatching. */
   checkDueScheduledRuns: () => { dueCount: number }
+  /** Dashboard layout for the current demo actor (Area J). */
+  dashboardLayout: DashboardLayout | undefined
+  setDashboardLayout: (layout: DashboardLayout) => void
   activeRequirements: Requirement[]
   activeDefects: Defect[]
   createRequirement: (input: { title: string; description?: string; status?: Requirement['status'] }) => { requirementKey: string; requirementId: string }
@@ -1557,6 +1571,22 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     return { dueCount }
   }, [state.scheduledRunsById])
 
+  const dashboardLayout = useMemo(
+    () => state.dashboardLayoutByActor?.[state.currentActorUserId ?? SEED_ADMIN_USER_ID],
+    [state.dashboardLayoutByActor, state.currentActorUserId],
+  )
+
+  const setDashboardLayout = useCallback(
+    (layout: DashboardLayout) => {
+      dispatch({
+        type: 'SET_DASHBOARD_LAYOUT',
+        actorUserId: state.currentActorUserId ?? SEED_ADMIN_USER_ID,
+        layout,
+      })
+    },
+    [state.currentActorUserId],
+  )
+
   const recordExport = useCallback((artifact: ExportArtifact) => {
     dispatch({ type: 'RECORD_EXPORT', artifact })
   }, [])
@@ -1884,6 +1914,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       updateScheduledRun,
       deleteScheduledRun,
       checkDueScheduledRuns,
+      dashboardLayout,
+      setDashboardLayout,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,
@@ -1982,6 +2014,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       updateScheduledRun,
       deleteScheduledRun,
       checkDueScheduledRuns,
+      dashboardLayout,
+      setDashboardLayout,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,

@@ -278,7 +278,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 19
+export const DEMO_SCHEMA_VERSION = 20
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -465,6 +465,14 @@ export interface DemoState {
   exportsById: Record<string, ExportArtifact>
   /** v19 — scheduled runs (simulated client-side firing). */
   scheduledRunsById: Record<string, ScheduledRun>
+  /** v20 — dashboard metric-card layout per demo actor (Area J). */
+  dashboardLayoutByActor: Record<string, DashboardLayout>
+}
+
+/** v20 — per-actor dashboard customisation: card order + hidden card ids. */
+export interface DashboardLayout {
+  order: string[]
+  hidden: string[]
 }
 
 export interface RunSummary {

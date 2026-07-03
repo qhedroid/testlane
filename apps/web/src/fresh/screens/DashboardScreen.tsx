@@ -106,13 +106,59 @@ function DashboardPlaceholder({ projectName }: { projectName: string }) {
   )
 }
 
+const DASH_CARD_IDS = ['activeRuns', 'passRate', 'openFailures', 'blockedCases', 'runCoverage'] as const
+type DashCardId = (typeof DASH_CARD_IDS)[number]
+
+const DASH_CARD_LABELS: Record<DashCardId, string> = {
+  activeRuns: 'Active Runs',
+  passRate: 'Pass Rate',
+  openFailures: 'Open Failures',
+  blockedCases: 'Blocked Cases',
+  runCoverage: 'Run Coverage',
+}
+
 function DemoDashboardView() {
   const projectHref = useProjectHref()
-  const { activeProject, state } = useFresh()
+  const { activeProject, state, dashboardLayout, setDashboardLayout, currentActor } = useFresh()
   const [cardFilter, setCardFilter] = useState<CardFilter>('all')
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [cardTabs, setCardTabs] = useState<Record<string, CardTab>>({})
   const [exportOpen, setExportOpen] = useState(false)
+  const [customising, setCustomising] = useState(false)
+
+  // Area J(b): per-actor card order + visibility, persisted via FreshProvider.
+  const cardOrder = useMemo<DashCardId[]>(() => {
+    const saved = (dashboardLayout?.order ?? []).filter((id): id is DashCardId =>
+      (DASH_CARD_IDS as readonly string[]).includes(id),
+    )
+    const missing = DASH_CARD_IDS.filter((id) => !saved.includes(id))
+    return [...saved, ...missing]
+  }, [dashboardLayout])
+  const hiddenCards = useMemo(
+    () => new Set((dashboardLayout?.hidden ?? []).filter((id) => (DASH_CARD_IDS as readonly string[]).includes(id))),
+    [dashboardLayout],
+  )
+
+  function persistLayout(order: DashCardId[], hidden: Set<string>) {
+    setDashboardLayout({ order: [...order], hidden: [...hidden] })
+  }
+
+  function moveCard(id: DashCardId, dir: -1 | 1) {
+    const idx = cardOrder.indexOf(id)
+    const target = idx + dir
+    if (target < 0 || target >= cardOrder.length) return
+    const next = [...cardOrder]
+    next.splice(idx, 1)
+    next.splice(target, 0, id)
+    persistLayout(next, hiddenCards)
+  }
+
+  function toggleCardHidden(id: DashCardId) {
+    const next = new Set(hiddenCards)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    persistLayout(cardOrder, next)
+  }
 
   const projectRunCount = useMemo(
     () => state.runs.filter((r) => r.projectId === activeProject.id && !r.archivedAt).length,
@@ -164,6 +210,14 @@ function DemoDashboardView() {
         searchPlaceholder="Search everything…"
         actions={
           <>
+            <button
+              type="button"
+              className={`btn${customising ? ' btn-p' : ''}`}
+              title={`Show, hide, or reorder metric cards — saved for ${currentActor?.name ?? 'the current actor'}`}
+              onClick={() => setCustomising((v) => !v)}
+            >
+              <i className={`ti ${customising ? 'ti-check' : 'ti-adjustments'}`} style={{ fontSize: 12 }} /> {customising ? 'Done' : 'Customise'}
+            </button>
             <button type="button" className="btn" onClick={() => setExportOpen(true)}><i className="ti ti-download" style={{ fontSize: 12 }} /> Export</button>
             <Link href={projectHref('testruns')} className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run</Link>
           </>
@@ -171,42 +225,43 @@ function DemoDashboardView() {
       />
       <PrototypeBanner />
       <div className="dash-wrap">
+        {customising ? (
+          <div className="dash-customise-note">
+            Customising metric cards for <strong>{currentActor?.name ?? 'current actor'}</strong> — use the eye to
+            show/hide and the arrows to reorder. Saved per actor in this browser.
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: 10, padding: '1px 7px', marginLeft: 8 }}
+              onClick={() => persistLayout([...DASH_CARD_IDS], new Set())}
+            >
+              Reset to default
+            </button>
+          </div>
+        ) : null}
         <div className="met-row">
-          <div className="mc c-blue">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: 'var(--accent)' }}>8</div><div className="ml">Active Runs</div></div>
-              <div className="mc-ic"><i className="ti ti-player-play" /></div>
-            </div>
-            <div className="mt">3 critical path &nbsp;·&nbsp; 1 stalled</div>
-          </div>
-          <div className="mc c-green">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#2E7D32' }}>74.2%</div><div className="ml">Pass Rate</div></div>
-              <div className="mc-ic"><i className="ti ti-trending-up" /></div>
-            </div>
-            <div className="mt mt-up">↑ 6.1 pp vs Sprint 43</div>
-          </div>
-          <div className="mc c-red">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#C62828' }}>23</div><div className="ml">Open Failures</div></div>
-              <div className="mc-ic"><i className="ti ti-alert-circle" /></div>
-            </div>
-            <div className="mt mt-dn">↑ 4 unlinked since yesterday</div>
-          </div>
-          <div className="mc c-amber">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#E65100' }}>7</div><div className="ml">Blocked Cases</div></div>
-              <div className="mc-ic"><i className="ti ti-ban" /></div>
-            </div>
-            <div className="mt">2 without defect &nbsp;·&nbsp; action needed</div>
-          </div>
-          <div className="mc c-grey">
-            <div className="mc-head">
-              <div><div className="mv">68%</div><div className="ml">Run Coverage</div></div>
-              <div className="mc-ic"><i className="ti ti-chart-donut" /></div>
-            </div>
-            <div className="mt mt-up">312 of 458 cases executed</div>
-          </div>
+          {cardOrder.map((id) => {
+            if (!customising && hiddenCards.has(id)) return null
+            const card = renderDashCard(id)
+            return (
+              <div key={id} className={`dash-card-wrap${customising && hiddenCards.has(id) ? ' dash-card-hidden' : ''}`}>
+                {customising ? (
+                  <div className="dash-card-ctl">
+                    <button type="button" title="Move left" onClick={() => moveCard(id, -1)} disabled={cardOrder.indexOf(id) === 0}>
+                      <i className="ti ti-chevron-left" />
+                    </button>
+                    <button type="button" title={hiddenCards.has(id) ? `Show ${DASH_CARD_LABELS[id]}` : `Hide ${DASH_CARD_LABELS[id]}`} onClick={() => toggleCardHidden(id)}>
+                      <i className={`ti ${hiddenCards.has(id) ? 'ti-eye-off' : 'ti-eye'}`} />
+                    </button>
+                    <button type="button" title="Move right" onClick={() => moveCard(id, 1)} disabled={cardOrder.indexOf(id) === cardOrder.length - 1}>
+                      <i className="ti ti-chevron-right" />
+                    </button>
+                  </div>
+                ) : null}
+                {card}
+              </div>
+            )
+          })}
         </div>
 
         <div className="dash-body" style={{ minHeight: 0, overflow: 'hidden' }}>
@@ -316,6 +371,62 @@ function DemoDashboardView() {
       <ExportDrawer open={exportOpen} onClose={() => setExportOpen(false)} context={exportContext} />
     </div>
   )
+}
+
+/** Static seed metric cards, addressable by id for the customise mode (Area J). */
+function renderDashCard(id: DashCardId) {
+  switch (id) {
+    case 'activeRuns':
+      return (
+        <div className="mc c-blue">
+          <div className="mc-head">
+            <div><div className="mv" style={{ color: 'var(--accent)' }}>8</div><div className="ml">Active Runs</div></div>
+            <div className="mc-ic"><i className="ti ti-player-play" /></div>
+          </div>
+          <div className="mt">3 critical path &nbsp;·&nbsp; 1 stalled</div>
+        </div>
+      )
+    case 'passRate':
+      return (
+        <div className="mc c-green">
+          <div className="mc-head">
+            <div><div className="mv" style={{ color: '#2E7D32' }}>74.2%</div><div className="ml">Pass Rate</div></div>
+            <div className="mc-ic"><i className="ti ti-trending-up" /></div>
+          </div>
+          <div className="mt mt-up">↑ 6.1 pp vs Sprint 43</div>
+        </div>
+      )
+    case 'openFailures':
+      return (
+        <div className="mc c-red">
+          <div className="mc-head">
+            <div><div className="mv" style={{ color: '#C62828' }}>23</div><div className="ml">Open Failures</div></div>
+            <div className="mc-ic"><i className="ti ti-alert-circle" /></div>
+          </div>
+          <div className="mt mt-dn">↑ 4 unlinked since yesterday</div>
+        </div>
+      )
+    case 'blockedCases':
+      return (
+        <div className="mc c-amber">
+          <div className="mc-head">
+            <div><div className="mv" style={{ color: '#E65100' }}>7</div><div className="ml">Blocked Cases</div></div>
+            <div className="mc-ic"><i className="ti ti-ban" /></div>
+          </div>
+          <div className="mt">2 without defect &nbsp;·&nbsp; action needed</div>
+        </div>
+      )
+    case 'runCoverage':
+      return (
+        <div className="mc c-grey">
+          <div className="mc-head">
+            <div><div className="mv">68%</div><div className="ml">Run Coverage</div></div>
+            <div className="mc-ic"><i className="ti ti-chart-donut" /></div>
+          </div>
+          <div className="mt mt-up">312 of 458 cases executed</div>
+        </div>
+      )
+  }
 }
 
 function RunCardItem({

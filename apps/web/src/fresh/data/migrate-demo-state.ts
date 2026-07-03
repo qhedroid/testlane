@@ -116,6 +116,7 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     savedReportsById: {},
     exportsById: {},
     scheduledRunsById: {},
+    dashboardLayoutByActor: {},
   }
 }
 
@@ -414,6 +415,14 @@ export function migrateDemoState(raw: unknown): DemoState {
         schemaVersion: 19,
       }
     }
+    // v19 → v20: per-actor dashboard layout preferences
+    if (state.schemaVersion < 20) {
+      state = {
+        ...state,
+        dashboardLayoutByActor: state.dashboardLayoutByActor ?? {},
+        schemaVersion: 20,
+      }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }
@@ -427,6 +436,7 @@ export function migrateDemoState(raw: unknown): DemoState {
       savedReportsById: state.savedReportsById ?? {},
       exportsById: state.exportsById ?? {},
       scheduledRunsById: state.scheduledRunsById ?? {},
+      dashboardLayoutByActor: state.dashboardLayoutByActor ?? {},
     }
     return state
   } catch (err) {

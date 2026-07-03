@@ -796,3 +796,17 @@ tr.drag-insert td{border-top:2px solid var(--accent)!important}
 .rtf-link:hover{text-decoration:underline}
 .rtf-inline,.rtf-inline p{display:inline}
 .rtf-inline p{margin:0}
+
+/* ── Dashboard customise + effectiveness (Area J, MVP close-out) ── */
+.dash-customise-note{display:flex;align-items:center;font-size:11px;color:var(--text2);background:var(--accent-lt);border:1px solid var(--border);border-radius:5px;padding:6px 10px;margin-bottom:8px;gap:4px;flex-wrap:wrap}
+.dash-card-wrap{position:relative}
+.dash-card-hidden{opacity:.4}
+.dash-card-ctl{position:absolute;top:3px;right:3px;z-index:5;display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px}
+.dash-card-ctl button{border:none;background:none;color:var(--text2);cursor:pointer;padding:1px 4px;border-radius:3px;font-size:11px;display:inline-flex}
+.dash-card-ctl button:hover:not(:disabled){background:var(--surface2);color:var(--text)}
+.dash-card-ctl button:disabled{opacity:.35;cursor:default}
+.rp-eff-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px}
+.rp-eff-cell{border:1px solid var(--border);border-radius:5px;padding:10px 12px}
+.rp-eff-val{font-size:20px;font-weight:800;font-family:var(--mono);color:var(--text)}
+.rp-eff-lbl{font-size:11px;font-weight:600;color:var(--text2);margin-top:2px}
+.rp-eff-note{font-size:10px;color:var(--text3);margin-top:3px;line-height:1.4}

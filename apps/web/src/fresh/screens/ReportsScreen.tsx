@@ -16,6 +16,7 @@ import {
 } from '../data/export-utils'
 import {
   computeDrillDownRows,
+  computeEffectiveness,
   computeReportKpis,
   computeScopedRunStats,
   computeTopFailingCases,
@@ -110,6 +111,9 @@ export function ReportsScreen() {
     () => (drill ? computeDrillDownRows(stats, activeCases, activeFolders, drill) : []),
     [drill, stats, activeCases, activeFolders],
   )
+
+  // Area J: effectiveness metrics over the scoped runs
+  const effectiveness = useMemo(() => computeEffectiveness(stats), [stats])
 
   // Area H: requirement coverage rollup (project-wide, derived)
   const requirementCoverage = useMemo(
@@ -708,6 +712,50 @@ export function ReportsScreen() {
               )}
             </>
           )}
+
+          {/* Effectiveness (Area J) — only honestly derivable metrics */}
+          {scopedRuns.length > 0 ? (
+            <div className="panel" style={{ flexShrink: 0 }}>
+              <div className="pnl-hd">
+                <i className="ti ti-target-arrow" style={{ fontSize: 13, color: 'var(--accent)' }} />
+                <span className="pnl-ttl">Effectiveness</span>
+                <span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 'auto' }}>
+                  over runs in scope · “escaped defects” is not shown — the prototype data model has no release boundary to derive it from
+                </span>
+              </div>
+              <div className="rp-eff-row">
+                <div className="rp-eff-cell">
+                  <div className="rp-eff-val">
+                    {effectiveness.defectsPer100Executions === null ? '—' : effectiveness.defectsPer100Executions.toFixed(1)}
+                  </div>
+                  <div className="rp-eff-lbl">Defects per 100 executions</div>
+                  <div className="rp-eff-note">defect links on executed cases in scope</div>
+                </div>
+                <div className="rp-eff-cell">
+                  <div className="rp-eff-val">
+                    {effectiveness.flakyCaseRate === null ? '—' : `${effectiveness.flakyCaseRate.toFixed(1)}%`}
+                  </div>
+                  <div className="rp-eff-lbl">Flaky-case rate</div>
+                  <div className="rp-eff-note">
+                    {effectiveness.casesWithMultipleExecutions === 0
+                      ? 'needs cases executed in ≥2 runs in scope'
+                      : `${effectiveness.flakyCaseCount} of ${effectiveness.casesWithMultipleExecutions} multi-run cases had both a Pass and a Fail`}
+                  </div>
+                </div>
+                <div className="rp-eff-cell">
+                  <div className="rp-eff-val">
+                    {effectiveness.avgHoursToFirstResult === null ? '—' : `${effectiveness.avgHoursToFirstResult.toFixed(1)} h`}
+                  </div>
+                  <div className="rp-eff-lbl">Avg. time to first result</div>
+                  <div className="rp-eff-note">
+                    {effectiveness.runsWithLogData === 0
+                      ? 'no execution-log timestamps in scope'
+                      : `from run creation, across ${effectiveness.runsWithLogData} run${effectiveness.runsWithLogData === 1 ? '' : 's'} with log data`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {/* Requirements coverage (Area H) — project-wide, derived from latest results */}
           <div className="panel" style={{ flexShrink: 0 }}>

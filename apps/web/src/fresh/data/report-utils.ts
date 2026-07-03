@@ -242,6 +242,75 @@ export function computeDrillDownRows(
   return rows
 }
 
+/**
+ * Test effectiveness metrics (Area J) — only metrics honestly derivable from
+ * existing state. "Escaped defects" (found post-release vs in-testing) is
+ * deliberately NOT computed: the data model cannot distinguish release
+ * boundaries, so any number would be fabricated.
+ */
+export interface EffectivenessMetrics {
+  /** Defect links per 100 executed cases across scope, or null when nothing executed. */
+  defectsPer100Executions: number | null
+  /** Cases whose executions in scope include both a Pass and a Fail / cases with ≥2 executions. */
+  flakyCaseRate: number | null
+  flakyCaseCount: number
+  casesWithMultipleExecutions: number
+  /** Average hours from run creation to its first recorded result, from executionLog. */
+  avgHoursToFirstResult: number | null
+  runsWithLogData: number
+}
+
+export function computeEffectiveness(stats: ScopedRunStat[]): EffectivenessMetrics {
+  let executed = 0
+  let defectLinks = 0
+  const statusesByCase = new Map<string, Set<ExecStatus>>()
+  const executionCountByCase = new Map<string, number>()
+  let firstResultHoursTotal = 0
+  let runsWithLogData = 0
+
+  for (const s of stats) {
+    for (const caseId of s.run.caseOrder) {
+      const ex = s.run.executions[caseId]
+      if (!ex || ex.status === 'Not run') continue
+      executed += 1
+      defectLinks += (ex.defects ?? []).length
+      executionCountByCase.set(caseId, (executionCountByCase.get(caseId) ?? 0) + 1)
+      const set = statusesByCase.get(caseId) ?? new Set<ExecStatus>()
+      set.add(ex.status)
+      statusesByCase.set(caseId, set)
+    }
+    const firstResult = (s.run.executionLog ?? [])
+      .filter((e) => e.event !== 'created')
+      .map((e) => e.at)
+      .sort()[0]
+    if (firstResult) {
+      const hours = (new Date(firstResult).getTime() - new Date(s.run.createdAt).getTime()) / 3600000
+      if (hours >= 0) {
+        firstResultHoursTotal += hours
+        runsWithLogData += 1
+      }
+    }
+  }
+
+  let flakyCaseCount = 0
+  let casesWithMultipleExecutions = 0
+  for (const [caseId, count] of executionCountByCase) {
+    if (count < 2) continue
+    casesWithMultipleExecutions += 1
+    const statuses = statusesByCase.get(caseId)
+    if (statuses?.has('Passed') && statuses?.has('Failed')) flakyCaseCount += 1
+  }
+
+  return {
+    defectsPer100Executions: executed > 0 ? (defectLinks / executed) * 100 : null,
+    flakyCaseRate: casesWithMultipleExecutions > 0 ? (flakyCaseCount / casesWithMultipleExecutions) * 100 : null,
+    flakyCaseCount,
+    casesWithMultipleExecutions,
+    avgHoursToFirstResult: runsWithLogData > 0 ? firstResultHoursTotal / runsWithLogData : null,
+    runsWithLogData,
+  }
+}
+
 /** Requirement coverage rollup (Area H). Derived entirely from existing state. */
 export type RequirementCoverageStatus =
   | 'Uncovered'
