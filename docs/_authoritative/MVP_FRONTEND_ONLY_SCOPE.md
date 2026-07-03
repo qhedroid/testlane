@@ -25,7 +25,7 @@ Deliver a **stakeholder-demoable UI** covering the flow:
 | Area | Deliverable | Persistence today |
 |------|-------------|-------------------|
 | **Shell & navigation** | Sidebar, topbar, module switcher, Cmd+K search, `PrototypeBanner` | Client state |
-| **Dashboard** | Metrics, run cards, attention, coverage | Static seed |
+| **Dashboard** | Metrics, run cards, attention, coverage | FreshProvider (localStorage) |
 | **Test cases** | Folder tree, CRUD, steps, filters, detail panel | localStorage (`relay-demo-v2`) |
 | **Test plans** | List, detail tabs, spawn-run navigation | Static seed |
 | **Test runs (demo)** | Shaun v1.2 execution UX at `/runs` — steps, results, defects, shortcuts | localStorage |

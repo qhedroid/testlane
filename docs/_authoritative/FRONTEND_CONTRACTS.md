@@ -12,11 +12,11 @@ This document defines what each visible screen shows, what data powers it today,
 
 **Current state:** Frontend prototype only.
 
-**Real/API-backed, mock-backed, or placeholder:** Mock-backed.
+**Real/API-backed, mock-backed, or placeholder:** Mock-backed (client-side aggregation from localStorage state).
 
-**Data source:** `apps/web/src/fresh/data/seed.ts` (`RUN_CARDS`, `ATTENTION_ITEMS`, `COVERAGE_ITEMS`) — rendered only when `activeProject.seedTemplate === 'demo'` (`projectHasDemoDashboard` in `demo-project-utils.ts`).
+**Data source:** `FreshProvider` — `activeRuns` (unsealed, unarchived), `activeCases`, `activeFolders`, `defectsById` via selectors in `DashboardScreen.tsx`.
 
-**Data shown:** When demo template: active run count cards, sprint subtitle, expandable run cards (overview/assignees/defects tabs), needs-attention list, module coverage bars. **Non-demo projects:** zeroed summary metric cards + “Dashboard coming soon” placeholder (no seeded metrics).
+**Data shown:** Five metric cards (Active Runs, Pass Rate, Open Failures, Blocked Cases, Run Coverage); expandable active-run cards (Overview/Assignees/Defects tabs); needs-attention list (unlinked failures); coverage-by-root-folder bars. **Zero test cases:** onboarding empty state. **No backend APIs wired.**
 
 **User actions:** Expand/collapse run cards; switch card tabs; navigate to `/:projectKey/testruns` via New Run / attention links; export button (visual only).
 
@@ -321,9 +321,9 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 |------|---------|
 | `apps/web/src/lib/relay/mock-data.ts` | Central mock exports + defects/settings data |
 | `apps/web/src/lib/relay/prototype-contracts.ts` | Route metadata for agents |
-| `apps/web/src/fresh/data/seed.ts` | Dashboard seed metrics (demo-template projects only) |
+| `apps/web/src/fresh/data/seed.ts` | Legacy dashboard seed arrays (unused by `DashboardScreen`; retained for reference) |
 | `apps/web/src/fresh/data/demo-template.ts` | Immutable demo template + clone helpers |
-| `apps/web/src/fresh/data/demo-project-utils.ts` | Dashboard scoping + demo project clone |
+| `apps/web/src/fresh/data/demo-project-utils.ts` | Demo project clone helpers |
 | `apps/web/src/fresh/data/FreshProvider.tsx` | In-memory state (`relay-demo-v2`, schema v4) |
 | `apps/web/src/fresh/data/run-utils.ts` | Run key helpers, v4 migration |
 | `apps/web/src/fresh/components/TestRunsTopbar.tsx` | Seal, edit, report, More… menu |

@@ -8,26 +8,175 @@ import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
-import { projectHasDemoDashboard } from '../data/demo-project-utils'
-import { ATTENTION_ITEMS, COVERAGE_ITEMS, DEFECT_NAMES, RUN_CARDS } from '../data/seed'
-import type { RunCard } from '../data/types'
+import type { Case, CasePriority, DemoRun, Folder } from '../data/demo-model'
+import {
+  casesInFolder,
+  formatRelativeTime,
+  PRIORITY_TO_LEGACY,
+  runSummary,
+} from '../data/demo-model'
+import { displayAssigneeName } from '../data/team-users'
 import { PRI_MAP } from '../data/ui-utils'
 
-type CardFilter = 'all' | 'critical' | 'stalled'
+type CardFilter = 'all' | 'critical'
 type CardTab = 'overview' | 'assignees' | 'defects'
 
-export function DashboardScreen() {
-  const { activeProject } = useFresh()
-  const showDemoDashboard = projectHasDemoDashboard(activeProject)
-
-  if (!showDemoDashboard) {
-    return <DashboardPlaceholder projectName={activeProject?.name ?? 'Project'} />
-  }
-
-  return <DemoDashboardView />
+interface DashboardRunCard {
+  id: string
+  name: string
+  plan: string
+  pass: number
+  fail: number
+  blocked: number
+  notrun: number
+  total: number
+  assignees: string[]
+  defects: string[]
 }
 
-function DashboardPlaceholder({ projectName }: { projectName: string }) {
+interface UnlinkedFailure {
+  key: string
+  title: string
+  priority: CasePriority
+  runName: string
+  testedBy?: string
+  testedAt?: string
+}
+
+interface CoverageRow {
+  label: string
+  pct: number
+  color: string
+}
+
+const ATTENTION_CAP = 6
+
+const PRIORITY_STRIPE: Record<CasePriority, string> = {
+  Critical: 'crit',
+  High: 'high',
+  Medium: 'med',
+  Low: 'low',
+}
+
+function getDashboardActiveRuns(runs: DemoRun[]): DemoRun[] {
+  return runs.filter((r) => !r.sealed && !r.archivedAt)
+}
+
+function collectUnlinkedFailures(runs: DemoRun[], cases: Case[]): UnlinkedFailure[] {
+  const caseById = new Map(cases.map((c) => [c.id, c]))
+  const items: UnlinkedFailure[] = []
+  for (const run of runs) {
+    for (const caseId of run.caseOrder) {
+      const ex = run.executions[caseId]
+      if (ex?.status === 'Failed' && (!ex.defects || ex.defects.length === 0)) {
+        const c = caseById.get(caseId)
+        if (c) {
+          items.push({
+            key: `${run.id}:${caseId}`,
+            title: c.title,
+            priority: c.priority,
+            runName: run.name,
+            testedBy: ex.testedBy,
+            testedAt: ex.testedAt,
+          })
+        }
+      }
+    }
+  }
+  return items.sort((a, b) => {
+    const aTime = a.testedAt ? new Date(a.testedAt).getTime() : 0
+    const bTime = b.testedAt ? new Date(b.testedAt).getTime() : 0
+    if (bTime !== aTime) return bTime - aTime
+    return a.runName.localeCompare(b.runName)
+  })
+}
+
+function defectIdsForRun(run: DemoRun): string[] {
+  const ids = new Set<string>()
+  for (const caseId of run.caseOrder) {
+    for (const id of run.executions[caseId]?.defects ?? []) ids.add(id)
+  }
+  return [...ids]
+}
+
+function assigneesForRun(run: DemoRun): string[] {
+  const names = new Set<string>()
+  for (const caseId of run.caseOrder) {
+    const assignee = run.executions[caseId]?.assignee
+    if (assignee?.trim()) names.add(assignee.trim())
+  }
+  return [...names]
+}
+
+function runToCard(run: DemoRun): DashboardRunCard {
+  const summary = runSummary(run)
+  return {
+    id: run.id,
+    name: run.name,
+    plan: run.planName ?? '—',
+    pass: summary.passed,
+    fail: summary.failed,
+    blocked: summary.blocked,
+    notrun: summary.notRun + summary.skipped,
+    total: summary.total,
+    assignees: assigneesForRun(run),
+    defects: defectIdsForRun(run),
+  }
+}
+
+function coverageColor(pct: number): string {
+  if (pct >= 80) return '#2E7D32'
+  if (pct <= 50) return '#C62828'
+  return 'var(--accent)'
+}
+
+function computeCoverageRows(
+  activeCases: Case[],
+  activeFolders: Folder[],
+  dashboardActiveRuns: DemoRun[],
+): CoverageRow[] {
+  const coveredCaseIds = new Set<string>()
+  for (const run of dashboardActiveRuns) {
+    for (const caseId of run.caseOrder) {
+      const status = run.executions[caseId]?.status ?? 'Not run'
+      if (status !== 'Not run') coveredCaseIds.add(caseId)
+    }
+  }
+
+  const rows: CoverageRow[] = []
+  const rootFolders = activeFolders
+    .filter((f) => f.parentId == null)
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  for (const folder of rootFolders) {
+    const folderCases = casesInFolder(activeCases, activeFolders, folder.id)
+    if (folderCases.length === 0) continue
+    const covered = folderCases.filter((c) => coveredCaseIds.has(c.id)).length
+    const pct = Math.round((covered / folderCases.length) * 100)
+    rows.push({ label: folder.name, pct, color: coverageColor(pct) })
+  }
+
+  const unfiledCases = casesInFolder(activeCases, activeFolders, '__unfiled__')
+  if (unfiledCases.length > 0) {
+    const covered = unfiledCases.filter((c) => coveredCaseIds.has(c.id)).length
+    const pct = Math.round((covered / unfiledCases.length) * 100)
+    rows.push({ label: 'Cases in no folder', pct, color: coverageColor(pct) })
+  }
+
+  return rows.sort((a, b) => a.pct - b.pct)
+}
+
+export function DashboardScreen() {
+  const { activeProject, activeCases } = useFresh()
+
+  if (activeCases.length === 0) {
+    return <DashboardEmptyCases projectName={activeProject?.name ?? 'Project'} />
+  }
+
+  return <DashboardView />
+}
+
+function DashboardEmptyCases({ projectName }: { projectName: string }) {
   const projectHref = useProjectHref()
 
   return (
@@ -37,51 +186,13 @@ function DashboardPlaceholder({ projectName }: { projectName: string }) {
         subtitle={projectName}
         searchPlaceholder="Search everything…"
         actions={
-          <Link href={projectHref('testruns')} className="btn btn-p">
-            <i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run
+          <Link href={projectHref('cases')} className="btn btn-p">
+            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add test cases
           </Link>
         }
       />
       <PrototypeBanner />
       <div className="dash-wrap">
-        <div className="met-row">
-          <div className="mc c-blue">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: 'var(--accent)' }}>0</div><div className="ml">Active Runs</div></div>
-              <div className="mc-ic"><i className="ti ti-player-play" /></div>
-            </div>
-            <div className="mt">No active runs yet</div>
-          </div>
-          <div className="mc c-green">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#2E7D32' }}>—</div><div className="ml">Pass Rate</div></div>
-              <div className="mc-ic"><i className="ti ti-trending-up" /></div>
-            </div>
-            <div className="mt">No execution data</div>
-          </div>
-          <div className="mc c-red">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#C62828' }}>0</div><div className="ml">Open Failures</div></div>
-              <div className="mc-ic"><i className="ti ti-alert-circle" /></div>
-            </div>
-            <div className="mt">No failures recorded</div>
-          </div>
-          <div className="mc c-amber">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#E65100' }}>0</div><div className="ml">Blocked Cases</div></div>
-              <div className="mc-ic"><i className="ti ti-ban" /></div>
-            </div>
-            <div className="mt">No blocked cases</div>
-          </div>
-          <div className="mc c-grey">
-            <div className="mc-head">
-              <div><div className="mv">0%</div><div className="ml">Run Coverage</div></div>
-              <div className="mc-ic"><i className="ti ti-chart-donut" /></div>
-            </div>
-            <div className="mt">0 cases executed</div>
-          </div>
-        </div>
-
         <div
           className="panel"
           style={{
@@ -95,37 +206,97 @@ function DashboardPlaceholder({ projectName }: { projectName: string }) {
           }}
         >
           <i className="ti ti-layout-dashboard" style={{ fontSize: 32, color: 'var(--text3)', opacity: 0.6 }} />
-          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Dashboard coming soon</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Add your first test cases</div>
           <div style={{ fontSize: 12.5, color: 'var(--text3)', maxWidth: 360 }}>
-            Metrics and run insights for {projectName} will appear here once dashboard features are available.
+            Metrics and run insights for {projectName} will appear here once you add test cases and start runs.
           </div>
+          <Link href={projectHref('cases')} className="btn btn-p" style={{ marginTop: 8 }}>
+            Go to Test Cases
+          </Link>
         </div>
       </div>
     </div>
   )
 }
 
-function DemoDashboardView() {
+function DashboardView() {
   const projectHref = useProjectHref()
+  const { activeProject, activeRuns, activeCases, activeFolders, getDefect } = useFresh()
   const [cardFilter, setCardFilter] = useState<CardFilter>('all')
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [cardTabs, setCardTabs] = useState<Record<string, CardTab>>({})
 
+  const dashboardActiveRuns = useMemo(() => getDashboardActiveRuns(activeRuns), [activeRuns])
+
+  const unlinkedFailures = useMemo(
+    () => collectUnlinkedFailures(dashboardActiveRuns, activeCases),
+    [dashboardActiveRuns, activeCases],
+  )
+
+  const metrics = useMemo(() => {
+    let totalPassed = 0
+    let totalFailed = 0
+    let totalBlocked = 0
+    let totalSkipped = 0
+    let totalExecuted = 0
+    let totalCases = 0
+    let blockedCount = 0
+
+    for (const run of dashboardActiveRuns) {
+      const s = runSummary(run)
+      totalPassed += s.passed
+      totalFailed += s.failed
+      totalBlocked += s.blocked
+      totalSkipped += s.skipped
+      totalExecuted += s.passed + s.failed + s.blocked + s.skipped
+      totalCases += s.total
+      blockedCount += s.blocked
+    }
+
+    const executedForPassRate = totalPassed + totalFailed + totalBlocked + totalSkipped
+    const passRate =
+      executedForPassRate > 0 ? `${((totalPassed / executedForPassRate) * 100).toFixed(1)}%` : '—'
+    const runCoveragePct = totalCases > 0 ? Math.round((totalExecuted / totalCases) * 100) : 0
+
+    return {
+      activeRunCount: dashboardActiveRuns.length,
+      passRate,
+      openFailures: unlinkedFailures.length,
+      blockedCases: blockedCount,
+      runCoveragePct,
+      totalExecuted,
+      totalCases,
+    }
+  }, [dashboardActiveRuns, unlinkedFailures.length])
+
+  const runCards = useMemo(
+    () => dashboardActiveRuns.map(runToCard),
+    [dashboardActiveRuns],
+  )
+
   const filteredRuns = useMemo(() => {
-    if (cardFilter === 'stalled') return RUN_CARDS.filter((r) => r.stalled)
-    if (cardFilter === 'critical') return RUN_CARDS.filter((r) => r.fail > 10)
-    return RUN_CARDS
-  }, [cardFilter])
+    if (cardFilter === 'critical') return runCards.filter((r) => r.fail > 0)
+    return runCards
+  }, [cardFilter, runCards])
 
   const [leftRuns, rightRuns] = useMemo(() => {
-    const left: RunCard[] = []
-    const right: RunCard[] = []
+    const left: DashboardRunCard[] = []
+    const right: DashboardRunCard[] = []
     filteredRuns.forEach((run, i) => {
       if (i % 2 === 0) left.push(run)
       else right.push(run)
     })
     return [left, right]
   }, [filteredRuns])
+
+  const coverageRows = useMemo(
+    () => computeCoverageRows(activeCases, activeFolders, dashboardActiveRuns),
+    [activeCases, activeFolders, dashboardActiveRuns],
+  )
+
+  const visibleAttention = unlinkedFailures.slice(0, ATTENTION_CAP)
+  const attentionTotal = unlinkedFailures.length
+  const showAttentionFooter = attentionTotal > ATTENTION_CAP
 
   function toggleCard(id: string, e?: React.MouseEvent) {
     e?.stopPropagation()
@@ -137,11 +308,19 @@ function DemoDashboardView() {
     })
   }
 
+  const criticalRunCount = runCards.filter((r) => r.fail > 0).length
+  const activeRunCaption =
+    metrics.activeRunCount === 0
+      ? 'No active runs yet'
+      : criticalRunCount > 0
+        ? `${criticalRunCount} with failures`
+        : `${metrics.totalCases} cases across active runs`
+
   return (
     <div className="view">
       <FreshTopbar
         breadcrumbs={[{ label: 'Dashboard' }]}
-        subtitle="Sprint 44 · Release 2.4.1"
+        subtitle={activeProject?.name ?? 'Project'}
         searchPlaceholder="Search everything…"
         actions={
           <>
@@ -155,38 +334,38 @@ function DemoDashboardView() {
         <div className="met-row">
           <div className="mc c-blue">
             <div className="mc-head">
-              <div><div className="mv" style={{ color: 'var(--accent)' }}>8</div><div className="ml">Active Runs</div></div>
+              <div><div className="mv" style={{ color: 'var(--accent)' }}>{metrics.activeRunCount}</div><div className="ml">Active Runs</div></div>
               <div className="mc-ic"><i className="ti ti-player-play" /></div>
             </div>
-            <div className="mt">3 critical path &nbsp;·&nbsp; 1 stalled</div>
+            <div className="mt">{activeRunCaption}</div>
           </div>
           <div className="mc c-green">
             <div className="mc-head">
-              <div><div className="mv" style={{ color: '#2E7D32' }}>74.2%</div><div className="ml">Pass Rate</div></div>
+              <div><div className="mv" style={{ color: '#2E7D32' }}>{metrics.passRate}</div><div className="ml">Pass Rate</div></div>
               <div className="mc-ic"><i className="ti ti-trending-up" /></div>
             </div>
-            <div className="mt mt-up">↑ 6.1 pp vs Sprint 43</div>
+            <div className="mt">{metrics.passRate === '—' ? 'No execution data' : 'Of executed cases'}</div>
           </div>
           <div className="mc c-red">
             <div className="mc-head">
-              <div><div className="mv" style={{ color: '#C62828' }}>23</div><div className="ml">Open Failures</div></div>
+              <div><div className="mv" style={{ color: '#C62828' }}>{metrics.openFailures}</div><div className="ml">Open Failures</div></div>
               <div className="mc-ic"><i className="ti ti-alert-circle" /></div>
             </div>
-            <div className="mt mt-dn">↑ 4 unlinked since yesterday</div>
+            <div className="mt">{metrics.openFailures === 0 ? 'No unlinked failures' : 'Unlinked failed executions'}</div>
           </div>
           <div className="mc c-amber">
             <div className="mc-head">
-              <div><div className="mv" style={{ color: '#E65100' }}>7</div><div className="ml">Blocked Cases</div></div>
+              <div><div className="mv" style={{ color: '#E65100' }}>{metrics.blockedCases}</div><div className="ml">Blocked Cases</div></div>
               <div className="mc-ic"><i className="ti ti-ban" /></div>
             </div>
-            <div className="mt">2 without defect &nbsp;·&nbsp; action needed</div>
+            <div className="mt">{metrics.blockedCases === 0 ? 'No blocked cases' : 'Across active runs'}</div>
           </div>
           <div className="mc c-grey">
             <div className="mc-head">
-              <div><div className="mv">68%</div><div className="ml">Run Coverage</div></div>
+              <div><div className="mv">{metrics.runCoveragePct}%</div><div className="ml">Run Coverage</div></div>
               <div className="mc-ic"><i className="ti ti-chart-donut" /></div>
             </div>
-            <div className="mt mt-up">312 of 458 cases executed</div>
+            <div className="mt">{metrics.totalExecuted} of {metrics.totalCases} cases executed</div>
           </div>
         </div>
 
@@ -195,16 +374,16 @@ function DemoDashboardView() {
             <div className="runs-col-hd">
               <i className="ti ti-player-play" style={{ fontSize: 13, color: 'var(--accent)' }} />
               <span className="runs-col-ttl">Active runs</span>
-              <span className="pnl-ct">8</span>
+              <span className="pnl-ct">{metrics.activeRunCount}</span>
               <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
-                {(['all', 'critical', 'stalled'] as CardFilter[]).map((f) => (
+                {(['all', 'critical'] as CardFilter[]).map((f) => (
                   <button
                     key={f}
                     type="button"
                     className={`chip${cardFilter === f ? ' on' : ''}`}
                     onClick={() => setCardFilter(f)}
                   >
-                    {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+                    {f === 'all' ? 'All' : 'Critical'}
                   </button>
                 ))}
               </div>
@@ -214,16 +393,21 @@ function DemoDashboardView() {
             </div>
             <div className="run-cards-cols">
               <div className="run-cards-col">
-                {leftRuns.map((run) => (
-                  <RunCardItem
-                    key={run.id}
-                    run={run}
-                    expanded={expanded.has(run.id)}
-                    tab={cardTabs[run.id] ?? 'overview'}
-                    onToggle={(e) => toggleCard(run.id, e)}
-                    onTab={(t) => setCardTabs((prev) => ({ ...prev, [run.id]: t }))}
-                  />
-                ))}
+                {leftRuns.length === 0 && rightRuns.length === 0 ? (
+                  <div className="rcd-empty" style={{ padding: 16 }}>No active runs</div>
+                ) : (
+                  leftRuns.map((run) => (
+                    <RunCardItem
+                      key={run.id}
+                      run={run}
+                      expanded={expanded.has(run.id)}
+                      tab={cardTabs[run.id] ?? 'overview'}
+                      onToggle={(e) => toggleCard(run.id, e)}
+                      onTab={(t) => setCardTabs((prev) => ({ ...prev, [run.id]: t }))}
+                      getDefect={getDefect}
+                    />
+                  ))
+                )}
               </div>
               <div className="run-cards-col">
                 {rightRuns.map((run) => (
@@ -234,6 +418,7 @@ function DemoDashboardView() {
                     tab={cardTabs[run.id] ?? 'overview'}
                     onToggle={(e) => toggleCard(run.id, e)}
                     onTab={(t) => setCardTabs((prev) => ({ ...prev, [run.id]: t }))}
+                    getDefect={getDefect}
                   />
                 ))}
               </div>
@@ -245,51 +430,68 @@ function DemoDashboardView() {
               <div className="pnl-hd">
                 <i className="ti ti-alert-triangle" style={{ fontSize: 13, color: 'var(--fail)' }} />
                 <span className="pnl-ttl">Needs attention</span>
-                <span className="pnl-ct" style={{ background: 'var(--fail-bg)', color: 'var(--fail)', borderColor: 'rgba(198,40,40,.2)' }}>11</span>
+                {attentionTotal > 0 ? (
+                  <span className="pnl-ct" style={{ background: 'var(--fail-bg)', color: 'var(--fail)', borderColor: 'rgba(198,40,40,.2)' }}>{attentionTotal}</span>
+                ) : null}
                 <span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 'auto' }}>unlinked failures</span>
               </div>
               <div className="pnl-body" style={{ flex: 1 }}>
-                {ATTENTION_ITEMS.map((item) => (
-                  <Link key={item.title} href={projectHref('testruns')} className="att-item">
-                    <div className={`att-item-stripe ${item.stripe}`} />
-                    <div className="att-item-body">
-                      <div className="att-title">{item.title}</div>
-                      <div className="att-meta">
-                        <span className={`pri ${PRI_MAP[item.pri]}`}>{item.pri}</span>
-                        <span className="att-run">{item.run}</span>
-                        <span className="att-actor">{item.actor}</span>
+                {attentionTotal === 0 ? (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text3)', fontSize: 12.5 }}>
+                    No unlinked failures — nice work.
+                  </div>
+                ) : (
+                  visibleAttention.map((item) => (
+                    <Link key={item.key} href={projectHref('testruns')} className="att-item">
+                      <div className={`att-item-stripe ${PRIORITY_STRIPE[item.priority]}`} />
+                      <div className="att-item-body">
+                        <div className="att-title">{item.title}</div>
+                        <div className="att-meta">
+                          <span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[item.priority]]}`}>{item.priority}</span>
+                          <span className="att-run">{item.runName}</span>
+                          {item.testedBy ? (
+                            <span className="att-actor">{displayAssigneeName(item.testedBy)}</span>
+                          ) : null}
+                          {item.testedAt ? (
+                            <span className="att-actor">{formatRelativeTime(item.testedAt)}</span>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                    <div className="att-item-right">
-                      {item.defectId ? (
-                        <span className="defect-tag-sm"><i className="ti ti-bug" style={{ fontSize: 9 }} />{item.defectId}</span>
-                      ) : (
+                      <div className="att-item-right">
                         <span className="no-defect-tag"><i className="ti ti-link-off" style={{ fontSize: 9 }} /> Link defect</span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
-              <div className="att-footer"><Link href={projectHref('testruns')}>View all 11 failures →</Link></div>
+              {showAttentionFooter ? (
+                <div className="att-footer">
+                  <Link href={projectHref('testruns')}>View all {attentionTotal} failures →</Link>
+                </div>
+              ) : null}
             </div>
 
             <div className="panel" style={{ flexShrink: 0 }}>
               <div className="pnl-hd">
                 <i className="ti ti-chart-donut" style={{ fontSize: 13, color: 'var(--accent)' }} />
-                <span className="pnl-ttl">Coverage — Sprint 44</span>
-                <span style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>68% overall</span>
+                <span className="pnl-ttl">Coverage by folder</span>
+                <span style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>{metrics.runCoveragePct}% overall</span>
               </div>
-              <div className="cov-grid">
-                {COVERAGE_ITEMS.map((c) => (
-                  <div key={c.label}>
-                    <div className="cov-lbl">{c.label}</div>
-                    <div className="cov-bar">
-                      <div className="cov-fill" style={{ width: `${c.pct}%`, background: c.color ?? 'var(--accent)' }} />
+              {coverageRows.length === 0 ? (
+                <div style={{ padding: '16px', color: 'var(--text3)', fontSize: 12 }}>No folders with cases yet</div>
+              ) : (
+                <div className="cov-grid">
+                  {coverageRows.map((c) => (
+                    <div key={c.label}>
+                      <div className="cov-lbl">{c.label}</div>
+                      <div className="cov-bar">
+                        <div className="cov-fill" style={{ width: `${c.pct}%`, background: c.color ?? 'var(--accent)' }} />
+                      </div>
+                      <div className="cov-pct">{c.pct}%</div>
                     </div>
-                    <div className="cov-pct">{c.pct}%</div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -304,29 +506,31 @@ function RunCardItem({
   tab,
   onToggle,
   onTab,
+  getDefect,
 }: {
-  run: RunCard
+  run: DashboardRunCard
   expanded: boolean
   tab: CardTab
   onToggle: (e?: React.MouseEvent) => void
   onTab: (t: CardTab) => void
+  getDefect: (defectId: string) => { defectKey: string; title: string } | undefined
 }) {
-  const passP = (run.pass / run.total) * 100
-  const failP = (run.fail / run.total) * 100
-  const blkP = (run.blocked / run.total) * 100
+  const passP = run.total > 0 ? (run.pass / run.total) * 100 : 0
+  const failP = run.total > 0 ? (run.fail / run.total) * 100 : 0
+  const blkP = run.total > 0 ? (run.blocked / run.total) * 100 : 0
 
   return (
-    <div className={`run-card${run.stalled ? ' stalled' : ''}`}>
+    <div className="run-card">
       <div className="rct" onClick={() => onToggle()}>
         <RunStatusInfographic pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} size={DONUT_CHART_SIZE} compact />
         <div className="rct-info">
           <div className="rct-name">{run.name}</div>
-          <div className="rct-ctx">{run.plan} &nbsp;·&nbsp; {run.env}</div>
+          <div className="rct-ctx">{run.plan}</div>
         </div>
         <div className="rct-right">
-          <span className={`pill ${run.stalled ? 'p-block' : 'p-act'}`} style={{ fontSize: 9.5, padding: '1px 5px' }}>
+          <span className="pill p-act" style={{ fontSize: 9.5, padding: '1px 5px' }}>
             <span className="pill-dot" />
-            {run.stalled ? 'Stalled' : 'Active'}
+            Active
           </span>
           <button
             type="button"
@@ -371,29 +575,29 @@ function RunCardItem({
               </div>
             </div>
             <div className="rcd-grid">
-              <div className="rcd-grid-item"><div className="rcd-lbl">Due</div><div className="rcd-val">{run.due}</div></div>
-              <div className="rcd-grid-item"><div className="rcd-lbl">Environment</div><div className="rcd-val">{run.env}</div></div>
               <div className="rcd-grid-item" style={{ gridColumn: 'span 2' }}><div className="rcd-lbl">Test plan</div><div className="rcd-val">{run.plan}</div></div>
             </div>
           </div>
           <div className={`rcd-pane${tab === 'assignees' ? ' on' : ''}`}>
-            {run.assignees.length > 0 ? run.assignees.map((a) => (
-              <div key={a.n} className="assignee-row">
-                <div className="av-mini">{a.n.split(' ').map((x) => x[0]).join('').slice(0, 2)}</div>
-                <span style={{ color: 'var(--text)', fontWeight: 500 }}>{a.n}</span>
-                <span style={{ color: 'var(--text3)', fontSize: 10.5, marginLeft: 'auto' }}>QA Team</span>
+            {run.assignees.length > 0 ? run.assignees.map((name) => (
+              <div key={name} className="assignee-row">
+                <div className="av-mini">{displayAssigneeName(name).split(' ').map((x) => x[0]).join('').slice(0, 2)}</div>
+                <span style={{ color: 'var(--text)', fontWeight: 500 }}>{displayAssigneeName(name)}</span>
               </div>
             )) : (
-              <div className="rcd-empty">No data — no assignees on this run.</div>
+              <div className="rcd-empty">No assignees on this run.</div>
             )}
           </div>
           <div className={`rcd-pane${tab === 'defects' ? ' on' : ''}`}>
-            {run.defects.length ? run.defects.map((d) => (
-              <div key={d} className="defect-row">
-                <span className="ed-dtag" style={{ fontSize: 10, padding: '1px 5px' }}><i className="ti ti-bug" style={{ fontSize: 9 }} />{d}</span>
-                <span style={{ color: 'var(--text2)', fontSize: 11 }}>{DEFECT_NAMES[d] ?? 'Open defect'}</span>
-              </div>
-            )) : (
+            {run.defects.length ? run.defects.map((d) => {
+              const defect = getDefect(d)
+              return (
+                <div key={d} className="defect-row">
+                  <span className="ed-dtag" style={{ fontSize: 10, padding: '1px 5px' }}><i className="ti ti-bug" style={{ fontSize: 9 }} />{defect?.defectKey ?? d}</span>
+                  <span style={{ color: 'var(--text2)', fontSize: 11 }}>{defect?.title ?? 'Open defect'}</span>
+                </div>
+              )
+            }) : (
               <div style={{ padding: '10px 0', textAlign: 'center', color: 'var(--text3)', fontSize: 11.5 }}>
                 <i className="ti ti-check" style={{ display: 'block', fontSize: 18, marginBottom: 4, color: 'var(--pass)' }} />
                 No defects linked to this run

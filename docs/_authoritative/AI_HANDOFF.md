@@ -75,8 +75,8 @@ Dev commands (typical):
 
 ### Dashboards
 - Dashboards are project-specific.
-- Demo-template projects show seeded metrics/content.
-- Non-demo projects show a placeholder (“Dashboard coming soon”) until implemented.
+- All projects compute metrics from live `FreshProvider` state (active unsealed/unarchived runs, cases, folders).
+- Projects with zero test cases show an onboarding empty state; projects with cases show real metrics (including zero-state when no runs exist).
 
 ### Test runs (critical)
 - `/:projectKey/testruns` is the primary execution experience.

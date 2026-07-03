@@ -58,11 +58,19 @@ Relay is **multi-project**. Each project has its own folders, test cases, and te
 
 The dashboard is a briefing screen: what needs attention and how runs are progressing.
 
-**Demo projects** (`seedTemplate: 'demo'`): metric cards, expandable run cards (Overview / Assignees / Defects tabs), needs-attention list, module coverage bars.
+**All projects** compute metrics from live `FreshProvider` data (active unsealed, unarchived runs and project cases).
 
-**Other projects:** summary cards with zeros and a “Dashboard coming soon” placeholder.
+**Metric cards:** Active Runs, Pass Rate (of executed cases — shows `—` when none executed), Open Failures (unlinked failed executions), Blocked Cases, Run Coverage (% of cases in active runs that have been executed at least once).
 
-**Actions:** expand/collapse run cards; open Test Runs via *New Run* or attention links. Export buttons are visual only.
+**Active runs column:** Expandable run cards with Overview / Assignees / Defects tabs; filter chips *All* and *Critical* (runs with failures). Dropped mock-only fields: stalled status, due date, environment.
+
+**Needs attention:** Unlinked failures (Failed executions with no linked defect), sorted most-recent first; empty state when none.
+
+**Coverage by folder:** Root-level folder breakdown (including unfiled cases row when applicable); overall % matches Run Coverage metric card.
+
+**Brand-new project (zero test cases):** Centered “Add your first test cases” empty state with link to Test Cases — not a wall of zero metrics.
+
+**Actions:** expand/collapse run cards; open Test Runs via *New Run* or attention links. Export buttons are visual only. “Link defect” in the attention panel navigates to Test Runs (no inline link action).
 
 ---
 
@@ -269,7 +277,7 @@ Neither connects to a read API yet. Backend writes audit rows on run create and 
 - Reactivating a disabled user always sets status to **Active** (prior invite status is not preserved)
 - Export, report generation, and most Integrations flows are visual placeholders
 - CasesScreen may show brief flicker on project switch (known bug; RunsScreen fixed)
-- Dashboard metrics only for demo-template projects
+- Dashboard “Link defect” in needs-attention panel links to Test Runs only (no inline defect-link action)
 
 See also [`docs/claude/known-bugs.md`](../claude/known-bugs.md) for active investigations.
 

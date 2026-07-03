@@ -1,10 +1,6 @@
-import type { Case, DemoRun, DemoState, Folder, Project } from './demo-model'
+import type { DemoState, Project } from './demo-model'
 import { CLONED_DEMO_KEY_PREFIX, newId } from './demo-model'
 import { cloneDemoTemplateEntities, getImmutableDemoTemplate } from './demo-template'
-
-export function projectHasDemoDashboard(project: Project | undefined): boolean {
-  return project?.seedTemplate === 'demo'
-}
 
 /** Next available cloned demo key: DP1, DP2, … (never overwrites base `DP`). */
 export function nextClonedDemoProjectKey(state: DemoState): string {

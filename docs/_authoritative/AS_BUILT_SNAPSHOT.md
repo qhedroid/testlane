@@ -26,7 +26,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 
 | Route | Data state | Component | Notes |
 |-------|------------|-----------|-------|
-| `/:projectKey/dashboard` | mock | `DashboardScreen` | Full metrics when `seedTemplate === 'demo'`; placeholder for other projects |
+| `/:projectKey/dashboard` | mock + localStorage | `DashboardScreen` | Live metrics for all projects; empty-cases onboarding state |
 | `/:projectKey/cases` | mock + localStorage | `CasesScreen` | Scoped to active project |
 | `/:projectKey/plans` | mock + localStorage | `PlansScreen` | Plan list + URL routing; CRUD modals; test case query groups; spawn run |
 | `/:projectKey/plans/tp/:planKey` | mock + localStorage | `PlansScreen` | Plan detail (Overview + Test cases tabs) |
@@ -147,7 +147,7 @@ apps/web/src/fresh/components/admin/  # Admin panel shell + page content compone
 apps/web/src/app/admin/          # Global /admin route group (not project-prefixed)
 apps/web/src/fresh/lib/project-routes.ts  # Key-prefixed URL helpers
 apps/web/src/fresh/data/demo-template.ts   # Immutable demo template clone
-apps/web/src/fresh/data/demo-project-utils.ts  # Dashboard scoping + demo clone
+apps/web/src/fresh/data/demo-project-utils.ts  # Demo project clone helpers
 apps/web/src/app/(app)/[projectKey]/    # Canonical routed pages
 apps/web/src/components/api-runs/ # API workspace
 apps/web/src/lib/relay/          # contracts, mock-data, api-client, config

@@ -16,11 +16,29 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-main` — clean, up to date with `origin/mvp-main`. PR #16 (`mvp-test-plans` polish round) merged (`7199115`), on top of previously merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`. Since then, `mvp-further-planning` (roadmap capture, Testiny recon, and the `mvp-custom-fields`/`mvp-dashboard-metrics` task prompts — see "Planned work" below) has also been merged into `mvp-main`.
+`mvp-dashboard-metrics` — implements real dashboard metrics (tasks 01–04 complete, uncommitted). Branch off `mvp-main`.
 
-`mvp-test-plans` and `mvp-further-planning` branches still exist locally/remotely but are fully merged — no outstanding work on either.
+---
 
-**Next up:** implementing `mvp-dashboard-metrics` (first) and `mvp-custom-fields` (second) as their own separate branches — see "Planned work" below for the execution approach.
+## Completed work — `mvp-dashboard-metrics` (tasks 01–04, uncommitted) ✅
+
+Rebuilt `DashboardScreen.tsx` to compute all dashboard widgets from `FreshProvider` state instead of static `seed.ts` mocks:
+
+| Task | What it delivered |
+|------|-------------------|
+| task-01 | Real metric cards + active runs column; dropped stalled/due/environment mock fields; Critical filter = runs with failures |
+| task-02 | Needs-attention panel from unlinked failures; empty state; capped list + footer |
+| task-03 | Coverage-by-root-folder panel; unfiled cases row; overall % matches Run Coverage card |
+| task-04 | Removed `projectHasDemoDashboard` gate; all projects get dashboard; zero-cases onboarding empty state |
+
+Schema unchanged (v14). Removed `projectHasDemoDashboard()` from `demo-project-utils.ts`. QA evidence: `/tmp/relay-qa-mvp-dashboard-metrics/qa-report.md`.
+
+**Follow-up (separate branch):** Verify Test Plans Overview tab metrics on `PlansScreen.tsx` reflect live data end-to-end — not part of this branch.
+
+---
+
+## Previous active branch
+`mvp-main` — clean baseline before dashboard metrics work.
 
 ---
 
@@ -103,7 +121,7 @@ Shaun dictated a full roadmap this session (Next Steps / Improvements / Lesser I
 Current state in brief:
 
 - **`mvp-custom-fields`** `[~in progress]` — three real task prompts drafted at `docs/cursor-prompts/mvp-custom-fields/` (task-01 field type parity, task-02 Owner mandatory field, task-03 per-field project assignment). Not yet run in Cursor. Would bump schema v14 → v15 (task-01) and possibly further (see each prompt).
-- **`mvp-dashboard-metrics`** `[~in progress]` — four real task prompts drafted at `docs/cursor-prompts/mvp-dashboard-metrics/` (task-01 real metric cards + active runs, task-02 needs-attention panel, task-03 coverage-by-folder panel, task-04 remove the demo-only placeholder gate). Not yet run in Cursor. No schema change expected. Rebuilds `DashboardScreen.tsx` off real `FreshProvider` data instead of the static `seed.ts` mocks it uses today.
+- **`mvp-dashboard-metrics`** `[x]` — implemented (tasks 01–04); see "Completed work" above. Ready for commit/PR after QA review.
 - **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.
 - Everything else (User Management, Role Management, Test Cases/Plans/Runs Extra items, live demo project, remaining Lesser Improvements) — light `[~draft]` provisional notes now exist per item under `docs/cursor-prompts/mvp-<area>/draft-notes.md` (see `roadmap.md` for the exact pointer per item), consolidating this session's findings without committing to full task prompts, per Shaun's own "batch at the end of MVP" plan for this tier.
 
