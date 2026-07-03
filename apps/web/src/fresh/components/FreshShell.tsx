@@ -69,10 +69,9 @@ export function FreshShell({ children }: { children: ReactNode }) {
               <span className="sbi-text"> {item.label}</span>
             </Link>
           ))}
-          <Link href={projectHref('reports')} className={`sbi${isOn('reports') ? ' on' : ''}`} title="Reports (planned)">
+          <Link href={projectHref('reports')} className={`sbi${isOn('reports') ? ' on' : ''}`} title="Reports">
             <i className="ti ti-chart-bar" />
             <span className="sbi-text"> Reports</span>
-            <span className="soon">Planned</span>
           </Link>
         </div>
 

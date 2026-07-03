@@ -1,0 +1,62 @@
+/* Reports module (Area A of the MVP close-out) — visual language mirrors dashboard */
+
+.rp-wrap{flex:1;min-height:0;display:flex;gap:10px;padding:10px 14px 14px}
+.rp-rail{width:190px;flex-shrink:0;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.rp-rail-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:4px 6px 2px}
+.rp-rail-item{display:flex;align-items:center;gap:5px;border:none;background:none;text-align:left;font-size:11.5px;color:var(--text2);padding:5px 7px;border-radius:4px;cursor:pointer;width:100%}
+.rp-rail-item:hover{background:var(--surface2,#F0F4F8)}
+.rp-rail-item.on{background:var(--surface2,#E8EFF6);color:var(--text);font-weight:600}
+.rp-rail-saved{display:flex;align-items:center;gap:2px;padding:2px 4px}
+.rp-rail-name{display:flex;align-items:center;gap:5px;flex:1;min-width:0;border:none;background:none;text-align:left;font-size:11.5px;color:inherit;cursor:pointer;padding:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rp-rail-ic{border:none;background:none;color:var(--text3);cursor:pointer;padding:2px;border-radius:3px;opacity:0;flex-shrink:0}
+.rp-rail-saved:hover .rp-rail-ic{opacity:1}
+.rp-rail-ic:hover{color:var(--text);background:var(--surface2,#E8EFF6)}
+.rp-rail-empty{font-size:10.5px;color:var(--text3);padding:4px 7px;line-height:1.5}
+
+.rp-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+
+.rp-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 12px;flex-shrink:0}
+.rp-ctl{display:flex;align-items:center;gap:6px}
+.rp-ctl-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)}
+.rp-select{font-size:11.5px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);max-width:260px}
+.rp-ctl-check{font-size:11.5px;color:var(--text2);gap:5px;cursor:pointer}
+.rp-ctl-note{font-size:10px;color:var(--text3);margin-left:auto}
+
+.rp-save-pop{position:absolute;top:calc(100% + 6px);right:0;z-index:60;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 6px 24px rgba(15,28,46,.14);padding:10px;width:260px;display:flex;flex-direction:column;gap:8px}
+.rp-save-lbl{font-size:11px;font-weight:600;color:var(--text)}
+.rp-input{font-size:11.5px;padding:4px 7px;border:1px solid var(--border);border-radius:4px;width:100%;background:var(--surface);color:var(--text)}
+
+.rp-charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex-shrink:0}
+.rp-chart-panel{min-width:0}
+.rp-chart-body{padding:10px 12px}
+.rp-legend{display:flex;flex-wrap:wrap;gap:8px;padding-top:6px}
+.rp-legend-item{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text2)}
+.rp-legend-dot{width:8px;height:8px;border-radius:2px;display:inline-block}
+
+.rp-tables{display:grid;grid-template-columns:3fr 2fr;gap:10px;flex-shrink:0}
+.rp-tbl-scroll{overflow:auto;max-height:280px}
+.rp-tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.rp-tbl th{position:sticky;top:0;background:var(--surface2,#F5F8FB);text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:6px 10px;border-bottom:1px solid var(--border);z-index:1}
+.rp-tbl td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+.rp-tbl-row{cursor:pointer}
+.rp-tbl-row:hover td{background:var(--surface2,#F5F8FB)}
+.rp-tbl-empty{padding:22px;text-align:center;color:var(--text3);font-size:11.5px}
+.rp-mono{font-family:var(--mono,ui-monospace,monospace);font-size:11px}
+.rp-runkey{font-family:var(--mono,ui-monospace,monospace);font-size:10px;color:var(--text3);margin-right:3px}
+.rp-up{color:var(--pass,#2E7D32)}
+.rp-dn{color:var(--fail,#C62828)}
+.rp-status{font-weight:600;font-size:11px}
+
+.rp-chiprow{display:flex;align-items:center;gap:5px;margin-left:8px;flex-wrap:wrap}
+.rp-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;background:var(--surface2,#E8EFF6);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--text2)}
+.rp-chip button{border:none;background:none;cursor:pointer;color:var(--text3);font-size:9px;padding:0}
+.rp-chip button:hover{color:var(--fail)}
+
+.rp-drill{flex-shrink:0}
+.rp-linkform{display:inline-flex;align-items:center;gap:5px}
+.rp-linkform .rp-input{width:170px}
+
+.rp-spark{display:inline-flex;gap:2px}
+.rp-spark-cell{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+.rp-empty{padding:44px 24px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;flex-shrink:0}

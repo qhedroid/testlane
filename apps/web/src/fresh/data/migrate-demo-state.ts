@@ -113,6 +113,7 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     defectsById: {},
     nextRequirementNumByProject: { [projectId]: 1 },
     nextDefectNumByProject: { [projectId]: 1 },
+    savedReportsById: {},
   }
 }
 
@@ -367,6 +368,14 @@ export function migrateDemoState(raw: unknown): DemoState {
         schemaVersion: 14,
       }
     }
+    // v14 → v15: saved Reports-page views collection
+    if (state.schemaVersion < 15) {
+      state = {
+        ...state,
+        savedReportsById: state.savedReportsById ?? {},
+        schemaVersion: 15,
+      }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }
@@ -377,6 +386,7 @@ export function migrateDemoState(raw: unknown): DemoState {
       nextRequirementNumByProject: state.nextRequirementNumByProject ?? {},
       nextDefectNumByProject: state.nextDefectNumByProject ?? {},
       cases: state.cases.map((c) => ({ ...c, requirementIds: c.requirementIds ?? [] })),
+      savedReportsById: state.savedReportsById ?? {},
     }
     return state
   } catch (err) {

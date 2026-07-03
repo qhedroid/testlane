@@ -1,4 +1,4 @@
-import type { Case, Defect, DemoRun, DemoState, Folder, Project, Requirement, TestPlan } from './demo-model'
+import type { Case, Defect, DemoRun, DemoState, Folder, Project, Requirement, SavedReport, TestPlan } from './demo-model'
 
 export function listProjects(state: DemoState): Project[] {
   return Object.values(state.projectsById).sort((a, b) => a.name.localeCompare(b.name))
@@ -74,6 +74,12 @@ export function listActiveProjectDefects(state: DemoState): Defect[] {
   return Object.values(state.defectsById ?? {})
     .filter((d) => d.projectId === state.activeProjectId)
     .sort((a, b) => a.defectKey.localeCompare(b.defectKey))
+}
+
+export function listActiveProjectSavedReports(state: DemoState): SavedReport[] {
+  return Object.values(state.savedReportsById ?? {})
+    .filter((r) => r.projectId === state.activeProjectId)
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export function getActiveProjectNextRequirementNum(state: DemoState): number {

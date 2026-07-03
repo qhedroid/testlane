@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, Requirement, TestPlan } from './demo-model'
+import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, Requirement, SavedReport, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -29,6 +29,7 @@ import {
   listActiveProjectPlans,
   listActiveProjectRequirements,
   listActiveProjectRuns,
+  listActiveProjectSavedReports,
   listActiveProjectTestCases,
   listProjects,
 } from './project-selectors'
@@ -131,6 +132,9 @@ export type FreshAction =
   | { type: 'DELETE_PLAN'; planId: string }
   | { type: 'DUPLICATE_PLAN'; newPlan: TestPlan }
   | { type: 'ADD_FOLDER'; folder: Folder }
+  | { type: 'SAVE_REPORT'; report: SavedReport }
+  | { type: 'RENAME_SAVED_REPORT'; reportId: string; name: string }
+  | { type: 'DELETE_SAVED_REPORT'; reportId: string }
   | { type: 'CREATE_REQUIREMENT'; requirement: Requirement }
   | { type: 'LINK_REQUIREMENT_TO_CASE'; caseId: string; requirementId: string }
   | { type: 'CREATE_DEFECT_AND_LINK'; defect: Defect; runId: string; caseId: string }
@@ -277,6 +281,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         ),
         defectsById: Object.fromEntries(
           Object.entries(state.defectsById ?? {}).filter(([id]) => remainingDefectIds.has(id)),
+        ),
+        savedReportsById: Object.fromEntries(
+          Object.entries(state.savedReportsById ?? {}).filter(([, r]) => r.projectId !== projectId),
         ),
         currentRunIdByProject,
         nextCaseNumByProject,
@@ -585,6 +592,30 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     }
+    case 'SAVE_REPORT': {
+      next = {
+        ...state,
+        savedReportsById: { ...(state.savedReportsById ?? {}), [action.report.id]: action.report },
+      }
+      break
+    }
+    case 'RENAME_SAVED_REPORT': {
+      const existing = state.savedReportsById?.[action.reportId]
+      if (!existing) return state
+      next = {
+        ...state,
+        savedReportsById: {
+          ...state.savedReportsById,
+          [action.reportId]: { ...existing, name: action.name.trim() || existing.name },
+        },
+      }
+      break
+    }
+    case 'DELETE_SAVED_REPORT': {
+      const { [action.reportId]: _removedReport, ...restReports } = state.savedReportsById ?? {}
+      next = { ...state, savedReportsById: restReports }
+      break
+    }
     case 'CREATE_REQUIREMENT': {
       next = {
         ...state,
@@ -734,6 +765,10 @@ interface FreshContextValue {
   spawnRunFromPlan: (planId: string, name: string, description?: string) => { runKey: string } | null
   addFolder: (name: string, parentId?: string | null) => string
   isRunSealed: boolean
+  activeSavedReports: SavedReport[]
+  saveReport: (input: Omit<SavedReport, 'id' | 'projectId' | 'createdAt'>) => { reportId: string }
+  renameSavedReport: (reportId: string, name: string) => void
+  deleteSavedReport: (reportId: string) => void
   activeRequirements: Requirement[]
   activeDefects: Defect[]
   createRequirement: (input: { title: string; description?: string; status?: Requirement['status'] }) => { requirementKey: string; requirementId: string }
@@ -767,6 +802,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const activeCases = useMemo(() => listActiveProjectTestCases(state), [state])
   const activeRuns = useMemo(() => listActiveProjectRuns(state), [state])
   const activePlans = useMemo(() => listActiveProjectPlans(state), [state])
+  const activeSavedReports = useMemo(() => listActiveProjectSavedReports(state), [state])
   const activeRequirements = useMemo(() => listActiveProjectRequirements(state), [state])
   const activeDefects = useMemo(() => listActiveProjectDefects(state), [state])
   const currentRun = useMemo(() => getCurrentRun(state), [state])
@@ -991,6 +1027,28 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'ADD_DEMO_PROJECT' })
     return { key: meta.key, name: meta.name }
   }, [state])
+
+  const saveReport = useCallback(
+    (input: Omit<SavedReport, 'id' | 'projectId' | 'createdAt'>) => {
+      const report: SavedReport = {
+        ...input,
+        id: newId('report'),
+        projectId: state.activeProjectId,
+        createdAt: new Date().toISOString(),
+      }
+      dispatch({ type: 'SAVE_REPORT', report })
+      return { reportId: report.id }
+    },
+    [state.activeProjectId],
+  )
+
+  const renameSavedReport = useCallback((reportId: string, name: string) => {
+    dispatch({ type: 'RENAME_SAVED_REPORT', reportId, name })
+  }, [])
+
+  const deleteSavedReport = useCallback((reportId: string) => {
+    dispatch({ type: 'DELETE_SAVED_REPORT', reportId })
+  }, [])
 
   const getRequirement = useCallback(
     (requirementId: string) => state.requirementsById?.[requirementId],
@@ -1265,6 +1323,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       spawnRunFromPlan,
       addFolder,
       isRunSealed,
+      activeSavedReports,
+      saveReport,
+      renameSavedReport,
+      deleteSavedReport,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,
@@ -1339,6 +1401,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       spawnRunFromPlan,
       addFolder,
       isRunSealed,
+      activeSavedReports,
+      saveReport,
+      renameSavedReport,
+      deleteSavedReport,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,

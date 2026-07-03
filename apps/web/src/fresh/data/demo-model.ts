@@ -155,6 +155,23 @@ export interface Defect {
   createdAt: string
 }
 
+export type ReportScopeType = 'project' | 'plan' | 'run'
+
+/** A saved Reports-page view: control-bar state persisted per project (Area A). */
+export interface SavedReport {
+  id: string
+  projectId: string
+  name: string
+  scopeType: ReportScopeType
+  /** Plan id (scopeType 'plan') or run id (scopeType 'run'). Unset for 'project'. */
+  scopeId?: string
+  /** Number of most-recent runs (sprint buckets) included in the range. */
+  rangeRuns: number
+  /** Whether "Compare vs previous sprint" is enabled. */
+  compare: boolean
+  createdAt: string
+}
+
 export interface CaseExecution {
   status: ExecStatus
   assignee?: string
@@ -195,7 +212,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 14
+export const DEMO_SCHEMA_VERSION = 15
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -376,6 +393,8 @@ export interface DemoState {
   defectsById: Record<string, Defect>
   nextRequirementNumByProject: Record<string, number>
   nextDefectNumByProject: Record<string, number>
+  /** v15 — saved Reports-page views, keyed by SavedReport.id. */
+  savedReportsById: Record<string, SavedReport>
 }
 
 export interface RunSummary {
