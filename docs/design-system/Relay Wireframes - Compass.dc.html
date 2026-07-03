@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/compass-design-system-transperfect-019e2d2a-71ef-726d-9b7b-55932e58ebf6/colors_and_type.css">
+<link rel="stylesheet" href="_ds/compass-design-system-transperfect-019e2d2a-71ef-726d-9b7b-55932e58ebf6/styles.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
+<script src="_ds/compass-design-system-transperfect-019e2d2a-71ef-726d-9b7b-55932e58ebf6/_ds_bundle.js"></script>
+<style>body{margin:0;background:#f0eee9;font-family:system-ui,sans-serif}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}.dv-next{margin:22px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Relay — four concepts at wireframe fidelity, rendered with Compass tokens &amp; type (Open Sans body / Gotham display, gl-blue-500 interactive, gl status ramps)</span></div>
+  <p style="margin:0 0 18px;max-width:920px;font:400 12.5px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.55)">Structure and annotations follow <span style="font-family:ui-monospace,Menlo,monospace">wireframes.html</span> exactly. Constraints respected: frontend-only MVP (server-dependent items marked <i>stub</i>); the three-pane Test Runs execution workspace is untouched — re-run concepts hook into the run header, summary card, and runs list only.</p>
+
+  <div class="dv-opts">
+
+    <!-- ================================================== 1a REPORTING -->
+    <div class="dv-opt" id="1a" style="width:1180px">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>A · Reporting &amp; Analytics — /DP/reports · replaces the "Planned module" placeholder; one control bar drives every widget; every chart is a filter</div>
+
+      <div class="dv-card" style="width:1180px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--gl-gray-100);border-bottom:1px solid var(--gl-border)">
+          <span style="font:700 12px var(--gl-font-mono);color:var(--gl-fg)">WF-A1</span>
+          <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Reports — Overview (default report)</span>
+        </div>
+        <div style="padding:20px 18px;display:flex;flex-direction:column;gap:16px;font-family:var(--gl-font-body)">
+          <!-- control bar -->
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:6px 12px;font:400 13px var(--gl-font-body);color:var(--gl-fg);background:var(--gl-surface)">Scope: Project — DP <span style="color:var(--gl-fg-subtle)">▾</span></span>
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:6px 12px;font:400 13px var(--gl-font-body);color:var(--gl-fg);background:var(--gl-surface)">Range: Last 6 sprints <span style="color:var(--gl-fg-subtle)">▾</span></span>
+            <span style="display:inline-flex;align-items:center;gap:8px;font:400 13px var(--gl-font-body);color:var(--gl-fg)"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px">✓</span>Compare vs previous sprint <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">1</span></span>
+            <span style="flex:1"></span>
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--gl-border-strong);border-radius:var(--gl-radius-m);padding:7px 14px;font:600 13px var(--gl-font-body);color:var(--gl-fg-muted)">Save as report… <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">4</span></span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:var(--gl-accent);color:var(--gl-fg-on-brand);border-radius:var(--gl-radius-m);padding:7px 16px;font:600 13px var(--gl-font-body)">Export <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-900);color:#fff;font:700 11px var(--gl-font-body)">5</span></span>
+          </div>
+          <!-- KPI strip -->
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+            <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px"><div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted)">Pass rate</div><div style="font:700 26px var(--gl-font-display);color:var(--gl-fg);margin:6px 0 2px">74.2%</div><div style="font:600 12px var(--gl-font-body);color:var(--gl-success-500)">▲ 6.1 pp vs Sprint 43 <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">2</span></div></div>
+            <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px"><div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted)">Run coverage</div><div style="font:700 26px var(--gl-font-display);color:var(--gl-fg);margin:6px 0 2px">68%</div><div style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">312 / 458 cases executed</div></div>
+            <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px"><div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted)">Open failures</div><div style="font:700 26px var(--gl-font-display);color:var(--gl-fg);margin:6px 0 2px">23</div><div style="font:600 12px var(--gl-font-body);color:var(--gl-danger-500)">▲ 4 since last sprint</div></div>
+            <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px"><div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted)">Blocked</div><div style="font:700 26px var(--gl-font-display);color:var(--gl-fg);margin:6px 0 2px">7</div><div style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">2 without linked defect</div></div>
+            <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px"><div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted)">Avg. cases run / day</div><div style="font:700 26px var(--gl-font-display);color:var(--gl-fg);margin:6px 0 2px">41</div><div style="font:600 12px var(--gl-font-body);color:var(--gl-danger-500)">▼ 9 vs Sprint 43</div></div>
+          </div>
+          <!-- charts -->
+          <div style="display:flex;gap:12px">
+            <div style="flex:1.2;border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px">
+              <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted)">Pass rate by sprint <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">3</span></div>
+              <div style="height:130px;border-left:1px solid var(--gl-gray-300);border-bottom:1px solid var(--gl-gray-300);position:relative;margin:12px 4px 4px">
+                <svg viewBox="0 0 300 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+                  <polyline points="10,62 60,55 110,66 160,48 210,44 260,30" fill="none" stroke="#1976D2" stroke-width="2.5"></polyline>
+                  <polyline points="10,72 60,68 110,74 160,60 210,58 260,52" fill="none" stroke="#BAC5CD" stroke-width="2" stroke-dasharray="5 4"></polyline>
+                  <circle cx="260" cy="30" r="4" fill="#003B80"></circle>
+                </svg>
+              </div>
+              <div style="display:flex;gap:16px;font:400 12px var(--gl-font-body);color:var(--gl-fg-muted);padding:6px 4px 0"><span><span style="display:inline-block;width:14px;height:3px;background:var(--gl-blue-500);vertical-align:middle;margin-right:5px;border-radius:2px"></span>pass rate</span><span><span style="display:inline-block;width:14px;height:0;border-top:3px dashed var(--gl-gray-300);vertical-align:middle;margin-right:5px"></span>coverage</span><span style="margin-left:auto">S39 → S44</span></div>
+            </div>
+            <div style="flex:1;border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px">
+              <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted)">Failures by module per sprint <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">3</span></div>
+              <div style="height:130px;border-left:1px solid var(--gl-gray-300);border-bottom:1px solid var(--gl-gray-300);display:flex;align-items:flex-end;gap:14px;padding:0 14px;margin:12px 4px 4px">
+                <div style="width:30px;display:flex;flex-direction:column-reverse"><div style="height:22px;background:var(--gl-blue-500)"></div><div style="height:14px;background:var(--gl-greenish-500)"></div><div style="height:9px;background:var(--gl-orange-500)"></div></div>
+                <div style="width:30px;display:flex;flex-direction:column-reverse"><div style="height:26px;background:var(--gl-blue-500)"></div><div style="height:12px;background:var(--gl-greenish-500)"></div><div style="height:14px;background:var(--gl-orange-500)"></div></div>
+                <div style="width:30px;display:flex;flex-direction:column-reverse"><div style="height:17px;background:var(--gl-blue-500)"></div><div style="height:19px;background:var(--gl-greenish-500)"></div><div style="height:7px;background:var(--gl-orange-500)"></div></div>
+                <div style="width:30px;display:flex;flex-direction:column-reverse"><div style="height:31px;background:var(--gl-blue-500)"></div><div style="height:17px;background:var(--gl-greenish-500)"></div><div style="height:12px;background:var(--gl-orange-500)"></div></div>
+                <div style="width:30px;display:flex;flex-direction:column-reverse"><div style="height:36px;background:var(--gl-blue-500)"></div><div style="height:22px;background:var(--gl-greenish-500)"></div><div style="height:17px;background:var(--gl-orange-500)"></div></div>
+                <div style="width:30px;display:flex;flex-direction:column-reverse;outline:2px solid var(--gl-gray-700);outline-offset:3px"><div style="height:29px;background:var(--gl-blue-500)"></div><div style="height:24px;background:var(--gl-greenish-500)"></div><div style="height:22px;background:var(--gl-orange-500)"></div></div>
+              </div>
+              <div style="display:flex;gap:14px;font:400 12px var(--gl-font-body);color:var(--gl-fg-muted);padding:6px 4px 0"><span><span style="display:inline-block;width:10px;height:10px;background:var(--gl-blue-500);border-radius:2px;vertical-align:middle;margin-right:5px"></span>CTMS</span><span><span style="display:inline-block;width:10px;height:10px;background:var(--gl-greenish-500);border-radius:2px;vertical-align:middle;margin-right:5px"></span>eTMF</span><span><span style="display:inline-block;width:10px;height:10px;background:var(--gl-orange-500);border-radius:2px;vertical-align:middle;margin-right:5px"></span>Viewer</span><span style="margin-left:auto">click a segment to drill down</span></div>
+            </div>
+          </div>
+          <!-- lower row -->
+          <div style="display:flex;gap:12px">
+            <div style="flex:1.3;border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px">
+              <div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Run summaries — Sprint 44</div>
+              <table style="width:100%;border-collapse:collapse;font:400 13px var(--gl-font-body)">
+                <thead><tr>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Run</th>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Plan</th>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">P / F / B / NR</th>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Pass %</th>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Δ vs prev <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 10px var(--gl-font-body);letter-spacing:0;text-transform:none">2</span></th>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Status</th>
+                </tr></thead>
+                <tbody>
+                  <tr><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">00001 CTMS Regression</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Full Regression</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">71 / 24 / 7 / 30</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">74%</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-success-500);font-weight:600">▲ 6 pp</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-blue-100);color:var(--gl-blue-600);font:600 12px var(--gl-font-body)">Active</span></td></tr>
+                  <tr><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">00002 eTMF Smoke</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Smoketest</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">32 / 4 / 0 / 4</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">90%</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-fg-muted)">▬ 0</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-blue-100);color:var(--gl-blue-600);font:600 12px var(--gl-font-body)">Active</span></td></tr>
+                  <tr><td style="padding:8px;font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">00003 Viewer Functional</td><td style="padding:8px;color:var(--gl-fg-subtle)">—</td><td style="padding:8px">28 / 6 / 8 / 28</td><td style="padding:8px">60%</td><td style="padding:8px;color:var(--gl-danger-500);font-weight:600">▼ 3 pp</td><td style="padding:8px"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-warning-50);color:var(--gl-warning-700);font:600 12px var(--gl-font-body)">Stalled</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="flex:1;border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px">
+              <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Top failing cases — last 3 sprints <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">6</span></div>
+              <table style="width:100%;border-collapse:collapse;font:400 13px var(--gl-font-body)">
+                <thead><tr>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Case</th>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Fails</th>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Last 5</th>
+                  <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Defect</th>
+                </tr></thead>
+                <tbody>
+                  <tr><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-2041</span> role mapping…</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">4</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);letter-spacing:2px;font-size:11px"><span style="color:var(--gl-danger-500)">●●●</span><span style="color:var(--gl-gray-300)">○</span><span style="color:var(--gl-danger-500)">●</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TI-4419</td></tr>
+                  <tr><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-1008</span> export skipped…</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">3</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);letter-spacing:2px;font-size:11px"><span style="color:var(--gl-danger-500)">●</span><span style="color:var(--gl-gray-300)">○</span><span style="color:var(--gl-danger-500)">●●</span><span style="color:var(--gl-gray-300)">○</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TI-4421</td></tr>
+                  <tr><td style="padding:8px"><span style="font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-2046</span> export blocks…</td><td style="padding:8px">3</td><td style="padding:8px;letter-spacing:2px;font-size:11px"><span style="color:var(--gl-gray-300)">○</span><span style="color:var(--gl-danger-500)">●●</span><span style="color:var(--gl-gray-300)">○</span><span style="color:var(--gl-danger-500)">●</span></td><td style="padding:8px;color:var(--gl-fg-subtle)">—</td></tr>
+                </tbody>
+              </table>
+              <div style="margin-top:10px;padding:2px 0 2px 12px;border-left:3px solid var(--gl-gray-300);font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Repeat-failure list = the "test effectiveness" starting point (tracker row 76) without new data model — computed from existing run history.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul data-legend style="list-style:none;margin:2px 0 10px;padding:0;display:flex;flex-direction:column;gap:6px;max-width:1120px">
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">1</span>One control bar (scope · range · compare) drives every widget on the page. Scope accepts project / module / plan / single run — the same selector hierarchy that already exists in plan query groups.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span>Compare mode adds delta chips to KPIs and a Δ column to tables — the dashboard already speaks this language ("↑ 6.1 pp vs Sprint 43"); this generalises it.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">3</span>Every chart is a filter: clicking a bar segment or line point replaces the lower tables with the matching case-level failure list (WF-A2). No dead ink.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">4</span>"Save as report" stores the control-bar state as a named view (localStorage — fits schema-versioned store) and lists it in the left rail under Reports.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">5</span>Export opens the shared export drawer (<a href="#1b" style="color:var(--gl-blue-500)">1b</a> WF-B1) pre-scoped to the current report state — one export pattern product-wide.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">6</span>Failure-trend need (tracker row 72) is served twice: trend by module (chart) and repeat-offender cases (table), both derivable from existing execution history.</li>
+      </ul>
+
+      <div class="dv-card" style="width:1180px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--gl-gray-100);border-bottom:1px solid var(--gl-border)">
+          <span style="font:700 12px var(--gl-font-mono);color:var(--gl-fg)">WF-A2</span>
+          <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Drill-down state (after clicking Sprint 44 · eTMF segment)</span>
+        </div>
+        <div style="padding:20px 18px;display:flex;flex-direction:column;gap:12px;font-family:var(--gl-font-body)">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="padding:3px 12px;border-radius:100px;background:var(--gl-gray-100);border:1px solid var(--gl-gray-250);font:400 12px var(--gl-font-body);color:var(--gl-fg)">Scope: DP</span>
+            <span style="padding:3px 12px;border-radius:100px;background:var(--gl-gray-100);border:1px solid var(--gl-gray-250);font:400 12px var(--gl-font-body);color:var(--gl-fg)">Sprint 44</span>
+            <span style="padding:3px 12px;border-radius:100px;background:var(--gl-accent-soft);border:1px solid var(--gl-blue-300);font:600 12px var(--gl-font-body);color:var(--gl-blue-600)">Module: eTMF ✕</span>
+            <span style="padding:3px 12px;border-radius:100px;background:var(--gl-accent-soft);border:1px solid var(--gl-blue-300);font:600 12px var(--gl-font-body);color:var(--gl-blue-600)">Result: Failed ✕</span>
+            <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-subtle)">← breadcrumb chips; remove a chip to widen <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">1</span></span>
+            <span style="flex:1"></span>
+            <span style="display:inline-flex;align-items:center;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-m);padding:6px 14px;font:600 13px var(--gl-font-body);color:var(--gl-fg);background:var(--gl-surface)">Export this view</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font:400 13px var(--gl-font-body);border:1px solid var(--gl-border);border-radius:var(--gl-radius-m)">
+            <thead><tr>
+              <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Case</th>
+              <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Run</th>
+              <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Step failed</th>
+              <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Assignee</th>
+              <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Defect</th>
+              <th style="border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)"></th>
+            </tr></thead>
+            <tbody>
+              <tr><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)"><span style="font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-2042</span> bulk upload classifications</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-fg-muted)">00001</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)">3 of 4</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)">Nadim S.</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-fg-subtle)">—</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)"><span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:4px 10px;font:600 12px var(--gl-font-body);color:var(--gl-fg)">Link defect</span> <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">2</span></td></tr>
+              <tr><td style="padding:8px 10px"><span style="font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-1005</span> bulk upload routes files</td><td style="padding:8px 10px;font:600 12px var(--gl-font-mono);color:var(--gl-fg-muted)">00002</td><td style="padding:8px 10px">2 of 3</td><td style="padding:8px 10px">Nasir D.</td><td style="padding:8px 10px;font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TI-4402</td><td style="padding:8px 10px"><span style="display:inline-flex;align-items:center;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:4px 10px;font:600 12px var(--gl-font-body);color:var(--gl-fg)">Open</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <ul data-legend style="list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-width:1120px">
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">1</span>Drill-down is expressed as removable filter chips, not a page navigation — same mental model as the case-table filter bar.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span>Rows keep the dashboard's "Link defect" affordance so the reports module is a working surface, not a read-only dead end.</li>
+      </ul>
+    </div>
+
+    <!-- ================================================== 1b EXPORT -->
+    <div class="dv-opt" id="1b" style="width:1180px">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>B · Export &amp; Reporting — one shared export drawer, invoked from anywhere, always producing a visible artifact (fixes the confirmed silent-failure exports)</div>
+
+      <div class="dv-card" style="width:1180px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--gl-gray-100);border-bottom:1px solid var(--gl-border)">
+          <span style="font:700 12px var(--gl-font-mono);color:var(--gl-fg)">WF-B1</span>
+          <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Export drawer (opened from run 00001 · More… → Export)</span>
+        </div>
+        <div style="background:var(--gl-gray-200);padding:32px;display:flex;justify-content:center">
+          <div style="width:440px;background:var(--gl-surface);border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);box-shadow:var(--gl-shadow-l);font-family:var(--gl-font-body)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--gl-divider)"><span style="font:700 16px var(--gl-font-display);color:var(--gl-fg)">Export</span><span style="color:var(--gl-fg-subtle);font-size:14px">✕</span></div>
+            <div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Scope <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">1</span></div>
+                <div style="display:flex;flex-direction:column;gap:6px;font:400 13px var(--gl-font-body);color:var(--gl-fg)">
+                  <span><span style="color:var(--gl-accent)">◉</span> This test run — 00001 CTMS Regression (132 cases)</span>
+                  <span><span style="color:var(--gl-gray-350)">○</span> Current filter — Failed + Blocked (31 cases)</span>
+                  <span><span style="color:var(--gl-gray-350)">○</span> Selected cases (0)</span>
+                </div>
+              </div>
+              <div>
+                <div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Format</div>
+                <span style="display:inline-flex;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);overflow:hidden;font:400 13px var(--gl-font-body)"><span style="padding:6px 14px;background:var(--gl-accent-soft);color:var(--gl-blue-600);font-weight:600;border-right:1px solid var(--gl-border)">PDF report</span><span style="padding:6px 14px;border-right:1px solid var(--gl-border);color:var(--gl-fg)">Excel</span><span style="padding:6px 14px;color:var(--gl-fg)">CSV</span></span>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Contents <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">2</span></div>
+                <div style="display:flex;flex-direction:column;gap:6px;font:400 13px var(--gl-font-body);color:var(--gl-fg)">
+                  <span><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px;vertical-align:-3px">✓</span> Run summary (status, team, totals)</span>
+                  <span><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px;vertical-align:-3px">✓</span> Per-case results</span>
+                  <span><span style="display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid var(--gl-border-strong);vertical-align:-3px"></span> Step-level detail &amp; comments</span>
+                  <span><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px;vertical-align:-3px">✓</span> Linked defects</span>
+                  <span><span style="display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid var(--gl-border-strong);vertical-align:-3px"></span> Requirements traceability</span>
+                  <span><span style="display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid var(--gl-border-strong);vertical-align:-3px"></span> Audit trail for this run</span>
+                </div>
+              </div>
+              <div>
+                <div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Preset</div>
+                <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:6px 12px;font:400 13px var(--gl-font-body);color:var(--gl-fg)">Release sign-off pack <span style="color:var(--gl-fg-subtle)">▾</span></span><span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-subtle)">sets format + contents; editable <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">3</span></span></div>
+              </div>
+              <div style="border:1px dashed var(--gl-border-strong);border-radius:var(--gl-radius-m);background:var(--gl-gray-100);padding:10px 12px;font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)"><span style="display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--gl-gray-300);vertical-align:-2px;background:var(--gl-gray-200)"></span> Also create shareable link (expires 30 days) — <i>stub, needs backend</i> <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">4</span></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--gl-divider);background:var(--gl-gray-50);border-radius:0 0 var(--gl-radius-l) var(--gl-radius-l)">
+              <span style="display:inline-flex;align-items:center;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-m);padding:7px 14px;font:600 13px var(--gl-font-body);color:var(--gl-fg);background:var(--gl-surface)">Cancel</span>
+              <span style="display:inline-flex;align-items:center;background:var(--gl-accent);color:var(--gl-fg-on-brand);border-radius:var(--gl-radius-m);padding:7px 16px;font:600 13px var(--gl-font-body)">Generate export</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul data-legend style="list-style:none;margin:2px 0 10px;padding:0;display:flex;flex-direction:column;gap:6px;max-width:1120px">
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">1</span>Scope pre-fills from wherever the drawer was opened (run header, reports control bar, case-table bulk bar). The three options are always the same trio: whole object / current filter / selection.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span>Content checkboxes map 1:1 to sections of the generated file — no mystery about what "Export" means. Step-level detail is off by default to keep sign-off PDFs short.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">3</span>Presets encode the real recurring artefact (release sign-off pack — cf. seeded case TC-2049 "Export completed run evidence for release sign-off"). Custom presets can persist to localStorage.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">4</span>Shareable links need a server; shown disabled-with-reason rather than hidden, matching the critique's "never silently dead" rule.</li>
+      </ul>
+
+      <div class="dv-card" style="width:1180px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--gl-gray-100);border-bottom:1px solid var(--gl-border)">
+          <span style="font:700 12px var(--gl-font-mono);color:var(--gl-fg)">WF-B2</span>
+          <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">After "Generate export" — visible artifact, never silence</span>
+        </div>
+        <div style="padding:20px 18px;display:flex;gap:18px;align-items:flex-start;font-family:var(--gl-font-body)">
+          <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+            <div style="width:340px;background:var(--gl-surface);border:1px solid var(--gl-border);border-left:4px solid var(--gl-success-500);border-radius:var(--gl-radius-m);box-shadow:var(--gl-shadow-m);padding:12px 16px;font:400 13px var(--gl-font-body);color:var(--gl-fg)">
+              <b>Export ready</b> — run-00001-signoff.pdf (0.4 MB)
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <span style="display:inline-flex;align-items:center;background:var(--gl-accent);color:var(--gl-fg-on-brand);border-radius:var(--gl-radius-m);padding:6px 14px;font:600 12px var(--gl-font-body)">Download</span>
+                <span style="display:inline-flex;align-items:center;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-m);padding:6px 14px;font:600 12px var(--gl-font-body);color:var(--gl-fg)">Open exports</span>
+              </div>
+            </div>
+            <div style="max-width:340px;font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Toast on completion. Generation is client-side in the prototype, so "ready" is near-instant; the pattern still holds when a backend makes it async.</div>
+          </div>
+          <div style="flex:1.4;border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Exports (this browser) — panel under Reports <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">1</span></div>
+            <table style="width:100%;border-collapse:collapse;font:400 13px var(--gl-font-body)">
+              <thead><tr>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Artifact</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Scope</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Created</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Status</th>
+                <th style="border-bottom:1px solid var(--gl-border)"></th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-fg)">run-00001-signoff.pdf</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Run 00001</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">just now</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-success-50);color:var(--gl-success-700);font:600 12px var(--gl-font-body)">Ready</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="display:inline-flex;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:4px 10px;font:600 12px var(--gl-font-body);color:var(--gl-fg)">Download</span></td></tr>
+                <tr><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-fg)">failed-cases-s44.csv</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Report view</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">1 h ago</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-success-50);color:var(--gl-success-700);font:600 12px var(--gl-font-body)">Ready</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="display:inline-flex;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:4px 10px;font:600 12px var(--gl-font-body);color:var(--gl-fg)">Download</span></td></tr>
+                <tr><td style="padding:8px;font:600 12px var(--gl-font-mono);color:var(--gl-fg)">audit-log.xlsx</td><td style="padding:8px">Audit</td><td style="padding:8px">2 d ago</td><td style="padding:8px"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-gray-200);color:var(--gl-gray-500);font:600 12px var(--gl-font-body)">Expired</span> <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">2</span></td><td style="padding:8px"><span style="display:inline-flex;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:4px 10px;font:600 12px var(--gl-font-body);color:var(--gl-fg)">Re-generate</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <ul data-legend style="list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-width:1120px">
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">1</span>An export history gives artefacts a home (re-download, re-generate) and doubles as the "archived test results" seed (tracker row 80) once results snapshots are exportable.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span>Prototype artefacts live in localStorage/blob URLs and expire on reload — stating that honestly beats pretending permanence.</li>
+      </ul>
+    </div>
+
+    <!-- ================================================== 1c RE-RUN -->
+    <div class="dv-opt" id="1c" style="width:1180px">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>C · Re-Run Management — a re-run is a linked, filtered new run; created from the run header More… menu or the close-run moment; three-pane execution UX untouched</div>
+
+      <div class="dv-card" style="width:1180px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--gl-gray-100);border-bottom:1px solid var(--gl-border)">
+          <span style="font:700 12px var(--gl-font-mono);color:var(--gl-fg)">WF-C1</span>
+          <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Create re-run modal (entry: More… → "Create re-run…", or CTA in close-run confirmation)</span>
+        </div>
+        <div style="background:var(--gl-gray-200);padding:32px;display:flex;justify-content:center">
+          <div style="width:600px;background:var(--gl-surface);border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);box-shadow:var(--gl-shadow-l);font-family:var(--gl-font-body)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--gl-divider)"><span style="font:700 16px var(--gl-font-display);color:var(--gl-fg)">Create re-run from 00001 — CTMS Regression · Sprint 44</span><span style="color:var(--gl-fg-subtle);font-size:14px">✕</span></div>
+            <div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;gap:10px;align-items:center;background:var(--gl-gray-100);border:1px solid var(--gl-border);border-radius:var(--gl-radius-m);padding:10px 14px;flex-wrap:wrap">
+                <span style="font:400 13px var(--gl-font-body);color:var(--gl-fg)">Source result:</span>
+                <span style="padding:2px 10px;border-radius:100px;background:var(--gl-success-50);color:var(--gl-success-700);font:600 12px var(--gl-font-body)">71 Passed</span>
+                <span style="padding:2px 10px;border-radius:100px;background:var(--gl-danger-50);color:var(--gl-danger-600);font:600 12px var(--gl-font-body)">24 Failed</span>
+                <span style="padding:2px 10px;border-radius:100px;background:var(--gl-warning-50);color:var(--gl-warning-700);font:600 12px var(--gl-font-body)">7 Blocked</span>
+                <span style="padding:2px 10px;border-radius:100px;background:var(--gl-gray-200);color:var(--gl-gray-500);font:600 12px var(--gl-font-body)">30 Not run</span>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Cases to include <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">1</span></div>
+                <div style="display:flex;flex-direction:column;gap:6px;font:400 13px var(--gl-font-body);color:var(--gl-fg)">
+                  <span><span style="color:var(--gl-accent)">◉</span> Failed only (24)</span>
+                  <span><span style="color:var(--gl-gray-350)">○</span> Failed + Blocked (31)</span>
+                  <span><span style="color:var(--gl-gray-350)">○</span> Everything except Passed (61)</span>
+                  <span><span style="color:var(--gl-gray-350)">○</span> Custom selection… <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-subtle)">opens filterable case picker <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">2</span></span></span>
+                </div>
+              </div>
+              <div>
+                <div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Assignment</div>
+                <div style="display:flex;flex-direction:column;gap:6px;font:400 13px var(--gl-font-body);color:var(--gl-fg)">
+                  <span><span style="color:var(--gl-accent)">◉</span> Keep original assignees</span>
+                  <span style="display:flex;align-items:center;gap:8px"><span><span style="color:var(--gl-gray-350)">○</span> Reassign all to</span><span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:4px 10px;font:400 13px var(--gl-font-body);color:var(--gl-fg-muted)">Select tester <span style="color:var(--gl-fg-subtle)">▾</span></span></span>
+                </div>
+              </div>
+              <div>
+                <div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Name</div>
+                <div style="border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);padding:8px 12px;font:400 13px var(--gl-font-body);color:var(--gl-fg)">CTMS Regression — Sprint 44 · Re-run 1 <span style="color:var(--gl-fg-subtle)">(auto) <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">3</span></span></div>
+              </div>
+              <div style="padding:2px 0 2px 12px;border-left:3px solid var(--gl-blue-300);font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Will be linked as <b style="color:var(--gl-fg)">Re-run of 00001</b>. Original stays closed and untouched — results are never overwritten. <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">4</span></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--gl-divider);background:var(--gl-gray-50);border-radius:0 0 var(--gl-radius-l) var(--gl-radius-l)">
+              <span style="display:inline-flex;align-items:center;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-m);padding:7px 14px;font:600 13px var(--gl-font-body);color:var(--gl-fg);background:var(--gl-surface)">Cancel</span>
+              <span style="display:inline-flex;align-items:center;background:var(--gl-accent);color:var(--gl-fg-on-brand);border-radius:var(--gl-radius-m);padding:7px 16px;font:600 13px var(--gl-font-body)">Create re-run (24 cases)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul data-legend style="list-style:none;margin:2px 0 10px;padding:0;display:flex;flex-direction:column;gap:6px;max-width:1120px">
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">1</span>Presets cover the three tracker rows directly (failed re-execution, blocked re-execution, selective regression) with live counts so the choice is informed before commit.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span>Custom selection reuses the existing "+ Add cases" picker from run creation — filter by folder/tag/priority — for selective regression subsets.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">3</span>Auto-naming encodes lineage and generation; editable but consistent by default.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">4</span>Immutability of the source run is stated in the moment of creation — this is the audit-trail story for QA sign-off, and distinguishes re-run from the existing Duplicate.</li>
+      </ul>
+
+      <div class="dv-card" style="width:1180px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--gl-gray-100);border-bottom:1px solid var(--gl-border)">
+          <span style="font:700 12px var(--gl-font-mono);color:var(--gl-fg)">WF-C2</span>
+          <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Run lineage — summary card "Details" tab + runs list (execution panes unchanged)</span>
+        </div>
+        <div style="padding:20px 18px;display:flex;flex-direction:column;gap:18px;font-family:var(--gl-font-body)">
+          <div>
+            <div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:10px">a) Chain strip inside the run summary card (Details tab)</div>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0">
+              <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-m);padding:10px 14px;background:var(--gl-surface);font:400 12px var(--gl-font-body);text-align:center;color:var(--gl-fg)"><b style="font:600 12px var(--gl-font-mono)">00001</b> · origin<br><span style="color:var(--gl-fg-muted)">24 F · 7 B</span></div>
+              <span style="padding:0 12px;color:var(--gl-fg-subtle);font-size:16px">→</span>
+              <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-m);padding:10px 14px;background:var(--gl-surface);font:400 12px var(--gl-font-body);text-align:center;color:var(--gl-fg)"><b style="font:600 12px var(--gl-font-mono)">00004</b> · Re-run 1<br><span style="color:var(--gl-fg-muted)">24 → 6 F <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">1</span></span></div>
+              <span style="padding:0 12px;color:var(--gl-fg-subtle);font-size:16px">→</span>
+              <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-m);padding:10px 14px;background:var(--gl-surface);font:400 12px var(--gl-font-body);text-align:center;color:var(--gl-fg);outline:2px solid var(--gl-accent);outline-offset:2px"><b style="font:600 12px var(--gl-font-mono)">00006</b> · Re-run 2 (this run)<br><span style="color:var(--gl-fg-muted)">6 → 1 F</span></div>
+            </div>
+            <div style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted);margin-top:8px">Chain shows the burn-down of failures across generations — the regression story in one line. Clicking a node opens that run.</div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:10px">b) Runs list groups chains under the origin run <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">2</span></div>
+            <table style="width:100%;border-collapse:collapse;font:400 13px var(--gl-font-body);border:1px solid var(--gl-border)">
+              <thead><tr>
+                <th style="width:28px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)"></th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Run</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Result</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Status</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:8px 10px;border-bottom:1px solid var(--gl-border);background:var(--gl-gray-50)">Assignees</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:8px 0 8px 10px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-fg-muted)">▾</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">00001 CTMS Regression — Sprint 44</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)">71 P · 24 F · 7 B</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-gray-200);color:var(--gl-gray-500);font:600 12px var(--gl-font-body)">Closed</span></td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)">5</td></tr>
+                <tr><td style="padding:8px 0 8px 24px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-fg-subtle)">↳</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">00004 · Re-run 1</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)">18 P · 6 F</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-gray-200);color:var(--gl-gray-500);font:600 12px var(--gl-font-body)">Closed</span></td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)">3</td></tr>
+                <tr><td style="padding:8px 0 8px 24px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-fg-subtle)">↳</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">00006 · Re-run 2</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)">5 P · 1 F</td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-blue-100);color:var(--gl-blue-600);font:600 12px var(--gl-font-body)">Active</span></td><td style="padding:8px 10px;border-bottom:1px solid var(--gl-gray-200)">1</td></tr>
+                <tr><td style="padding:8px 0 8px 10px"></td><td style="padding:8px 10px;font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">00002 eTMF Document Workflow Smoke</td><td style="padding:8px 10px">32 P · 4 F</td><td style="padding:8px 10px"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-blue-100);color:var(--gl-blue-600);font:600 12px var(--gl-font-body)">Active</span></td><td style="padding:8px 10px">2</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:10px">c) Close-run confirmation offers the re-run moment <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);letter-spacing:0">3</span></div>
+            <div style="max-width:480px;border:1px dashed var(--gl-border-strong);border-radius:var(--gl-radius-m);padding:14px 16px">
+              <div style="font:600 14px var(--gl-font-body);color:var(--gl-fg)">Close test run 00001?</div>
+              <div style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted);margin:6px 0 12px">24 failed and 7 blocked cases will remain in this result set.</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="display:inline-flex;align-items:center;background:var(--gl-accent);color:var(--gl-fg-on-brand);border-radius:var(--gl-radius-m);padding:6px 14px;font:600 13px var(--gl-font-body)">Close run</span>
+                <span style="display:inline-flex;align-items:center;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-m);padding:6px 14px;font:600 13px var(--gl-font-body);color:var(--gl-fg)">Close &amp; create re-run (31)…</span>
+                <span style="display:inline-flex;align-items:center;border:1px solid transparent;border-radius:var(--gl-radius-m);padding:6px 14px;font:600 13px var(--gl-font-body);color:var(--gl-fg-muted)">Cancel</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul data-legend style="list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-width:1120px">
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">1</span>Per-generation delta (24 → 6 → 1 failed) is computable from existing run results — no schema addition beyond a <span style="font-family:var(--gl-font-mono);font-size:12px">rerunOf</span> pointer on the run record (one migration step).</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span>Chain grouping keeps the runs index honest — re-runs don't masquerade as independent runs and don't inflate run counts in reports (Reports treats a chain as one logical regression by default, toggleable).</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">3</span>The close-run moment is where re-run intent actually occurs; offering it there means the flow is discovered without documentation. All three entry points lead to WF-C1.</li>
+      </ul>
+    </div>
+
+    <!-- ================================================== 1d ORGANIZATION -->
+    <div class="dv-opt" id="1d" style="width:1180px">
+      <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>D · Test Case Organization — tree, ordering, move/copy; makes the already-visible Move/Copy affordances real and adds drag-and-drop, explicit ordering, folder ops, cross-project copy</div>
+
+      <div class="dv-card" style="width:1180px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--gl-gray-100);border-bottom:1px solid var(--gl-border)">
+          <span style="font:700 12px var(--gl-font-mono);color:var(--gl-fg)">WF-D1</span>
+          <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Folder tree with drag-and-drop + explicit ordering mode</span>
+        </div>
+        <div style="padding:20px 18px;display:flex;gap:14px;font-family:var(--gl-font-body)">
+          <div style="width:260px;flex:none;display:flex;flex-direction:column;gap:12px">
+            <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Folders <span style="font-size:14px;color:var(--gl-accent);letter-spacing:0">＋</span></div>
+              <div style="font:400 13px var(--gl-font-body);color:var(--gl-fg);line-height:2">
+                <div style="display:flex;align-items:center;gap:4px"><span style="color:var(--gl-fg-muted)">▾</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>CTMS <span style="color:var(--gl-fg-subtle);font-size:12px">17</span><span style="margin-left:auto;color:var(--gl-fg-subtle)">⋯</span> <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span></div>
+                <div style="display:flex;align-items:center;gap:4px;padding-left:20px"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>Audit history <span style="color:var(--gl-fg-subtle);font-size:12px">0</span></div>
+                <div style="display:flex;align-items:center;gap:4px;padding-left:20px;background:var(--gl-accent-soft);border-radius:var(--gl-radius-s)"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-blue-500)">folder</span><span style="font-weight:600;color:var(--gl-blue-600)">Record management</span> <span style="color:var(--gl-fg-subtle);font-size:12px">6</span></div>
+                <div style="border-top:2px solid var(--gl-blue-500);position:relative;margin:1px 0 1px 20px"><span style="position:absolute;left:-5px;top:-6px;font-size:9px;color:var(--gl-blue-500)">●</span></div>
+                <div style="display:flex;align-items:center;gap:4px;padding-left:20px"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>Role &amp; permissions <span style="color:var(--gl-fg-subtle);font-size:12px">11</span> <span style="font-size:11px;color:var(--gl-blue-600)">◄ drop target <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">1</span></span></div>
+                <div style="display:flex;align-items:center;gap:4px"><span style="color:var(--gl-fg-muted)">▾</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>eTMF <span style="color:var(--gl-fg-subtle);font-size:12px">3</span></div>
+                <div style="display:flex;align-items:center;gap:4px;padding-left:20px"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>Classification &amp; QC <span style="color:var(--gl-fg-subtle);font-size:12px">0</span></div>
+                <div style="display:flex;align-items:center;gap:4px"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>Viewer <span style="color:var(--gl-fg-subtle);font-size:12px">2</span></div>
+              </div>
+            </div>
+            <div>
+              <div style="width:170px;border:1px solid var(--gl-border);border-radius:var(--gl-radius-m);background:var(--gl-surface);box-shadow:var(--gl-shadow-m);font:400 13px var(--gl-font-body);color:var(--gl-fg);overflow:hidden">
+                <div style="padding:7px 14px;border-bottom:1px solid var(--gl-gray-200)">New subfolder</div>
+                <div style="padding:7px 14px;border-bottom:1px solid var(--gl-gray-200)">Rename</div>
+                <div style="padding:7px 14px;border-bottom:1px solid var(--gl-gray-200)">Move to…</div>
+                <div style="padding:7px 14px;border-bottom:1px solid var(--gl-gray-200)">Copy to…</div>
+                <div style="padding:7px 14px;color:var(--gl-fg-muted)">Archive folder</div>
+              </div>
+              <div style="font:400 12px var(--gl-font-body);color:var(--gl-fg-subtle);margin-top:6px">folder ⋯ context menu <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">2</span></div>
+            </div>
+          </div>
+          <div style="flex:1;border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <span style="font:400 13px var(--gl-font-body);color:var(--gl-fg)">Order:</span>
+              <span style="display:inline-flex;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);overflow:hidden;font:400 13px var(--gl-font-body)"><span style="padding:5px 12px;background:var(--gl-accent-soft);color:var(--gl-blue-600);font-weight:600;border-right:1px solid var(--gl-border)">Manual ⇅</span><span style="padding:5px 12px;color:var(--gl-fg)">By column sort</span></span>
+              <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">3</span>
+              <span style="flex:1"></span>
+              <span style="padding:3px 12px;border-radius:100px;background:var(--gl-accent-soft);border:1px solid var(--gl-blue-300);font:600 12px var(--gl-font-body);color:var(--gl-blue-600)">3 selected — dragging <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">4</span></span>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font:400 13px var(--gl-font-body)">
+              <thead><tr>
+                <th style="width:26px;border-bottom:1px solid var(--gl-border)"></th>
+                <th style="width:26px;border-bottom:1px solid var(--gl-border)"></th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">ID</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Title</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Priority</th>
+                <th style="text-align:left;font:700 11px var(--gl-font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--gl-gray-450);padding:6px 8px;border-bottom:1px solid var(--gl-border)">Assigned</th>
+              </tr></thead>
+              <tbody>
+                <tr style="background:var(--gl-blue-50)"><td style="padding:8px 4px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-gray-350);letter-spacing:-1px">⋮⋮</td><td style="padding:8px 4px;border-bottom:1px solid var(--gl-gray-200)"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px">✓</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-1001</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Validate CTMS role permissions for Viewer user</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-danger-50);color:var(--gl-danger-600);font:700 11px var(--gl-font-body);letter-spacing:.04em">CRIT</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Nadim S.</td></tr>
+                <tr style="background:var(--gl-blue-50)"><td style="padding:8px 4px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-gray-350);letter-spacing:-1px">⋮⋮</td><td style="padding:8px 4px;border-bottom:1px solid var(--gl-gray-200)"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px">✓</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-1002</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Create CTMS record with required fields</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-danger-50);color:var(--gl-danger-600);font:700 11px var(--gl-font-body);letter-spacing:.04em">CRIT</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Nadim S.</td></tr>
+                <tr><td colspan="6" style="padding:0"><div style="border-top:2px solid var(--gl-blue-500);position:relative;margin:1px 0"><span style="position:absolute;left:-2px;top:-7px;font-size:9px;color:var(--gl-blue-500)">●</span></div></td></tr>
+                <tr><td style="padding:8px 4px;border-bottom:1px solid var(--gl-gray-200);color:var(--gl-gray-350);letter-spacing:-1px">⋮⋮</td><td style="padding:8px 4px;border-bottom:1px solid var(--gl-gray-200)"><span style="display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid var(--gl-border-strong)"></span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200);font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-1004</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">CTMS user role mapping preserves Viewer perm…</td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-warning-50);color:var(--gl-warning-700);font:700 11px var(--gl-font-body);letter-spacing:.04em">HIGH</span></td><td style="padding:8px;border-bottom:1px solid var(--gl-gray-200)">Nadim S.</td></tr>
+                <tr style="background:var(--gl-blue-50)"><td style="padding:8px 4px;color:var(--gl-gray-350);letter-spacing:-1px">⋮⋮</td><td style="padding:8px 4px"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px">✓</span></td><td style="padding:8px;font:600 12px var(--gl-font-mono);color:var(--gl-blue-600)">TC-1008</td><td style="padding:8px">Reporting export includes skipped executions</td><td style="padding:8px"><span style="padding:2px 10px;border-radius:100px;background:var(--gl-danger-50);color:var(--gl-danger-600);font:700 11px var(--gl-font-body);letter-spacing:.04em">CRIT</span></td><td style="padding:8px">Nasir D.</td></tr>
+              </tbody>
+            </table>
+            <div style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted);margin-top:10px">Rows show ⋮⋮ grab handles only in Manual mode; dragging 3 selected rows shows a count badge. Dropping onto a tree folder moves them. <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">1</span> <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">4</span></div>
+          </div>
+        </div>
+      </div>
+      <ul data-legend style="list-style:none;margin:2px 0 10px;padding:0;display:flex;flex-direction:column;gap:6px;max-width:1120px">
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">1</span>One drag model everywhere: rows → folder (move), row → row (reorder), folder → folder (re-nest). Drop position is always shown with an insertion line, drop target with a highlight.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span>Folder operations live in a ⋯ context menu mirroring the existing case row menu — Move/Copy/Rename/Archive for folders closes tracker rows 23/24/28.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">3</span><span><b>Ordering is an explicit mode, not a side effect.</b> Manual order and column sort fight each other in every tool that hides this; the toggle makes state visible and answers the brief's open question ("should ordering be explicit and visible?" — yes). Manual order persists per folder; column sort is a temporary view.</span></li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">4</span>Multi-select drag builds on the existing bulk-select bar, so bulk Move stops being a dead button and gains a direct-manipulation twin.</li>
+      </ul>
+
+      <div class="dv-card" style="width:1180px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--gl-gray-100);border-bottom:1px solid var(--gl-border)">
+          <span style="font:700 12px var(--gl-font-mono);color:var(--gl-fg)">WF-D2</span>
+          <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-muted)">Move / Copy dialog (from row menu, bulk bar, or folder menu)</span>
+        </div>
+        <div style="background:var(--gl-gray-200);padding:32px;display:flex;justify-content:center">
+          <div style="width:520px;background:var(--gl-surface);border:1px solid var(--gl-border);border-radius:var(--gl-radius-l);box-shadow:var(--gl-shadow-l);font-family:var(--gl-font-body)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--gl-divider)"><span style="font:700 16px var(--gl-font-display);color:var(--gl-fg)">Move or copy — 3 test cases</span><span style="color:var(--gl-fg-subtle);font-size:14px">✕</span></div>
+            <div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="display:inline-flex;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-s);overflow:hidden;font:400 13px var(--gl-font-body)"><span style="padding:6px 16px;background:var(--gl-accent-soft);color:var(--gl-blue-600);font-weight:600;border-right:1px solid var(--gl-border)">Move</span><span style="padding:6px 16px;color:var(--gl-fg)">Copy</span></span>
+                <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">1</span>
+              </div>
+              <div>
+                <div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Destination</div>
+                <div style="border:1px solid var(--gl-border);border-radius:var(--gl-radius-m);padding:10px 12px;font:400 13px var(--gl-font-body);color:var(--gl-fg);line-height:2">
+                  <div style="display:flex;align-items:center;gap:4px"><span style="color:var(--gl-fg-muted)">▾</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span><b>Demo Project (DP)</b>&nbsp;— current</div>
+                  <div style="display:flex;align-items:center;gap:4px;padding-left:20px"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>CTMS</div>
+                  <div style="display:flex;align-items:center;gap:4px;padding-left:20px;background:var(--gl-accent-soft);border-radius:var(--gl-radius-s)"><span style="color:var(--gl-fg-muted)">▾</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-blue-500)">folder</span><span style="font-weight:600;color:var(--gl-blue-600)">eTMF ✓</span></div>
+                  <div style="display:flex;align-items:center;gap:4px;padding-left:40px"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>Classification &amp; QC</div>
+                  <div style="display:flex;align-items:center;gap:4px;padding-left:20px"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span>Viewer</div>
+                  <div style="display:flex;align-items:center;gap:4px"><span style="color:var(--gl-fg-muted)">▸</span><span class="material-icons-round" style="font-size:16px;color:var(--gl-gray-400)">folder</span><b>CTMS Platform (CT)</b>&nbsp;— other project <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">2</span></div>
+                </div>
+              </div>
+              <div>
+                <div style="font:700 11px var(--gl-font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--gl-fg-muted);margin-bottom:8px">Options</div>
+                <div style="display:flex;flex-direction:column;gap:6px;font:400 13px var(--gl-font-body);color:var(--gl-fg)">
+                  <span><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px;vertical-align:-3px">✓</span> Keep tags</span>
+                  <span><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;background:var(--gl-accent);color:#fff;font-size:11px;vertical-align:-3px">✓</span> Keep linked requirements</span>
+                  <span><span style="display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid var(--gl-border-strong);vertical-align:-3px"></span> Keep run history <span style="font:400 12px var(--gl-font-body);color:var(--gl-fg-subtle)">(copy only — history never moves across projects)</span></span>
+                </div>
+              </div>
+              <div style="border:1px dashed var(--gl-warning-500);border-radius:var(--gl-radius-m);background:var(--gl-warning-50);padding:10px 12px;font:400 12px var(--gl-font-body);color:var(--gl-warning-700)">⚠ Cross-project: cases receive new IDs in the destination project (TC-1001 → CT-…); links to this project's runs are dropped. Move across projects is disabled in MVP — copy only. <span data-ann style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body)">3</span></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--gl-divider);background:var(--gl-gray-50);border-radius:0 0 var(--gl-radius-l) var(--gl-radius-l)">
+              <span style="display:inline-flex;align-items:center;border:1px solid var(--gl-border-strong);border-radius:var(--gl-radius-m);padding:7px 14px;font:600 13px var(--gl-font-body);color:var(--gl-fg);background:var(--gl-surface)">Cancel</span>
+              <span style="display:inline-flex;align-items:center;background:var(--gl-accent);color:var(--gl-fg-on-brand);border-radius:var(--gl-radius-m);padding:7px 16px;font:600 13px var(--gl-font-body)">Move 3 cases to eTMF</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul data-legend style="list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-width:1120px">
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">1</span>Move and Copy are one dialog with a mode switch — they share destination and options, and users routinely change their mind between the two mid-flow.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">2</span>Destination tree shows other projects inline (tracker row 29) rather than a separate "cross-project" feature — the scope difference is communicated by consequence, not by hiding.</li>
+        <li style="display:flex;gap:10px;align-items:baseline;font:400 13px var(--gl-font-body);color:var(--gl-gray-500)"><span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gl-gray-700);color:#fff;font:700 11px var(--gl-font-body);flex:none">3</span>Cross-project consequences (ID re-issue, dropped run links) are stated before commit; restricting cross-project to Copy keeps the frontend-only data model consistent (no orphaned run references).</li>
+      </ul>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "take <a class="dv-oid" href="#1a">1a</a> to hi-fi inside the full Relay shell" · "add a second layout direction for <a class="dv-oid" href="#1c">1c</a> lineage" · "apply the token cleanup recommendation to the case table"</p>
+</section>
+{{ toggles }}
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showAnnotations&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Wireframe overlay&quot;},&quot;showLegends&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Wireframe overlay&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const showAnn = this.props.showAnnotations ?? true;
+    const showLeg = this.props.showLegends ?? true;
+    let css = "";
+    if (!showAnn) css += "[data-ann]{display:none !important;}";
+    if (!showLeg) css += "[data-legend]{display:none !important;}";
+    return { toggles: React.createElement("style", null, css) };
+  }
+}
+</script>
+</body>
+</html>

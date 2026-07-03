@@ -1,0 +1,412 @@
+/* =============================================================
+   Compass Design System — Colors & Type
+   TransPerfect • TechOps
+   --------------------------------------------------------------
+   Two complementary palettes live here:
+
+   (1) TransPerfect MASTER BRAND tokens — used for marketing
+       surfaces, slide decks, social, presentations.
+       Source: TransPerfect Brand Guidelines V2.0 (2025).
+
+   (2) Compass / GlobalLink PRODUCT tokens — used inside the
+       GlobalLink apps & internal admin tooling.
+       Source: Compass Figma file (Color-Palette + Tokens pages).
+
+   Use --tp-* for brand material; --gl-* for product UI.
+   ============================================================= */
+
+/* ---------- Fonts ---------- */
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 300; src: url("fonts/Poppins-Light.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 400; src: url("fonts/Poppins-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: italic; font-weight: 400; src: url("fonts/Poppins-Italic.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 500; src: url("fonts/Poppins-Medium.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 600; src: url("fonts/Poppins-SemiBold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 700; src: url("fonts/Poppins-Bold.ttf") format("truetype"); font-display: swap; }
+
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 300; src: url("fonts/Montserrat-Light.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 400; src: url("fonts/Montserrat-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 500; src: url("fonts/Montserrat-Medium.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 600; src: url("fonts/Montserrat-SemiBold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 700; src: url("fonts/Montserrat-Bold.ttf") format("truetype"); font-display: swap; }
+
+/* Gotham SSm — real Hoefler & Co. Web fonts (licensed copy supplied by TransPerfect). */
+@font-face { font-family: "Gotham SSm"; font-style: normal; font-weight: 200; src: url("fonts/GothamSSm-XLight.woff2") format("woff2"), url("fonts/GothamSSm-XLight.woff") format("woff"); font-display: swap; }
+@font-face { font-family: "Gotham SSm"; font-style: normal; font-weight: 300; src: url("fonts/GothamSSm-Light.woff2")  format("woff2"), url("fonts/GothamSSm-Light.woff")  format("woff"); font-display: swap; }
+@font-face { font-family: "Gotham SSm"; font-style: normal; font-weight: 400; src: url("fonts/GothamSSm-Book.woff2")   format("woff2"), url("fonts/GothamSSm-Book.woff")   format("woff"); font-display: swap; }
+@font-face { font-family: "Gotham SSm"; font-style: italic; font-weight: 400; src: url("fonts/GothamSSm-BookItalic.woff2") format("woff2"), url("fonts/GothamSSm-BookItalic.woff") format("woff"); font-display: swap; }
+@font-face { font-family: "Gotham SSm"; font-style: normal; font-weight: 500; src: url("fonts/GothamSSm-Medium.woff2") format("woff2"), url("fonts/GothamSSm-Medium.woff") format("woff"); font-display: swap; }
+@font-face { font-family: "Gotham SSm"; font-style: normal; font-weight: 700; src: url("fonts/GothamSSm-Bold.woff2")   format("woff2"), url("fonts/GothamSSm-Bold.woff")   format("woff"); font-display: swap; }
+@font-face { font-family: "Gotham SSm"; font-style: normal; font-weight: 800; src: url("fonts/GothamSSm-Black.woff2")  format("woff2"), url("fonts/GothamSSm-Black.woff")  format("woff"); font-display: swap; }
+
+/* Open Sans is the Compass body face. Loaded from Google for breadth
+   of weights (the brand zip did not include an OFL copy). */
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap");
+
+:root {
+  /* ============================================================
+     (1) TRANSPERFECT MASTER BRAND  ·  use on marketing/decks
+     ============================================================ */
+  --tp-light-blue:  #139DD8;   /* Pantone 299 C / RGB 19 157 216 */
+  --tp-dark-blue:   #003B71;   /* Pantone 541 C / RGB 0 59 113   */
+  --tp-black:       #000000;
+  --tp-white:       #FFFFFF;
+
+  /* Light-blue tint ramp (100% → 20%) — brand-approved gradients */
+  --tp-light-blue-100: #139DD8;
+  --tp-light-blue-80:  #42B0DF;
+  --tp-light-blue-60:  #71C4E7;
+  --tp-light-blue-40:  #A1D8EF;
+  --tp-light-blue-20:  #D0EBF7;
+
+  /* Dark-blue tint ramp (100% → 20%) */
+  --tp-dark-blue-100: #003B71;
+  --tp-dark-blue-80:  #33628D;
+  --tp-dark-blue-60:  #6689AA;
+  --tp-dark-blue-40:  #99B1C6;
+  --tp-dark-blue-20:  #CCD8E3;
+
+  /* Secondary palette — only as 10% accent against the TP blues */
+  --tp-orange:      #FF6600;
+  --tp-teal:        #3BBFB5;
+  --tp-purple:      #7356C0;
+  --tp-pink:        #EC388A;
+  --tp-green:       #7BC3DA;
+  --tp-alabaster:   #E7E3DA;
+  --tp-blue-white:  #E0E8F5;
+  --tp-gray-dark:   #666666;
+  --tp-gray-light:  #F2F2F2;
+
+  /* Brand typography — Poppins is preferred for everything print/digital;
+     Montserrat is the secondary stand-in for shared documents;
+     Verdana is the web-friendly fallback. */
+  --tp-font-display: "Poppins", "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --tp-font-body:    "Poppins", "Montserrat", "Verdana", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --tp-font-secondary: "Montserrat", "Verdana", sans-serif;
+  --tp-font-fallback:  "Verdana", sans-serif;
+
+
+  /* ============================================================
+     (2) COMPASS / GLOBALLINK PRODUCT TOKENS
+     Source: Compass Figma — Color-Palette + Tokens pages
+     ============================================================ */
+
+  /* — Neutral (Gray) — foundation of UI. 14-step ramp (Figma color page).
+       Naming: step / Lighter|Original|Darker / hex.  Original = 700. */
+  --gl-gray-50:  #FBFBFC;   /* Lighter100 */
+  --gl-gray-100: #F6F7F9;   /* Lighter90  */
+  --gl-gray-200: #ECEFF2;   /* Lighter80  */
+  --gl-gray-250: #DBE1E5;   /* Lighter70  */
+  --gl-gray-300: #BAC5CD;   /* Lighter60  */
+  --gl-gray-350: #9AA9B3;   /* Lighter50  */
+  --gl-gray-400: #7B8D99;   /* Lighter40  */
+  --gl-gray-450: #5C707E;   /* Lighter30  */
+  --gl-gray-500: #3E5462;   /* Lighter20  */
+  --gl-gray-550: #324553;   /* Lighter15  */
+  --gl-gray-600: #213746;   /* Lighter10  */
+  --gl-gray-700: #172731;   /* Original   */
+  --gl-gray-800: #0B1821;   /* Darker20   */
+  --gl-gray-900: #080D14;   /* Darker40   */
+  /* legacy aliases (kept so older refs resolve to the dark end) */
+  --gl-gray-950:  #172731;
+  --gl-gray-1000: #0B1821;
+  --gl-black:    #000000;
+  --gl-white:    #FFFFFF;
+
+  /* — Turquoise — only on the GlobalLink header product-name lockup. */
+  --gl-turquoise: #6BEAFF;
+
+  /* — Primary (Blue) — interactive elements (buttons, links, inputs). */
+  --gl-blue-50:  #F6FAFF;
+  --gl-blue-100: #ECF5FF;
+  --gl-blue-200: #D9EBFF;
+  --gl-blue-300: #B3D6FF;
+  --gl-blue-400: #80BBFF;
+  --gl-blue-450: #55A4FF;
+  --gl-blue-500: #1976D2;      /* original / brand primary */
+  --gl-blue-600: #004FAA;
+  --gl-blue-700: #003B80;
+  --gl-blue-800: #002B60;
+  --gl-blue-900: #002040;
+
+  /* — Secondary (Purple) — upsell/upgrade chrome, charts. */
+  --gl-purple-50:  #FBFAFF;
+  --gl-purple-100: #F1ECFF;
+  --gl-purple-200: #DECCFF;
+  --gl-purple-300: #C2A6FF;
+  --gl-purple-400: #A57FFF;
+  --gl-purple-500: #6840CE;
+  --gl-purple-600: #4F26B5;
+  --gl-purple-700: #371490;
+
+  /* — Tertiary (Pink) — updates & user feedback, charts. */
+  --gl-pink-50:  #FFF6FB;
+  --gl-pink-100: #FFE4F2;
+  --gl-pink-200: #FFB8D9;
+  --gl-pink-300: #FF8FC1;
+  --gl-pink-400: #FF5CC3;
+  --gl-pink-500: #D23C80;
+  --gl-pink-600: #A6225F;
+  --gl-pink-700: #7D1545;
+
+  /* — Accent 1 (Greenish) — charts, decorative. */
+  --gl-greenish-100: #E6FAFD;
+  --gl-greenish-200: #B3EFF8;
+  --gl-greenish-500: #2BB5C8;
+  --gl-greenish-700: #0E6F7E;
+
+  /* — Accent 2 (Orange) — charts, decorative. */
+  --gl-orange-100: #FFF1E0;
+  --gl-orange-200: #FFD4A6;
+  --gl-orange-500: #E8861C;
+  --gl-orange-700: #9B520A;
+
+  /* — Status — Success / Danger / Warning */
+  --gl-success-50:  #ECFBEE;
+  --gl-success-100: #C8F2CD;
+  --gl-success-500: #108718;
+  --gl-success-700: #08560D;
+
+  --gl-danger-50:  #FFE4E4;
+  --gl-danger-100: #FFC1C1;
+  --gl-danger-500: #C50007;
+  --gl-danger-600: #9A0005;
+  --gl-danger-700: #6E0003;
+
+  --gl-warning-50:  #FFF5D4;
+  --gl-warning-100: #FFE89F;
+  --gl-warning-500: #E4AF03;
+  --gl-warning-700: #8C6A00;
+
+  /* — High-contrast (Ally) — shock palette for high-contrast mode. */
+  --gl-shock-blue:   #6BEAFF;
+  --gl-shock-purple: #B583FF;
+  --gl-shock-pink:   #FF5CC3;
+  --gl-shock-green:  #4BFF6B;
+  --gl-shock-red:    #FF6363;
+  --gl-shock-yellow: #FBFB0F;
+
+  /* ---------- Semantic UI tokens (light mode) ---------- */
+  --gl-bg:            var(--gl-white);
+  --gl-bg-subtle:     var(--gl-gray-100);
+  --gl-bg-muted:      var(--gl-gray-200);
+  --gl-bg-inverse:    var(--gl-gray-950);
+
+  --gl-surface:       var(--gl-white);
+  --gl-surface-raised: var(--gl-white);
+  --gl-surface-overlay: var(--gl-white);
+
+  --gl-border:        var(--gl-gray-250);
+  --gl-border-strong: var(--gl-gray-300);
+  --gl-divider:       var(--gl-gray-200);
+
+  --gl-fg:            var(--gl-gray-1000);   /* primary text */
+  --gl-fg-muted:      var(--gl-gray-500);    /* secondary text */
+  --gl-fg-subtle:     var(--gl-gray-400);    /* placeholder, helper */
+  --gl-fg-on-brand:   var(--gl-white);
+  --gl-fg-on-dark:    var(--gl-white);
+
+  --gl-link:          var(--gl-blue-500);
+  --gl-link-hover:    var(--gl-blue-600);
+  --gl-link-visited:  var(--gl-purple-500);
+
+  --gl-accent:        var(--gl-blue-500);
+  --gl-accent-hover:  var(--gl-blue-600);
+  --gl-accent-active: var(--gl-blue-700);
+  --gl-accent-soft:   var(--gl-blue-100);
+
+  --gl-focus-ring:    color-mix(in srgb, var(--gl-blue-500) 40%, transparent);
+
+
+  /* ============================================================
+     TYPOGRAPHY  ·  Compass naming: gl-fontSize__{variant}
+     8pt scale · Open Sans body / Gotham SSm display
+     ============================================================ */
+
+  /* — Font families — */
+  --gl-font-display: "Gotham SSm", "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --gl-font-body:    "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --gl-font-brand:   "Poppins", "Open Sans", sans-serif;
+  /* Mono — not a Compass brand face; system stack used for code/token specimens only */
+  --gl-font-mono:    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* — Font sizes (8pt scale) — */
+  --gl-fontSize-xs:   12px;     /* helper, footnote */
+  --gl-fontSize-s:    14px;     /* default body */
+  --gl-fontSize-m:    16px;     /* large body, default button */
+  --gl-fontSize-l:    20px;     /* small heading */
+  --gl-fontSize-xl:   24px;     /* heading */
+  --gl-fontSize-xxl:  32px;     /* page title */
+  --gl-fontSize-xxxl: 40px;     /* hero */
+  --gl-fontSize-4xl:  48px;     /* display */
+  --gl-fontSize-5xl:  60px;     /* page hero */
+
+  /* — Font weights — */
+  --gl-fontWeight-light:     300;   /* @kind font */
+  --gl-fontWeight-regular:   400;   /* @kind font */
+  --gl-fontWeight-medium:    500;   /* @kind font */
+  --gl-fontWeight-semibold:  600;   /* @kind font */
+  --gl-fontWeight-bold:      700;   /* @kind font */
+  --gl-fontWeight-extraBold: 800;   /* @kind font */
+
+  /* — Line heights — */
+  --gl-lineHeight-tight:   1.1;    /* @kind font */
+  --gl-lineHeight-snug:    1.25;   /* @kind font */
+  --gl-lineHeight-normal:  1.5;    /* @kind font */
+  --gl-lineHeight-loose:   1.65;   /* @kind font */
+
+  /* — Letter spacing — */
+  --gl-letterSpacing-tight:  -0.02em;  /* @kind font */
+  --gl-letterSpacing-normal: 0;        /* @kind font */
+  --gl-letterSpacing-wide:   0.04em;   /* @kind font */
+  --gl-letterSpacing-caps:   0.08em;   /* @kind font */
+
+
+  /* ============================================================
+     SPACING — 8-point grid (gl-spacing__N)
+     ============================================================ */
+  --gl-spacing-0:   0px;
+  --gl-spacing-1:   2px;
+  --gl-spacing-2:   4px;
+  --gl-spacing-3:   8px;
+  --gl-spacing-4:  16px;
+  --gl-spacing-5:  24px;
+  --gl-spacing-6:  32px;
+  --gl-spacing-7:  40px;
+  --gl-spacing-8:  48px;
+  --gl-spacing-9:  64px;
+  --gl-spacing-10: 72px;
+  --gl-spacing-11: 80px;
+
+  /* ---------- Border radius ---------- */
+  --gl-radius-s:   6px;
+  --gl-radius-m:   8px;
+  --gl-radius-l:  10px;
+  --gl-radius-xl: 16px;
+  --gl-radius-rounded: 100px;
+
+  /* ---------- Border width ---------- */
+  --gl-borderWidth-s: 1px;
+  --gl-borderWidth-m: 2px;
+
+  /* ---------- Shadows ---------- */
+  --gl-shadow-xs: 0 0 8px rgba(0,0,0,0.10);
+  --gl-shadow-s:  0 4px 10px rgba(0,0,0,0.12);
+  --gl-shadow-m:  0 4px 15px rgba(0,0,0,0.15);
+  --gl-shadow-l:  0 4px 20px rgba(0,0,0,0.20);
+  --gl-shadow-inset: inset 0 0 0 1px var(--gl-border);
+
+  /* ---------- Motion ---------- */
+  --gl-ease-standard:  cubic-bezier(0.2, 0, 0, 1);    /* @kind other */
+  --gl-ease-emphasis:  cubic-bezier(0.3, 0, 0.1, 1);  /* @kind other */
+  --gl-duration-fast:    120ms;   /* @kind other */
+  --gl-duration-normal:  200ms;   /* @kind other */
+  --gl-duration-slow:    320ms;   /* @kind other */
+}
+
+/* ============================================================
+   Dark mode tokens (Compass — auto-applied when [data-theme="dark"])
+   ============================================================ */
+[data-theme="dark"] {
+  --gl-bg:            var(--gl-gray-1000);
+  --gl-bg-subtle:     var(--gl-gray-950);
+  --gl-bg-muted:      var(--gl-gray-600);
+  --gl-bg-inverse:    var(--gl-white);
+  --gl-surface:       var(--gl-gray-950);
+  --gl-surface-raised: var(--gl-gray-600);
+  --gl-surface-overlay: var(--gl-gray-550);
+  --gl-border:        var(--gl-gray-550);
+  --gl-border-strong: var(--gl-gray-500);
+  --gl-divider:       var(--gl-gray-600);
+  --gl-fg:            var(--gl-gray-100);
+  --gl-fg-muted:      var(--gl-gray-300);
+  --gl-fg-subtle:     var(--gl-gray-400);
+  --gl-link:          var(--gl-blue-450);
+  --gl-link-hover:    var(--gl-blue-400);
+  --gl-accent-soft:   color-mix(in srgb, var(--gl-blue-500) 20%, transparent);
+}
+
+/* High-contrast (Ally) mode — overrides interactive surface colors */
+[data-theme="ally"] {
+  --gl-accent:        var(--gl-shock-blue);
+  --gl-accent-hover:  var(--gl-shock-blue);
+  --gl-link:          var(--gl-shock-blue);
+  --gl-bg:            var(--gl-black);
+  --gl-fg:            var(--gl-white);
+  --gl-border:        var(--gl-white);
+}
+
+
+/* ============================================================
+   SEMANTIC ELEMENT RESETS  ·  drop-in styles
+   ============================================================ */
+body {
+  font-family: var(--gl-font-body);
+  font-size:   var(--gl-fontSize-s);
+  line-height: var(--gl-lineHeight-normal);
+  color:       var(--gl-fg);
+  background:  var(--gl-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--gl-font-display);
+  color:       var(--gl-fg);
+  line-height: var(--gl-lineHeight-tight);
+  letter-spacing: var(--gl-letterSpacing-tight);
+  margin: 0;
+}
+h1 { font-size: var(--gl-fontSize-5xl); font-weight: var(--gl-fontWeight-bold);     letter-spacing: -0.02em; }
+h2 { font-size: var(--gl-fontSize-xxxl); font-weight: var(--gl-fontWeight-bold);    letter-spacing: -0.015em; }
+h3 { font-size: var(--gl-fontSize-xxl);  font-weight: var(--gl-fontWeight-semibold); }
+h4 { font-size: var(--gl-fontSize-xl);   font-weight: var(--gl-fontWeight-semibold); }
+h5 { font-size: var(--gl-fontSize-l);    font-weight: var(--gl-fontWeight-semibold); }
+h6 { font-size: var(--gl-fontSize-m);    font-weight: var(--gl-fontWeight-semibold); text-transform: uppercase; letter-spacing: var(--gl-letterSpacing-caps); }
+
+p          { margin: 0; line-height: var(--gl-lineHeight-normal); }
+small      { font-size: var(--gl-fontSize-xs); color: var(--gl-fg-muted); }
+strong, b  { font-weight: var(--gl-fontWeight-semibold); }
+code, kbd, samp { font-family: var(--gl-font-mono); font-size: 0.9em; }
+
+a {
+  color: var(--gl-link);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color var(--gl-duration-fast) var(--gl-ease-standard),
+              border-color var(--gl-duration-fast) var(--gl-ease-standard);
+}
+a:hover { color: var(--gl-link-hover); border-bottom-color: currentColor; }
+a:focus-visible { outline: 2px solid var(--gl-focus-ring); outline-offset: 2px; border-radius: 2px; }
+
+hr { border: 0; border-top: 1px solid var(--gl-divider); margin: var(--gl-spacing-5) 0; }
+
+/* Compass typography utility classes — match Figma naming */
+.gl-display-1 { font-family: var(--gl-font-display); font-size: var(--gl-fontSize-5xl); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.gl-display-2 { font-family: var(--gl-font-display); font-size: var(--gl-fontSize-4xl); font-weight: 700; line-height: 1.1; letter-spacing: -0.015em; }
+.gl-heading-3xl { font-family: var(--gl-font-display); font-size: 40px; line-height: 72px; font-weight: 700; }
+.gl-heading-2xl { font-family: var(--gl-font-display); font-size: 32px; line-height: 48px; font-weight: 700; }
+.gl-heading-xl  { font-family: var(--gl-font-display); font-size: 24px; line-height: 36px; font-weight: 700; }
+.gl-heading-l   { font-family: var(--gl-font-display); font-size: 20px; line-height: 30px; font-weight: 700; }
+.gl-heading-m   { font-family: var(--gl-font-display); font-size: 16px; line-height: 24px; font-weight: 700; }
+.gl-text-xl-regular   { font-family: var(--gl-font-body); font-size: 24px; line-height: 36px; font-weight: 400; }
+.gl-text-xl-semibold  { font-family: var(--gl-font-body); font-size: 24px; line-height: 36px; font-weight: 600; }
+.gl-text-xl-bold      { font-family: var(--gl-font-body); font-size: 24px; line-height: 36px; font-weight: 700; }
+.gl-text-l-regular    { font-family: var(--gl-font-body); font-size: 20px; line-height: 30px; font-weight: 400; }
+.gl-text-l-semibold   { font-family: var(--gl-font-body); font-size: 20px; line-height: 30px; font-weight: 600; }
+.gl-text-l-bold       { font-family: var(--gl-font-body); font-size: 20px; line-height: 30px; font-weight: 700; }
+.gl-text-m-regular    { font-family: var(--gl-font-body); font-size: 16px; line-height: 24px; font-weight: 400; }
+.gl-text-m-semibold   { font-family: var(--gl-font-body); font-size: 16px; line-height: 24px; font-weight: 600; }
+.gl-text-m-bold       { font-family: var(--gl-font-body); font-size: 16px; line-height: 24px; font-weight: 700; }
+.gl-text-s-regular    { font-family: var(--gl-font-body); font-size: 14px; line-height: 20px; font-weight: 400; }
+.gl-text-s-semibold   { font-family: var(--gl-font-body); font-size: 14px; line-height: 20px; font-weight: 600; }
+.gl-text-s-bold       { font-family: var(--gl-font-body); font-size: 14px; line-height: 20px; font-weight: 700; }
+.gl-text-xs-regular   { font-family: var(--gl-font-body); font-size: 12px; line-height: 18px; font-weight: 400; }
+.gl-text-xs-semibold  { font-family: var(--gl-font-body); font-size: 12px; line-height: 18px; font-weight: 600; }
+.gl-text-xs-bold      { font-family: var(--gl-font-body); font-size: 12px; line-height: 18px; font-weight: 700; }
+.gl-eyebrow           { font-family: var(--gl-font-body); font-size: 12px; line-height: 1; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gl-fg-muted); }
+
+/* Brand display utility classes — Poppins, for marketing surfaces */
+.tp-display       { font-family: var(--tp-font-display); font-weight: 700; letter-spacing: -0.01em; }
+.tp-display-light { font-family: var(--tp-font-display); font-weight: 300; }
+.tp-display-medium{ font-family: var(--tp-font-display); font-weight: 500; }
+.tp-tagline       { font-family: var(--tp-font-display); font-weight: 400; font-style: italic; }
