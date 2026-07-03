@@ -29,18 +29,21 @@ Partial answer already found by reading the code (not yet confirmed with Shaun):
 
 ## Improvements (batch towards end of MVP — not urgent)
 
-### User Management
+### User Management `[~draft]`
+Provisional notes at `docs/cursor-prompts/mvp-user-management/draft-notes.md`.
 - Add a "remove user" option (currently only disable exists).
 - Real names instead of fake demo names: Shaun Sevume, Noel Quadri, Nasir Dipto, Arvindh Chandran, Monica Dayalani, Jamil Khan, Nadim Sharif, Syed Ahmed.
 - Role assignments: Owner (keep as Demo User), Administrator (Shaun, Noel), Run Manager (Syed), Run Executor (Jamil, Nasir), Editor (Monica), Viewer (Nadim).
 - **Scope note found during Custom Fields research:** the case-level assignee/owner dropdown (`TEAM_USERS` in `apps/web/src/fresh/data/team-users.ts`) already has all 8 real names. This item is really only about the separate **admin panel** user list (`AdminUser[]`, `/admin/users`), which still uses fake names — smaller lift than it looked.
 
-### Role Management
+### Role Management `[~draft]`
+Provisional notes at `docs/cursor-prompts/mvp-role-management/draft-notes.md`.
 - Pre-existing (built-in) roles can't be edited/deleted, only viewed.
 - New custom roles created in Role Management don't show up in the invite-user role dropdown.
 - **Root cause found during Custom Fields research:** the invite/edit-user role dropdown reads from a hardcoded `ADMIN_USER_ROLES` union in `rbac.ts`, completely separate from the dynamic `AdminRole` CRUD entity Role Management edits — two disconnected role systems, not a missing refresh. This is a real architecture fix (unifying a static type union with a dynamic list + RBAC checks elsewhere), not a small dropdown tweak. Doesn't block the User Management task above — all 6 roles requested there already exist in the static list.
 
-### Test Cases Extra
+### Test Cases Extra `[~draft]`
+Provisional notes at `docs/cursor-prompts/mvp-test-cases-extra/draft-notes.md`.
 - Test case history should reflect real project data (like the list-view sparklines already do) — currently the case detail's History/Runs/Activity tabs show hardcoded fake data.
   - **Finding:** confirmed in code. `CasesScreen.tsx`'s case-list sparkline bars are driven by real data via a `caseBarRun(activeRuns, caseId, barIndex)` helper with a working "go to execution" link. The case detail panel's Runs/History/Activity tabs (~line 1955-1997) are 100% hardcoded literal JSX (fake names like "Nadim Sharif", "Sprint 44 Regression"). Fixing this is mostly reusing `caseBarRun`/`activeRuns`, not new computation. Testiny's equivalent "Recent results" graphic on a case's Runs tab is functionally the same UI concept as the sparkline — confirmed thresholds: 0 runs → "Add this test case to a test run to see results." (no table); 1–3 runs → "Add this test case to more test runs to see a graphical overview." + a Run/By/At table; 4+ runs → full colored-squares graphic + the same table.
 - Rename test case folders: folder shows name | doc count, hover reveals edit (pencil) and delete (bin) icons.
@@ -50,7 +53,8 @@ Partial answer already found by reading the code (not yet confirmed with Shaun):
 - "Runs" tab under a test case should link to actual runs (see history finding above — same fix).
 - TODO (unscoped): TC bulk editing + versioning.
 
-### Test Plans Extra
+### Test Plans Extra `[~draft]`
+Provisional notes at `docs/cursor-prompts/mvp-test-plans-extra/draft-notes.md`.
 - Test Cases tab under Test Plans needs comparison against Testiny.
   - **Finding:** Relay's `TestPlan.queries: TestQuery[]` (condition/folder/static, `resolvePlanCases()`) already supports multiple named dynamic queries unioned with a static list — structurally close to what Testiny does (multiple named queries + a static "Add from list" bucket, each shown as its own chip, unioned with an Origin column showing which query matched each case). Needs a closer side-by-side before scoping — may be more polish (e.g. an Origin column, richer condition builder) than net-new architecture.
 - "Open Test Run" should be "Open Test Runs" and show a scrollable list when multiple runs are open for a plan.
@@ -58,7 +62,8 @@ Partial answer already found by reading the code (not yet confirmed with Shaun):
 - TODO: should runs be creatable from an empty test plan (0 resolved cases)?
   - **Resolved on Testiny (verified 2026-07-02):** no — Testiny has no "Create test run" option anywhere (header or "More…" menu) until a plan has at least one resolved case. Shaun still needs to decide whether Relay should match this constraint or intentionally diverge.
 
-### Test Runs Extra
+### Test Runs Extra `[~draft]`
+Provisional notes at `docs/cursor-prompts/mvp-test-runs-extra/draft-notes.md` (also covers the Steps redesign / Create-run-button / commenting items from Lesser Improvements below, since they share the same screen).
 - Filter tabs above the case list are missing Passed/Skipped; should match the status order next to the summary donut (Passed, Failed, Blocked, Skipped, Not Run).
 - All 5 statuses next to the donut should always be visible, even at 0 count (currently statuses with zero cases disappear, e.g. Skipped).
   - **Confirmed on Testiny, and both items share one fix:** the status rows next to the run's summary donut are always rendered (even at 0%) AND each one is clickable, applying a `Result = X` filter chip to the case list below. Replicating that single mechanism in Relay covers both asks at once.
@@ -70,13 +75,17 @@ Partial answer already found by reading the code (not yet confirmed with Shaun):
   - **Confirmed on Testiny:** description sits directly beneath the run title, editable inline.
 - Add a keyboard shortcut to quickly clear a result status.
 
-### Add a "live" demo project
+### Add a "live" demo project `[~draft]`
+Provisional notes at `docs/cursor-prompts/mvp-live-demo-project/draft-notes.md`.
+
 Keep the current stale demo project, but add a second one with real, non-static test cases/runs (real ids, valid field values) so Shaun can showcase arrow navigation, auto case numbering, run creation, etc. without prior setup.
 - **Note:** this is a prerequisite/enabler for the two Test Cases Extra history/Runs-tab fixes above being meaningfully demoable — worth sequencing before or alongside those, even though it's filed under "Improvements."
 
 ---
 
 ## Lesser Improvements (backlog, not urgent)
+
+Test Runs Lesser items (Steps redesign, Create-run button, commenting) are tracked in `mvp-test-runs-extra/draft-notes.md` since they share that screen. The remaining four below have their own light notes at `docs/cursor-prompts/mvp-polish-lesser/draft-notes.md` `[~draft]`.
 
 - **Test Runs Lesser:** redesign the Steps window to a left/right split (steps | expected results), matching Testiny.
   - **Resolved on Testiny (verified 2026-07-02):** this only applies to Testiny's default "Text" case template, where Steps/Expected Results are two freeform numbered-text blocks side by side (not discrete per-step rows — see `testiny-recon-notes.md`). Testiny also has a separate "Steps" template that looked like discrete per-step rows but wasn't populated with real content to confirm. Net effect: Relay's existing discrete `CaseStep[]` row model is likely already more structured than Testiny's common case, so this item may not need work — recommend closing or re-scoping as "verify Relay's current steps UI is fine as-is" rather than a redesign, next time it's picked up.
