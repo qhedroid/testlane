@@ -24,6 +24,8 @@ import { useFreshUI } from '../hooks/useFreshUI'
 import { parseTestCaseKey, slugToCaseKey, testCasePath, testRunPath } from '../lib/project-routes'
 import { MoveCopyDialog, type MoveCopySubject } from '../components/MoveCopyDialog'
 import { RichTextField, RichTextView } from '../components/RichTextField'
+import { RequirementCoverageBadge } from '../components/RequirementCoverageBadge'
+import { resolveRequirementCoverage, type RequirementCoverage } from '../data/report-utils'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
 type DetailTab = 'details' | 'attachments' | 'defects' | 'requirements' | 'runs' | 'history' | 'activity'
@@ -261,7 +263,7 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement, moveCases, reorderCases, assignCases, archiveCases, unarchiveCases, renameFolder, moveFolder, archiveFolder, addCasesToRun } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement, moveCases, reorderCases, assignCases, archiveCases, unarchiveCases, renameFolder, moveFolder, archiveFolder, addCasesToRun, state } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const pathname = usePathname()
@@ -747,6 +749,15 @@ export function CasesScreen() {
   }
 
   const openUnsealedRuns = useMemo(() => activeRuns.filter((r) => !r.sealed), [activeRuns])
+
+  // Area H: requirement coverage rollup (derived, read-only)
+  const requirementCoverageById = useMemo(() => {
+    const map = new Map<string, RequirementCoverage>()
+    for (const cov of resolveRequirementCoverage(state, activeProject.id)) {
+      map.set(cov.requirementId, cov)
+    }
+    return map
+  }, [state, activeProject.id])
 
   function openCreateRunModal(scope: 'folder' | 'all') {
     setCreateRunMenuOpen(false)
@@ -1414,6 +1425,7 @@ export function CasesScreen() {
               onSave={replaceCase}
               onCreateRequirement={createRequirement}
               onLinkRequirement={linkRequirementToCase}
+              requirementCoverageById={requirementCoverageById}
               getDefect={getDefect}
               getRequirement={getRequirement}
               maximized={detailMaximized}
@@ -1798,6 +1810,7 @@ function CaseDetail({
   onSave,
   onCreateRequirement,
   onLinkRequirement,
+  requirementCoverageById,
   getDefect,
   getRequirement,
   maximized,
@@ -1820,6 +1833,7 @@ function CaseDetail({
   onSave: (c: Case) => void
   onCreateRequirement: (input: { title: string; description?: string }) => { requirementKey: string; requirementId: string }
   onLinkRequirement: (caseId: string, requirementId: string) => void
+  requirementCoverageById: Map<string, RequirementCoverage>
   getDefect: (defectId: string) => import('../data/demo-model').Defect | undefined
   getRequirement: (requirementId: string) => import('../data/demo-model').Requirement | undefined
   maximized: boolean
@@ -2343,7 +2357,10 @@ function CaseDetail({
             ) : (
               linkedRequirements.map((req) => (
                 <div key={req.id} style={{ marginBottom: 8, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 5 }}>
-                  <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{req.requirementKey}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{req.requirementKey}</span>
+                    <RequirementCoverageBadge coverage={requirementCoverageById.get(req.id)} />
+                  </div>
                   <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>{req.title}</div>
                   {req.description ? (
                     <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4 }}><RichTextView source={req.description} /></div>

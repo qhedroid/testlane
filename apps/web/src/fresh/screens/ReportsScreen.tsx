@@ -19,10 +19,13 @@ import {
   computeReportKpis,
   computeScopedRunStats,
   computeTopFailingCases,
+  resolveRequirementCoverage,
   resolveScopedRuns,
   type DrillDownFilter,
   type ScopedRunStat,
 } from '../data/report-utils'
+import { RequirementCoverageBadge } from '../components/RequirementCoverageBadge'
+import { RunDonut } from '../components/RunDonut'
 
 const RANGE_OPTIONS = [
   { value: 3, label: 'Last 3 runs' },
@@ -66,6 +69,8 @@ export function ReportsScreen() {
     activeExports,
     recordExport,
     deleteExport,
+    activeRequirements,
+    getRequirement,
   } = useFresh()
 
   const [railView, setRailView] = useState<'report' | 'exports'>('report')
@@ -105,6 +110,22 @@ export function ReportsScreen() {
     () => (drill ? computeDrillDownRows(stats, activeCases, activeFolders, drill) : []),
     [drill, stats, activeCases, activeFolders],
   )
+
+  // Area H: requirement coverage rollup (project-wide, derived)
+  const requirementCoverage = useMemo(
+    () => resolveRequirementCoverage(state, activeProject.id),
+    [state, activeProject.id],
+  )
+  const coverageSummary = useMemo(() => {
+    const summary = { uncovered: 0, notRun: 0, passing: 0, failing: 0 }
+    for (const cov of requirementCoverage) {
+      if (cov.status === 'Uncovered') summary.uncovered += 1
+      else if (cov.status === 'Covered — not run') summary.notRun += 1
+      else if (cov.status === 'Covered — passing') summary.passing += 1
+      else summary.failing += 1
+    }
+    return summary
+  }, [requirementCoverage])
 
   // Compare deltas: last run in scope vs the one before it.
   const [prevStat, lastStat] = useMemo<[ScopedRunStat | null, ScopedRunStat | null]>(() => {
@@ -687,6 +708,71 @@ export function ReportsScreen() {
               )}
             </>
           )}
+
+          {/* Requirements coverage (Area H) — project-wide, derived from latest results */}
+          <div className="panel" style={{ flexShrink: 0 }}>
+            <div className="pnl-hd">
+              <i className="ti ti-checklist" style={{ fontSize: 13, color: 'var(--accent)' }} />
+              <span className="pnl-ttl">Requirements coverage</span>
+              <span className="pnl-ct">{requirementCoverage.length}</span>
+              <span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 'auto' }}>
+                project-wide · latest execution result per linked case
+              </span>
+            </div>
+            {requirementCoverage.length === 0 ? (
+              <div className="rp-tbl-empty">
+                No requirements in this project yet — create them from a test case's Requirements tab.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 16, padding: '10px 12px', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  <RunDonut
+                    pass={coverageSummary.passing}
+                    fail={coverageSummary.failing}
+                    blocked={0}
+                    notrun={coverageSummary.uncovered}
+                    skipped={coverageSummary.notRun}
+                    size={86}
+                    showCompleteLabel={false}
+                  />
+                  <div style={{ fontSize: 9.5, color: 'var(--text3)', textAlign: 'center', maxWidth: 120 }}>
+                    green: passing · red: has failures · purple: covered, not run · grey: uncovered
+                  </div>
+                </div>
+                <div className="rp-tbl-scroll" style={{ flex: 1, maxHeight: 220 }}>
+                  <table className="rp-tbl">
+                    <thead>
+                      <tr>
+                        <th>Requirement</th>
+                        <th>Linked cases</th>
+                        <th>P · F · B · NR</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {requirementCoverage.map((cov) => {
+                        const req = getRequirement(cov.requirementId)
+                        if (!req) return null
+                        return (
+                          <tr key={cov.requirementId}>
+                            <td><span className="rp-runkey">{req.requirementKey}</span> {req.title}</td>
+                            <td className="rp-mono">{cov.linkedCaseCount}</td>
+                            <td className="rp-mono">
+                              <span style={{ color: 'var(--pass)' }}>{cov.passed}</span> ·{' '}
+                              <span style={{ color: 'var(--fail)' }}>{cov.failed}</span> ·{' '}
+                              <span style={{ color: 'var(--block)' }}>{cov.blocked}</span> ·{' '}
+                              <span style={{ color: 'var(--text3)' }}>{cov.notRun}</span>
+                            </td>
+                            <td><RequirementCoverageBadge coverage={cov} /></td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         )}
       </div>
