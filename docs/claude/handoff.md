@@ -22,7 +22,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 ---
 
-## Close-out progress checkpoint (2026-07-03, after Area D)
+## Close-out progress checkpoint (2026-07-03, after Area H)
 
 | Area | Status | Commit |
 |------|--------|--------|
@@ -30,9 +30,15 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 | B — Export & Reporting (shared export drawer, real artifacts, history) | ✅ Done | `ccf6822` (v16) |
 | C — Re-Run Management (re-run modal, close confirmation, lineage) | ✅ Done | `307971c` (v17) |
 | D — Test Case Organization (bulk bar, move/copy, manual order + DnD) | ✅ Done | `b6bb1a6` (v18) |
-| E–N | Not started yet | — |
+| E — Rich text (markdown subset, RichTextField/RichTextView) | ✅ Done | `d54cd5e` (no bump) |
+| F — Scheduled runs (simulated firing, plans panel + modal) | ✅ Done | `cf102e3` (v19) |
+| G — My Work queue (`/:key/mywork`, run-grouped, deep links) | ✅ Done | `0856519` (no bump) |
+| H — Requirement coverage (badges + Reports coverage card) | ✅ Done | `dbd7781` (no bump) |
+| I–N | Not started yet | — |
 
 Notes so far:
+- Area G honesty note: admin demo-actor names (Alice Chen, Demo User…) don't map onto demo team assignee names (TEAM_USERS); My Work defaults to the actor when the name maps and otherwise exposes an explicit "work queue for" picker.
+- Schema: v19 current (v19 = `scheduledRunsById`).
 - Base-branch note: `git fetch origin` fails in the Cowork sandbox (no GitHub network access); branch was cut from the locally known `origin/mvp-main` ref. App source there is identical to the qa audit branch except docs.
 - "PDF" exports are honestly print-friendly HTML; "Excel" is CSV — labelled as such in UI and toasts.
 - Reports trend buckets are runs (no sprint entity exists) — labelled in the control bar.
