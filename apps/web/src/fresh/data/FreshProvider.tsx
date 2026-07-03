@@ -1288,6 +1288,7 @@ interface FreshContextValue {
   inviteAdminUser: (payload: InviteUserPayload) => void
   updateAdminUser: (payload: UpdateUserPayload) => void
   disableAdminUser: (id: string) => void
+  removeAdminUser: (id: string) => void
   reactivateAdminUser: (id: string) => void
   updateAdminUserRole: (id: string, role: DemoState['adminSettings']['users'][number]['role']) => void
   createAdminRole: (payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }) => void
@@ -1903,6 +1904,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'admin/disableUser', payload: { id } })
   }, [])
 
+  const removeAdminUser = useCallback((id: string) => {
+    dispatch({ type: 'admin/removeUser', payload: { id } })
+  }, [])
+
   const reactivateAdminUser = useCallback((id: string) => {
     dispatch({ type: 'admin/reactivateUser', payload: { id } })
   }, [])
@@ -2029,6 +2034,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       inviteAdminUser,
       updateAdminUser,
       disableAdminUser,
+      removeAdminUser,
       reactivateAdminUser,
       updateAdminUserRole,
       createAdminRole,
@@ -2133,6 +2139,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       inviteAdminUser,
       updateAdminUser,
       disableAdminUser,
+      removeAdminUser,
       reactivateAdminUser,
       updateAdminUserRole,
       createAdminRole,

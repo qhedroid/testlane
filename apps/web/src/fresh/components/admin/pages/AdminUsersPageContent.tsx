@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import type { AdminUser } from '@/fresh/data/demo-model'
 import { formatAdminUserName } from '@/fresh/data/admin-initial-settings'
 import { useFresh } from '@/fresh/data/FreshProvider'
-import { ADMIN_USER_ROLES, formatProjectAccess, FINAL_ADMIN_DISABLE_MESSAGE, isFinalEffectiveAdmin } from '@/fresh/data/rbac'
+import { ADMIN_USER_ROLES, formatProjectAccess, FINAL_ADMIN_DISABLE_MESSAGE, FINAL_ADMIN_REMOVE_MESSAGE, isFinalEffectiveAdmin } from '@/fresh/data/rbac'
 import { AdminPageShell } from '../AdminPageShell'
 import { PermissionButton } from '../PermissionGate'
 import { useActorRbac } from '../useActorRbac'
@@ -127,6 +127,7 @@ export function AdminUsersPageContent() {
     inviteAdminUser,
     updateAdminUser,
     disableAdminUser,
+    removeAdminUser,
     reactivateAdminUser,
   } = useFresh()
   const { canManageUsers, canViewUserManagement, permissionDeniedMessage } = useActorRbac()
@@ -135,6 +136,7 @@ export function AdminUsersPageContent() {
   const [page, setPage] = useState(1)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
+  const [removeUser, setRemoveUser] = useState<AdminUser | null>(null)
   const [formError, setFormError] = useState('')
 
   const [firstName, setFirstName] = useState('')
@@ -325,6 +327,25 @@ export function AdminUsersPageContent() {
                       Disable
                     </PermissionButton>
                   )}
+                  {isFinalEffectiveAdmin(adminSettings.users, u.id) ? (
+                    <button
+                      type="button"
+                      className="btn admin-btn-sm"
+                      disabled
+                      title={FINAL_ADMIN_REMOVE_MESSAGE}
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <PermissionButton
+                      allowed={canManageUsers}
+                      message={permissionDeniedMessage}
+                      className="btn admin-btn-sm admin-btn-danger"
+                      onClick={() => setRemoveUser(u)}
+                    >
+                      Remove
+                    </PermissionButton>
+                  )}
                 </span>
               </td>
             </tr>
@@ -403,6 +424,37 @@ export function AdminUsersPageContent() {
           onSilentInvite={() => {}}
         />
         {formError ? <div className="admin-form-error">{formError}</div> : null}
+      </AdminModal>
+
+      <AdminModal
+        open={!!removeUser}
+        title={`Remove ${removeUser ? formatAdminUserName(removeUser) : 'user'}?`}
+        onClose={() => setRemoveUser(null)}
+        footer={
+          <>
+            <button type="button" className="btn" onClick={() => setRemoveUser(null)}>Cancel</button>
+            <button
+              type="button"
+              className="btn"
+              style={{ background: 'var(--fail)', color: '#fff', border: 'none' }}
+              onClick={() => {
+                if (removeUser) removeAdminUser(removeUser.id)
+                setRemoveUser(null)
+              }}
+            >
+              Remove permanently
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.55, marginBottom: 10 }}>
+          This <strong>permanently deletes</strong> the user record — unlike Disable, it cannot be re-enabled later.
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.55, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '8px 10px' }}>
+          <strong>Prototype limitation:</strong> historical records are not cascaded or reassigned. Anywhere this
+          person appears in past runs, results (assignee / tested-by), or the audit log, their name remains as an
+          orphaned display name no longer linked to a user account.
+        </p>
       </AdminModal>
     </AdminPageShell>
   )

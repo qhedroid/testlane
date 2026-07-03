@@ -158,6 +158,9 @@ export const PERMISSION_DENIED_MESSAGE =
 export const FINAL_ADMIN_DISABLE_MESSAGE =
   'You cannot disable the final Owner or Administrator.'
 
+export const FINAL_ADMIN_REMOVE_MESSAGE =
+  'You cannot remove the final Owner or Administrator.'
+
 type AdminUserLike = {
   id: string
   role: AdminUserRole

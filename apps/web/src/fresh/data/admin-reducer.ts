@@ -47,6 +47,7 @@ export type AdminAction =
   | { type: 'admin/inviteUser'; payload: InviteUserPayload }
   | { type: 'admin/updateUser'; payload: UpdateUserPayload }
   | { type: 'admin/disableUser'; payload: { id: string } }
+  | { type: 'admin/removeUser'; payload: { id: string } }
   | { type: 'admin/reactivateUser'; payload: { id: string } }
   | { type: 'admin/updateUserRole'; payload: { id: string; role: AdminUser['role'] } }
   | { type: 'admin/createRole'; payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions } }
@@ -242,6 +243,29 @@ export function reduceAdminState(state: DemoState, action: AdminAction): DemoSta
       let nextState = withUsers(state, users, settings)
       if (nextState.currentActorUserId === action.payload.id) {
         const fallback = users.find((u) => u.status !== 'Disabled')
+        if (fallback) nextState = { ...nextState, currentActorUserId: fallback.id }
+      }
+      return nextState
+    }
+
+    case 'admin/removeUser': {
+      // Area M: permanent removal — distinct from Disable (which keeps the
+      // record re-enableable). Reuses the same last-effective-admin guard.
+      // Historical assignee/testedBy/audit-log references are NOT cascaded or
+      // reassigned — they become orphaned display names by design.
+      const target = settings.users.find((u) => u.id === action.payload.id)
+      if (!target) return state
+      if (isFinalEffectiveAdmin(settings.users, action.payload.id)) return state
+      settings = appendAuditEntry(settings, {
+        area: 'Settings',
+        byUser,
+        operation: 'Delete',
+        details: `Removed user ${formatAdminUserName(target)} (permanent — historical references retained as plain names)`,
+      })
+      const users = settings.users.filter((u) => u.id !== action.payload.id)
+      let nextState = withUsers(state, users, settings)
+      if (nextState.currentActorUserId === action.payload.id) {
+        const fallback = users.find((u) => u.status !== 'Disabled') ?? users[0]
         if (fallback) nextState = { ...nextState, currentActorUserId: fallback.id }
       }
       return nextState
