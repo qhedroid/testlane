@@ -454,7 +454,7 @@
 }
 
 .pl-query-card-hd .pl-query-remove:hover {
-  color: var(--danger, #c0392b);
+  color: var(--fail);
   background: var(--hover);
 }
 
@@ -497,7 +497,7 @@
 }
 
 .pl-cond-row .pl-cond-remove:hover {
-  color: var(--danger, #c0392b);
+  color: var(--fail);
 }
 
 .pl-add-cond {
@@ -550,7 +550,7 @@
 }
 
 .pl-folder-chip button:hover {
-  color: var(--danger, #c0392b);
+  color: var(--fail);
 }
 
 .pl-folder-select {
