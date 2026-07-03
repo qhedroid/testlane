@@ -16,11 +16,11 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-dashboard-metrics` — implements real dashboard metrics (tasks 01–04 complete, uncommitted). Branch off `mvp-main`.
+`mvp-dashboard-metrics` — implements real dashboard metrics. Tasks 01–04 committed (`5544fc0`). Task-05 (bug-fix follow-up) drafted, not yet run. Branch off `mvp-main`.
 
 ---
 
-## Completed work — `mvp-dashboard-metrics` (tasks 01–04, uncommitted) ✅
+## Completed work — `mvp-dashboard-metrics` (tasks 01–04, committed `5544fc0`) ✅
 
 Rebuilt `DashboardScreen.tsx` to compute all dashboard widgets from `FreshProvider` state instead of static `seed.ts` mocks:
 
@@ -34,6 +34,15 @@ Rebuilt `DashboardScreen.tsx` to compute all dashboard widgets from `FreshProvid
 Schema unchanged (v14). Removed `projectHasDemoDashboard()` from `demo-project-utils.ts`. QA evidence: `/tmp/relay-qa-mvp-dashboard-metrics/qa-report.md`.
 
 **Follow-up (separate branch):** Verify Test Plans Overview tab metrics on `PlansScreen.tsx` reflect live data end-to-end — not part of this branch.
+
+### Post-commit bug fix — task-05 `[~in progress]` (drafted, not yet run)
+
+Shaun found two bugs in the run-card donuts after tasks 01–04 landed, both traced to task-01's `runToCard()`/`RunStatusInfographic` call not matching how RunsScreen/PlansScreen already use the same shared components:
+
+1. Skipped executions were folded into "Not run" (`notrun: summary.notRun + summary.skipped`) instead of passed as their own `skipped` value — task-01 incorrectly assumed `RunStatusInfographic`/`RunDonut` had no dedicated skipped slot; they've always had one.
+2. The donut wasn't passed `interactive`, so it's missing the hover tooltip that RunsScreen's and PlansScreen's donuts already have (the tooltip logic already lives inside `RunDonut` — it just no-ops without that prop).
+
+Real task prompt: `docs/cursor-prompts/mvp-dashboard-metrics/task-05-skipped-status-and-hover-tooltip.md`. Single-file fix (`DashboardScreen.tsx` only), no schema change, no dependency beyond tasks 01–04 already being in.
 
 ---
 
