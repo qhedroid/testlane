@@ -6,6 +6,7 @@ import type { CasePriority } from '../data/demo-model'
 import { newId, TYPE_PLACEHOLDER_TAGS } from '../data/demo-model'
 import { TEAM_USERS } from '../data/team-users'
 import { useFreshUI } from '../hooks/useFreshUI'
+import { RichTextField } from './RichTextField'
 
 interface StepDraft {
   action: string
@@ -134,7 +135,7 @@ export function CreateCaseModal() {
           </div>
           <div className="form-field">
             <label>Preconditions</label>
-            <textarea rows={3} value={precond} onChange={(e) => setPrecond(e.target.value)} placeholder="Data, role, tenant, or module setup required" />
+            <RichTextField rows={3} value={precond} onChange={setPrecond} placeholder="Data, role, tenant, or module setup required" />
           </div>
           <div className="form-field">
             <label>Tags</label>
@@ -185,11 +186,11 @@ export function CreateCaseModal() {
               </div>
               <div className="form-field">
                 <label>Action</label>
-                <textarea rows={2} value={step.action} onChange={(e) => updateStep(idx, 'action', e.target.value)} placeholder="Action to perform" />
+                <RichTextField rows={2} value={step.action} onChange={(v) => updateStep(idx, 'action', v)} placeholder="Action to perform" />
               </div>
               <div className="form-field">
                 <label>Expected result</label>
-                <textarea rows={2} value={step.expected} onChange={(e) => updateStep(idx, 'expected', e.target.value)} placeholder="Observable result" />
+                <RichTextField rows={2} value={step.expected} onChange={(v) => updateStep(idx, 'expected', v)} placeholder="Observable result" />
               </div>
             </div>
           ))}

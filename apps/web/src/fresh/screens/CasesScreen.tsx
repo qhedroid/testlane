@@ -23,6 +23,7 @@ import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
 import { parseTestCaseKey, slugToCaseKey, testCasePath, testRunPath } from '../lib/project-routes'
 import { MoveCopyDialog, type MoveCopySubject } from '../components/MoveCopyDialog'
+import { RichTextField, RichTextView } from '../components/RichTextField'
 
 type StatusFilter = 'all' | 'pass' | 'fail' | 'blocked' | 'not_run'
 type DetailTab = 'details' | 'attachments' | 'defects' | 'requirements' | 'runs' | 'history' | 'activity'
@@ -2036,11 +2037,11 @@ function CaseDetail({
                   </div>
                   <div className="form-field" style={{ gridColumn: 'span 2' }}>
                     <label>Summary</label>
-                    <input
-                      type="text"
+                    <RichTextField
                       value={draft.summary ?? ''}
-                      onChange={(e) => setDraft((d) => ({ ...d, summary: e.target.value }))}
-                      placeholder="One-line summary…"
+                      onChange={(v) => setDraft((d) => ({ ...d, summary: v }))}
+                      rows={2}
+                      placeholder="Short summary… (supports **bold**, *italic*, lists, `code`, links)"
                     />
                   </div>
                   {activeFields.map((field) => (
@@ -2099,8 +2100,8 @@ function CaseDetail({
                   </div>
                   <div style={{ gridColumn: 'span 2' }}>
                     <div className="dp-ml">Summary</div>
-                    <div className="dp-mv" style={{ whiteSpace: 'pre-wrap' }}>
-                      {c.summary || <span style={{ color: 'var(--text3)' }}>—</span>}
+                    <div className="dp-mv">
+                      {c.summary?.trim() ? <RichTextView source={c.summary} /> : <span style={{ color: 'var(--text3)' }}>—</span>}
                     </div>
                   </div>
                   {activeFields.map((field) => {
@@ -2123,9 +2124,16 @@ function CaseDetail({
             <div className="dp-sec">
               <div className="dp-sl">Preconditions</div>
               {editing ? (
-                <textarea className="dp-edit-area" rows={3} value={draft.preconditions ?? ''} onChange={(e) => setDraft((d) => ({ ...d, preconditions: e.target.value }))} />
+                <RichTextField
+                  value={draft.preconditions ?? ''}
+                  onChange={(v) => setDraft((d) => ({ ...d, preconditions: v }))}
+                  rows={3}
+                  placeholder="Data, role, tenant, or module setup required"
+                />
               ) : (
-                <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{c.preconditions}</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
+                  <RichTextView source={c.preconditions} />
+                </div>
               )}
             </div>
             <div className="dp-sec">
@@ -2136,16 +2144,18 @@ function CaseDetail({
                   <div style={{ flex: 1 }}>
                     {editing ? (
                       <>
-                        <textarea className="dp-edit-area" rows={2} value={draft.steps[n]?.action ?? ''} onChange={(e) => updateStep(n, { action: e.target.value })} placeholder="Action" />
-                        <textarea className="dp-edit-area" rows={2} value={draft.steps[n]?.expected ?? ''} onChange={(e) => updateStep(n, { expected: e.target.value })} placeholder="Expected" style={{ marginTop: 4 }} />
+                        <RichTextField value={draft.steps[n]?.action ?? ''} onChange={(v) => updateStep(n, { action: v })} rows={2} placeholder="Action" />
+                        <div style={{ marginTop: 4 }}>
+                          <RichTextField value={draft.steps[n]?.expected ?? ''} onChange={(v) => updateStep(n, { expected: v })} rows={2} placeholder="Expected" />
+                        </div>
                         {draft.steps.length > 1 ? (
                           <button type="button" className="btn" style={{ fontSize: 10, marginTop: 4 }} onClick={() => removeStep(n)}>Remove step</button>
                         ) : null}
                       </>
                     ) : (
                       <>
-                        <div className="step-act">{s.action}</div>
-                        <div className="step-exp">→ {s.expected}</div>
+                        <div className="step-act"><RichTextView source={s.action} /></div>
+                        <div className="step-exp">→ <RichTextView source={s.expected} className="rtf-inline" /></div>
                       </>
                     )}
                   </div>
@@ -2300,12 +2310,11 @@ function CaseDetail({
                 </div>
                 <div className="form-field" style={{ marginBottom: 8 }}>
                   <label style={{ fontSize: 11 }}>Description</label>
-                  <textarea
+                  <RichTextField
                     rows={2}
                     value={reqDescription}
-                    onChange={(e) => setReqDescription(e.target.value)}
-                    placeholder="Optional summary…"
-                    style={{ width: '100%', fontSize: 12 }}
+                    onChange={setReqDescription}
+                    placeholder="Optional summary… (supports markdown subset)"
                   />
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -2337,7 +2346,7 @@ function CaseDetail({
                   <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{req.requirementKey}</div>
                   <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>{req.title}</div>
                   {req.description ? (
-                    <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4 }}>{req.description}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4 }}><RichTextView source={req.description} /></div>
                   ) : null}
                   <div style={{ fontSize: 10.5, color: 'var(--text3)', marginTop: 4 }}>{req.status} · Local · {formatRelativeTime(req.createdAt)}</div>
                 </div>

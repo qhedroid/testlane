@@ -7,6 +7,7 @@ import { useFresh } from '../data/FreshProvider'
 import type { Case, DemoRun, ExecStatus, ExecutionLogEntry, ExportFormatChoice } from '../data/demo-model'
 import { ExportDrawer, type ExportDrawerContext } from '../components/ExportDrawer'
 import { CreateRerunModal, type RerunInclude } from '../components/CreateRerunModal'
+import { RichTextField, RichTextView } from '../components/RichTextField'
 import { runChainMembers, runChainRootId } from '../data/run-utils'
 import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
@@ -1461,7 +1462,7 @@ function ExecDetailPane({
         </div>
         <div className="ed-precond">
           <div className="ed-sl">Preconditions</div>
-          <div className="ed-pt">{caseData.preconditions}</div>
+          <div className="ed-pt"><RichTextView source={caseData.preconditions} /></div>
         </div>
         {caseData.steps.map((s, n) => {
           const sr = execution?.stepResults[s.id] ?? 'Not run'
@@ -1483,8 +1484,8 @@ function ExecDetailPane({
                 </div>
               </div>
               <div className="esc-body">
-                <div className="esc-act">{s.action}</div>
-                <div className="esc-exp">Expected: {s.expected}</div>
+                <div className="esc-act"><RichTextView source={s.action} /></div>
+                <div className="esc-exp">Expected: <RichTextView source={s.expected} className="rtf-inline" /></div>
                 {s.comments.map((c) => (
                   <div key={c.id} className="esc-cmt-item">
                     <strong>{c.author}</strong>: {c.body}
@@ -1615,13 +1616,14 @@ function ExecDetailPane({
                 onChange={(e) => setDefectTitle(e.target.value)}
                 style={{ width: '100%', fontSize: 12, marginBottom: 6 }}
               />
-              <textarea
-                rows={2}
-                placeholder="Optional description…"
-                value={defectDescription}
-                onChange={(e) => setDefectDescription(e.target.value)}
-                style={{ width: '100%', fontSize: 12, marginBottom: 6 }}
-              />
+              <div style={{ marginBottom: 6 }}>
+                <RichTextField
+                  rows={2}
+                  placeholder="Optional description… (supports markdown subset)"
+                  value={defectDescription}
+                  onChange={setDefectDescription}
+                />
+              </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
                   type="button"
@@ -1697,7 +1699,7 @@ function ExecDetailPane({
                 <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{req.requirementKey}</div>
                 <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>{req.title}</div>
                 {req.description ? (
-                  <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4 }}>{req.description}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4 }}><RichTextView source={req.description} /></div>
                 ) : null}
                 <div style={{ fontSize: 10.5, color: 'var(--text3)', marginTop: 4 }}>{req.status} · Local</div>
               </div>
