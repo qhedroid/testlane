@@ -14,7 +14,7 @@ Product and implementation flow map for the team. Complements authoritative cont
 
 | Module | Slug | Screen component | Route(s) | Data state |
 |--------|------|------------------|----------|------------|
-| Dashboard | `dashboard` | `DashboardScreen` | `/:key/dashboard` | Mock seed (demo template only) |
+| Dashboard | `dashboard` | `DashboardScreen` | `/:key/dashboard` | Live FreshProvider data (all projects) |
 | Test cases | `testcases` | `CasesScreen` | `/:key/testcases`, `/:key/testcases/tc/:caseKey` | Mock + localStorage |
 | Test plans | `plans` | `PlansScreen` | `/:key/plans` | Mock seed |
 | Test runs | `testruns` | `RunsScreen` | `/:key/testruns`, `/:key/testruns/tr/:runKey`, `/:key/testruns/tr/:runKey/tc/:caseKey` | Mock + localStorage |
@@ -179,8 +179,7 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 |------------------|--------|-------------|-------|
 | Shell & navigation | **Implemented** | Client | Sidebar, module switcher, Cmd+K |
 | Project switcher & CRUD | **Implemented** | localStorage | URL sync; cascade delete |
-| Dashboard (demo template) | **Implemented** | Seed | Metrics for `seedTemplate: 'demo'` only |
-| Dashboard (other projects) | **Placeholder** | — | “Coming soon” |
+| Dashboard | **Implemented** | localStorage | Real metrics for all projects; empty-cases onboarding state |
 | Test cases — tree & table | **Implemented** | localStorage | Filters, pagination, search |
 | Test cases — detail & CRUD | **Implemented** | localStorage | Tabs, custom fields, context menu |
 | Test cases — URL sync | **Implemented** | — | `/testcases/tc/:caseKey` |
@@ -234,7 +233,7 @@ flowchart LR
 | Admin → Test cases | `activeCustomFieldIds` controls which custom fields render |
 | Test cases → Test runs | Cases referenced in `run.caseOrder`; create-run from cases toolbar |
 | Test plans → Test runs | Spawn run creates a run with `planId`/`planName` stamped; plan's query groups resolve case list for scope display |
-| Test runs → Dashboard | Run cards read seed metrics, not live run state |
+| Test runs → Dashboard | Run cards, metrics, attention, and coverage derive from active run/case state |
 | Project scope | All case/run/folder selectors filter by `activeProjectId` |
 | Schema migrations | Any model change affects all modules using `FreshProvider` |
 
@@ -275,8 +274,13 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Dashboard — `/:key/dashboard`
 
-- [ ] Demo project shows run cards and attention list
-- [ ] Non-demo project shows placeholder
+- [ ] Demo project shows real metric cards, run cards, attention list, folder coverage
+- [ ] New blank project (zero cases) shows “Add your first test cases” empty state
+- [ ] Project with cases but no runs shows zero-state metrics (no NaN%, no crash)
+- [ ] Critical filter shows only runs with failures
+- [ ] Run-card donut shows Skipped as its own segment; hover tooltips on wedges
+- [ ] Expanded Overview text row reconciles pass + fail + blocked + skipped + not run = total
+- [ ] Linking a defect removes failure from needs-attention panel
 - [ ] *New Run* / attention links open testruns
 - [ ] No console errors on load
 
