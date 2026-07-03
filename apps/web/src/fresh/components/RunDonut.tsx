@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
+import { THEME_COLORS } from '../styles/theme-colors'
 import { formatDonutPercent } from '../data/ui-utils'
 
 type Segment = {
@@ -22,7 +23,7 @@ export function RunDonut({
   size = 80,
   showCompleteLabel = true,
   interactive = false,
-  notrunColor = '#C5D1DE',
+  notrunColor = THEME_COLORS.notRun,
 }: {
   pass: number
   fail: number
@@ -54,10 +55,10 @@ export function RunDonut({
     const sL = (skipped / total) * C
     const nL = (notrun / total) * C
     const segments: Segment[] = [
-      { key: 'pass', count: pass, color: '#2E7D32', label: 'Passed', cumStart: 0, len: pL },
-      { key: 'fail', count: fail, color: '#C62828', label: 'Failed', cumStart: pL, len: fL },
-      { key: 'blocked', count: blocked, color: '#E65100', label: 'Blocked', cumStart: pL + fL, len: bL },
-      { key: 'skipped', count: skipped, color: '#4527A0', label: 'Skipped', cumStart: pL + fL + bL, len: sL },
+      { key: 'pass', count: pass, color: THEME_COLORS.pass, label: 'Passed', cumStart: 0, len: pL },
+      { key: 'fail', count: fail, color: THEME_COLORS.fail, label: 'Failed', cumStart: pL, len: fL },
+      { key: 'blocked', count: blocked, color: THEME_COLORS.block, label: 'Blocked', cumStart: pL + fL, len: bL },
+      { key: 'skipped', count: skipped, color: THEME_COLORS.skip, label: 'Skipped', cumStart: pL + fL + bL, len: sL },
       { key: 'notrun', count: notrun, color: notrunColor, label: 'Not run', cumStart: pL + fL + bL + sL, len: nL },
     ].filter((s) => s.len > 0)
     const pctSize = showCompleteLabel ? 15 * scale : 18 * scale
@@ -110,7 +111,7 @@ export function RunDonut({
   return (
     <div className={`donut-wrap${interactive ? ' interactive' : ''}`} style={{ position: 'relative', flexShrink: 0 }}>
       <svg viewBox={`0 0 ${vb} ${vb}`} width={size} height={size} style={{ display: 'block' }} className="rct-donut">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#E5EBF2" strokeWidth={stroke} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={THEME_COLORS.chartGrid} strokeWidth={stroke} />
         {segments.map((s) => segEl(s))}
         {interactive ? segments.map((s) => segEl(s, true)) : null}
         <text
@@ -120,7 +121,7 @@ export function RunDonut({
           dominantBaseline="middle"
           fontSize={pctSize}
           fontWeight={800}
-          fill="#0F1C2E"
+          fill={THEME_COLORS.text}
           fontFamily="ui-monospace,'SF Mono',monospace"
           style={{ pointerEvents: 'none' }}
         >
@@ -133,8 +134,8 @@ export function RunDonut({
             textAnchor="middle"
             fontSize={labelSize}
             fontWeight={600}
-            fill="#7A92AB"
-            fontFamily="-apple-system,system-ui,sans-serif"
+            fill={THEME_COLORS.textMuted}
+            fontFamily="var(--sans)"
             letterSpacing="0.06em"
             style={{ pointerEvents: 'none' }}
           >

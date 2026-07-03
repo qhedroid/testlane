@@ -27,6 +27,7 @@ import {
 } from '../data/report-utils'
 import { RequirementCoverageBadge } from '../components/RequirementCoverageBadge'
 import { RunDonut } from '../components/RunDonut'
+import { THEME_COLORS } from '../styles/theme-colors'
 
 const RANGE_OPTIONS = [
   { value: 3, label: 'Last 3 runs' },
@@ -35,14 +36,14 @@ const RANGE_OPTIONS = [
   { value: 0, label: 'All runs' },
 ]
 
-const FOLDER_PALETTE = ['#1565C0', '#6A1B9A', '#00838F', '#EF6C00', '#5D4037', '#C2185B', '#2E7D32', '#455A64']
+const FOLDER_PALETTE = [...THEME_COLORS.folderPalette]
 
 const STATUS_COLOR: Record<ExecStatus, string> = {
-  Passed: '#2E7D32',
-  Failed: '#C62828',
-  Blocked: '#E65100',
-  Skipped: '#4527A0',
-  'Not run': '#C5D1DE',
+  Passed: THEME_COLORS.pass,
+  Failed: THEME_COLORS.fail,
+  Blocked: THEME_COLORS.block,
+  Skipped: THEME_COLORS.skip,
+  'Not run': THEME_COLORS.notRun,
 }
 
 interface ControlState {
@@ -909,15 +910,15 @@ function PassRateLineChart({
       <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
         {[0, 25, 50, 75, 100].map((g) => (
           <g key={g}>
-            <line x1={PAD_L} x2={CHART_W - PAD_R} y1={y(g)} y2={y(g)} stroke="#E5EBF2" strokeWidth={1} />
-            <text x={PAD_L - 5} y={y(g) + 3} textAnchor="end" fontSize={8.5} fill="#7A92AB">{g}%</text>
+            <line x1={PAD_L} x2={CHART_W - PAD_R} y1={y(g)} y2={y(g)} stroke={THEME_COLORS.chartGrid} strokeWidth={1} />
+            <text x={PAD_L - 5} y={y(g) + 3} textAnchor="end" fontSize={8.5} fill={THEME_COLORS.textMuted}>{g}%</text>
           </g>
         ))}
         {progressPoints.length > 1 ? (
-          <polyline points={progressPoints.join(' ')} fill="none" stroke="#1565C0" strokeWidth={1.4} strokeDasharray="4 3" opacity={0.65} />
+          <polyline points={progressPoints.join(' ')} fill="none" stroke={THEME_COLORS.accent} strokeWidth={1.4} strokeDasharray="4 3" opacity={0.65} />
         ) : null}
         {passPoints.length > 1 ? (
-          <polyline points={passPoints.join(' ')} fill="none" stroke="#2E7D32" strokeWidth={2} />
+          <polyline points={passPoints.join(' ')} fill="none" stroke={THEME_COLORS.pass} strokeWidth={2} />
         ) : null}
         {stats.map((s, i) =>
           s.passRate === null ? null : (
@@ -926,8 +927,8 @@ function PassRateLineChart({
               cx={x(i)}
               cy={y(s.passRate)}
               r={4.5}
-              fill="#2E7D32"
-              stroke="#fff"
+              fill={THEME_COLORS.pass}
+              stroke={THEME_COLORS.white}
               strokeWidth={1.5}
               style={{ cursor: 'pointer' }}
               onClick={() => onPick(s.run.id)}
@@ -937,7 +938,7 @@ function PassRateLineChart({
           ),
         )}
         {stats.map((s, i) => (
-          <text key={s.run.id} x={x(i)} y={CHART_H - 10} textAnchor="middle" fontSize={8.5} fill="#7A92AB" fontFamily="ui-monospace,monospace">
+          <text key={s.run.id} x={x(i)} y={CHART_H - 10} textAnchor="middle" fontSize={8.5} fill={THEME_COLORS.textMuted} fontFamily="ui-monospace,monospace">
             {s.run.runKey}
           </text>
         ))}
@@ -981,8 +982,8 @@ function FailuresBarChart({
           const gy = PAD_T + innerH - f * innerH
           return (
             <g key={f}>
-              <line x1={PAD_L} x2={CHART_W - PAD_R} y1={gy} y2={gy} stroke="#E5EBF2" strokeWidth={1} />
-              <text x={PAD_L - 5} y={gy + 3} textAnchor="end" fontSize={8.5} fill="#7A92AB">{Math.round(f * maxTotal)}</text>
+              <line x1={PAD_L} x2={CHART_W - PAD_R} y1={gy} y2={gy} stroke={THEME_COLORS.chartGrid} strokeWidth={1} />
+              <text x={PAD_L - 5} y={gy + 3} textAnchor="end" fontSize={8.5} fill={THEME_COLORS.textMuted}>{Math.round(f * maxTotal)}</text>
             </g>
           )
         })}
@@ -1012,7 +1013,7 @@ function FailuresBarChart({
                   </rect>
                 )
               })}
-              <text x={cx} y={CHART_H - 10} textAnchor="middle" fontSize={8.5} fill="#7A92AB" fontFamily="ui-monospace,monospace">
+              <text x={cx} y={CHART_H - 10} textAnchor="middle" fontSize={8.5} fill={THEME_COLORS.textMuted} fontFamily="ui-monospace,monospace">
                 {s.run.runKey}
               </text>
             </g>
