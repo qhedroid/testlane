@@ -1,6 +1,6 @@
 # Relay — Frontend screen contracts
 
-*Branch: `demo/contract-aware-prototype`. Companion: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).*
+*Branch: `mvp-final-close-out` (2026-07-03). Companion: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).*
 
 This document defines what each visible screen shows, what data powers it today, and what future APIs are expected. **Do not treat mock screens as production-ready.**
 
@@ -230,19 +230,29 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 ## Reports
 
-**Route:** `/reports`
+**Route:** `/:projectKey/reports` (`?view=exports` opens the exports history view)
 
-**Current state:** Placeholder screen.
+**Current state:** Frontend prototype — fully implemented (`ReportsScreen`, close-out Areas A/H/J).
 
-**Real/API-backed, mock-backed, or placeholder:** Placeholder.
+**Real/API-backed, mock-backed, or placeholder:** Derived from FreshProvider state + localStorage persistence for saved views/export history.
 
-**Data shown:** Planned-module message and future API list.
+**Data shown:** Control bar (scope: project/plan/run; range: last 3/6/12/all runs; compare toggle); KPI strip; SVG pass-rate line chart with progress overlay; failures-by-module stacked bars; drill-down failure table with removable chips and Link-defect action; run summaries + top failing cases tables; Effectiveness panel (defects/100 executions, flaky rate, time-to-first-result); Requirements coverage panel; saved reports rail; Exports (this browser) history table.
 
-**User actions:** Navigate back to dashboard.
+**User actions:** change scope/range/compare; chart drill-down; create-and-link defect from drill-down rows (unsealed runs only); save/apply/rename/delete named report views; open export drawer; download/re-generate/delete export artifacts.
 
-**Future API contract:** `GET /api/reports`, `GET /api/reports/execution-summary`
+**Data note:** trend buckets are runs — there is no sprint entity. All numbers reconcile with live `runs`/`executions`/`executionLog` state; nothing is fabricated.
 
-**Out of scope:** All report generation until backend contract exists.
+**Future API contract:** `GET /api/reports`, `GET /api/reports/execution-summary` (server-side generation replaces client computation).
+
+## My Work
+
+**Route:** `/:projectKey/mywork`
+
+**Current state:** Frontend prototype — implemented (`MyWorkScreen`, close-out Area G). Read + navigate only.
+
+**Data shown:** Run-grouped executions assigned to the selected person (execution assignee falling back to case assignee, normalised); per-run status counts; Continue deep-link to `/testruns/tr/:runKey/tc/:caseKey`.
+
+**Known quirk:** admin demo-actor names don't map 1:1 onto demo team assignee names; the screen exposes a "work queue for" picker and defaults to the actor when their name maps.
 
 ---
 
@@ -342,3 +352,52 @@ Mock and placeholder screens display a **source banner** (`PrototypeBanner` comp
 - **Frontend prototype** — yellow banner, mock data
 - **API-backed** — blue banner on `/runs/api`
 - **Planned module** — grey banner on reports/integrations
+
+---
+
+## MVP close-out additions (branch `mvp-final-close-out`, schema v15–v22)
+
+Contract-level record of every new type, field, reducer action, and context method added by the 14-area close-out. Persistence is FreshProvider + localStorage `relay-demo-v2` throughout.
+
+### New/changed `DemoState` fields
+
+| Field | Version | Shape |
+|---|---|---|
+| `savedReportsById` | v15 | `Record<string, SavedReport>` — Reports named views (scopeType project/plan/run, rangeRuns, compare) |
+| `exportsById` | v16 | `Record<string, ExportArtifact>` — export metadata + `regen` spec; file blobs live in an in-memory registry and expire on reload |
+| `DemoRun.rerunOf` | v17 | `string?` — lineage pointer to the source run |
+| `Case.position` / `Case.archivedAt` / `Folder.archivedAt` | v18 | manual order (project-wide float) and archive markers |
+| `scheduledRunsById` | v19 | `Record<string, ScheduledRun>` — cadence once/daily/weekly/monthly, `nextRunAt`, `defaultAssignee?`, `active`, `spawnedRunIds` |
+| `dashboardLayoutByActor` | v20 | `Record<actorUserId, DashboardLayout>` (`order: string[]`, `hidden: string[]`) |
+| `savedFiltersById` | v21 | `Record<string, SavedFilter>` — per-surface payloads (`caseFilter`/`runFilter`); deliberately not `TestQuery`-shaped (documented in `demo-model.ts`) |
+| `caseVersionsById` | v22 | `Record<caseId, CaseVersion[]>` — pre-edit snapshots + human-readable diffs, cap 50 per case |
+
+### New reducer actions and context methods
+
+| Area | Actions | Context methods |
+|---|---|---|
+| A Reports | `SAVE_REPORT`, `RENAME_SAVED_REPORT`, `DELETE_SAVED_REPORT` | `saveReport`, `renameSavedReport`, `deleteSavedReport`, `activeSavedReports` |
+| B Export | `RECORD_EXPORT`, `DELETE_EXPORT` | `recordExport`, `deleteExport`, `activeExports` (+ `export-utils.ts`: `buildExportContent`, `registerExportBlob`, `downloadExport`, `regenerateExport`) |
+| C Re-runs | `CREATE_RERUN` | `createRerun` (+ `run-utils.ts`: `runChainRootId`, `runChainMembers`) |
+| D Organization | `MOVE_CASES`, `COPY_CASES`, `REORDER_CASES`, `ASSIGN_CASES`, `ARCHIVE_CASES`, `UNARCHIVE_CASES`, `UPDATE_FOLDER`, `MOVE_FOLDER`, `COPY_FOLDER`, `ARCHIVE_FOLDER` | `moveCases`, `copyCases`, `reorderCases`, `assignCases`, `archiveCases`, `unarchiveCases`, `renameFolder`, `moveFolder`, `copyFolder`, `archiveFolder` |
+| E Rich text | — (no schema/action change; behaviour on existing string fields) | components `RichTextField` / `RichTextView` |
+| F Scheduling | `ADD_SCHEDULED_RUN`, `UPDATE_SCHEDULED_RUN`, `DELETE_SCHEDULED_RUN`, `FIRE_DUE_SCHEDULED_RUNS` | `addScheduledRun`, `updateScheduledRun`, `deleteScheduledRun`, `checkDueScheduledRuns`, `activeScheduledRuns` |
+| G My Work | — (derived) | uses existing selectors; route `mywork` added to `MODULE_SLUGS` |
+| H Coverage | — (derived) | `report-utils.ts`: `resolveRequirementCoverage(state, projectId)` |
+| I Archived runs | `UNARCHIVE_RUN` (UI wired to existing `ARCHIVE_RUN`) | `unarchiveRun` |
+| J Effectiveness/dashboard | `SET_DASHBOARD_LAYOUT` | `dashboardLayout`, `setDashboardLayout` (+ `report-utils.ts`: `computeEffectiveness`) |
+| K Saved filters | `SAVE_FILTER`, `RENAME_SAVED_FILTER`, `DELETE_SAVED_FILTER` | `listSavedFilters(surface)`, `saveFilter`, `renameSavedFilter`, `deleteSavedFilter` |
+| L Versioning | `RESTORE_CASE_VERSION` (capture hooked into `REPLACE_CASE`) | `getCaseVersions`, `restoreCaseVersion` |
+| M User removal | `admin/removeUser` | `removeAdminUser` (guarded by existing `isFinalEffectiveAdmin`; audit entry mirrors disable) |
+| N Project settings | — (reuses `UPDATE_PROJECT_SETTINGS`) | editing gated on existing `manageProjects` permission key |
+
+### Honesty/limitation notes (contractual)
+
+- "PDF" export output is a **print-friendly HTML document**; "Excel" output is **CSV** — labelled in the UI, toast, and history.
+- Export artifacts are session blob URLs — **expire on reload**; history entries persist and can be re-generated from current data via the stored `regen` spec.
+- Scheduled-run firing is **simulated** (Plans-screen load or manual check). No background job exists.
+- Reports trend buckets are **runs**; no sprint entity exists.
+- "Escaped defects" is intentionally not computed (no release boundary in the model).
+- User removal does **not cascade** — historical assignee/testedBy/audit strings remain as orphaned names.
+- Cross-project **move** of cases is disabled by design (copy only); folder move/copy is same-project only.
+- `/admin/projects` panel itself remains RBAC-ungated (pre-existing); the new project-scoped settings section IS gated.

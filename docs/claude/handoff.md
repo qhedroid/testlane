@@ -22,7 +22,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 ---
 
-## Close-out progress checkpoint (2026-07-03, after Area H)
+## Close-out — COMPLETE (2026-07-03, all 14 areas)
 
 | Area | Status | Commit |
 |------|--------|--------|
@@ -34,11 +34,21 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 | F — Scheduled runs (simulated firing, plans panel + modal) | ✅ Done | `cf102e3` (v19) |
 | G — My Work queue (`/:key/mywork`, run-grouped, deep links) | ✅ Done | `0856519` (no bump) |
 | H — Requirement coverage (badges + Reports coverage card) | ✅ Done | `dbd7781` (no bump) |
-| I–N | Not started yet | — |
+| I — Archived runs UI (archive sealed-only, Archived section, unarchive) | ✅ Done | `ea80e02` (no bump) |
+| J — Effectiveness metrics + per-actor dashboard customise | ✅ Done | `b907467` (v20) |
+| K — Saved filters (cases + runs, per project) | ✅ Done | `e7a3991` (v21) |
+| L — Real case version history + restore (cap 50) | ✅ Done | `a00e320` (v22) |
+| M — Permanent user removal (no cascade, last-admin guard) | ✅ Done | `560d80d` (no bump) |
+| N — Project-scoped settings editing (existing model, `manageProjects` gate) | ✅ Done | `37a8d22` (no bump) |
 
-Notes so far:
-- Area G honesty note: admin demo-actor names (Alice Chen, Demo User…) don't map onto demo team assignee names (TEAM_USERS); My Work defaults to the actor when the name maps and otherwise exposes an explicit "work queue for" picker.
-- Schema: v19 current (v19 = `scheduledRunsById`).
+Living docs (user-guide, feature-flow, AS_BUILT_SNAPSHOT, FRONTEND_CONTRACTS, known-bugs) updated in the docs commits on this branch. **Nothing pushed — awaiting review by Noel and Shaun.**
+
+Key honesty notes (full list in `known-bugs.md` § close-out stubs):
+- "PDF" export = print-friendly HTML; "Excel" = CSV — labelled; artifacts expire on reload (re-generate supported).
+- Scheduled runs fire on Plans load / manual check only (simulated).
+- Admin actor names ≠ team assignee names — My Work exposes a picker.
+- User removal doesn't cascade; case history starts at v22; escaped-defects metric deliberately absent.
+- Browser click-through QA not performed by the agent (no browser automation available against the sandbox dev server) — build + HTTP route checks only; human click-through required before merge.
 - Base-branch note: `git fetch origin` fails in the Cowork sandbox (no GitHub network access); branch was cut from the locally known `origin/mvp-main` ref. App source there is identical to the qa audit branch except docs.
 - "PDF" exports are honestly print-friendly HTML; "Excel" is CSV — labelled as such in UI and toasts.
 - Reports trend buckets are runs (no sprint entity exists) — labelled in the control bar.
@@ -48,10 +58,14 @@ Notes so far:
 ---
 
 ## Schema version
-**Current: v18** (on `mvp-final-close-out`)
+**Current: v22** (on `mvp-final-close-out`)
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
+| v22 | Case version history — `caseVersionsById` (`CaseVersion` with diff + pre-edit snapshot, cap 50/case); capture on `REPLACE_CASE`; `RESTORE_CASE_VERSION` | v21→v22 seeds empty collection (no backfill — pre-upgrade edits were never recorded) |
+| v21 | Saved filters — `SavedFilter` (per-surface payloads), `savedFiltersById` | v20→v21 seeds empty collection |
+| v20 | Dashboard layouts — `DashboardLayout`, `dashboardLayoutByActor` (per demo actor) | v19→v20 seeds empty collection |
+| v19 | Scheduled runs — `ScheduledRun`, `scheduledRunsById` (simulated firing) | v18→v19 seeds empty collection |
 | v18 | Test case organization — `Case.position` (manual order), `Case.archivedAt`, `Folder.archivedAt`; move/copy/reorder/assign/archive case actions; folder rename/move/copy/archive | v17→v18 backfills `position` from array order per project |
 | v17 | Re-runs — `DemoRun.rerunOf` lineage pointer; `CREATE_RERUN` action | v16→v17 version stamp only (optional field) |
 | v16 | Export history — `ExportArtifact`, `exportsById` (metadata + regen spec; blobs are session-only) | v15→v16 seeds empty collection |

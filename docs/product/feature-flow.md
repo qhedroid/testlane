@@ -1,6 +1,6 @@
 # Relay — Feature Flow Map
 
-*Living document · Last verified: June 2026 · Branch: `mvp-requirements-defects-slice`*
+*Living document · Last verified: 2026-07-03 · Branch: `mvp-final-close-out`*
 
 Product and implementation flow map for the team. Complements authoritative contracts in `docs/_authoritative/**` with journey-oriented status and test checklists.
 
@@ -19,8 +19,9 @@ Product and implementation flow map for the team. Complements authoritative cont
 | Test plans | `plans` | `PlansScreen` | `/:key/plans` | Mock seed |
 | Test runs | `testruns` | `RunsScreen` | `/:key/testruns`, `/:key/testruns/tr/:runKey`, `/:key/testruns/tr/:runKey/tc/:caseKey` | Mock + localStorage |
 | Defects | `defects` | `DefectsScreen` | `/:key/defects` | Mock + localStorage (local DEF-*) |
-| Settings | `settings` | `SettingsScreen` | `/:key/settings` | Static mock (read-only) |
-| Reports | `reports` | `PlaceholderScreen` | `/:key/reports` | Placeholder |
+| Settings | `settings` | `SettingsScreen` | `/:key/settings` | Mock + localStorage (project settings editable) |
+| Reports | `reports` | `ReportsScreen` | `/:key/reports` (`?view=exports` deep-link) | Derived from localStorage state + saved views |
+| My Work | `mywork` | `MyWorkScreen` | `/:key/mywork` | Derived from localStorage state |
 | Integrations | `integrations` | `PlaceholderScreen` | `/:key/integrations` | Placeholder |
 | Audit | `audit` | `AuditScreen` | `/:key/audit` | Static seed |
 | Admin | — | `AdminShell` + page content | `/admin`, `/admin/profile` … `/admin/audit-log` | Mock + localStorage |
@@ -117,7 +118,7 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 | Field | Value |
 |-------|-------|
 | Key | `relay-demo-v2` |
-| Current version | **`14`** (`DEMO_SCHEMA_VERSION` in `demo-model.ts`) |
+| Current version | **`22`** (`DEMO_SCHEMA_VERSION` in `demo-model.ts`) |
 | Migration file | `migrate-demo-state.ts` |
 | On failure | Reset to seed (`buildInitialDemoState()`) |
 
@@ -138,6 +139,14 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 | v12 | `currentActorUserId`, user access fields, role permissions, silent invite statuses |
 | v13 | `plansById`, `nextPlanNumByProject`, `TestPlan`/`TestQuery`/`QueryCondition` types, seed plans |
 | v14 | `requirementsById`, `defectsById`, `Case.requirementIds`, `nextRequirementNumByProject`, `nextDefectNumByProject`, local REQ/DEF keys |
+| v15 | `savedReportsById` — Reports-page named views (`SavedReport`) |
+| v16 | `exportsById` — export history metadata + regeneration spec (`ExportArtifact`; blobs are session-only) |
+| v17 | `DemoRun.rerunOf` lineage pointer (no backfill) |
+| v18 | `Case.position` (manual order, backfilled from array order), `Case.archivedAt`, `Folder.archivedAt` |
+| v19 | `scheduledRunsById` — `ScheduledRun` entity (simulated firing) |
+| v20 | `dashboardLayoutByActor` — per-actor dashboard card order/hidden |
+| v21 | `savedFiltersById` — `SavedFilter` per surface (testcases/testruns) |
+| v22 | `caseVersionsById` — real per-case edit history (`CaseVersion`, cap 50) |
 
 **Rule:** bump `DEMO_SCHEMA_VERSION` and add a migration step for every shape change.
 
@@ -199,19 +208,35 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 | Test runs — requirements view-only | **Implemented** | localStorage | From linked case requirements |
 | Defects module screen | **Partial** | Mock + localStorage | Static TI-* + local DEF-*; create disabled |
 | Defects in-run create/link | **Implemented** | localStorage | Failed/Blocked + unsealed only |
-| Reports | **Placeholder** | — | |
+| Reports — control bar, KPIs, charts, drill-down | **Implemented** | Derived + localStorage | Trend buckets are runs (no sprint entity); saved views v15 |
+| Reports — effectiveness metrics | **Implemented** | Derived | Defects/100 execs, flaky rate, time-to-first-result; escaped defects deliberately absent |
+| Reports — requirements coverage rollup | **Implemented** | Derived | Badges also on case Requirements tab; no dedicated module |
+| Export drawer (Dashboard/Audit/Runs/Reports) | **Implemented** | localStorage (metadata) | Real CSV; “PDF” = print-friendly HTML, “Excel” = CSV — labelled; blobs expire on reload; shareable link stub |
+| Exports history view | **Implemented** | localStorage | Under Reports; re-generate expired artifacts |
+| Re-runs (create, close-confirm, lineage, chain grouping) | **Implemented** | localStorage | `rerunOf` v17; source runs never mutated |
+| Test cases — bulk actions (add to run/clone/move/assign/archive) | **Implemented** | localStorage | Archived view with restore |
+| Test cases — move/copy dialog | **Implemented** | localStorage | Cross-project copy only (moves disabled by design) |
+| Test cases — manual ordering + drag-and-drop | **Implemented** | localStorage | `Case.position` v18; column sort is temporary view |
+| Folder menu (subfolder/rename/move/copy/archive) | **Implemented** | localStorage | Folder→folder drag re-nests |
+| Rich text (markdown subset) | **Implemented** | Plain strings | Case/step/requirement/defect fields; no editor dependency |
+| Scheduled runs | **Implemented (simulated)** | localStorage v19 | Fires on Plans load or manual check — no background job |
+| My Work queue | **Implemented** | Derived | `/:key/mywork`; actor/assignee name mismatch handled via picker |
+| Archived runs UI | **Implemented** | localStorage | Archive (sealed only) + Archived picker section + unarchive |
+| Dashboard customise (per actor) | **Implemented** | localStorage v20 | Show/hide/reorder seed metric cards |
+| Saved filters (cases + runs) | **Implemented** | localStorage v21 | Per project |
+| Case version history + restore | **Implemented** | localStorage v22 | Real diffs, cap 50; Activity tab merged into same log |
+| Admin — remove user (permanent) | **Implemented** | localStorage | Last-admin guard; no cascade (orphaned names by design) |
 | Integrations (project) | **Placeholder** | — | |
-| Settings (project) | **Partial** | Static mock | Read-only |
-| Audit (project) | **Partial** | Static seed | |
+| Settings (project) | **Implemented (settings section)** | localStorage | Policies editable with `manageProjects` roles; rest of page informational |
+| Audit (project) | **Partial** | Static seed | Export button works (static timeline export) |
 | Admin panel (all sections) | **Implemented** | localStorage | 11 routes under `/admin` |
 | Admin — user management | **Implemented** | localStorage | Invite, silent invite, edit, disable/reactivate, project access |
 | Admin — role management | **Implemented** | localStorage | Built-in + custom roles, permission matrix |
 | Admin — demo actor / RBAC | **Partial** | localStorage | Enforced on admin user/role actions only |
-| RBAC enforcement (project UI) | **Missing** | — | Test runs / cases not gated |
+| RBAC enforcement (project UI) | **Partial** | — | Project settings editing gated; runs/cases still ungated |
 | Demo UI → MySQL wiring | **Missing** | — | Use `/runs/api` separately |
 | Global search (OpenSearch) | **Missing** | — | Cmd+K is in-memory |
-| Export PDF/CSV | **Missing** | — | Buttons are visual |
-| Requirements / traceability | **Partial** | localStorage | Local create/link on cases; no coverage dashboards |
+| Requirements / traceability | **Implemented (rollup)** | localStorage + derived | Create/link on cases; coverage badges + Reports card; no external sync |
 
 ---
 
@@ -319,11 +344,59 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 - [ ] Table and detail panel render
 - [ ] New defect button disabled
 
+### Settings (legacy check) — `/:key/settings`
+
+- [ ] Informational sections display; users preview table renders
+
+### Reports — `/:key/reports`
+
+- [ ] Control bar: scope (project/plan/run), range, compare toggle change all widgets
+- [ ] Line-chart point and stacked-bar segment clicks open the drill-down with removable chips
+- [ ] Drill-down Link defect creates + links a local defect (disabled on closed runs)
+- [ ] Save as report → appears in left rail; apply/rename/delete work
+- [ ] Effectiveness and Requirements coverage panels render (or honest empty states)
+- [ ] Export button opens the drawer; Exports rail view lists artifacts; expired → Re-generate
+
+### My Work — `/:key/mywork`
+
+- [ ] Person picker defaults sensibly; run groups show counts; Continue deep-links to run+case
+- [ ] Hide completed / include closed runs toggles filter correctly
+
+### Export drawer (Dashboard / Audit / Test Runs / Reports)
+
+- [ ] Scope trio renders with honest disabled states; format + contents + presets editable
+- [ ] Generate produces a downloadable artifact and a toast; history records it
+- [ ] “PDF” downloads as print-friendly HTML; “Excel”/CSV download as CSV
+
+### Re-runs — `/:key/testruns`
+
+- [ ] Close test run shows the confirmation dialog with Close / Close & create re-run / Cancel
+- [ ] Create re-run modal: include options with live counts, custom picker, assignment, editable name
+- [ ] New re-run starts Not-run with chosen cases; source run untouched
+- [ ] Picker groups chains under origin; lineage strip in Details tab navigates between generations
+- [ ] Archive (sealed runs only) hides the run; Archived section restores it
+
+### Test case organisation — `/:key/testcases`
+
+- [ ] Bulk bar: add to run, clone, move, assign, archive all mutate state
+- [ ] Move/Copy dialog: same-project move, cross-project copy only, option checkboxes honest
+- [ ] Manual order persists after reload; column sort is temporary; drag row→row/row→folder/folder→folder
+- [ ] Folder ⋯ menu: subfolder, rename, move, copy, archive (+ case-level unarchive restores ancestors)
+- [ ] Rich text toolbar + preview on preconditions/summary/steps; markdown renders read-only incl. run panel
+- [ ] History tab logs real edits with diffs; restore reverts content; Activity shows the same feed
+- [ ] Saved filters save/apply/rename/delete on both cases and runs filter panels
+
+### Scheduled runs — `/:key/plans`
+
+- [ ] Schedule this plan… creates a schedule; panel lists it with next-fire time
+- [ ] Check for due runs spawns runs for due schedules and advances/deactivates them
+- [ ] Pause/resume, edit, delete work; simulation labelled
+
 ### Settings — `/:key/settings`
 
-- [ ] Read-only fields display
+- [ ] Project settings section edits policies with a manage-projects role; read-only otherwise
 
-### Reports / Integrations — `/:key/reports`, `/:key/integrations`
+### Integrations — `/:key/integrations`
 
 - [ ] Placeholder banner and message
 
@@ -333,6 +406,7 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Admin — `/admin/users`, `/admin/roles`
 
+- [ ] Remove user: confirmation modal states no-cascade limitation; final admin blocked; audit entry written
 - [ ] Actor switcher: Owner can invite/edit/disable users
 - [ ] Switch to Editor — invite button shows permission message
 - [ ] Switch to Viewer — user management page read-only/denied

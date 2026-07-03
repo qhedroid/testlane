@@ -1,6 +1,6 @@
 # As-built snapshot
 
-*Branch: `demo/contract-aware-prototype` · June 2026 · Repo wins over docs*
+*Branch: `mvp-final-close-out` · 2026-07-03 · Repo wins over docs*
 
 Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELINE.md`](ARCHITECTURE_BASELINE.md). Frontend phase boundaries: [`MVP_FRONTEND_ONLY_SCOPE.md`](MVP_FRONTEND_ONLY_SCOPE.md).
 
@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 14`, multi-project + admin access + actor + test plans + local requirements/defects) |
+| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 22` — multi-project, admin access, actor, test plans, local requirements/defects, saved reports/filters, export history, re-run lineage, case ordering/archive, scheduled runs, dashboard layouts, case versions) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
 | Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
@@ -35,8 +35,9 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | **`/runs/api`** | **api** | **`ApiRunsWorkspace`** | MySQL; not project-prefixed |
 | `/:projectKey/audit` | mock | `AuditScreen` | Static seed |
 | `/:projectKey/defects` | mock + localStorage | `DefectsScreen` | Static `MOCK_DEFECTS` + local `DEF-*` from executions |
-| `/:projectKey/settings` | mock | `SettingsScreen` | Read-only preview |
-| `/:projectKey/reports` | placeholder | `PlaceholderScreen` | |
+| `/:projectKey/settings` | mock + localStorage | `SettingsScreen` | Project settings section editable (`manageProjects` roles) |
+| `/:projectKey/reports` | mock + localStorage | `ReportsScreen` | Real reporting: control bar, charts, drill-down, effectiveness, coverage, saved views, exports history (`?view=exports`) |
+| `/:projectKey/mywork` | mock + localStorage | `MyWorkScreen` | Personal work queue, deep links into runs |
 | `/:projectKey/integrations` | placeholder | `PlaceholderScreen` | |
 | **`/admin`** | **mock + localStorage** | **`AdminShell`** | Global settings — actor switcher, sidebar nav |
 | **`/admin/profile`** … **`/admin/audit-log`** | **mock + localStorage** | **`Admin*PageContent`** | Profile, org, projects, audit, etc. |
@@ -105,15 +106,21 @@ MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/sche
 | Demo `/runs` → API wiring | Not started |
 | Case/plan/project CRUD APIs | Not started |
 | Step-level results in `/runs/api` UI | Not exposed |
-| Requirements | Not modeled |
-| Export buttons | Visual only |
-| Reports / Integrations | Placeholder |
+| Requirements | **Modeled locally** (v14) — create/link on cases, view in runs, coverage rollup + badges (close-out Area H). No external sync |
+| Export buttons | **Implemented** — shared drawer; real CSV, print-friendly HTML for "PDF" (labelled); session-only artifacts + regenerable history; shareable link stub |
+| Reports | **Implemented** — `ReportsScreen` (close-out Areas A/J/H) |
+| Integrations | Placeholder |
+| Re-runs / lineage | **Implemented** — `rerunOf` chains, close-run confirmation, picker grouping |
+| Scheduled runs | **Implemented (simulated)** — client-side firing only, no background job |
+| Case organization | **Implemented** — bulk actions, move/copy dialog, manual order + DnD, case/folder archive |
+| Rich text | **Implemented** — markdown subset on string fields, no schema change |
+| Case version history | **Implemented** — real diffs + restore, cap 50/case (v22) |
 | OpenSearch in app | No-op stub |
 | Audit read API | Writes only; UI is mock seed |
-| Defects screen create | Disabled |
+| Defects screen create | Disabled (create from runs) |
 | Real multi-project switching | **Implemented** — key-prefixed URLs + `ProjectSwitcher` + create modal + add demo project |
-| Project settings screen | Disabled menu item only (coming soon) |
-| Admin panel (`/admin`) | **Implemented** — user/role management, demo actor RBAC on admin actions, silent invite, permission matrix |
+| Project settings screen | **Implemented** — editable section on `/:key/settings` (switcher menu item still disabled) |
+| Admin panel (`/admin`) | **Implemented** — user/role management incl. permanent remove (no cascade), demo actor RBAC on admin actions, silent invite, permission matrix |
 
 ---
 
@@ -133,7 +140,7 @@ pnpm api:validate                 # needs dev server + seeded DB
 
 Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-v2'); location.reload()`
 
-**Migration:** v1→v2 multi-project; v2→v3 adds `key`/`description`; v3→v4 adds `runKey`/URL run selection; v4→v5 adds `adminSettings`; v6–v11 case/run field additions; v12 user/role access (`currentActorUserId`, expanded admin models); v13 test plans (`plansById`, `nextPlanNumByProject`, seed plans). Failed migration resets to seed.
+**Migration:** v1→v2 multi-project; v2→v3 adds `key`/`description`; v3→v4 adds `runKey`/URL run selection; v4→v5 adds `adminSettings`; v6–v11 case/run field additions; v12 user/role access (`currentActorUserId`, expanded admin models); v13 test plans (`plansById`, `nextPlanNumByProject`, seed plans); v14 local requirements/defects; v15 `savedReportsById`; v16 `exportsById`; v17 `DemoRun.rerunOf`; v18 `Case.position`/`Case.archivedAt`/`Folder.archivedAt`; v19 `scheduledRunsById`; v20 `dashboardLayoutByActor`; v21 `savedFiltersById`; v22 `caseVersionsById`. Failed migration resets to seed.
 
 ---
 

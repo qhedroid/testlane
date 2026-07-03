@@ -97,3 +97,26 @@ The most likely remaining causes, in order of suspicion:
 3. Check whether `pathname` inside the URL-sync closure ever reads P1 when `activeProject.key` is already P2 — add a `console.log(pathname, activeProject.key, projectMismatch)` to verify the guard is actually firing.
 
 _Last updated: task-05b, branch mvp-test-runs. Deferred — does not block current work._
+
+---
+
+## Close-out deliberate stubs & limitations (branch mvp-final-close-out, 2026-07-03)
+
+Not bugs — deliberate scope decisions made during the 14-area close-out, recorded so they aren't lost. See `FRONTEND_CONTRACTS.md` § "MVP close-out additions" for the full contractual list.
+
+| Item | Status | Detail |
+|---|---|---|
+| Shareable export links | Stub (visibly disabled) | Needs backend; row in the export drawer says so |
+| "PDF"/"Excel" exports | Honest substitution | Print-friendly HTML / CSV respectively — labelled in drawer, toast, history |
+| Export artifacts | Session-only | Blob URLs expire on reload; history persists + Re-generate rebuilds from current data (a run deleted since generation makes its export unrecoverable — alert shown) |
+| Scheduled runs | Simulated firing | Fires on Plans-screen load or the manual "Check for due runs" button only |
+| My Work actor mapping | Known mismatch | Admin actor names ≠ demo team assignee names; explicit picker shown instead of pretending |
+| User removal cascade | By design, none | Historical assignee/testedBy/audit strings become orphaned display names; stated in the confirm modal |
+| Cross-project case move | Disabled by design | Copy-only (new project-scoped IDs would break run links); folder move/copy same-project only |
+| Keep-run-history on copy | Not supported | Checkbox visibly disabled in the Move/Copy dialog |
+| Case history backfill | None | `caseVersionsById` starts empty at v22; edits before the upgrade were never recorded |
+| Custom-selection picker in re-run modal | Own implementation | Spec suggested reusing the "+ Add cases" picker; an inline searchable checkbox list scoped to the source run's cases was built instead (the existing modal is bound to add-to-existing-run semantics) |
+| `/admin/projects` RBAC | Pre-existing gap | The admin panel's project settings editing is ungated; the new project-scoped section on `/:key/settings` IS gated (existing `manageProjects` key). Left unchanged to avoid out-of-scope behaviour change |
+| Escaped-defects metric | Deliberately absent | Data model has no release boundary; stated on the Reports Effectiveness panel |
+| Rename prompts | `window.prompt` used | Folder rename and saved-filter/report rename use prompt() — consistent with existing confirm() usage, but low-fi |
+| Browser click-through QA | Not performed by agent | Session had no browser automation against the sandbox dev server; routes verified via HTTP + build only (see `/tmp/relay-qa-mvp-final-close-out/qa-report.md`). A human/Cursor click-through is required before merge |
