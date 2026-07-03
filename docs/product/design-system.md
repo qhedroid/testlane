@@ -1,68 +1,80 @@
 # Design system — Relay
 
+Relay's product UI follows the **Compass** design system (TransPerfect TechOps / GlobalLink). Authoritative tokens and assets live in the repo under `docs/design-system/compass/`.
+
+## Source of truth
+
+| Asset | Path |
+|---|---|
+| Colour & type tokens | `docs/design-system/compass/colors_and_type.css` |
+| System README | `docs/design-system/compass/README.md` |
+| Fonts (OFL) | `docs/design-system/compass/fonts/` — Poppins, Montserrat |
+| Visual target | `docs/design-system/Relay Wireframes - Compass.dc.html` |
+
+**Shipped in the app:** Poppins + Montserrat via `apps/web/public/fonts/` and `apps/web/src/fresh/styles/compass-base.css`. Gotham SSm is **not** bundled in the web app (commercial licence — confirm with Noel before any public deploy).
+
+## Implementation bridge
+
+The FRESH UI does not rename its legacy CSS variables app-wide. Instead, `apps/web/src/fresh/styles/fresh.css` remaps them onto Compass tokens:
+
+| Relay variable | Compass source | Use |
+|---|---|---|
+| `--accent` | `--gl-blue-500` (`#1976D2`) | Buttons, links, CTAs, focus |
+| `--accent-lt` | `--gl-blue-100` | Selected states, highlights |
+| `--navy`, `--sidebar-bg` | `--tp-dark-blue-100` (`#003B71`) | Sidebar, mark chrome |
+| `--bg` | `--gl-gray-100` | Workspace background |
+| `--surface` | `--gl-white` | Cards, panels |
+| `--border` | `--gl-gray-250` | Dividers, inputs |
+| `--text` / `--text2` / `--text3` | `--gl-gray-700` / `500` / `400` | Primary / secondary / muted text |
+| `--pass` / `--fail` / `--block` / `--skip` | `--gl-success-500` / `--gl-danger-500` / `--gl-orange-500` / `--gl-purple-500` | Execution status |
+| `--sans` | Poppins → Montserrat stack | Body UI |
+| `--display` | Poppins → Montserrat stack | Headings, metric values |
+| `--mono` | System monospace stack | IDs, counts, timestamps |
+
+SVG/chart code paths that cannot use CSS variables import hex mirrors from `apps/web/src/fresh/styles/theme-colors.ts`.
+
 ## Brand
 
 **Name:** Relay
 
-**Rationale:** Implies the handoff cycle of test case → plan → run → result. Clean, professional, no startup connotations.
+**Mark:** Two staggered chevrons with a filled dot (execution data handoff).
 
-**Mark:** Two staggered chevrons (the passing and receiving team) with a filled dot (the baton — execution data being transferred).
+## Typography (Compass-aligned)
 
-## Colour tokens
-
-| Token | Light mode | Dark mode | Use |
+| Role | Size | Weight | Face |
 |---|---|---|---|
-| Primary (Navy) | `#042C53` | `#042C53` | Mark, wordmark, nav background |
-| Accent (Blue) | `#185FA5` | `#185FA5` | Baton dot, interactive elements, CTAs |
-| Dark accent | — | `#6AADE8` | Mark stroke on dark backgrounds |
-| Tint | `#E6F1FB` | — | Selected states, highlights |
+| Page title | 14–22px | 600–700 | Poppins (`--display`) |
+| Section label | 10–11px | 600–700, uppercase, 0.06–0.08em spacing | Poppins |
+| Body | 14px | 400 | Poppins (`--sans`) |
+| Table row | 12–12.5px | 400 | Poppins |
+| Metadata | 10–11px | 400 | Poppins |
+| Monospace | 10–11px | 400–600 | `--mono` |
 
-## Typography
+## Status colours (Compass ramps)
 
-System sans-serif stack: `-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif`
-
-Monospace: `ui-monospace, 'Cascadia Code', 'SF Mono', monospace` — used for IDs, counts, timestamps
-
-| Role | Size | Weight |
+| Status | Text token | Background token |
 |---|---|---|
-| Page title | 14px | 600 |
-| Section label | 10px | 600, uppercase, 0.08em spacing |
-| Body | 13px | 400 |
-| Table row | 12.5px | 400 |
-| Metadata | 10.5–11px | 400 |
-| Monospace | 11px | 400 |
-
-## Status colours
-
-| Status | Text | Background | Use |
-|---|---|---|---|
-| Pass | `#2E7D32` | `#E8F5E9` | Passed results |
-| Fail | `#C62828` | `#FFEBEE` | Failed results, critical severity |
-| Blocked | `#E65100` | `#FFF3E0` | Blocked results, high severity |
-| Skip | `#4527A0` | `#EDE7F6` | Skipped results |
-| Not run | `#7A92AB` | `#F5F8FB` | Pending execution |
-| Active | `#185FA5` | `#E6F1FB` | Active runs and plans |
+| Pass | `--pass` (`#108718`) | `--pass-bg` |
+| Fail | `--fail` (`#C50007`) | `--fail-bg` |
+| Blocked | `--block` (`#E8861C`) | `--block-bg` |
+| Skip | `--skip` (`#6840CE`) | `--skip-bg` |
+| Not run | `--text3` | `--surface2` |
+| Active | `--accent` | `--accent-lt` |
 
 ## Layout principles
 
-**Operational density.** This is an internal engineering tool, not a consumer product. Default to more information per screen, not less.
+**Operational density.** Internal engineering tool — favour information density.
 
-**Split-pane navigation.** Every major view uses a persistent left list and a right detail panel. Users never lose context navigating between items.
+**Split-pane navigation.** Persistent left list + right detail on major views.
 
-**Resizable panels.** The left panels in Test Cases and Test Runs are drag-resizable. QA engineers have different monitor setups and workflow needs.
+**Resizable panels.** Suite tree and run list panes are drag-resizable.
 
-**Keyboard-first execution.** The Test Runs view is keyboard-navigable throughout. P/F/B/S mark results, J/K navigate cases, D links defects.
+**Keyboard-first execution.** Test Runs view: P/F/B/S, J/K, D shortcuts (unchanged by restyle).
 
 ## Component patterns
 
-**Status pills:** `<span class="pill p-pass">✓ Pass</span>` — consistent across all views.
+**Status pills:** `<span class="pill p-pass">✓ Pass</span>`
 
-**Priority labels:** CRITICAL / HIGH / MEDIUM / LOW — toggleable via the Priorities button in the runs toolbar.
+**Donut charts:** SVG `stroke-dasharray`, Compass status colours via tokens / `theme-colors.ts`
 
-**Tab bars:** used in detail panels (Details / Steps / Activity / History / Comments / Defects) and in Test Plans (Overview / Test Cases / Runs / Metrics).
-
-**Donut charts:** SVG stroke-dasharray technique, 68×68px viewBox. Shows pass/fail/blocked/not-run breakdown.
-
-**Quick Create:** Inline row input in Test Cases — Enter to create, Esc to close. Creates a case locally in session.
-
-**Keyboard shortcut bar:** persistent footer in Test Runs, showing all active shortcuts.
+**Quick Create:** Inline row input in Test Cases (Enter create, Esc close)
