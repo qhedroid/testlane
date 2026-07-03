@@ -41,7 +41,9 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 | M — Permanent user removal (no cascade, last-admin guard) | ✅ Done | `560d80d` (no bump) |
 | N — Project-scoped settings editing (existing model, `manageProjects` gate) | ✅ Done | `37a8d22` (no bump) |
 
-Living docs (user-guide, feature-flow, AS_BUILT_SNAPSHOT, FRONTEND_CONTRACTS, known-bugs) updated in the docs commits on this branch. **Nothing pushed — awaiting review by Noel and Shaun.**
+Living docs (user-guide, feature-flow, AS_BUILT_SNAPSHOT, FRONTEND_CONTRACTS, known-bugs) updated in the docs commits on this branch.
+
+**Pushed to origin on 2026-07-03** (via GitHub Desktop, with Noel's explicit approval — push only, for Shaun to pull and smoke-test). **Merge still requires sign-off from both Noel and Shaun.**
 
 Key honesty notes (full list in `known-bugs.md` § close-out stubs):
 - "PDF" export = print-friendly HTML; "Excel" = CSV — labelled; artifacts expire on reload (re-generate supported).
