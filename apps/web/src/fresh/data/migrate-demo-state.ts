@@ -385,6 +385,11 @@ export function migrateDemoState(raw: unknown): DemoState {
         schemaVersion: 16,
       }
     }
+    // v16 → v17: DemoRun.rerunOf lineage pointer (optional — no backfill needed,
+    // existing runs are all chain origins by definition)
+    if (state.schemaVersion < 17) {
+      state = { ...state, schemaVersion: 17 }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }

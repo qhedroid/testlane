@@ -243,12 +243,14 @@ export interface DemoRun {
   sealed: boolean
   /** When set, run is hidden from the default picker list */
   archivedAt?: string
+  /** v17 — id of the run this one was created as a re-run of (lineage pointer). */
+  rerunOf?: string
   caseOrder: string[]
   executions: Record<string, CaseExecution>
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 16
+export const DEMO_SCHEMA_VERSION = 17
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {

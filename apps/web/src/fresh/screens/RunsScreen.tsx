@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFresh } from '../data/FreshProvider'
 import type { Case, DemoRun, ExecStatus, ExecutionLogEntry, ExportFormatChoice } from '../data/demo-model'
 import { ExportDrawer, type ExportDrawerContext } from '../components/ExportDrawer'
+import { CreateRerunModal, type RerunInclude } from '../components/CreateRerunModal'
+import { runChainMembers, runChainRootId } from '../data/run-utils'
 import { commentCount, EXEC_STATUS_LABEL, formatRelativeTime, runSummary } from '../data/demo-model'
 import { DONUT_CHART_SIZE } from '../data/ui-utils'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
@@ -130,6 +132,10 @@ export function RunsScreen() {
   const [editOpen, setEditOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormatChoice | undefined>(undefined)
+  const [rerunOpen, setRerunOpen] = useState(false)
+  const [rerunPreset, setRerunPreset] = useState<RerunInclude>('failedBlocked')
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false)
+  const [expandedChains, setExpandedChains] = useState<Set<string>>(() => new Set())
   const [filter, setFilter] = useState<FilterTab>('all')
   const [advFilter, setAdvFilter] = useState<RunFilter>(DEFAULT_ADV_FILTER)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -178,9 +184,13 @@ export function RunsScreen() {
 
   const handleSealToggle = useCallback(() => {
     if (!currentRun) return
-    if (currentRun.sealed) unsealRun()
-    else sealRun()
-  }, [currentRun, sealRun, unsealRun])
+    if (currentRun.sealed) {
+      unsealRun()
+    } else {
+      // Closing gets an explicit confirmation step with a re-run shortcut (Area C).
+      setCloseConfirmOpen(true)
+    }
+  }, [currentRun, unsealRun])
 
   const handleDuplicate = useCallback(() => {
     if (!currentRun) return
@@ -242,24 +252,42 @@ export function RunsScreen() {
     return activeDefects.filter((d) => !linked.has(d.id))
   }, [activeDefects, activeEx?.defects])
 
-  const pickerRuns = useMemo(() => {
+  const pickerRows = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase()
-    return activeRuns
-      .map((run) => {
-        const meta = RUN_PICKER_LIST.find((r) => r.id === run.id)
-        const s = runSummary(run)
-        const pct = s.total ? Math.round(((s.total - s.notRun) / s.total) * 100) : 0
-        return {
-          run,
-          name: run.name,
-          runKey: run.runKey,
-          status: run.sealed ? 'sealed' as const : (meta?.status ?? 'act'),
-          pct,
-          cases: s.total,
+    const toItem = (run: DemoRun) => {
+      const meta = RUN_PICKER_LIST.find((r) => r.id === run.id)
+      const s = runSummary(run)
+      const pct = s.total ? Math.round(((s.total - s.notRun) / s.total) * 100) : 0
+      return {
+        run,
+        name: run.name,
+        runKey: run.runKey,
+        status: run.sealed ? 'sealed' as const : (meta?.status ?? 'act'),
+        pct,
+        cases: s.total,
+      }
+    }
+    if (q) {
+      // Searching flattens chain grouping so every match is reachable.
+      return activeRuns
+        .filter((r) => r.name.toLowerCase().includes(q) || r.runKey.includes(q))
+        .map((run) => ({ item: toItem(run), depth: 0, childCount: 0, chainRootId: run.id }))
+    }
+    // Group re-run chains under their origin run (Area C) — one logical regression per chain.
+    const activeIds = new Set(activeRuns.map((r) => r.id))
+    const roots = activeRuns.filter((r) => !r.rerunOf || !activeIds.has(r.rerunOf))
+    const rows: { item: ReturnType<typeof toItem>; depth: number; childCount: number; chainRootId: string }[] = []
+    for (const root of roots) {
+      const children = runChainMembers(activeRuns, root.id).filter((c) => c.id !== root.id)
+      rows.push({ item: toItem(root), depth: 0, childCount: children.length, chainRootId: root.id })
+      if (expandedChains.has(root.id)) {
+        for (const child of children) {
+          rows.push({ item: toItem(child), depth: 1, childCount: 0, chainRootId: root.id })
         }
-      })
-      .filter((r) => !q || r.name.toLowerCase().includes(q) || r.runKey.includes(q))
-  }, [activeRuns, pickerQuery])
+      }
+    }
+    return rows
+  }, [activeRuns, pickerQuery, expandedChains])
 
   const filteredRows = useMemo(() => {
     const sq = runSearch.trim().toLowerCase()
@@ -517,6 +545,75 @@ export function RunsScreen() {
     <ExportDrawer open={exportOpen} onClose={() => setExportOpen(false)} context={exportContext} />
   )
 
+  const handleCreateRerun = useCallback(() => {
+    setRerunPreset('failedBlocked')
+    setRerunOpen(true)
+  }, [])
+
+  // Re-run chain for the current run (Area C lineage).
+  const projectRunsAll = useMemo(
+    () => state.runs.filter((r) => r.projectId === activeProject.id),
+    [state.runs, activeProject.id],
+  )
+  const runChain = useMemo(() => {
+    if (!currentRun) return []
+    return runChainMembers(projectRunsAll, runChainRootId(projectRunsAll, currentRun))
+  }, [projectRunsAll, currentRun])
+
+  const rerunModal = (
+    <CreateRerunModal
+      open={rerunOpen}
+      sourceRun={currentRun}
+      initialInclude={rerunPreset}
+      onClose={() => setRerunOpen(false)}
+    />
+  )
+
+  const closeConfirmDialog = closeConfirmOpen && currentRun && summary ? (
+    <div className="modal-backdrop" onClick={() => setCloseConfirmOpen(false)}>
+      <div className="create-dialog" style={{ width: 420 }} onClick={(e) => e.stopPropagation()}>
+        <div className="shortcuts-hd">
+          <div className="shortcuts-title">Close test run {currentRun.runKey}?</div>
+          <button type="button" className="btn" style={{ padding: '2px 6px' }} onClick={() => setCloseConfirmOpen(false)}>
+            <i className="ti ti-x" style={{ fontSize: 13 }} />
+          </button>
+        </div>
+        <div className="create-body">
+          <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
+            {summary.failed} failed and {summary.blocked} blocked case{summary.failed + summary.blocked === 1 ? '' : 's'} will
+            remain in this result set. Closing seals the run — results become read-only.
+          </div>
+        </div>
+        <div className="create-foot" style={{ flexWrap: 'wrap' }}>
+          <button type="button" className="btn" onClick={() => setCloseConfirmOpen(false)}>Cancel</button>
+          <button
+            type="button"
+            className="btn"
+            disabled={summary.failed + summary.blocked === 0}
+            onClick={() => {
+              sealRun()
+              setCloseConfirmOpen(false)
+              setRerunPreset('failedBlocked')
+              setRerunOpen(true)
+            }}
+          >
+            <i className="ti ti-repeat" style={{ fontSize: 11 }} /> Close &amp; create re-run ({summary.failed + summary.blocked})…
+          </button>
+          <button
+            type="button"
+            className="btn btn-p"
+            onClick={() => {
+              sealRun()
+              setCloseConfirmOpen(false)
+            }}
+          >
+            <i className="ti ti-lock" style={{ fontSize: 11 }} /> Close run
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
   const prototypeBanner = (
     <PrototypeBanner>
       <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
@@ -558,17 +655,40 @@ export function RunsScreen() {
             <input type="text" placeholder="Search runs…" value={pickerQuery} onChange={(e) => setPickerQuery(e.target.value)} autoFocus />
           </div>
           <div className="run-sel-list">
-            {pickerRuns.map((r) => {
+            {pickerRows.map(({ item: r, depth, childCount, chainRootId }) => {
               const pill = PICKER_PILL[r.status] ?? PICKER_PILL.act
+              const expanded = expandedChains.has(chainRootId)
               return (
                 <div
                   key={r.run.id}
                   className={`run-sel-item${r.run.id === currentRun?.id ? ' on' : ''}`}
+                  style={depth > 0 ? { paddingLeft: 26 } : undefined}
                   onClick={() => handleSelectRun(r.run)}
                 >
+                  {childCount > 0 ? (
+                    <button
+                      type="button"
+                      className="rsi-chain-toggle"
+                      title={expanded ? 'Collapse re-runs' : `Show ${childCount} re-run${childCount === 1 ? '' : 's'}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setExpandedChains((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(chainRootId)) next.delete(chainRootId)
+                          else next.add(chainRootId)
+                          return next
+                        })
+                      }}
+                    >
+                      <i className={`ti ${expanded ? 'ti-chevron-down' : 'ti-chevron-right'}`} style={{ fontSize: 10 }} />
+                    </button>
+                  ) : depth > 0 ? (
+                    <i className="ti ti-repeat" style={{ fontSize: 9, color: 'var(--text3)', flexShrink: 0 }} title="Re-run" />
+                  ) : null}
                   <span className={`pill ${pill.cls}`} style={{ fontSize: 9.5, padding: '1px 5px', flexShrink: 0 }}>{pill.lbl}</span>
                   <span className="rsi-key">{r.runKey}</span>
                   <span className="rsi-name">{r.name}</span>
+                  {childCount > 0 ? <span className="rsi-chain-count" title="Re-runs in this chain">⛓ {childCount}</span> : null}
                   <span className="rsi-meta">{r.pct}% · {r.cases}</span>
                 </div>
               )
@@ -598,6 +718,7 @@ export function RunsScreen() {
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
             onExport={handleExport}
+            onCreateRerun={handleCreateRerun}
             hasCases={hasCases}
           />
         </div>
@@ -639,6 +760,7 @@ export function RunsScreen() {
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
             onExport={handleExport}
+            onCreateRerun={handleCreateRerun}
             hasCases={hasCases}
           />
         </div>
@@ -685,6 +807,7 @@ export function RunsScreen() {
             onCreateRun={() => setCreateOpen(true)}
             onEdit={() => setEditOpen(true)}
             onExport={handleExport}
+            onCreateRerun={handleCreateRerun}
             hasCases={hasCases}
           />
         </div>
@@ -715,6 +838,8 @@ export function RunsScreen() {
           onClose={() => setAddCasesOpen(false)}
         />
         {exportDrawer}
+        {rerunModal}
+        {closeConfirmDialog}
       </div>
     )
   }
@@ -738,6 +863,7 @@ export function RunsScreen() {
           onCreateRun={() => setCreateOpen(true)}
           onEdit={() => setEditOpen(true)}
           onExport={handleExport}
+          onCreateRerun={handleCreateRerun}
           hasCases={hasCases}
         />
       </div>
@@ -859,6 +985,35 @@ export function RunsScreen() {
                         ) : null}
                         {!currentRun?.description && !currentRun?.due && !currentRun?.planName ? (
                           <div style={{ fontSize: 11, color: 'var(--text3)' }}>No additional details.</div>
+                        ) : null}
+                        {runChain.length > 1 ? (
+                          <div className="rr-chain">
+                            <div className="rr-chain-lbl">Run lineage</div>
+                            <div className="rr-chain-strip">
+                              {runChain.map((r, i) => {
+                                const s = runSummary(r)
+                                const isCurrent = r.id === currentRun?.id
+                                return (
+                                  <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    {i > 0 ? <span className="rr-chain-arrow">→</span> : null}
+                                    <button
+                                      type="button"
+                                      className={`rr-chain-node${isCurrent ? ' on' : ''}`}
+                                      title={r.name}
+                                      onClick={() => !isCurrent && handleSelectRun(r)}
+                                    >
+                                      <span className="rr-chain-key">{r.runKey}</span>
+                                      <span className="rr-chain-gen">
+                                        {i === 0 ? 'origin' : `Re-run ${i}`}
+                                        {isCurrent ? ' (this run)' : ''}
+                                      </span>
+                                      <span className="rr-chain-counts">{s.failed}F·{s.blocked}B</span>
+                                    </button>
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          </div>
                         ) : null}
                       </div>
                     )}
@@ -1056,6 +1211,8 @@ export function RunsScreen() {
         onClose={() => setAddCasesOpen(false)}
       />
       {exportDrawer}
+      {rerunModal}
+      {closeConfirmDialog}
       {caseIdTooltip ? (() => {
         const c = getCase(caseIdTooltip.caseId)
         if (!c) return null

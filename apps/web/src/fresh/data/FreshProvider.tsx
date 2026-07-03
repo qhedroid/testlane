@@ -126,6 +126,7 @@ export type FreshAction =
   | { type: 'SET_CURRENT_RUN'; runId: string }
   | { type: 'CREATE_RUN'; name: string; description?: string; caseIds?: string[]; planId?: string; planName?: string }
   | { type: 'DUPLICATE_RUN'; runId: string }
+  | { type: 'CREATE_RERUN'; sourceRunId: string; name: string; caseIds: string[]; assignMode: 'keep' | 'reassign'; reassignTo?: string }
   | { type: 'ARCHIVE_RUN'; runId: string }
   | { type: 'DELETE_RUN'; runId: string }
   | { type: 'ADD_PLAN'; plan: TestPlan }
@@ -520,6 +521,46 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     }
+    case 'CREATE_RERUN': {
+      const source = findRunById(state, action.sourceRunId)
+      if (!source) return state
+      const projectId = source.projectId
+      const num = state.nextRunNumByProject[projectId] ?? 1
+      const runKey = formatRunKey(num)
+      const id = newId('run')
+      // Seed Not-run executions carrying assignees per the chosen assignment mode.
+      // Source results are never copied or overwritten.
+      const executions: Record<string, CaseExecution> = {}
+      for (const caseId of action.caseIds) {
+        const srcEx = source.executions[caseId]
+        const assignee = action.assignMode === 'reassign' ? action.reassignTo : srcEx?.assignee
+        if (assignee) {
+          executions[caseId] = { status: 'Not run', stepResults: {}, assignee }
+        }
+      }
+      const rerun: DemoRun = {
+        id,
+        projectId,
+        runKey,
+        name: action.name.trim() || `${source.name} · Re-run`,
+        description: source.description,
+        planId: source.planId,
+        planName: source.planName,
+        createdAt: new Date().toISOString(),
+        sealed: false,
+        rerunOf: source.id,
+        caseOrder: [...action.caseIds],
+        executions,
+        executionLog: [],
+      }
+      next = {
+        ...state,
+        runs: [...state.runs, rerun],
+        nextRunNumByProject: { ...state.nextRunNumByProject, [projectId]: num + 1 },
+        currentRunIdByProject: { ...state.currentRunIdByProject, [projectId]: id },
+      }
+      break
+    }
     case 'ARCHIVE_RUN': {
       const archivedAt = new Date().toISOString()
       next = {
@@ -772,6 +813,7 @@ interface FreshContextValue {
   setCurrentRun: (runId: string) => void
   createRun: (input: { name: string; description?: string; caseIds?: string[] }) => { runKey: string }
   duplicateRun: (runId: string) => { runKey: string } | null
+  createRerun: (input: { sourceRunId: string; name: string; caseIds: string[]; assignMode: 'keep' | 'reassign'; reassignTo?: string }) => { runKey: string } | null
   archiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
   editRun: (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => void
@@ -931,6 +973,18 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       const num = state.nextRunNumByProject[source.projectId] ?? 1
       const runKey = formatRunKey(num)
       dispatch({ type: 'DUPLICATE_RUN', runId })
+      return { runKey }
+    },
+    [state],
+  )
+
+  const createRerun = useCallback(
+    (input: { sourceRunId: string; name: string; caseIds: string[]; assignMode: 'keep' | 'reassign'; reassignTo?: string }) => {
+      const source = findRunById(state, input.sourceRunId)
+      if (!source || input.caseIds.length === 0) return null
+      const num = state.nextRunNumByProject[source.projectId] ?? 1
+      const runKey = formatRunKey(num)
+      dispatch({ type: 'CREATE_RERUN', ...input })
       return { runKey }
     },
     [state],
@@ -1342,6 +1396,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       setCurrentRun,
       createRun,
       duplicateRun,
+      createRerun,
       archiveRun,
       deleteRun,
       editRun,
@@ -1423,6 +1478,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       setCurrentRun,
       createRun,
       duplicateRun,
+      createRerun,
       archiveRun,
       deleteRun,
       editRun,

@@ -13,7 +13,30 @@ export function findRunById(state: DemoState, runId: string): DemoRun | undefine
   return state.runs.find((r) => r.id === runId)
 }
 
-/** Assign runKey values to all runs in a project; returns next counter value. */
+/** Walk `rerunOf` pointers to the chain origin run id. */
+export function runChainRootId(runs: DemoRun[], run: DemoRun): string {
+  const byId = new Map(runs.map((r) => [r.id, r]))
+  let cur = run
+  let guard = 0
+  while (cur.rerunOf && byId.has(cur.rerunOf) && guard < 50) {
+    cur = byId.get(cur.rerunOf)!
+    guard += 1
+  }
+  return cur.id
+}
+
+/** All members of a re-run chain (origin first, then re-runs by creation date). */
+export function runChainMembers(runs: DemoRun[], rootId: string): DemoRun[] {
+  const members = runs.filter((r) => {
+    if (r.id === rootId) return true
+    return r.rerunOf != null && runChainRootId(runs, r) === rootId
+  })
+  return members.sort((a, b) => {
+    if (a.id === rootId) return -1
+    if (b.id === rootId) return 1
+    return a.createdAt.localeCompare(b.createdAt)
+  })
+}
 export function assignRunKeysForProject(runs: DemoRun[], projectId: string): { runs: DemoRun[]; nextNum: number } {
   const projectRuns = runs.filter((r) => r.projectId === projectId)
   const otherRuns = runs.filter((r) => r.projectId !== projectId)

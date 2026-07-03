@@ -11,6 +11,7 @@ interface TestRunsTopbarProps {
   onCreateRun: () => void
   onEdit?: () => void
   onExport?: (format?: ExportFormatChoice) => void
+  onCreateRerun?: () => void
   hasCases?: boolean
 }
 
@@ -22,6 +23,7 @@ export function TestRunsTopbar({
   onCreateRun,
   onEdit,
   onExport,
+  onCreateRerun,
   hasCases = true,
 }: TestRunsTopbarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
@@ -116,6 +118,9 @@ export function TestRunsTopbar({
             </button>
             <button type="button" className="tr-more-item" disabled={!hasRun} onClick={handleDuplicate}>
               Duplicate test run
+            </button>
+            <button type="button" className="tr-more-item" disabled={!hasRun} onClick={() => { closeMore(); onCreateRerun?.() }}>
+              Create re-run…
             </button>
             <button type="button" className="tr-more-item" disabled={!hasRun}>Show history</button>
             <div className="tr-more-sep" />
