@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-dashboard-metrics` — tasks 01–04 committed (`5544fc0`); task-05 bug fix implemented (uncommitted). Branch off `mvp-main`.
+`mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`). Ready for PR description / review before merge to `mvp-main`.
 
 ---
 
@@ -35,7 +35,7 @@ Schema unchanged (v14). Removed `projectHasDemoDashboard()` from `demo-project-u
 
 **Follow-up (separate branch):** Verify Test Plans Overview tab metrics on `PlansScreen.tsx` reflect live data end-to-end — not part of this branch.
 
-### Post-commit bug fix — task-05 ✅ (uncommitted)
+### Post-commit bug fix — task-05 ✅ (committed `323ce6f`)
 
 Fixed dashboard run-card donuts to match RunsScreen/PlansScreen behavior:
 
