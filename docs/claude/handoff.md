@@ -16,15 +16,40 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-test-plans` (rebased onto latest `origin/mvp-main`, which now includes merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`)
+`mvp-final-close-out` — cut from `origin/mvp-main` (9491d87). Final frontend-only milestone before the full-stack rebuild in a separate company GitLab repo. **Do not push or merge without sign-off from both Noel and Shaun.**
+
+**Execution-model deviation (deliberate, approved):** this branch is being implemented **directly by a Claude agent running the Fable model** working from `docs/cursor-prompts/mvp-final-close-out/task-01-full-mvp-close-out.md` — not the normal Claude(Cowork)-plans/Cursor-implements split. Approved by Noel, re-confirmed for the expanded 14-area scope on 2026-07-03.
+
+---
+
+## Close-out progress checkpoint (2026-07-03, after Area D)
+
+| Area | Status | Commit |
+|------|--------|--------|
+| A — Reporting & Analytics (Reports page, drill-down, saved views) | ✅ Done | `75cc5f3` (v15) |
+| B — Export & Reporting (shared export drawer, real artifacts, history) | ✅ Done | `ccf6822` (v16) |
+| C — Re-Run Management (re-run modal, close confirmation, lineage) | ✅ Done | `307971c` (v17) |
+| D — Test Case Organization (bulk bar, move/copy, manual order + DnD) | ✅ Done | `b6bb1a6` (v18) |
+| E–N | Not started yet | — |
+
+Notes so far:
+- Base-branch note: `git fetch origin` fails in the Cowork sandbox (no GitHub network access); branch was cut from the locally known `origin/mvp-main` ref. App source there is identical to the qa audit branch except docs.
+- "PDF" exports are honestly print-friendly HTML; "Excel" is CSV — labelled as such in UI and toasts.
+- Reports trend buckets are runs (no sprint entity exists) — labelled in the control bar.
+- Case archive added as part of Area D bulk actions (`Case.archivedAt`, `Folder.archivedAt`) with an Archived view; archived cases remain resolvable in historical runs.
+- Living-docs updates (user-guide/feature-flow/AS_BUILT/FRONTEND_CONTRACTS) are being batched at checkpoints; full pass before final report.
 
 ---
 
 ## Schema version
-**Current: v14**
+**Current: v18** (on `mvp-final-close-out`)
 
 | Version | What changed | Migration |
 |---------|-------------|-----------|
+| v18 | Test case organization — `Case.position` (manual order), `Case.archivedAt`, `Folder.archivedAt`; move/copy/reorder/assign/archive case actions; folder rename/move/copy/archive | v17→v18 backfills `position` from array order per project |
+| v17 | Re-runs — `DemoRun.rerunOf` lineage pointer; `CREATE_RERUN` action | v16→v17 version stamp only (optional field) |
+| v16 | Export history — `ExportArtifact`, `exportsById` (metadata + regen spec; blobs are session-only) | v15→v16 seeds empty collection |
+| v15 | Saved reports — `SavedReport`, `savedReportsById` (Reports-page named views) | v14→v15 seeds empty collection |
 | v14 | Local **Requirement** and **Defect** entities; `requirementsById`, `defectsById`, `Case.requirementIds`, `nextRequirementNumByProject`, `nextDefectNumByProject`; REQ/DEF keys; case requirements create/link; run defects create/link (Failed/Blocked); view-only cross-tabs | v13→v14 seeds empty collections + `requirementIds: []` on cases |
 | v13 | Test Plans — `TestPlan`, `TestQuery`, `QueryCondition`, `plansById`, `nextPlanNumByProject`, `resolvePlanCases()`, seed plans | v12→v13 |
 | v12 | User/role access MVP | v11→v12 via `migrateUserAccessV12` |
