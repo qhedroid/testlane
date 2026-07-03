@@ -967,3 +967,10 @@
 .rsi-chain-toggle{border:none;background:none;color:var(--text3);cursor:pointer;padding:1px;border-radius:3px;flex-shrink:0;display:inline-flex}
 .rsi-chain-toggle:hover{color:var(--text);background:var(--surface2)}
 .rsi-chain-count{font-size:9.5px;color:var(--text3);flex-shrink:0}
+
+/* ── Archived runs (Area I, MVP close-out) ── */
+.run-sel-archived{border-top:1px solid var(--border)}
+.run-sel-arch-toggle{display:flex;align-items:center;gap:5px;width:100%;border:none;background:none;color:var(--text3);font-size:10.5px;font-weight:600;padding:6px 10px;cursor:pointer;text-transform:uppercase;letter-spacing:.04em}
+.run-sel-arch-toggle:hover{color:var(--text)}
+.run-sel-arch-list{max-height:150px;overflow-y:auto}
+.run-sel-item-archived{cursor:default;opacity:.85}

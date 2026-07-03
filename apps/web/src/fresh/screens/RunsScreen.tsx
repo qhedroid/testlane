@@ -113,6 +113,8 @@ export function RunsScreen() {
     unsealRun,
     duplicateRun,
     deleteRun,
+    archiveRun,
+    unarchiveRun,
   } = useFresh()
   const { openShortcuts } = useFreshUI()
   const projectHref = useProjectHref()
@@ -137,6 +139,7 @@ export function RunsScreen() {
   const [rerunPreset, setRerunPreset] = useState<RerunInclude>('failedBlocked')
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false)
   const [expandedChains, setExpandedChains] = useState<Set<string>>(() => new Set())
+  const [showArchived, setShowArchived] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [advFilter, setAdvFilter] = useState<RunFilter>(DEFAULT_ADV_FILTER)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -551,6 +554,18 @@ export function RunsScreen() {
     setRerunOpen(true)
   }, [])
 
+  const handleArchive = useCallback(() => {
+    if (!currentRun || !currentRun.sealed) return
+    if (!window.confirm(`Archive "${currentRun.name}"? It is hidden from the run list but kept read-only — restore it any time from the Archived section of the run picker.`)) return
+    archiveRun(currentRun.id)
+    router.push(testRunPath(activeProject.key))
+  }, [currentRun, archiveRun, activeProject.key, router])
+
+  const archivedRuns = useMemo(
+    () => state.runs.filter((r) => r.projectId === activeProject.id && r.archivedAt),
+    [state.runs, activeProject.id],
+  )
+
   // Re-run chain for the current run (Area C lineage).
   const projectRunsAll = useMemo(
     () => state.runs.filter((r) => r.projectId === activeProject.id),
@@ -695,6 +710,41 @@ export function RunsScreen() {
               )
             })}
           </div>
+          {archivedRuns.length > 0 ? (
+            <div className="run-sel-archived">
+              <button type="button" className="run-sel-arch-toggle" onClick={() => setShowArchived((v) => !v)}>
+                <i className={`ti ${showArchived ? 'ti-chevron-down' : 'ti-chevron-right'}`} style={{ fontSize: 10 }} />
+                <i className="ti ti-archive" style={{ fontSize: 10 }} />
+                Archived ({archivedRuns.length})
+              </button>
+              {showArchived ? (
+                <div className="run-sel-arch-list">
+                  {archivedRuns.map((r) => {
+                    const s = runSummary(r)
+                    return (
+                      <div key={r.id} className="run-sel-item run-sel-item-archived" title="Archived — read-only. Unarchive to reopen it in the run list.">
+                        <span className="pill p-notrun" style={{ fontSize: 9.5, padding: '1px 5px', flexShrink: 0 }}>Archived</span>
+                        <span className="rsi-key">{r.runKey}</span>
+                        <span className="rsi-name">{r.name}</span>
+                        <span className="rsi-meta">{s.total} cases</span>
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{ fontSize: 9.5, padding: '1px 6px', flexShrink: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            unarchiveRun(r.id)
+                          }}
+                        >
+                          Unarchive
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <button type="button" className="run-sel-create" disabled={!hasCases} onClick={() => { setPickerOpen(false); setCreateOpen(true) }}>
             <i className="ti ti-plus" style={{ fontSize: 11 }} /> Create new run…
           </button>
@@ -720,6 +770,7 @@ export function RunsScreen() {
             onEdit={() => setEditOpen(true)}
             onExport={handleExport}
             onCreateRerun={handleCreateRerun}
+            onArchive={handleArchive}
             hasCases={hasCases}
           />
         </div>
@@ -762,6 +813,7 @@ export function RunsScreen() {
             onEdit={() => setEditOpen(true)}
             onExport={handleExport}
             onCreateRerun={handleCreateRerun}
+            onArchive={handleArchive}
             hasCases={hasCases}
           />
         </div>
@@ -809,6 +861,7 @@ export function RunsScreen() {
             onEdit={() => setEditOpen(true)}
             onExport={handleExport}
             onCreateRerun={handleCreateRerun}
+            onArchive={handleArchive}
             hasCases={hasCases}
           />
         </div>
@@ -865,6 +918,7 @@ export function RunsScreen() {
           onEdit={() => setEditOpen(true)}
           onExport={handleExport}
           onCreateRerun={handleCreateRerun}
+          onArchive={handleArchive}
           hasCases={hasCases}
         />
       </div>

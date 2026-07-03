@@ -129,6 +129,7 @@ export type FreshAction =
   | { type: 'DUPLICATE_RUN'; runId: string }
   | { type: 'CREATE_RERUN'; sourceRunId: string; name: string; caseIds: string[]; assignMode: 'keep' | 'reassign'; reassignTo?: string }
   | { type: 'ARCHIVE_RUN'; runId: string }
+  | { type: 'UNARCHIVE_RUN'; runId: string }
   | { type: 'DELETE_RUN'; runId: string }
   | { type: 'ADD_PLAN'; plan: TestPlan }
   | { type: 'UPDATE_PLAN'; planId: string; patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>> }
@@ -593,6 +594,15 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           state.currentRunIdByProject[state.activeProjectId] === action.runId
             ? { ...state.currentRunIdByProject, [state.activeProjectId]: '' }
             : state.currentRunIdByProject,
+      }
+      break
+    }
+    case 'UNARCHIVE_RUN': {
+      next = {
+        ...state,
+        runs: state.runs.map((r) =>
+          r.id === action.runId ? { ...r, archivedAt: undefined } : r,
+        ),
       }
       break
     }
@@ -1159,6 +1169,7 @@ interface FreshContextValue {
   duplicateRun: (runId: string) => { runKey: string } | null
   createRerun: (input: { sourceRunId: string; name: string; caseIds: string[]; assignMode: 'keep' | 'reassign'; reassignTo?: string }) => { runKey: string } | null
   archiveRun: (runId: string) => void
+  unarchiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
   editRun: (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => void
   addCasesToRun: (runId: string, caseIds: string[]) => void
@@ -1353,6 +1364,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const archiveRun = useCallback((runId: string) => {
     dispatch({ type: 'ARCHIVE_RUN', runId })
+  }, [])
+
+  const unarchiveRun = useCallback((runId: string) => {
+    dispatch({ type: 'UNARCHIVE_RUN', runId })
   }, [])
 
   const deleteRun = useCallback((runId: string) => {
@@ -1836,6 +1851,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       duplicateRun,
       createRerun,
       archiveRun,
+      unarchiveRun,
       deleteRun,
       editRun,
       addCasesToRun,
@@ -1933,6 +1949,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       duplicateRun,
       createRerun,
       archiveRun,
+      unarchiveRun,
       deleteRun,
       editRun,
       addCasesToRun,

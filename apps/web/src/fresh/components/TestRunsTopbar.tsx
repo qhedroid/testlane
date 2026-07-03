@@ -12,6 +12,7 @@ interface TestRunsTopbarProps {
   onEdit?: () => void
   onExport?: (format?: ExportFormatChoice) => void
   onCreateRerun?: () => void
+  onArchive?: () => void
   hasCases?: boolean
 }
 
@@ -24,6 +25,7 @@ export function TestRunsTopbar({
   onEdit,
   onExport,
   onCreateRerun,
+  onArchive,
   hasCases = true,
 }: TestRunsTopbarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
@@ -130,6 +132,15 @@ export function TestRunsTopbar({
             <button type="button" className="tr-more-item" disabled={!hasRun} onClick={() => handleExport('csv')}>Export test run as CSV</button>
             <button type="button" className="tr-more-item" disabled={!hasRun} onClick={() => handleExport('excel')}>Export test run as Excel</button>
             <div className="tr-more-sep" />
+            <button
+              type="button"
+              className="tr-more-item"
+              disabled={!hasRun || !sealed}
+              title={!sealed ? 'Only closed (sealed) runs can be archived' : 'Hide this run from the run list — restore it from the Archived section'}
+              onClick={() => { closeMore(); onArchive?.() }}
+            >
+              Archive test run
+            </button>
             <button type="button" className="tr-more-item tr-more-danger" disabled={!hasRun} onClick={handleDelete}>
               Delete test run
             </button>
