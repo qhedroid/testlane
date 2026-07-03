@@ -28,6 +28,7 @@ interface DashboardRunCard {
   pass: number
   fail: number
   blocked: number
+  skipped: number
   notrun: number
   total: number
   assignees: string[]
@@ -117,7 +118,8 @@ function runToCard(run: DemoRun): DashboardRunCard {
     pass: summary.passed,
     fail: summary.failed,
     blocked: summary.blocked,
-    notrun: summary.notRun + summary.skipped,
+    skipped: summary.skipped,
+    notrun: summary.notRun,
     total: summary.total,
     assignees: assigneesForRun(run),
     defects: defectIdsForRun(run),
@@ -518,11 +520,22 @@ function RunCardItem({
   const passP = run.total > 0 ? (run.pass / run.total) * 100 : 0
   const failP = run.total > 0 ? (run.fail / run.total) * 100 : 0
   const blkP = run.total > 0 ? (run.blocked / run.total) * 100 : 0
+  const skipP = run.total > 0 ? (run.skipped / run.total) * 100 : 0
+  const executed = run.pass + run.fail + run.blocked + run.skipped
 
   return (
     <div className="run-card">
       <div className="rct" onClick={() => onToggle()}>
-        <RunStatusInfographic pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} size={DONUT_CHART_SIZE} compact />
+        <RunStatusInfographic
+          pass={run.pass}
+          fail={run.fail}
+          blocked={run.blocked}
+          notrun={run.notrun}
+          skipped={run.skipped}
+          size={DONUT_CHART_SIZE}
+          compact
+          interactive
+        />
         <div className="rct-info">
           <div className="rct-name">{run.name}</div>
           <div className="rct-ctx">{run.plan}</div>
@@ -560,17 +573,19 @@ function RunCardItem({
             <div style={{ marginBottom: 9 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text3)' }}>Execution progress</span>
-                <span style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{run.pass + run.fail + run.blocked} / {run.total}</span>
+                <span style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{executed} / {run.total}</span>
               </div>
               <div className="prog" style={{ height: 6, marginBottom: 5 }}>
                 <div className="pg-p" style={{ width: `${passP}%` }} />
                 <div className="pg-f" style={{ width: `${failP}%` }} />
                 {run.blocked > 0 ? <div className="pg-b" style={{ width: `${blkP}%` }} /> : null}
+                {run.skipped > 0 ? <div className="pg-s" style={{ width: `${skipP}%` }} /> : null}
               </div>
               <div style={{ display: 'flex', gap: 10, fontSize: 10.5 }}>
                 <span style={{ color: 'var(--pass)' }}>✓ {run.pass} passed</span>
                 <span style={{ color: 'var(--fail)' }}>✗ {run.fail} failed</span>
                 {run.blocked > 0 ? <span style={{ color: 'var(--block)' }}>⊘ {run.blocked} blocked</span> : null}
+                {run.skipped > 0 ? <span style={{ color: 'var(--skip)' }}>→ {run.skipped} skipped</span> : null}
                 <span style={{ color: 'var(--text3)' }}>○ {run.notrun} not run</span>
               </div>
             </div>

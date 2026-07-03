@@ -62,7 +62,7 @@ The dashboard is a briefing screen: what needs attention and how runs are progre
 
 **Metric cards:** Active Runs, Pass Rate (of executed cases — shows `—` when none executed), Open Failures (unlinked failed executions), Blocked Cases, Run Coverage (% of cases in active runs that have been executed at least once).
 
-**Active runs column:** Expandable run cards with Overview / Assignees / Defects tabs; filter chips *All* and *Critical* (runs with failures). Dropped mock-only fields: stalled status, due date, environment.
+**Active runs column:** Expandable run cards with Overview / Assignees / Defects tabs; filter chips *All* and *Critical* (runs with failures). Each run card shows a status donut (Passed / Failed / Blocked / Skipped / Not run as separate segments) with hover tooltips on each wedge, matching Test Runs and Test Plans. Dropped mock-only fields: stalled status, due date, environment.
 
 **Needs attention:** Unlinked failures (Failed executions with no linked defect), sorted most-recent first; empty state when none.
 

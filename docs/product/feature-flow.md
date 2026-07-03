@@ -278,6 +278,8 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 - [ ] New blank project (zero cases) shows “Add your first test cases” empty state
 - [ ] Project with cases but no runs shows zero-state metrics (no NaN%, no crash)
 - [ ] Critical filter shows only runs with failures
+- [ ] Run-card donut shows Skipped as its own segment; hover tooltips on wedges
+- [ ] Expanded Overview text row reconciles pass + fail + blocked + skipped + not run = total
 - [ ] Linking a defect removes failure from needs-attention panel
 - [ ] *New Run* / attention links open testruns
 - [ ] No console errors on load
