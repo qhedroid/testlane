@@ -115,6 +115,10 @@ export function RunsScreen() {
     deleteRun,
     archiveRun,
     unarchiveRun,
+    listSavedFilters,
+    saveFilter,
+    renameSavedFilter,
+    deleteSavedFilter,
   } = useFresh()
   const { openShortcuts } = useFreshUI()
   const projectHref = useProjectHref()
@@ -553,6 +557,45 @@ export function RunsScreen() {
     setRerunPreset('failedBlocked')
     setRerunOpen(true)
   }, [])
+
+  // Area K: saved filters (surface 'testruns')
+  const savedRunFilters = useMemo(() => listSavedFilters('testruns'), [listSavedFilters])
+  const [saveFilterName, setSaveFilterName] = useState('')
+  const runFilterIsActive = filter !== 'all' || advFilterActive || !!runSearch.trim()
+
+  const handleSaveRunFilter = useCallback(() => {
+    const name = saveFilterName.trim()
+    if (!name || !runFilterIsActive) return
+    saveFilter({
+      surface: 'testruns',
+      name,
+      runFilter: {
+        quickTab: filter,
+        result: advFilter.result,
+        assignee: advFilter.assignee,
+        priority: advFilter.priority,
+        type: advFilter.type,
+        search: runSearch.trim(),
+      },
+    })
+    setSaveFilterName('')
+  }, [saveFilterName, runFilterIsActive, saveFilter, filter, advFilter, runSearch])
+
+  const applySavedRunFilter = useCallback(
+    (filterId: string) => {
+      const saved = savedRunFilters.find((f) => f.id === filterId)
+      if (!saved?.runFilter) return
+      setFilter((saved.runFilter.quickTab as FilterTab) || 'all')
+      setAdvFilter({
+        result: (saved.runFilter.result as ExecStatus | 'all') || 'all',
+        assignee: saved.runFilter.assignee,
+        priority: saved.runFilter.priority,
+        type: saved.runFilter.type,
+      })
+      setRunSearch(saved.runFilter.search)
+    },
+    [savedRunFilters],
+  )
 
   const handleArchive = useCallback(() => {
     if (!currentRun || !currentRun.sealed) return
@@ -1160,6 +1203,58 @@ export function RunsScreen() {
                     Clear filters
                   </div>
                 ) : null}
+
+                {/* Area K: saved filters */}
+                <div className="sf-sec">
+                  <div className="sf-lbl">Saved filters (this project)</div>
+                  {savedRunFilters.length === 0 ? (
+                    <div className="sf-empty">No saved filters yet.</div>
+                  ) : (
+                    savedRunFilters.map((f) => (
+                      <div key={f.id} className="sf-row">
+                        <button type="button" className="sf-name" title="Apply this filter" onClick={() => applySavedRunFilter(f.id)}>
+                          <i className="ti ti-filter" style={{ fontSize: 10 }} /> {f.name}
+                        </button>
+                        <button
+                          type="button"
+                          className="sf-ic"
+                          title="Rename"
+                          onClick={() => {
+                            const name = window.prompt('Rename saved filter', f.name)
+                            if (name && name.trim()) renameSavedFilter(f.id, name.trim())
+                          }}
+                        >
+                          <i className="ti ti-pencil" style={{ fontSize: 10 }} />
+                        </button>
+                        <button type="button" className="sf-ic" title="Delete" onClick={() => deleteSavedFilter(f.id)}>
+                          <i className="ti ti-trash" style={{ fontSize: 10 }} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                  <div className="sf-save-row">
+                    <input
+                      type="text"
+                      placeholder={runFilterIsActive ? 'Name this filter…' : 'Set a filter first…'}
+                      disabled={!runFilterIsActive}
+                      value={saveFilterName}
+                      onChange={(e) => setSaveFilterName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveRunFilter()
+                      }}
+                      style={{ fontSize: 11, flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ fontSize: 10.5, padding: '2px 7px' }}
+                      disabled={!runFilterIsActive || !saveFilterName.trim()}
+                      onClick={handleSaveRunFilter}
+                    >
+                      <i className="ti ti-device-floppy" style={{ fontSize: 10 }} /> Save
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>

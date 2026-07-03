@@ -156,6 +156,42 @@ export interface ScheduledRun {
   spawnedRunIds: string[]
 }
 
+/**
+ * v21 — saved filters (Area K). Deliberately a parallel type rather than
+ * `TestQuery`/`QueryCondition`: the Test Cases filter panel filters on the
+ * derived last-execution status (not a `Case` field, so `QueryField` cannot
+ * express it), and the Test Runs filter shape (result/assignee/priority/type +
+ * quick tab + search) does not map onto `QueryCondition` at all. Scoped per
+ * project — filters describe project-specific fields/values, and the store has
+ * no per-user namespace worth pretending exists.
+ */
+export type SavedFilterSurface = 'testcases' | 'testruns'
+
+export interface SavedCaseFilterPayload {
+  statusChip: string
+  conditions: { field: string; operator: string; value: string }[]
+  keyword: string
+}
+
+export interface SavedRunFilterPayload {
+  quickTab: string
+  result: string
+  assignee: string
+  priority: string
+  type: string
+  search: string
+}
+
+export interface SavedFilter {
+  id: string
+  projectId: string
+  surface: SavedFilterSurface
+  name: string
+  createdAt: string
+  caseFilter?: SavedCaseFilterPayload
+  runFilter?: SavedRunFilterPayload
+}
+
 export type RequirementStatus = 'Draft' | 'Approved' | 'Implemented' | 'Obsolete'
 export type DefectStatus = 'Open' | 'In progress' | 'Resolved' | 'Closed'
 
@@ -278,7 +314,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 20
+export const DEMO_SCHEMA_VERSION = 21
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -467,6 +503,8 @@ export interface DemoState {
   scheduledRunsById: Record<string, ScheduledRun>
   /** v20 — dashboard metric-card layout per demo actor (Area J). */
   dashboardLayoutByActor: Record<string, DashboardLayout>
+  /** v21 — saved filters for the Test Cases / Test Runs surfaces (Area K). */
+  savedFiltersById: Record<string, SavedFilter>
 }
 
 /** v20 — per-actor dashboard customisation: card order + hidden card ids. */

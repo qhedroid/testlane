@@ -263,7 +263,7 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement, moveCases, reorderCases, assignCases, archiveCases, unarchiveCases, renameFolder, moveFolder, archiveFolder, addCasesToRun, state } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement, moveCases, reorderCases, assignCases, archiveCases, unarchiveCases, renameFolder, moveFolder, archiveFolder, addCasesToRun, state, listSavedFilters, saveFilter, renameSavedFilter, deleteSavedFilter } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const pathname = usePathname()
@@ -750,6 +750,42 @@ export function CasesScreen() {
 
   const openUnsealedRuns = useMemo(() => activeRuns.filter((r) => !r.sealed), [activeRuns])
 
+  // Area K: saved filters (surface 'testcases')
+  const savedCaseFilters = useMemo(() => listSavedFilters('testcases'), [listSavedFilters])
+  const [saveFilterName, setSaveFilterName] = useState('')
+  const filterIsActive = statusFilter !== 'all' || filterConditions.length > 0 || !!keywordSearch.trim()
+
+  function handleSaveCurrentFilter() {
+    const name = saveFilterName.trim()
+    if (!name || !filterIsActive) return
+    saveFilter({
+      surface: 'testcases',
+      name,
+      caseFilter: {
+        statusChip: statusFilter,
+        conditions: filterConditions.map(({ field, operator, value }) => ({ field, operator, value })),
+        keyword: keywordSearch.trim(),
+      },
+    })
+    setSaveFilterName('')
+  }
+
+  function applySavedCaseFilter(filterId: string) {
+    const saved = savedCaseFilters.find((f) => f.id === filterId)
+    if (!saved?.caseFilter) return
+    setStatusFilter((saved.caseFilter.statusChip as StatusFilter) || 'all')
+    setFilterConditions(
+      saved.caseFilter.conditions.map((c) => ({
+        id: newId('filter'),
+        field: c.field as FilterField,
+        operator: c.operator as FilterOperator,
+        value: c.value,
+      })),
+    )
+    setKeywordSearch(saved.caseFilter.keyword)
+    setDetailCaseId(null)
+  }
+
   // Area H: requirement coverage rollup (derived, read-only)
   const requirementCoverageById = useMemo(() => {
     const map = new Map<string, RequirementCoverage>()
@@ -1068,6 +1104,58 @@ export function CasesScreen() {
                     >
                       Add
                     </button>
+                  </div>
+
+                  {/* Area K: saved filters */}
+                  <div className="sf-sec">
+                    <div className="sf-lbl">Saved filters (this project)</div>
+                    {savedCaseFilters.length === 0 ? (
+                      <div className="sf-empty">No saved filters yet.</div>
+                    ) : (
+                      savedCaseFilters.map((f) => (
+                        <div key={f.id} className="sf-row">
+                          <button type="button" className="sf-name" title="Apply this filter" onClick={() => applySavedCaseFilter(f.id)}>
+                            <i className="ti ti-filter" style={{ fontSize: 10 }} /> {f.name}
+                          </button>
+                          <button
+                            type="button"
+                            className="sf-ic"
+                            title="Rename"
+                            onClick={() => {
+                              const name = window.prompt('Rename saved filter', f.name)
+                              if (name && name.trim()) renameSavedFilter(f.id, name.trim())
+                            }}
+                          >
+                            <i className="ti ti-pencil" style={{ fontSize: 10 }} />
+                          </button>
+                          <button type="button" className="sf-ic" title="Delete" onClick={() => deleteSavedFilter(f.id)}>
+                            <i className="ti ti-trash" style={{ fontSize: 10 }} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                    <div className="sf-save-row">
+                      <input
+                        type="text"
+                        placeholder={filterIsActive ? 'Name this filter…' : 'Set a filter first…'}
+                        disabled={!filterIsActive}
+                        value={saveFilterName}
+                        onChange={(e) => setSaveFilterName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveCurrentFilter()
+                        }}
+                        style={{ fontSize: 11.5, flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ fontSize: 11, padding: '2px 8px' }}
+                        disabled={!filterIsActive || !saveFilterName.trim()}
+                        onClick={handleSaveCurrentFilter}
+                      >
+                        <i className="ti ti-device-floppy" style={{ fontSize: 11 }} /> Save current filter
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : null}

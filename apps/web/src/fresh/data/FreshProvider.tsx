@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DashboardLayout, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedReport, ScheduledRun, TestPlan } from './demo-model'
+import type { Case, CaseExecution, DashboardLayout, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedFilter, SavedFilterSurface, SavedReport, ScheduledRun, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -30,6 +30,7 @@ import {
   listActiveProjectExports,
   listActiveProjectRequirements,
   listActiveProjectRuns,
+  listActiveProjectSavedFilters,
   listActiveProjectSavedReports,
   listActiveProjectScheduledRuns,
   listActiveProjectTestCases,
@@ -153,6 +154,9 @@ export type FreshAction =
   | { type: 'SET_DASHBOARD_LAYOUT'; actorUserId: string; layout: DashboardLayout }
   | { type: 'RECORD_EXPORT'; artifact: ExportArtifact }
   | { type: 'DELETE_EXPORT'; exportId: string }
+  | { type: 'SAVE_FILTER'; filter: SavedFilter }
+  | { type: 'RENAME_SAVED_FILTER'; filterId: string; name: string }
+  | { type: 'DELETE_SAVED_FILTER'; filterId: string }
   | { type: 'SAVE_REPORT'; report: SavedReport }
   | { type: 'RENAME_SAVED_REPORT'; reportId: string; name: string }
   | { type: 'DELETE_SAVED_REPORT'; reportId: string }
@@ -311,6 +315,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         ),
         scheduledRunsById: Object.fromEntries(
           Object.entries(state.scheduledRunsById ?? {}).filter(([, s]) => s.projectId !== projectId),
+        ),
+        savedFiltersById: Object.fromEntries(
+          Object.entries(state.savedFiltersById ?? {}).filter(([, f]) => f.projectId !== projectId),
         ),
         currentRunIdByProject,
         nextCaseNumByProject,
@@ -1016,6 +1023,30 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       next = { ...state, exportsById: restExports }
       break
     }
+    case 'SAVE_FILTER': {
+      next = {
+        ...state,
+        savedFiltersById: { ...(state.savedFiltersById ?? {}), [action.filter.id]: action.filter },
+      }
+      break
+    }
+    case 'RENAME_SAVED_FILTER': {
+      const existing = state.savedFiltersById?.[action.filterId]
+      if (!existing) return state
+      next = {
+        ...state,
+        savedFiltersById: {
+          ...state.savedFiltersById,
+          [action.filterId]: { ...existing, name: action.name.trim() || existing.name },
+        },
+      }
+      break
+    }
+    case 'DELETE_SAVED_FILTER': {
+      const { [action.filterId]: _removedFilter, ...restFilters } = state.savedFiltersById ?? {}
+      next = { ...state, savedFiltersById: restFilters }
+      break
+    }
     case 'SAVE_REPORT': {
       next = {
         ...state,
@@ -1217,6 +1248,10 @@ interface FreshContextValue {
   /** Dashboard layout for the current demo actor (Area J). */
   dashboardLayout: DashboardLayout | undefined
   setDashboardLayout: (layout: DashboardLayout) => void
+  listSavedFilters: (surface: SavedFilterSurface) => SavedFilter[]
+  saveFilter: (input: Omit<SavedFilter, 'id' | 'projectId' | 'createdAt'>) => void
+  renameSavedFilter: (filterId: string, name: string) => void
+  deleteSavedFilter: (filterId: string) => void
   activeRequirements: Requirement[]
   activeDefects: Defect[]
   createRequirement: (input: { title: string; description?: string; status?: Requirement['status'] }) => { requirementKey: string; requirementId: string }
@@ -1591,6 +1626,32 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'RECORD_EXPORT', artifact })
   }, [])
 
+  const listSavedFilters = useCallback(
+    (surface: SavedFilterSurface) => listActiveProjectSavedFilters(state, surface),
+    [state],
+  )
+
+  const saveFilter = useCallback(
+    (input: Omit<SavedFilter, 'id' | 'projectId' | 'createdAt'>) => {
+      const filter: SavedFilter = {
+        ...input,
+        id: newId('filter'),
+        projectId: state.activeProjectId,
+        createdAt: new Date().toISOString(),
+      }
+      dispatch({ type: 'SAVE_FILTER', filter })
+    },
+    [state.activeProjectId],
+  )
+
+  const renameSavedFilter = useCallback((filterId: string, name: string) => {
+    dispatch({ type: 'RENAME_SAVED_FILTER', filterId, name })
+  }, [])
+
+  const deleteSavedFilter = useCallback((filterId: string) => {
+    dispatch({ type: 'DELETE_SAVED_FILTER', filterId })
+  }, [])
+
   const deleteExport = useCallback((exportId: string) => {
     dispatch({ type: 'DELETE_EXPORT', exportId })
   }, [])
@@ -1916,6 +1977,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       checkDueScheduledRuns,
       dashboardLayout,
       setDashboardLayout,
+      listSavedFilters,
+      saveFilter,
+      renameSavedFilter,
+      deleteSavedFilter,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,
@@ -2016,6 +2081,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       checkDueScheduledRuns,
       dashboardLayout,
       setDashboardLayout,
+      listSavedFilters,
+      saveFilter,
+      renameSavedFilter,
+      deleteSavedFilter,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,
