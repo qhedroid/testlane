@@ -1,0 +1,82 @@
+/* Compass Design System — fonts + palette (Poppins/Montserrat; no Gotham in product UI) */
+
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 300; src: url("/fonts/Poppins-Light.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 400; src: url("/fonts/Poppins-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: italic; font-weight: 400; src: url("/fonts/Poppins-Italic.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 500; src: url("/fonts/Poppins-Medium.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 600; src: url("/fonts/Poppins-SemiBold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 700; src: url("/fonts/Poppins-Bold.ttf") format("truetype"); font-display: swap; }
+
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 300; src: url("/fonts/Montserrat-Light.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 400; src: url("/fonts/Montserrat-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 500; src: url("/fonts/Montserrat-Medium.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 600; src: url("/fonts/Montserrat-SemiBold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 700; src: url("/fonts/Montserrat-Bold.ttf") format("truetype"); font-display: swap; }
+
+:root {
+  /* TransPerfect master brand */
+  --tp-light-blue: #139DD8;
+  --tp-dark-blue: #003B71;
+  --tp-light-blue-100: #139DD8;
+  --tp-light-blue-80: #42B0DF;
+  --tp-light-blue-60: #71C4E7;
+  --tp-light-blue-40: #A1D8EF;
+  --tp-light-blue-20: #D0EBF7;
+  --tp-dark-blue-100: #003B71;
+  --tp-dark-blue-80: #33628D;
+  --tp-dark-blue-60: #6689AA;
+  --tp-dark-blue-40: #99B1C6;
+  --tp-dark-blue-20: #CCD8E3;
+  --tp-font-display: "Poppins", "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --tp-font-body: "Poppins", "Montserrat", "Verdana", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Compass / GlobalLink product tokens */
+  --gl-gray-50: #FBFBFC;
+  --gl-gray-100: #F6F7F9;
+  --gl-gray-200: #ECEFF2;
+  --gl-gray-250: #DBE1E5;
+  --gl-gray-300: #BAC5CD;
+  --gl-gray-350: #9AA9B3;
+  --gl-gray-400: #7B8D99;
+  --gl-gray-450: #5C707E;
+  --gl-gray-500: #3E5462;
+  --gl-gray-550: #324553;
+  --gl-gray-600: #213746;
+  --gl-gray-700: #172731;
+  --gl-gray-800: #0B1821;
+  --gl-gray-900: #080D14;
+  --gl-gray-950: #172731;
+  --gl-gray-1000: #0B1821;
+  --gl-white: #FFFFFF;
+  --gl-blue-50: #F6FAFF;
+  --gl-blue-100: #ECF5FF;
+  --gl-blue-200: #D9EBFF;
+  --gl-blue-300: #B3D6FF;
+  --gl-blue-400: #80BBFF;
+  --gl-blue-450: #55A4FF;
+  --gl-blue-500: #1976D2;
+  --gl-blue-600: #004FAA;
+  --gl-blue-700: #003B80;
+  --gl-purple-100: #F1ECFF;
+  --gl-purple-500: #6840CE;
+  --gl-purple-600: #4F26B5;
+  --gl-greenish-500: #2BB5C8;
+  --gl-orange-100: #FFF1E0;
+  --gl-orange-500: #E8861C;
+  --gl-orange-700: #9B520A;
+  --gl-success-50: #ECFBEE;
+  --gl-success-100: #C8F2CD;
+  --gl-success-500: #108718;
+  --gl-success-700: #08560D;
+  --gl-danger-50: #FFE4E4;
+  --gl-danger-100: #FFC1C1;
+  --gl-danger-500: #C50007;
+  --gl-danger-700: #6E0003;
+  --gl-warning-50: #FFF5D4;
+  --gl-warning-100: #FFE89F;
+  --gl-warning-500: #E4AF03;
+  --gl-warning-700: #8C6A00;
+  --gl-font-display: var(--tp-font-display);
+  --gl-font-body: var(--tp-font-body);
+  --gl-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
