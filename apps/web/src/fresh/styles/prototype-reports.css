@@ -60,3 +60,20 @@
 .rp-spark-cell{width:10px;height:10px;border-radius:2px;display:inline-block}
 
 .rp-empty{padding:44px 24px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;flex-shrink:0}
+
+/* ── My Work (Area G, MVP close-out) ── */
+.mw-wrap{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:10px 14px 14px}
+.mw-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 12px;flex-shrink:0}
+.mw-ctl{display:flex;align-items:center;gap:6px}
+.mw-ctl-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)}
+.mw-note{font-size:10.5px;color:var(--block)}
+.mw-check{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text2);cursor:pointer}
+.mw-total{font-size:10.5px;color:var(--text3);font-family:var(--mono);margin-left:auto}
+.mw-run{flex-shrink:0}
+.mw-run-name{font-size:12.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mw-run-counts{display:flex;gap:10px;font-size:10.5px;margin-top:2px}
+.mw-rows{display:flex;flex-direction:column}
+.mw-row{display:flex;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--border);font-size:11.5px}
+.mw-row:hover{background:var(--surface2)}
+.mw-row-title{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mw-empty-row{padding:10px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)}

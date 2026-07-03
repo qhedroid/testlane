@@ -14,6 +14,7 @@ export const MODULE_SLUGS = {
   settings: 'settings',
   reports: 'reports',
   integrations: 'integrations',
+  mywork: 'mywork',
 } as const
 
 export type ModuleSlug = keyof typeof MODULE_SLUGS

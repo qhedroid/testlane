@@ -59,6 +59,10 @@ export function FreshShell({ children }: { children: ReactNode }) {
             <i className="ti ti-layout-dashboard" />
             <span className="sbi-text"> Dashboard</span>
           </Link>
+          <Link href={projectHref('mywork')} className={`sbi${isOn('mywork') ? ' on' : ''}`} title="My Work">
+            <i className="ti ti-user-check" />
+            <span className="sbi-text"> My Work</span>
+          </Link>
         </div>
 
         <div className="sb-sec">
