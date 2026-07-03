@@ -134,6 +134,28 @@ export interface TestPlan {
   queries: TestQuery[]
 }
 
+export type ScheduleCadence = 'once' | 'daily' | 'weekly' | 'monthly'
+
+/**
+ * v19 — a scheduled run definition (Area F). Firing is SIMULATED client-side:
+ * due schedules spawn runs when the user presses "Check for due runs" (or on
+ * Plans-screen load) — there is no real background job in this prototype.
+ */
+export interface ScheduledRun {
+  id: string
+  projectId: string
+  name: string
+  planId: string
+  cadence: ScheduleCadence
+  /** ISO timestamp of the next simulated fire. */
+  nextRunAt: string
+  defaultAssignee?: string
+  active: boolean
+  createdAt: string
+  /** Run ids spawned by this schedule (most recent last). */
+  spawnedRunIds: string[]
+}
+
 export type RequirementStatus = 'Draft' | 'Approved' | 'Implemented' | 'Obsolete'
 export type DefectStatus = 'Open' | 'In progress' | 'Resolved' | 'Closed'
 
@@ -256,7 +278,7 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 18
+export const DEMO_SCHEMA_VERSION = 19
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -441,6 +463,8 @@ export interface DemoState {
   savedReportsById: Record<string, SavedReport>
   /** v16 — export history (metadata only; artifacts are session blob URLs). */
   exportsById: Record<string, ExportArtifact>
+  /** v19 — scheduled runs (simulated client-side firing). */
+  scheduledRunsById: Record<string, ScheduledRun>
 }
 
 export interface RunSummary {

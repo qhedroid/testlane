@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedReport, TestPlan } from './demo-model'
+import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedReport, ScheduledRun, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -31,6 +31,7 @@ import {
   listActiveProjectRequirements,
   listActiveProjectRuns,
   listActiveProjectSavedReports,
+  listActiveProjectScheduledRuns,
   listActiveProjectTestCases,
   listProjects,
 } from './project-selectors'
@@ -144,6 +145,10 @@ export type FreshAction =
   | { type: 'MOVE_FOLDER'; folderId: string; newParentId: string | null }
   | { type: 'COPY_FOLDER'; folderId: string; targetParentId: string | null }
   | { type: 'ARCHIVE_FOLDER'; folderId: string }
+  | { type: 'ADD_SCHEDULED_RUN'; schedule: ScheduledRun }
+  | { type: 'UPDATE_SCHEDULED_RUN'; scheduleId: string; patch: Partial<Pick<ScheduledRun, 'name' | 'cadence' | 'nextRunAt' | 'defaultAssignee' | 'active'>> }
+  | { type: 'DELETE_SCHEDULED_RUN'; scheduleId: string }
+  | { type: 'FIRE_DUE_SCHEDULED_RUNS'; now: string }
   | { type: 'RECORD_EXPORT'; artifact: ExportArtifact }
   | { type: 'DELETE_EXPORT'; exportId: string }
   | { type: 'SAVE_REPORT'; report: SavedReport }
@@ -301,6 +306,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         ),
         exportsById: Object.fromEntries(
           Object.entries(state.exportsById ?? {}).filter(([, e]) => e.projectId !== projectId),
+        ),
+        scheduledRunsById: Object.fromEntries(
+          Object.entries(state.scheduledRunsById ?? {}).filter(([, s]) => s.projectId !== projectId),
         ),
         currentRunIdByProject,
         nextCaseNumByProject,
@@ -878,6 +886,103 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     }
+    case 'ADD_SCHEDULED_RUN': {
+      next = {
+        ...state,
+        scheduledRunsById: { ...(state.scheduledRunsById ?? {}), [action.schedule.id]: action.schedule },
+      }
+      break
+    }
+    case 'UPDATE_SCHEDULED_RUN': {
+      const existing = state.scheduledRunsById?.[action.scheduleId]
+      if (!existing) return state
+      next = {
+        ...state,
+        scheduledRunsById: {
+          ...state.scheduledRunsById,
+          [action.scheduleId]: { ...existing, ...action.patch },
+        },
+      }
+      break
+    }
+    case 'DELETE_SCHEDULED_RUN': {
+      const { [action.scheduleId]: _removedSchedule, ...restSchedules } = state.scheduledRunsById ?? {}
+      next = { ...state, scheduledRunsById: restSchedules }
+      break
+    }
+    case 'FIRE_DUE_SCHEDULED_RUNS': {
+      // Simulated firing — spawns runs for due schedules NOW, in this reducer
+      // pass. No real background job exists; the UI labels this plainly.
+      const nowIso = action.now
+      const due = Object.values(state.scheduledRunsById ?? {}).filter(
+        (s) => s.active && s.nextRunAt <= nowIso,
+      )
+      if (due.length === 0) return state
+      let working: DemoState = state
+      const scheduledRunsById = { ...(state.scheduledRunsById ?? {}) }
+      for (const schedule of due) {
+        const plan = working.plansById[schedule.planId]
+        const projectId = schedule.projectId
+        let spawnedRunId: string | undefined
+        if (plan) {
+          const projectCases = working.cases.filter((c) => c.projectId === projectId && !c.archivedAt)
+          const projectFolders = working.folders.filter((f) => f.projectId === projectId)
+          const caseIds = resolvePlanCases(plan, projectCases, projectFolders).map((c) => c.id)
+          const num = working.nextRunNumByProject[projectId] ?? 1
+          const runId = newId('run')
+          const executions: Record<string, CaseExecution> = {}
+          if (schedule.defaultAssignee) {
+            for (const caseId of caseIds) {
+              executions[caseId] = { status: 'Not run', stepResults: {}, assignee: schedule.defaultAssignee }
+            }
+          }
+          const run: DemoRun = {
+            id: runId,
+            projectId,
+            runKey: formatRunKey(num),
+            name: `${schedule.name} — ${new Date(nowIso).toLocaleDateString()}`,
+            description: `Created by scheduled run “${schedule.name}” (simulated firing — no real background job).`,
+            planId: plan.id,
+            planName: plan.title,
+            createdAt: nowIso,
+            sealed: false,
+            caseOrder: caseIds,
+            executions,
+            executionLog: [],
+          }
+          working = {
+            ...working,
+            runs: [...working.runs, run],
+            nextRunNumByProject: { ...working.nextRunNumByProject, [projectId]: num + 1 },
+          }
+          spawnedRunId = runId
+        }
+        // Advance nextRunAt past now (or deactivate one-off schedules).
+        let nextAt = new Date(schedule.nextRunAt)
+        let active = schedule.active
+        if (schedule.cadence === 'once') {
+          active = false
+        } else {
+          let guard = 0
+          while (nextAt.toISOString() <= nowIso && guard < 400) {
+            if (schedule.cadence === 'daily') nextAt = new Date(nextAt.getTime() + 86400000)
+            else if (schedule.cadence === 'weekly') nextAt = new Date(nextAt.getTime() + 7 * 86400000)
+            else nextAt = new Date(new Date(nextAt).setMonth(nextAt.getMonth() + 1))
+            guard += 1
+          }
+        }
+        scheduledRunsById[schedule.id] = {
+          ...schedule,
+          active,
+          nextRunAt: nextAt.toISOString(),
+          spawnedRunIds: spawnedRunId
+            ? [...(schedule.spawnedRunIds ?? []), spawnedRunId]
+            : schedule.spawnedRunIds ?? [],
+        }
+      }
+      next = { ...working, scheduledRunsById }
+      break
+    }
     case 'RECORD_EXPORT': {
       next = {
         ...state,
@@ -1081,6 +1186,12 @@ interface FreshContextValue {
   activeExports: ExportArtifact[]
   recordExport: (artifact: ExportArtifact) => void
   deleteExport: (exportId: string) => void
+  activeScheduledRuns: ScheduledRun[]
+  addScheduledRun: (input: Omit<ScheduledRun, 'id' | 'projectId' | 'createdAt' | 'spawnedRunIds'>) => void
+  updateScheduledRun: (scheduleId: string, patch: Partial<Pick<ScheduledRun, 'name' | 'cadence' | 'nextRunAt' | 'defaultAssignee' | 'active'>>) => void
+  deleteScheduledRun: (scheduleId: string) => void
+  /** Simulated firing — returns how many schedules were due before dispatching. */
+  checkDueScheduledRuns: () => { dueCount: number }
   activeRequirements: Requirement[]
   activeDefects: Defect[]
   createRequirement: (input: { title: string; description?: string; status?: Requirement['status'] }) => { requirementKey: string; requirementId: string }
@@ -1116,6 +1227,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const activePlans = useMemo(() => listActiveProjectPlans(state), [state])
   const activeSavedReports = useMemo(() => listActiveProjectSavedReports(state), [state])
   const activeExports = useMemo(() => listActiveProjectExports(state), [state])
+  const activeScheduledRuns = useMemo(() => listActiveProjectScheduledRuns(state), [state])
   const activeRequirements = useMemo(() => listActiveProjectRequirements(state), [state])
   const activeDefects = useMemo(() => listActiveProjectDefects(state), [state])
   const currentRun = useMemo(() => getCurrentRun(state), [state])
@@ -1395,6 +1507,40 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'ADD_DEMO_PROJECT' })
     return { key: meta.key, name: meta.name }
   }, [state])
+
+  const addScheduledRun = useCallback(
+    (input: Omit<ScheduledRun, 'id' | 'projectId' | 'createdAt' | 'spawnedRunIds'>) => {
+      const schedule: ScheduledRun = {
+        ...input,
+        id: newId('sched'),
+        projectId: state.activeProjectId,
+        createdAt: new Date().toISOString(),
+        spawnedRunIds: [],
+      }
+      dispatch({ type: 'ADD_SCHEDULED_RUN', schedule })
+    },
+    [state.activeProjectId],
+  )
+
+  const updateScheduledRun = useCallback(
+    (scheduleId: string, patch: Partial<Pick<ScheduledRun, 'name' | 'cadence' | 'nextRunAt' | 'defaultAssignee' | 'active'>>) => {
+      dispatch({ type: 'UPDATE_SCHEDULED_RUN', scheduleId, patch })
+    },
+    [],
+  )
+
+  const deleteScheduledRun = useCallback((scheduleId: string) => {
+    dispatch({ type: 'DELETE_SCHEDULED_RUN', scheduleId })
+  }, [])
+
+  const checkDueScheduledRuns = useCallback(() => {
+    const now = new Date().toISOString()
+    const dueCount = Object.values(state.scheduledRunsById ?? {}).filter(
+      (s) => s.active && s.nextRunAt <= now,
+    ).length
+    if (dueCount > 0) dispatch({ type: 'FIRE_DUE_SCHEDULED_RUNS', now })
+    return { dueCount }
+  }, [state.scheduledRunsById])
 
   const recordExport = useCallback((artifact: ExportArtifact) => {
     dispatch({ type: 'RECORD_EXPORT', artifact })
@@ -1717,6 +1863,11 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       activeExports,
       recordExport,
       deleteExport,
+      activeScheduledRuns,
+      addScheduledRun,
+      updateScheduledRun,
+      deleteScheduledRun,
+      checkDueScheduledRuns,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,
@@ -1809,6 +1960,11 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       activeExports,
       recordExport,
       deleteExport,
+      activeScheduledRuns,
+      addScheduledRun,
+      updateScheduledRun,
+      deleteScheduledRun,
+      checkDueScheduledRuns,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,

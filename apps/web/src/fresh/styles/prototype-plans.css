@@ -748,3 +748,15 @@
   color: var(--text3);
   font-size: 12px;
 }
+
+/* ── Scheduled runs (Area F, MVP close-out) ── */
+.sched-panel{border-top:1px solid var(--border);flex-shrink:0;max-height:38%;display:flex;flex-direction:column;background:var(--surface)}
+.sched-hd{display:flex;align-items:center;gap:6px;padding:7px 10px 3px}
+.sched-ttl{font-size:11px;font-weight:700}
+.sched-note{font-size:9.5px;color:var(--text3);padding:0 10px 4px;line-height:1.4}
+.sched-list{overflow-y:auto;padding:0 6px 6px}
+.sched-row{display:flex;align-items:center;gap:4px;padding:5px 6px;border:1px solid var(--border);border-radius:5px;margin-bottom:4px}
+.sched-name{font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sched-meta{font-size:9.5px;color:var(--text3);margin-top:1px}
+.sched-ic{border:none;background:none;color:var(--text3);cursor:pointer;padding:2px;border-radius:3px;flex-shrink:0}
+.sched-ic:hover{color:var(--text);background:var(--surface2)}

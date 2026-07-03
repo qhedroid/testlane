@@ -26,6 +26,8 @@ import {
   runSummary,
 } from '../data/demo-model'
 import { parsePlanKey, planPath, testRunPath } from '../lib/project-routes'
+import { SchedulePlanModal, ScheduledRunsPanel } from '../components/ScheduledRunsPanel'
+import type { ScheduledRun } from '../data/demo-model'
 
 function planRunsForPlan(runs: DemoRun[], planId: string): DemoRun[] {
   return runs.filter((r) => r.planId === planId)
@@ -365,6 +367,7 @@ export function PlansScreen() {
     deletePlan,
     duplicatePlan,
     spawnRunFromPlan,
+    checkDueScheduledRuns,
   } = useFresh()
 
   const planKeyFromUrl = parsePlanKey(pathname)
@@ -404,6 +407,15 @@ export function PlansScreen() {
     y: number
   } | null>(null)
   const [planMaximized, setPlanMaximized] = useState(false)
+  const [scheduleModal, setScheduleModal] = useState<{ plan: TestPlan | null; edit: ScheduledRun | null } | null>(null)
+
+  // Area F: simulated firing — fire due schedules once when the Plans screen loads.
+  const firedOnLoad = useRef(false)
+  useEffect(() => {
+    if (firedOnLoad.current) return
+    firedOnLoad.current = true
+    checkDueScheduledRuns()
+  }, [checkDueScheduledRuns])
 
   const filteredPlans = useMemo(() => {
     const q = listSearch.trim().toLowerCase()
@@ -556,6 +568,15 @@ export function PlansScreen() {
     setEditPlanOpen(false)
   }, [selectedPlan, editTitle, editDesc, updatePlan])
 
+  const scheduleModalEl = scheduleModal ? (
+    <SchedulePlanModal
+      open
+      plan={scheduleModal.plan}
+      editSchedule={scheduleModal.edit}
+      onClose={() => setScheduleModal(null)}
+    />
+  ) : null
+
   const handleSpawnRun = useCallback(() => {
     if (!selectedPlan || !spawnRunName.trim()) return
     const result = spawnRunFromPlan(
@@ -694,6 +715,7 @@ export function PlansScreen() {
               ))
             )}
           </div>
+          <ScheduledRunsPanel onEdit={(s) => setScheduleModal({ plan: null, edit: s })} />
         </div>
 
         <div className="resizer-v" data-resize="plan-list" data-min="220" data-max="420" />
@@ -758,6 +780,16 @@ export function PlansScreen() {
                           }}
                         >
                           <i className="ti ti-copy" /> Duplicate
+                        </button>
+                        <button
+                          type="button"
+                          className="ctx-item"
+                          onClick={() => {
+                            setMoreMenuOpen(false)
+                            setScheduleModal({ plan: selectedPlan, edit: null })
+                          }}
+                        >
+                          <i className="ti ti-clock-play" /> Schedule this plan…
                         </button>
                         <div className="ctx-sep" />
                         <button
@@ -1308,6 +1340,7 @@ export function PlansScreen() {
           </div>
         </div>
       ) : null}
+      {scheduleModalEl}
     </div>
   )
 }
