@@ -18,6 +18,24 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ## Active branch
 `mvp-test-plans` (rebased onto latest `origin/mvp-main`, which now includes merged PRs #13 `mvp-test-plans` and #14 `mvp-requirements-defects-slice`)
 
+This Cowork session itself was on `qa/mvp-tracker-audit-2026-07-02` (2 local commits ahead of `origin/mvp-main`, uncommitted design-review docs also present). No app source was touched from this session — only planning/docs/prompt-drafting, per Claude's role below.
+
+---
+
+## 2026-07-03 — Final MVP close-out: scope decision + super-prompt handoff
+
+Noel asked to build out the MVP "now," using `docs/tracker/TI-TMT MVP Tracker 2.xlsx` as the source of truth, via a **new chat running the Fable model** that implements directly (a deliberate, explicit, approved deviation from the normal Claude(Cowork)-plans/Cursor-implements split — see `CLAUDE.md` "Claude's role"). This mirrors a pre-existing draft found on this branch at `docs/cursor-prompts/mvp-reports-export-rerun-org/task-01-fable-build-all-four-areas.md` (untracked, written in an earlier session), which already covered 4 areas: Reporting & Analytics, Export & Reporting, Re-Run Management, Test Case Organization.
+
+Cross-checking that draft against the tracker's 93 rows surfaced ~10 more frontend-feasible `Not Started`/`In Progress` items it didn't cover: rich text editing, run scheduling, personal work queues, requirement coverage tracking, archived test results, test effectiveness analysis / configurable dashboard reporting, saved filters, version management (case history is currently a hardcoded mock UI), user removal, and project-level settings (the real settings model/UI already exists in `AdminProjectPanel.tsx` but isn't surfaced project-scoped).
+
+Noel confirmed: **expand scope to close all 14 areas**, and **proceed with the Fable-as-implementer deviation**, in one session.
+
+**Result:** wrote a new, superseding super-prompt at `docs/cursor-prompts/mvp-final-close-out/task-01-full-mvp-close-out.md`, covering all 14 areas (A–N) with the same verified-facts rigor as the original draft (exact file paths/line numbers checked via grep/read before writing each spec — e.g. discovered `ProjectSettings`/`AdminProjectPanel.tsx`/`archiveRun` already exist at the data layer for areas N and I respectively, meaningfully narrowing that scope). Target branch for that work: `mvp-final-close-out`, cut from `origin/mvp-main`. The old 4-area draft is left in place for history, not deleted.
+
+This is explicitly the **final frontend-only milestone before a full-stack rebuild in a separate GitLab company repo** — nothing in that branch should be pushed or merged without sign-off from both Noel and Shaun.
+
+Known real risk flagged to Noel: 14 areas in one agent session is large; the super-prompt asks the executing agent to checkpoint progress in this file every 3-4 areas and to recommend a split if it runs long, rather than attempting one uninterrupted pass with a single end report.
+
 ---
 
 ## Schema version
