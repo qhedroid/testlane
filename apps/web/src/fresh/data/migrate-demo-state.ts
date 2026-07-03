@@ -118,6 +118,7 @@ function migrateToMultiProject(raw: LegacyDemoState): DemoState {
     scheduledRunsById: {},
     dashboardLayoutByActor: {},
     savedFiltersById: {},
+    caseVersionsById: {},
   }
 }
 
@@ -432,6 +433,15 @@ export function migrateDemoState(raw: unknown): DemoState {
         schemaVersion: 21,
       }
     }
+    // v21 → v22: real case edit history (starts empty — history accrues from
+    // the first edit after upgrade; pre-existing edits were never recorded)
+    if (state.schemaVersion < 22) {
+      state = {
+        ...state,
+        caseVersionsById: state.caseVersionsById ?? {},
+        schemaVersion: 22,
+      }
+    }
     if (state.schemaVersion < DEMO_SCHEMA_VERSION) {
       state = { ...state, schemaVersion: DEMO_SCHEMA_VERSION }
     }
@@ -447,6 +457,7 @@ export function migrateDemoState(raw: unknown): DemoState {
       scheduledRunsById: state.scheduledRunsById ?? {},
       dashboardLayoutByActor: state.dashboardLayoutByActor ?? {},
       savedFiltersById: state.savedFiltersById ?? {},
+      caseVersionsById: state.caseVersionsById ?? {},
     }
     return state
   } catch (err) {

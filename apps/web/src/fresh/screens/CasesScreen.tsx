@@ -7,6 +7,7 @@ import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
 import type { AdminCustomField, Case, CaseExecution, CasePriority, CaseStep, DemoRun, ExecStatus, Folder } from '../data/demo-model'
 import {
+  CASE_VERSION_CAP,
   casesInFolder,
   defectIdsForCaseFromRuns,
   EXEC_TO_LEGACY,
@@ -263,7 +264,7 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement, moveCases, reorderCases, assignCases, archiveCases, unarchiveCases, renameFolder, moveFolder, archiveFolder, addCasesToRun, state, listSavedFilters, saveFilter, renameSavedFilter, deleteSavedFilter } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement, moveCases, reorderCases, assignCases, archiveCases, unarchiveCases, renameFolder, moveFolder, archiveFolder, addCasesToRun, state, listSavedFilters, saveFilter, renameSavedFilter, deleteSavedFilter, getCaseVersions, restoreCaseVersion } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const pathname = usePathname()
@@ -1514,6 +1515,8 @@ export function CasesScreen() {
               onCreateRequirement={createRequirement}
               onLinkRequirement={linkRequirementToCase}
               requirementCoverageById={requirementCoverageById}
+              versions={getCaseVersions(detail.id)}
+              onRestoreVersion={(versionId) => restoreCaseVersion(detail.id, versionId)}
               getDefect={getDefect}
               getRequirement={getRequirement}
               maximized={detailMaximized}
@@ -1899,6 +1902,8 @@ function CaseDetail({
   onCreateRequirement,
   onLinkRequirement,
   requirementCoverageById,
+  versions,
+  onRestoreVersion,
   getDefect,
   getRequirement,
   maximized,
@@ -1922,6 +1927,8 @@ function CaseDetail({
   onCreateRequirement: (input: { title: string; description?: string }) => { requirementKey: string; requirementId: string }
   onLinkRequirement: (caseId: string, requirementId: string) => void
   requirementCoverageById: Map<string, RequirementCoverage>
+  versions: import('../data/demo-model').CaseVersion[]
+  onRestoreVersion: (versionId: string) => void
   getDefect: (defectId: string) => import('../data/demo-model').Defect | undefined
   getRequirement: (requirementId: string) => import('../data/demo-model').Requirement | undefined
   maximized: boolean
@@ -2491,16 +2498,78 @@ function CaseDetail({
           </div>
         ) : null}
         {tab === 'history' ? (
-          <>
-            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--pass)' }} /><div><div className="hist-label">Passed — CTMS Regression · Sprint 44</div><div className="hist-meta">Nadim Sharif · 2d ago · all steps passed</div></div></div>
-            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--fail)' }} /><div><div className="hist-label">Failed — Sprint 43 Smoke Test</div><div className="hist-meta">Jamil Khan · 15d ago · Step 2 failed · Defect TI-4401</div></div></div>
-          </>
+          <div style={{ padding: '10px 12px' }}>
+            {versions.length === 0 ? (
+              <div className="dp-empty-tab">
+                <i className="ti ti-history" style={{ fontSize: 28, color: 'var(--text3)', marginBottom: 8 }} />
+                <div style={{ fontWeight: 600, fontSize: 13 }}>No edit history yet</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4, maxWidth: 280 }}>
+                  Every saved edit to this case is recorded here with exactly what changed, and can be restored.
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 10.5, color: 'var(--text3)', marginBottom: 8 }}>
+                  Showing last {CASE_VERSION_CAP} changes · newest first · restoring reverts content fields only (never the case ID)
+                </div>
+                {[...versions].reverse().map((v, idx) => (
+                  <div key={v.id} className="cv-item">
+                    <div className="cv-hd">
+                      <strong>{v.editedBy}</strong>
+                      <span className="cv-time">{formatRelativeTime(v.editedAt)}</span>
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ fontSize: 10, padding: '1px 7px', marginLeft: 'auto' }}
+                        title="Revert this case's content fields to how they were before this edit"
+                        onClick={() => {
+                          if (window.confirm(`Restore this case to the version saved by ${v.editedBy} (${formatRelativeTime(v.editedAt)})? The current state is kept in history.`)) {
+                            onRestoreVersion(v.id)
+                          }
+                        }}
+                      >
+                        <i className="ti ti-arrow-back-up" style={{ fontSize: 10 }} /> Restore this version
+                      </button>
+                    </div>
+                    <div className="cv-changes">
+                      {v.changes.map((ch, i) => (
+                        <div key={i} className="cv-change">
+                          <span className="cv-field">{ch.field}</span>
+                          <span className="cv-from" title={ch.from}>{ch.from.length > 60 ? `${ch.from.slice(0, 60)}…` : ch.from || '—'}</span>
+                          <span className="cv-arrow">→</span>
+                          <span className="cv-to" title={ch.to}>{ch.to.length > 60 ? `${ch.to.slice(0, 60)}…` : ch.to || '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {idx === versions.length - 1 ? null : null}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
         ) : null}
         {tab === 'activity' ? (
-          <>
-            <div className="act-item"><strong>Nadim Sharif</strong> updated preconditions<span className="act-time">2d ago · 09:14</span></div>
-            <div className="act-item"><strong>Nasir Dipto</strong> added step 4<span className="act-time">5d ago · 14:32</span></div>
-          </>
+          <div style={{ padding: '10px 12px' }}>
+            {/* Activity merges into the same real edit log (no second mock feed) */}
+            {versions.length === 0 && !caseData.createdAt ? (
+              <div style={{ padding: 12, color: 'var(--text3)', fontSize: 12 }}>No activity recorded yet.</div>
+            ) : (
+              <>
+                {[...versions].reverse().map((v) => (
+                  <div key={v.id} className="act-item">
+                    <strong>{v.editedBy}</strong> updated {v.changes.map((c) => c.field).join(', ')}
+                    <span className="act-time">{formatRelativeTime(v.editedAt)}</span>
+                  </div>
+                ))}
+                {caseData.createdAt ? (
+                  <div className="act-item">
+                    Case created
+                    <span className="act-time">{formatRelativeTime(caseData.createdAt)}</span>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
         ) : null}
       </div>
       <div style={{ padding: '7px 10px', borderTop: '1px solid var(--border)', display: 'flex', gap: 5 }}>

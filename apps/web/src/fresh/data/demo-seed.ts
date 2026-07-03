@@ -438,6 +438,7 @@ export function buildInitialDemoState(): DemoState {
     scheduledRunsById: {},
     dashboardLayoutByActor: {},
     savedFiltersById: {},
+    caseVersionsById: {},
   }
 }
 

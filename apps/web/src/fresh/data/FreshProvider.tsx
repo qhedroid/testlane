@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, DashboardLayout, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedFilter, SavedFilterSurface, SavedReport, ScheduledRun, TestPlan } from './demo-model'
+import type { Case, CaseExecution, CaseVersion, CaseVersionChange, DashboardLayout, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, ExportArtifact, Folder, Project, ProjectSettings, Requirement, SavedFilter, SavedFilterSurface, SavedReport, ScheduledRun, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -37,7 +37,7 @@ import {
   listProjects,
 } from './project-selectors'
 import { findRunById } from './run-utils'
-import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatDefectKey, formatPlanKey, formatRequirementKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
+import { CASE_VERSION_CAP, DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatDefectKey, formatPlanKey, formatRequirementKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
 
 const STORAGE_KEY = 'relay-demo-v2'
@@ -51,6 +51,83 @@ function isDemoResetRequested(): boolean {
 function runIsMutable(state: DemoState, runId: string): boolean {
   const run = findRunById(state, runId)
   return !!run && !run.sealed
+}
+
+/** Current demo actor's display name, for audit/version attribution. */
+function currentActorName(state: DemoState): string {
+  const id = state.currentActorUserId ?? SEED_ADMIN_USER_ID
+  return state.adminSettings.users.find((u) => u.id === id)?.name ?? 'Demo User'
+}
+
+function caseVersionSnapshot(c: Case): CaseVersion['snapshot'] {
+  return {
+    title: c.title,
+    summary: c.summary,
+    preconditions: c.preconditions,
+    references: c.references,
+    priority: c.priority,
+    type: c.type,
+    template: c.template,
+    assignee: c.assignee,
+    tags: c.tags ? [...c.tags] : undefined,
+    steps: c.steps.map((s) => ({ ...s, comments: s.comments.map((cm) => ({ ...cm })) })),
+    customFieldValues: c.customFieldValues ? { ...c.customFieldValues } : undefined,
+  }
+}
+
+const VERSIONED_SCALAR_FIELDS: { field: string; get: (c: Case) => string }[] = [
+  { field: 'title', get: (c) => c.title },
+  { field: 'summary', get: (c) => c.summary ?? '' },
+  { field: 'preconditions', get: (c) => c.preconditions ?? '' },
+  { field: 'references', get: (c) => c.references ?? '' },
+  { field: 'priority', get: (c) => c.priority },
+  { field: 'type', get: (c) => c.type },
+  { field: 'template', get: (c) => c.template ?? 'text' },
+  { field: 'assignee', get: (c) => c.assignee ?? '' },
+  { field: 'tags', get: (c) => (c.tags ?? []).join(', ') },
+  { field: 'custom fields', get: (c) => JSON.stringify(c.customFieldValues ?? {}) },
+]
+
+/** Diff the editable content fields of two case states (Area L). */
+function diffCaseVersions(before: Case, after: Case): CaseVersionChange[] {
+  const changes: CaseVersionChange[] = []
+  for (const { field, get } of VERSIONED_SCALAR_FIELDS) {
+    const from = get(before)
+    const to = get(after)
+    if (from !== to) changes.push({ field, from, to })
+  }
+  const stepsText = (c: Case) => c.steps.map((s) => `${s.action}${s.expected}`).join('')
+  if (stepsText(before) !== stepsText(after)) {
+    changes.push({
+      field: 'steps',
+      from: `${before.steps.length} step${before.steps.length === 1 ? '' : 's'}`,
+      to: `${after.steps.length} step${after.steps.length === 1 ? '' : 's'} (content changed)`,
+    })
+  }
+  return changes
+}
+
+/** Append a pre-edit version entry for a case, capped at CASE_VERSION_CAP. */
+function appendCaseVersion(
+  state: DemoState,
+  before: Case,
+  after: Case,
+): Record<string, CaseVersion[]> {
+  const changes = diffCaseVersions(before, after)
+  if (changes.length === 0) return state.caseVersionsById ?? {}
+  const existing = state.caseVersionsById?.[before.id] ?? []
+  const version: CaseVersion = {
+    id: newId('ver'),
+    caseId: before.id,
+    editedAt: new Date().toISOString(),
+    editedBy: currentActorName(state),
+    changes,
+    snapshot: caseVersionSnapshot(before),
+  }
+  return {
+    ...(state.caseVersionsById ?? {}),
+    [before.id]: [...existing, version].slice(-CASE_VERSION_CAP),
+  }
 }
 
 function loadState(): DemoState {
@@ -117,6 +194,7 @@ export type FreshAction =
   | { type: 'ADD_CASE'; case: Case }
   | { type: 'UPDATE_CASE'; caseId: string; patch: Partial<Case> }
   | { type: 'REPLACE_CASE'; case: Case }
+  | { type: 'RESTORE_CASE_VERSION'; caseId: string; versionId: string }
   | { type: 'DELETE_CASE'; caseId: string }
   | { type: 'UPDATE_RUN_EXECUTION'; runId: string; caseId: string; patch: Partial<CaseExecution> }
   | { type: 'UPDATE_RUN'; runId: string; patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>> }
@@ -275,6 +353,10 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         }
       }
 
+      const removedCaseIds = new Set(
+        state.cases.filter((c) => c.projectId === projectId).map((c) => c.id),
+      )
+
       const remainingPlanIds = new Set(
         Object.values(state.plansById)
           .filter((p) => p.projectId !== projectId)
@@ -319,6 +401,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         savedFiltersById: Object.fromEntries(
           Object.entries(state.savedFiltersById ?? {}).filter(([, f]) => f.projectId !== projectId),
         ),
+        caseVersionsById: Object.fromEntries(
+          Object.entries(state.caseVersionsById ?? {}).filter(([caseId]) => !removedCaseIds.has(caseId)),
+        ),
         currentRunIdByProject,
         nextCaseNumByProject,
         nextRunNumByProject,
@@ -354,18 +439,42 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         ),
       }
       break
-    case 'REPLACE_CASE':
+    case 'REPLACE_CASE': {
+      const before = state.cases.find((c) => c.id === action.case.id)
       next = {
         ...state,
         cases: state.cases.map((c) => {
           if (c.id !== action.case.id) return c
           return { ...action.case, createdAt: c.createdAt ?? action.case.createdAt }
         }),
+        // Area L: snapshot the pre-edit state as a version entry (real history)
+        caseVersionsById: before ? appendCaseVersion(state, before, action.case) : state.caseVersionsById,
       }
       break
-    case 'DELETE_CASE':
+    }
+    case 'RESTORE_CASE_VERSION': {
+      const target = state.cases.find((c) => c.id === action.caseId)
+      const version = (state.caseVersionsById?.[action.caseId] ?? []).find((v) => v.id === action.versionId)
+      if (!target || !version) return state
+      // Restore editable content fields only — identity fields stay untouched.
+      const restored: Case = {
+        ...target,
+        ...version.snapshot,
+        updatedAt: new Date().toISOString(),
+      }
       next = {
         ...state,
+        cases: state.cases.map((c) => (c.id === action.caseId ? restored : c)),
+        // The restore itself is recorded as a new version (pre-restore state).
+        caseVersionsById: appendCaseVersion(state, target, restored),
+      }
+      break
+    }
+    case 'DELETE_CASE': {
+      const { [action.caseId]: _removedVersions, ...restVersions } = state.caseVersionsById ?? {}
+      next = {
+        ...state,
+        caseVersionsById: restVersions,
         cases: state.cases.filter((c) => c.id !== action.caseId),
         runs: state.runs.map((r) => {
           if (r.sealed) return r
@@ -379,6 +488,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         }),
       }
       break
+    }
     case 'UPDATE_RUN_EXECUTION': {
       if (!runIsMutable(state, action.runId)) return state
       const runs = state.runs.map((r) => {
@@ -1248,6 +1358,8 @@ interface FreshContextValue {
   /** Dashboard layout for the current demo actor (Area J). */
   dashboardLayout: DashboardLayout | undefined
   setDashboardLayout: (layout: DashboardLayout) => void
+  getCaseVersions: (caseId: string) => CaseVersion[]
+  restoreCaseVersion: (caseId: string, versionId: string) => void
   listSavedFilters: (surface: SavedFilterSurface) => SavedFilter[]
   saveFilter: (input: Omit<SavedFilter, 'id' | 'projectId' | 'createdAt'>) => void
   renameSavedFilter: (filterId: string, name: string) => void
@@ -1626,6 +1738,15 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'RECORD_EXPORT', artifact })
   }, [])
 
+  const getCaseVersions = useCallback(
+    (caseId: string) => state.caseVersionsById?.[caseId] ?? [],
+    [state.caseVersionsById],
+  )
+
+  const restoreCaseVersion = useCallback((caseId: string, versionId: string) => {
+    dispatch({ type: 'RESTORE_CASE_VERSION', caseId, versionId })
+  }, [])
+
   const listSavedFilters = useCallback(
     (surface: SavedFilterSurface) => listActiveProjectSavedFilters(state, surface),
     [state],
@@ -1981,6 +2102,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       saveFilter,
       renameSavedFilter,
       deleteSavedFilter,
+      getCaseVersions,
+      restoreCaseVersion,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,
@@ -2085,6 +2208,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       saveFilter,
       renameSavedFilter,
       deleteSavedFilter,
+      getCaseVersions,
+      restoreCaseVersion,
       createRequirement,
       linkRequirementToCase,
       createDefectFromExecution,

@@ -314,7 +314,42 @@ export interface DemoRun {
   executionLog?: ExecutionLogEntry[]
 }
 
-export const DEMO_SCHEMA_VERSION = 21
+export const DEMO_SCHEMA_VERSION = 22
+
+/** Cap stored versions per case to bound localStorage growth (Area L). */
+export const CASE_VERSION_CAP = 50
+
+export interface CaseVersionChange {
+  field: string
+  from: string
+  to: string
+}
+
+/**
+ * v22 — one entry per saved case edit: a human-readable diff plus a pre-edit
+ * snapshot of the editable content fields (never identity fields), so a
+ * version can be restored outright.
+ */
+export interface CaseVersion {
+  id: string
+  caseId: string
+  editedAt: string
+  editedBy: string
+  changes: CaseVersionChange[]
+  snapshot: {
+    title: string
+    summary?: string
+    preconditions?: string
+    references?: string
+    priority: CasePriority
+    type: string
+    template?: 'text' | 'bdd'
+    assignee?: string
+    tags?: string[]
+    steps: CaseStep[]
+    customFieldValues?: Record<string, string | boolean | string[]>
+  }
+}
 
 /** Format a per-project run counter as a 5-digit key (00001 … 99999). */
 export function formatRunKey(n: number): string {
@@ -505,6 +540,8 @@ export interface DemoState {
   dashboardLayoutByActor: Record<string, DashboardLayout>
   /** v21 — saved filters for the Test Cases / Test Runs surfaces (Area K). */
   savedFiltersById: Record<string, SavedFilter>
+  /** v22 — real per-case edit history, keyed by case id (Area L). */
+  caseVersionsById: Record<string, CaseVersion[]>
 }
 
 /** v20 — per-actor dashboard customisation: card order + hidden card ids. */
