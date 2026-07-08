@@ -192,7 +192,24 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; all six routes HTTP 200; core regression routes PASS.
 
-**Next:** task-12 (Test Runs protected UX rebuild).
+**Next:** task-13 (Defects + Audit + Project Settings bundled) + branch wrap-up.
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-12) ✅
+
+**Schema:** unchanged (v14). Layout/visual rebuild from mockup; protected execution UX handlers and keyboard bindings unchanged.
+
+| What it delivered |
+|-------------------|
+| **Shell** — `FreshTopbar` for global nav; local `page-head` ("Test runs" title + subline) with `TestRunsTopbar` seal/edit/report/more actions moved out of shared top bar |
+| **Queue pane** — `.panel` rounded container; run picker, summary (donut kept at `DONUT_CHART_SIZE` 122), Team/Defects/Details tabs, search/add bar, filter tabs, `ec-fold` grouped case list |
+| **Exec detail pane** — `.panel` container; mockup-style header nav, tab strip, result footer with icon buttons + keyboard shortcut legend |
+| **CSS** — Phase 2 block in `prototype-runs.css` (workspace layout, pane chrome, fold rows, underline filter tabs, result bar) |
+
+**QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; `/DP/testruns` + core regression routes PASS.
+
+**Next:** task-13 (Defects + Audit + Project Settings bundled) + branch wrap-up.
 
 ---
 
@@ -214,7 +231,7 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; `/DP/plans` + core regression routes PASS; Playwright screenshots captured.
 
-**Next:** task-12 (Test Runs protected UX rebuild).
+**Next:** task-13 (Defects + Audit + Project Settings bundled) + branch wrap-up.
 
 ---
 
