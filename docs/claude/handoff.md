@@ -192,7 +192,27 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; all six routes HTTP 200; core regression routes PASS.
 
-**Next:** task-10 (Test Cases hybrid rebuild).
+**Next:** task-11 (Test Plans rebuild).
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-10) ✅
+
+**Schema:** unchanged (v14). Layout/visual hybrid rebuild per-pane; no behaviour or data changes.
+
+| What it delivered |
+|-------------------|
+| **Folder tree pane** — Compass `.panel`-style rounded container; "Folders" header with icon add button; styled filter input; tree rows with chevron + folder icon + count pill (`.st-ct`); existing expand/collapse, create/rename, quick-create behaviour unchanged |
+| **Case list pane** — rounded `.tc-main` card; new `.tc-toolbar` with folder title + action buttons moved from `FreshTopbar` (Create test run ▾, Import, Quick create, New case, contextual Details when one row selected); status chips + filter + search row beneath toolbar |
+| **Detail panel** — rounded-card container (`.dp.open` border + radius) matching `.panel` treatment elsewhere; tabs, resize, maximize, close behaviour unchanged |
+| **Page header** — not added (mockup `page-head` discarded per Shaun's ask) |
+| **CSS** — `.btn-ghost`, `.btn-sm`, Phase 2 `.tc-lay`/`.suite-tree`/`.st-*`/`.tc-toolbar`/`.dp` updates in `fresh.css` |
+
+**Toolbar relocation note:** Create test run / Import / Quick create / New case were previously in `FreshTopbar`'s `actions` prop — moved to the case list pane `.tc-toolbar` per task-10 / task-07 pattern.
+
+**QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; `/DP/testcases` + core regression routes PASS.
+
+**Next:** task-11 (Test Plans rebuild).
 
 **Note for task-13:** remove unused `FreshTopbar` `actions` prop once all screens stop passing screen-specific topbar actions.
 
@@ -217,7 +237,7 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; `/DP/dashboard` + core regression routes PASS.
 
-**Next:** task-10 (Test Cases).
+**Next:** task-11 (Test Plans rebuild).
 
 
 ## Completed work — `mvp-visual-overhaul` (task-03) ✅
