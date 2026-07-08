@@ -16,7 +16,45 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`). Ready for PR description / review before merge to `mvp-main`.
+`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Cursor prompts drafted this session (kickoff + task-01…08); not yet run in Cursor.** Branch created off `mvp-main`; no code committed yet. See "This session" below.
+
+Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
+
+---
+
+## This session — `mvp-visual-overhaul` (Compass reskin) — prompts drafted 2026-07-08 🎨
+
+Goal: apply the approved **Compass (TransPerfect)** visual system to the whole app as a **pure re-skin** — no behaviour / route / schema / data change. This precedes functional work; the team reworks/restores functionality on later branches. Ideally no functionality is lost — Cursor "re-skins" what already exists.
+
+**Design context:** the approved look was designed and signed off in a Claude Design mockup (built screen-by-screen from the live app). A self-contained reference build now lives at **`mockup/Relay Compass Reskin Mockup.html`** (opens in a browser, no build) — it is the **visual** source of truth for the reskin. The app stays the **structural** source of truth (layouts don't change).
+
+**Prompts at `docs/cursor-prompts/mvp-visual-overhaul/`** — hand Cursor `_kickoff.md` first, then run the numbered tasks in order; **checkpoint: stop & report after task-02** (token foundation + shell set the tone), then task-03 onward can run continuously.
+
+| Task | Scope | Primary files |
+|------|-------|---------------|
+| `_kickoff.md` | Branch framing: golden rules (zero behaviour change), protected Runs UX, icon policy, task sequence, out-of-scope | — |
+| task-01 | Compass token & primitive foundation — the linchpin (~70% of the reskin cascades from here) | `fresh.css` `:root` + shared classes, fonts |
+| task-02 | App shell — sidebar + top bar (**checkpoint after this**) | `FreshShell`, `FreshTopbar`, `ProjectSwitcher`, `ModuleSwitcher`, `fresh.css` |
+| task-03 | Dashboard | `DashboardScreen`, `RunDonut`, `RunStatusInfographic`, `fresh.css` |
+| task-04 | Test Cases | `CasesScreen`, `fresh.css` |
+| task-05 | Test Runs — **protected three-pane UX; visual-only** | `RunsScreen`, `TestRunsTopbar`, `prototype-runs.css` |
+| task-06 | Test Plans | `PlansScreen`, `prototype-plans.css` |
+| task-07 | Admin / Project Settings (keep `/admin/*` a separate global area) | `admin.css`, `admin/**` |
+| task-08 | Remaining: Defects, Audit, per-project Settings, modals, placeholders + PR description | screens + `fresh.css` |
+
+Schema unchanged (**v14**) — this branch is CSS / classNames / fonts only.
+
+**Key decisions baked into the prompts:**
+- **Pure re-skin, zero behaviour change** is the branch's golden rule. The Test Runs three-pane execution UX and `/runs/api` are flagged protected (visual-only).
+- **Icons stay** — the fresh app keeps Tabler (`ti ti-*`), admin keeps Lucide; no library swap (~180 `ti` sites). Material-glyph parity is a possible future `mvp-icon-migration`, out of scope here.
+- **Reskin via tokens, not rewrites** — retarget the ~15 `:root` vars in `fresh.css` + polish the shared classes (`.btn`/`.panel`/`.tbl`/`.chip`/`.pill`/`.sb*`/`.topbar`…); most screens reskin themselves.
+- One deliberate status-colour change to match the mockup: **Blocked → amber** (`#E4AF03`, text `#8C6A00`). **Skipped stays the app's existing purple** (`#4527A0`) — explicitly *not* changed to gray (the mockup was updated to match this).
+- **Gotham SSm** display font: prompts tell Cursor to drop the licensed web files into `apps/web/public/fonts/`, else fall back to Open Sans (documented substitute) — no random substitute.
+- **Two icon systems + per-module CSS confirmed:** `fresh.css` (`:root` tokens + most screens), `admin.css`, `prototype-runs.css` (the live `.runs-v12` three-pane workspace), `prototype-plans.css`; `globals.css` is an empty reset. This is why the token retarget in task-01 is so leveraged.
+
+`docs/product/design-system.md` is slated to be rewritten during task-01 (replace the ad-hoc token table with the Compass set). Not yet run in Cursor, so not yet done.
+
+QA evidence for this branch will land at `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` (per task).
 
 ---
 
@@ -129,6 +167,7 @@ Shaun dictated a full roadmap this session (Next Steps / Improvements / Lesser I
 
 Current state in brief:
 
+- **`mvp-visual-overhaul`** `[~in progress]` — full-app Compass reskin; kickoff + task-01…08 prompts drafted at `docs/cursor-prompts/mvp-visual-overhaul/` (see "This session" above). Not yet run in Cursor. Schema stays v14 (visual-only). Reference mockup at `mockup/Relay Compass Reskin Mockup.html`.
 - **`mvp-custom-fields`** `[~in progress]` — three real task prompts drafted at `docs/cursor-prompts/mvp-custom-fields/` (task-01 field type parity, task-02 Owner mandatory field, task-03 per-field project assignment). Not yet run in Cursor. Would bump schema v14 → v15 (task-01) and possibly further (see each prompt).
 - **`mvp-dashboard-metrics`** `[x]` — implemented (tasks 01–04); see "Completed work" above. Ready for commit/PR after QA review.
 - **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.
@@ -145,11 +184,14 @@ This session's planning work (this file, `roadmap.md`, `testiny-recon-notes.md`,
 5. **For `mvp-custom-fields` specifically**, add one checkpoint: pause and report after task-01 (the first schema bump + rendering fixes) before continuing into task-02/03, given the two-migration risk. `mvp-dashboard-metrics` can run fully autonomous end-to-end.
 6. Cursor's Plan Mode (evidence of prior use in this repo: `.cursor/plans/test_runs_audit_f7170fbe.plan.md`) is a more resumable alternative to one long chat message, if preferred — it tracks progress against a todo list in a file rather than only in the chat.
 
+> **Sequencing note (2026-07-08):** `mvp-visual-overhaul` is a self-contained, schema-free visual branch. It can land independently of the above; if it runs alongside `mvp-custom-fields`, expect merge conflicts in `fresh.css`/`admin.css` (both touch styling) and in `AdminCustomFieldsPageContent.tsx` — sequence or rebase accordingly.
+
 ---
 
 ## QA evidence
 
 See `/tmp/relay-qa-mvp-requirements-defects-slice/qa-report.md` after smoke test.
+`mvp-visual-overhaul` QA lands at `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` (per task).
 
 ---
 

@@ -8,6 +8,22 @@
 
 ## Next Steps (active priority)
 
+### Compass Visual Overhaul (UI reskin) `[~in progress]`
+Branch `mvp-visual-overhaul` (created off `mvp-main`). Prompts at `docs/cursor-prompts/mvp-visual-overhaul/` — `_kickoff.md` + task-01…08. Visual reference: `mockup/Relay Compass Reskin Mockup.html` (self-contained; opens with no build). Not yet run in Cursor.
+
+Original ask: apply the approved **Compass (TransPerfect)** design system across the whole app UI as a pure **re-skin**. Bring the visual improvements drafted in the Claude Design mockup to the live app first; rework/restore functionality on later branches. Ideally no functionality is lost or changed — Cursor re-skins what already exists.
+
+Approach (in the prompts): retarget the ~15 `:root` tokens in `fresh.css` + polish the shared primitive classes (task-01) so the bulk of the reskin cascades; then the app shell (task-02, then a **checkpoint/report**); then per-screen — Dashboard, Test Cases, Test Runs (**protected three-pane execution UX — visual only**), Test Plans, Admin/Project Settings, and remaining screens + modals. Schema-free (stays **v14**); CSS / classNames / fonts only.
+
+Key decisions:
+- **Zero behaviour change** is the golden rule; the Test Runs three-pane execution UX + `/runs/api` are protected (visual-only).
+- **Icons stay** — Tabler (`ti ti-*`) in the fresh app, Lucide in admin; no Material-Icons swap (that would touch ~180 call sites — a possible future `mvp-icon-migration`).
+- Status colours: **Blocked → amber** (`#E4AF03`); **Skipped kept as the app's existing purple** (`#4527A0`), explicitly *not* grayed (the reference mockup was updated to match).
+- **Gotham SSm** display font dropped into `apps/web/public/fonts/`, else Open Sans fallback (documented substitute).
+- `docs/product/design-system.md` gets rewritten to the Compass token set during task-01 (by Cursor, on implementation).
+
+Sequencing: self-contained and schema-free, so it can land independently of the feature branches. If run alongside `mvp-custom-fields`, expect merge conflicts in `fresh.css`/`admin.css` (both touch styling) and `AdminCustomFieldsPageContent.tsx` — sequence or rebase.
+
 ### Custom Fields `[~in progress]`
 Branch `mvp-custom-fields`, prompts at `docs/cursor-prompts/mvp-custom-fields/` (task-01, task-02, task-03 — see that folder). Full recon detail in `docs/claude/testiny-recon-notes.md`.
 
@@ -93,5 +109,5 @@ Test Runs Lesser items (Steps redesign, Create-run button, commenting) are track
 - **Test Runs Lesser:** improve commenting to be closer to Testiny's add/edit/view style, especially from a step's Details tab.
 - **Searching:** remove the raw internal case ID (long number) from global search results — only show friendly ids (TC-XXXX, TR-XXXX, etc).
 - **MTI Stuff:** use the CTMS domain overview as a basis for MTI structure — Shaun will go through this directly, not actionable yet.
-- **Audit History:** log all frontend actions to the audit log, attributed to the current actor. Depends on User Management improvements landing first (sequencing already noted by Shaun).
+- **Audit History:** log all frontend actions to the audit log, attributed to the current actor. Depends on User Management improvements landing first (sequencing already noted by Shaun). *(Note: `mvp-visual-overhaul` reskins the existing Audit History screen visually; this item — making it log real actions — is the separate functional follow-up.)*
 - **Permissions Management Extra:** add a feature to manage permissions. Blocked — need to confirm the permission set with Syed or Vijay before scoping.
