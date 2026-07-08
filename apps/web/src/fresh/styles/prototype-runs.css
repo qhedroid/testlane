@@ -74,7 +74,7 @@
   gap: 6px;
   width: 100%;
   padding: 5px 8px;
-  border-radius: 4px;
+  border-radius: var(--r-s);
   border: 1px solid var(--border);
   background: var(--bg);
   font-size: 12px;
@@ -104,7 +104,7 @@
   top: calc(100% - 2px);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-m);
   box-shadow: 0 8px 28px rgba(4, 44, 83, 0.14);
   z-index: 500;
   overflow: hidden;
@@ -188,9 +188,9 @@
 }
 
 .runs-v12 .run-search-input {
-  width: 100%;
+  flex: 1;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--r-s);
   padding: 3px 8px;
   font-family: var(--sans);
   font-size: 12px;
@@ -205,7 +205,8 @@
 
 .runs-v12 .run-search-input:focus {
   border-color: var(--accent);
-  background: #fff;
+  background: var(--surface);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
 }
 
 .runs-v12 .pri-toggle {
@@ -213,7 +214,7 @@
   align-items: center;
   gap: 5px;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--r-s);
   border: 1px solid var(--border);
   background: var(--bg);
   font-size: 11px;
@@ -359,7 +360,7 @@
 .runs-v12 .ed-comment-input {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--r-s);
   padding: 7px 9px;
   font-family: var(--sans);
   font-size: 12px;
@@ -372,7 +373,7 @@
 
 .runs-v12 .ed-comment-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(24, 95, 165, 0.1);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
 }
 
 .runs-v12 .ed-hist-item {
@@ -426,7 +427,7 @@
   align-items: center;
   gap: 5px;
   padding: 3px 9px;
-  border-radius: 4px;
+  border-radius: var(--r-s);
   border: 1px solid var(--border);
   background: var(--bg);
   font-size: 12px;
@@ -441,7 +442,7 @@
 .runs-v12 .proj-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: #fff;
+  background: var(--surface);
 }
 
 .runs-v12 .proj-btn .pn {
@@ -458,7 +459,7 @@
   width: 230px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-m);
   box-shadow: 0 8px 28px rgba(4, 44, 83, 0.16);
   z-index: 9999;
   overflow: hidden;
@@ -593,7 +594,7 @@
   flex: 1;
   min-width: 0;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: var(--r-s);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -658,15 +659,15 @@
   font-size: 9px;
   font-weight: 700;
   font-family: var(--mono);
-  background: #fff;
+  background: var(--surface);
   color: var(--accent);
   border: 1.5px solid var(--accent);
-  border-radius: 5px;
+  border-radius: var(--r-s);
   padding: 2px 7px 3px;
   line-height: 1.2;
   min-width: 18px;
   text-align: center;
-  box-shadow: 0 1px 2px rgba(24, 95, 165, 0.18);
+  box-shadow: 0 1px 2px rgba(25, 118, 210, 0.18);
 }
 
 .runs-v12 .ec-cmt-badge::before {
@@ -692,26 +693,29 @@
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-top: 5px solid #fff;
+  border-top: 5px solid var(--surface);
 }
 
 .runs-v12 .ec-status-pill {
   white-space: nowrap;
 }
 
-/* Shortcut bar — bordered kbd chips */
+/* Shortcut bar — Compass keycap chips */
 .runs-v12 .sc-bar .sc-h .kbd {
   display: inline-block;
-  padding: 0 4px;
+  padding: 1px 5px;
   background: var(--surface);
-  border: 1px solid var(--border2);
-  border-bottom-width: 2px;
-  border-radius: 3px;
+  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--border2);
+  border-radius: var(--r-s);
   font-family: var(--mono);
   font-size: 10px;
+  font-weight: 600;
   color: var(--text2);
-  min-width: 14px;
+  min-width: 16px;
   text-align: center;
+  line-height: 1.35;
+  box-shadow: 0 1px 0 rgba(11, 24, 33, 0.04);
 }
 
 .runs-v12 .sc-bar .sc-kbd-btn {
@@ -722,10 +726,10 @@
 .runs-v12 .ed-foot{background:var(--surface);border-top:1px solid var(--border);padding:8px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .runs-v12 .ed-rl{font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
 .runs-v12 .ed-rbs{display:flex;gap:6px;flex:1}
-.runs-v12 .ed-rbs .rmb{flex:1;padding:6px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;text-align:center;transition:all .12s}
-.runs-v12 .ed-rbs .rmb-p{background:var(--pass-bg);color:var(--pass);border-color:rgba(46,125,50,.2)}.runs-v12 .ed-rbs .rmb-p:hover,.runs-v12 .ed-rbs .rmb-p.on{background:var(--pass);color:#fff}
-.runs-v12 .ed-rbs .rmb-f{background:var(--fail-bg);color:var(--fail);border-color:rgba(198,40,40,.2)}.runs-v12 .ed-rbs .rmb-f:hover,.runs-v12 .ed-rbs .rmb-f.on{background:var(--fail);color:#fff}
-.runs-v12 .ed-rbs .rmb-b{background:var(--block-bg);color:var(--block);border-color:rgba(230,81,0,.2)}.runs-v12 .ed-rbs .rmb-b:hover,.runs-v12 .ed-rbs .rmb-b.on{background:var(--block);color:#fff}
+.runs-v12 .ed-rbs .rmb{flex:1;padding:6px;border-radius:var(--r-s);font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;text-align:center;transition:all .12s}
+.runs-v12 .ed-rbs .rmb-p{background:var(--pass-bg);color:var(--pass);border-color:rgba(16,135,24,.2)}.runs-v12 .ed-rbs .rmb-p:hover,.runs-v12 .ed-rbs .rmb-p.on{background:var(--pass);color:#fff}
+.runs-v12 .ed-rbs .rmb-f{background:var(--fail-bg);color:var(--fail);border-color:rgba(197,0,7,.2)}.runs-v12 .ed-rbs .rmb-f:hover,.runs-v12 .ed-rbs .rmb-f.on{background:var(--fail);color:#fff}
+.runs-v12 .ed-rbs .rmb-b{background:var(--block-bg);color:var(--block-text);border-color:rgba(228,175,3,.25)}.runs-v12 .ed-rbs .rmb-b:hover,.runs-v12 .ed-rbs .rmb-b.on{background:var(--block);color:var(--block-text)}
 .runs-v12 .ed-rbs .rmb-s{background:var(--skip-bg);color:var(--skip);border-color:rgba(69,39,160,.2)}.runs-v12 .ed-rbs .rmb-s:hover,.runs-v12 .ed-rbs .rmb-s.on{background:var(--skip);color:#fff}
 .runs-v12 .sc-bar{display:flex;align-items:center;gap:10px;padding:3px 12px;background:var(--surface2);border-top:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
 .runs-v12 .sc-bar .sc-h{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3)}
@@ -736,7 +740,7 @@
 .runs-v12 .tr-icon-btn{padding:3px 7px;min-width:28px;justify-content:center}
 .runs-v12 .tr-icon-btn:disabled,.runs-v12 .tr-seal-btn:disabled{opacity:.45;cursor:not-allowed}
 .runs-v12 .tr-more-wrap{position:relative}
-.runs-v12 .tr-more-dd{position:absolute;top:calc(100% + 4px);right:0;min-width:210px;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 28px rgba(4,44,83,.16);z-index:9999;padding:4px 0;display:none}
+.runs-v12 .tr-more-dd{position:absolute;top:calc(100% + 4px);right:0;min-width:210px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-m);box-shadow:0 8px 28px rgba(4,44,83,.16);z-index:9999;padding:4px 0;display:none}
 .runs-v12 .tr-more-dd.open{display:block}
 .runs-v12 .tr-more-item{display:block;width:100%;text-align:left;padding:6px 12px;border:none;background:none;font-size:12px;color:var(--text);cursor:pointer;font-family:var(--sans)}
 .runs-v12 .tr-more-item:hover:not(:disabled){background:var(--surface2)}
@@ -802,7 +806,7 @@
   font-size: 11px;
   padding: 3px 7px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--r-s);
   background: var(--surface);
   color: var(--text2);
   cursor: pointer;
@@ -820,8 +824,8 @@
   right: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  border-radius: var(--r-m);
+  box-shadow: 0 4px 16px rgba(4, 44, 83, 0.12);
   z-index: 50;
   padding: 10px;
   display: flex;
@@ -840,7 +844,7 @@
   font-size: 11.5px;
   padding: 2px 4px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-s);
   background: var(--surface);
   color: var(--text);
 }
@@ -939,3 +943,45 @@
   text-underline-offset: 2px;
 }
 .runs-v12 .ed-cmt-step-link:hover { opacity: 0.8; }
+
+/* Compass pane polish — scoped to execution workspace */
+.runs-v12 .ec-pane,
+.runs-v12 .ec-run-hd {
+  background: var(--surface);
+}
+
+.runs-v12 .ec-case {
+  background: var(--surface);
+  border-left: 2px solid transparent;
+}
+
+.runs-v12 .ec-case.on {
+  background: var(--accent-lt);
+  border-left-color: var(--accent);
+}
+
+.runs-v12 .ec-ftab-bar .ftab {
+  border-radius: var(--r-s);
+}
+
+.runs-v12 .ec-ftab-bar .ftab.on {
+  background: var(--accent);
+  color: #fff;
+}
+
+.runs-v12 .esc {
+  border-radius: var(--r-s);
+  border-color: var(--border);
+}
+
+.runs-v12 .esc-hd {
+  background: var(--surface2);
+}
+
+.runs-v12 .esc-cmt {
+  border-radius: var(--r-s);
+}
+
+.runs-v12 .tr-seal-btn {
+  border-radius: var(--r-s);
+}

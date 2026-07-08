@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **task-01 through task-05 implemented in Cursor.** Task 06 (Admin) pending. Schema stays v14. See "Completed work — `mvp-visual-overhaul`" below.
+`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **All tasks 01–06 complete.** Schema stays v14. Ready for commit of task-04+06 changes and PR to `mvp-main`. See "Completed work — `mvp-visual-overhaul`" below.
 
 Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
 
@@ -103,7 +103,33 @@ QA evidence for this branch lands at `/tmp/relay-qa-mvp-visual-overhaul/qa-repor
 
 **Deliberate palette notes:** Blocked → Compass amber (`#E4AF03` / text `#8C6A00`). Skipped stays purple `#4527A0`.
 
-**Next:** task-04 (Test Runs) if not yet done; otherwise task-06 (Admin).
+**Next:** task-04 (Test Runs) — done; task-06 (Admin) — done. Branch complete.
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-04) ✅
+
+**Schema:** unchanged (v14). Presentational CSS only — protected UX untouched.
+
+| What it delivered |
+|-------------------|
+| Test Runs reskin — `prototype-runs.css` token polish: result buttons (blocked dark-on-amber), Compass keycaps, pane/case/tab/step radii, popover shadows; scoped `.runs-v12` active-case accent-lt + left accent |
+| Protected UX verified unchanged (Playwright): auto-advance, P/F/B/S + arrow keys, detail open/close, status filter, `/runs/api` untouched |
+
+**Next:** task-06 (Admin) — done; see task-06 section below.
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-06) ✅
+
+**Schema:** unchanged (v14). Presentational CSS only.
+
+| What it delivered |
+|-------------------|
+| Admin reskin — sidebar white-chip active (matches main shell), Compass form chrome (34px inputs, focus rings), table/badge/card/modal tokens, toggles → `--pass`, selected rows → `--accent-lt` |
+| Branch wrap-up: full 19-route regression sweep PASS; PR description at `docs/cursor-prompts/mvp-visual-overhaul/pr-description-mvp-visual-overhaul.md` |
+
+**Branch status:** `mvp-visual-overhaul` tasks 01–06 complete. Pending: commit task-04+06 CSS changes, then open PR.
 
 ---
 
@@ -253,7 +279,7 @@ Shaun dictated a full roadmap this session (Next Steps / Improvements / Lesser I
 
 Current state in brief:
 
-- **`mvp-visual-overhaul`** `[~in progress]` — task-01 (foundation + shell) done; tasks 02–06 pending. Schema stays v14. QA: `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md`.
+- **`mvp-visual-overhaul`** `[x]` — tasks 01–06 complete. Schema stays v14. QA: `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md`. PR description drafted.
 - **`mvp-custom-fields`** `[~in progress]` — three real task prompts drafted at `docs/cursor-prompts/mvp-custom-fields/` (task-01 field type parity, task-02 Owner mandatory field, task-03 per-field project assignment). Not yet run in Cursor. Would bump schema v14 → v15 (task-01) and possibly further (see each prompt).
 - **`mvp-dashboard-metrics`** `[x]` — implemented (tasks 01–04); see "Completed work" above. Ready for commit/PR after QA review.
 - **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.
