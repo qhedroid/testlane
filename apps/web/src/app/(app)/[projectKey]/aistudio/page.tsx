@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from '@/fresh/screens/PlaceholderScreen'
+import { AiStudioScreen } from '@/fresh/screens/AiStudioScreen'
 
 export default function ProjectAiStudioPage() {
-  return (
-    <PlaceholderScreen
-      title="AI Studio"
-      description="AI-assisted test authoring, analysis, and suggestions will live here."
-    />
-  )
+  return <AiStudioScreen />
 }

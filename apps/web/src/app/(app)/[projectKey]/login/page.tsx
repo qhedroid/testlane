@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from '@/fresh/screens/PlaceholderScreen'
+import { LoginScreen } from '@/fresh/screens/LoginScreen'
 
 export default function ProjectLoginPage() {
-  return (
-    <PlaceholderScreen
-      title="Login"
-      description="The Compass login experience will live here. This route is reachable for demo purposes only — it does not gate access to the app."
-    />
-  )
+  return <LoginScreen />
 }

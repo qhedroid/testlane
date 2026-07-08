@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from '@/fresh/screens/PlaceholderScreen'
+import { RequirementsScreen } from '@/fresh/screens/RequirementsScreen'
 
 export default function ProjectRequirementsPage() {
-  return (
-    <PlaceholderScreen
-      title="Requirements"
-      description="Requirement coverage, traceability links, and verification status will live here."
-    />
-  )
+  return <RequirementsScreen />
 }

@@ -1,6 +1,6 @@
 # Relay — Feature Flow Map
 
-*Living document · Last verified: June 2026 · Branch: `mvp-requirements-defects-slice`*
+*Living document · Last verified: July 2026 · Branch: `mvp-visual-overhaul`*
 
 Product and implementation flow map for the team. Complements authoritative contracts in `docs/_authoritative/**` with journey-oriented status and test checklists.
 
@@ -15,14 +15,19 @@ Product and implementation flow map for the team. Complements authoritative cont
 | Module | Slug | Screen component | Route(s) | Data state |
 |--------|------|------------------|----------|------------|
 | Dashboard | `dashboard` | `DashboardScreen` | `/:key/dashboard` | Live FreshProvider data (all projects) |
+| My Work | `mywork` | `MyWorkScreen` | `/:key/mywork` | Static demo content |
 | Test cases | `testcases` | `CasesScreen` | `/:key/testcases`, `/:key/testcases/tc/:caseKey` | Mock + localStorage |
 | Test plans | `plans` | `PlansScreen` | `/:key/plans` | Mock seed |
 | Test runs | `testruns` | `RunsScreen` | `/:key/testruns`, `/:key/testruns/tr/:runKey`, `/:key/testruns/tr/:runKey/tc/:caseKey` | Mock + localStorage |
+| Milestones | `milestones` | `MilestonesScreen` | `/:key/milestones` | Static demo content |
+| Requirements | `requirements` | `RequirementsScreen` | `/:key/requirements` | Live `requirementsById` when present; static demo list fallback |
 | Defects | `defects` | `DefectsScreen` | `/:key/defects` | Mock + localStorage (local DEF-*) |
-| Settings | `settings` | `SettingsScreen` | `/:key/settings` | Static mock (read-only) |
-| Reports | `reports` | `PlaceholderScreen` | `/:key/reports` | Placeholder |
+| Reports | `reports` | `ReportsScreen` | `/:key/reports` | Static demo content |
+| AI Studio | `aistudio` | `AiStudioScreen` | `/:key/aistudio` | Static demo content (no real AI) |
+| Settings | `settings` | redirect → `/admin` | `/:key/settings` | Redirect only (legacy route) |
 | Integrations | `integrations` | `PlaceholderScreen` | `/:key/integrations` | Placeholder |
 | Audit | `audit` | `AuditScreen` | `/:key/audit` | Static seed |
+| Login | — | `LoginScreen` | `/:key/login` | Static demo page; **not** an auth gate |
 | Admin | — | `AdminShell` + page content | `/admin`, `/admin/profile` … `/admin/audit-log` | Mock + localStorage |
 | API runs | — | `ApiRunsWorkspace` | `/runs/api` | **API / MySQL** |
 
@@ -329,7 +334,32 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Reports / Integrations — `/:key/reports`, `/:key/integrations`
 
-- [ ] Placeholder banner and message
+- [ ] Reports: chip tabs render (Run Summary default); Export disabled
+- [ ] Integrations: placeholder banner and message
+
+### My Work — `/:key/mywork`
+
+- [ ] KPI strip and test queue / defects panels render
+- [ ] Continue/Run links navigate to test runs (no real assignment logic)
+
+### Milestones — `/:key/milestones`
+
+- [ ] Milestone cards with progress bars and linked runs render
+
+### Requirements (list view) — `/:key/requirements`
+
+- [ ] Table lists requirements (live data or static fallback)
+- [ ] Read-only — no create/edit on this page
+
+### AI Studio — `/:key/aistudio`
+
+- [ ] Prompt row, quick actions, draft preview render
+- [ ] Generate/Accept/Edit/Discard are non-functional demo controls
+
+### Login — `/:key/login`
+
+- [ ] Full-bleed login layout renders; Sign In / SSO navigate to dashboard
+- [ ] Does not gate app entry; `/` still goes to dashboard
 
 ### Audit — `/:key/audit`
 

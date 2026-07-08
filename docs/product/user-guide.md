@@ -1,6 +1,6 @@
 # Relay — User Guide
 
-*Living document · Last verified: June 2026 · Branch: `mvp-requirements-defects-slice`*
+*Living document · Last verified: July 2026 · Branch: `mvp-visual-overhaul`*
 
 This guide explains how to use Relay from a user perspective. It describes the **frontend prototype** as it works today in the browser.
 
@@ -185,11 +185,53 @@ Mock defect table (ID, title, severity, status, module, owner) with search and f
 
 ---
 
+## My Work
+
+**Route:** `/DP/mywork`
+
+Personal work queue with KPI tiles (assigned cases, not run yet, blocked, defects to verify), a **Your Test Queue** panel grouped by run, and **Defects Involving You**. Static demo content only — no real assignment or notification wiring.
+
+---
+
+## Milestones
+
+**Route:** `/DP/milestones`
+
+Milestone cards with status, target date, aggregate progress, and linked test runs. Static demo content — not computed from live run state.
+
+---
+
+## Requirements (list view)
+
+**Route:** `/DP/requirements`
+
+Read-only table of project requirements with coverage status and linked case counts. Uses live `requirementsById` data when you have created requirements in Test Cases; otherwise shows a static demo list matching `REQ-*` key format.
+
+Create and link requirements from **Test Cases** (Requirements tab) or view them read-only during **Test Runs** execution — this page does not add new create/edit flows.
+
+---
+
+## AI Studio
+
+**Route:** `/DP/aistudio`
+
+Demo AI workspace: prompt input, quick-action cards, draft preview with Accept/Edit/Discard, and recent generations list. **No real AI calls** — Generate and action buttons are visual only.
+
+---
+
+## Login (demo page)
+
+**Route:** `/DP/login`
+
+Compass-style sign-in page reachable from navigation for demo purposes. **Not an authentication gate** — the app loads normally without visiting login. Sign In and SSO buttons navigate to the project dashboard.
+
+---
+
 ## Reports
 
 **Route:** `/DP/reports`
 
-Placeholder screen — planned module message only. No report generation.
+Reports and analytics demo with report-type chips (Run Summary, Requirements Coverage, Failure Trends, Flaky Cases, Tester Workload). Run Summary shows static execution metrics; other tabs show placeholder panels. Export is disabled — no report generation.
 
 ---
 

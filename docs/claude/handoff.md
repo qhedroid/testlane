@@ -176,7 +176,23 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **Claude review of the redirect call:** checked for other references to the orphaned route/`settings` slug — only hits are `project-routes.ts`'s own `MODULE_SLUGS`/`LEGACY_PATH_TO_MODULE` tables (the file this task already edits) and a static `prototype-contracts.ts` docs-only entry (no live routing). Nothing else links to `/[projectKey]/settings`, and `page.tsx` is a clean `redirect('/admin')` — implementation matches spec, no correction needed unless Shaun wants the orphaned `SettingsScreen.tsx` component deleted outright rather than left unreachable.
 
-**Next:** task-08 (six new screen content).
+### Completed work — `mvp-visual-overhaul` (task-08) ✅
+
+**Schema:** unchanged (v14). Six new static/demo screen components + route wiring.
+
+| What it delivered |
+|-------------------|
+| **Login** — `LoginScreen` at `/:key/login`; fixed full-bleed layout; Sign In / SSO → dashboard; not an auth gate |
+| **My Work** — KPI strip, test queue, defects panel (`MyWorkScreen`) |
+| **Milestones** — milestone cards with linked runs (`MilestonesScreen`) |
+| **Requirements** — read-only list view; uses live `activeRequirements` when populated, else static `REQ-*` demo list |
+| **Reports** — report-type chips + Run Summary static dashboard (`ReportsScreen`) |
+| **AI Studio** — prompt, quick actions, draft preview (`AiStudioScreen`); `--tp-purple` token added |
+| Route pages updated; shared screen CSS in `fresh.css` (`.page-head`, `.kpi-strip`, `.screen-row`, etc.) |
+
+**QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; all six routes HTTP 200; core regression routes PASS.
+
+**Next:** task-09 (Dashboard).
 
 **Note for task-13:** remove unused `FreshTopbar` `actions` prop once all screens stop passing screen-specific topbar actions.
 
