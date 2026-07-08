@@ -1,6 +1,10 @@
-# Task 04 — Test Cases reskin
+# Task 03 — Test Cases reskin
 
-Branch: `mvp-visual-overhaul` · Schema: unchanged (v14) · Depends on: task-01, task-02
+Branch: `mvp-visual-overhaul` · Schema: unchanged (v14) · Depends on: task-01 (foundation + shell) ·
+This is task 3 of 6.
+
+> Run this task straight through to Verification without stopping to ask for confirmation partway.
+> Only stop if you hit a genuine blocker.
 
 Reskin Test Cases. **Layout stays exactly as the app has it** (folder tree · case table · resizable
 detail panel) — the mockup was built to match this screen's structure, so this is a pure colour/
@@ -43,8 +47,11 @@ Files touched:
 - `/DP/testcases`: tree, table, and detail panel match the mockup; resizing the tree and detail
   panel still works; row context menu opens and is styled; quick-create and folder create/rename
   still work (Enter/Esc); maximize/close detail still work.
-- Behaviour unchanged throughout. Screenshots to QA report.
+- Behaviour unchanged throughout. Screenshots to `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md`.
 
 ## Out of scope
 - Case data, filters logic, drag/reorder behaviour, custom-field rendering logic; layout
   restructure; icon swap.
+
+## Documentation
+- `docs/claude/handoff.md` — mark task-03 (Test Cases) done under `mvp-visual-overhaul`.

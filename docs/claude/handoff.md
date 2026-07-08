@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Cursor prompts drafted this session (kickoff + task-01…08); not yet run in Cursor.** Branch created off `mvp-main`; no code committed yet. See "This session" below.
+`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Cursor prompts drafted (kickoff + task-01…06, consolidated from an original 8-task split — see below); not yet run in Cursor.** Branch created off `mvp-main`; no code committed yet. See "This session" below.
 
 Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
 
@@ -28,21 +28,38 @@ Goal: apply the approved **Compass (TransPerfect)** visual system to the whole a
 
 **Design context:** the approved look was designed and signed off in a Claude Design mockup (built screen-by-screen from the live app). A self-contained reference build now lives at **`mockup/Relay Compass Reskin Mockup.html`** (opens in a browser, no build) — it is the **visual** source of truth for the reskin. The app stays the **structural** source of truth (layouts don't change).
 
-**Prompts at `docs/cursor-prompts/mvp-visual-overhaul/`** — hand Cursor `_kickoff.md` first, then run the numbered tasks in order; **checkpoint: stop & report after task-02** (token foundation + shell set the tone), then task-03 onward can run continuously.
+**Prompts at `docs/cursor-prompts/mvp-visual-overhaul/`** — hand Cursor `_kickoff.md` first, then hand
+it each numbered task file **one at a time, as its own Cursor session**; run everything inside a
+given task file (including its internal Parts, where present) continuously, with no stopping for
+confirmation. Originally split into 8 finer-grained tasks purely to manage Cursor's token budget per
+session; consolidated to 6 after real usage data from other branches showed comfortable headroom at
+this coarser size (Shaun: no more stop-and-ask between tasks — see 2026-07-08 follow-up below).
 
 | Task | Scope | Primary files |
 |------|-------|---------------|
 | `_kickoff.md` | Branch framing: golden rules (zero behaviour change), protected Runs UX, icon policy, task sequence, out-of-scope | — |
-| task-01 | Compass token & primitive foundation — the linchpin (~70% of the reskin cascades from here) | `fresh.css` `:root` + shared classes, fonts |
-| task-02 | App shell — sidebar + top bar (**checkpoint after this**) | `FreshShell`, `FreshTopbar`, `ProjectSwitcher`, `ModuleSwitcher`, `fresh.css` |
-| task-03 | Dashboard | `DashboardScreen`, `RunDonut`, `RunStatusInfographic`, `fresh.css` |
-| task-04 | Test Cases | `CasesScreen`, `fresh.css` |
-| task-05 | Test Runs — **protected three-pane UX; visual-only** | `RunsScreen`, `TestRunsTopbar`, `prototype-runs.css` |
-| task-06 | Test Plans | `PlansScreen`, `prototype-plans.css` |
-| task-07 | Admin / Project Settings (keep `/admin/*` a separate global area) | `admin.css`, `admin/**` |
-| task-08 | Remaining: Defects, Audit, per-project Settings, modals, placeholders + PR description | screens + `fresh.css` |
+| task-01 | Part A: Compass token & primitive foundation — the linchpin (~70% of the reskin cascades from here). Part B: app shell — sidebar + top bar | `fresh.css` `:root` + shared classes, fonts, `FreshShell`, `FreshTopbar`, `ProjectSwitcher`, `ModuleSwitcher` |
+| task-02 | Part A: Dashboard. Part B: remaining screens — Defects, Audit, per-project Settings, modals, placeholders | `DashboardScreen`, `RunDonut`, `RunStatusInfographic`, `DefectsScreen`, `AuditScreen`, `SettingsScreen`, `*Modal`, `PlaceholderScreen`, `fresh.css` |
+| task-03 | Test Cases | `CasesScreen`, `fresh.css` |
+| task-04 | Test Runs — **protected three-pane UX; visual-only** | `RunsScreen`, `TestRunsTopbar`, `prototype-runs.css` |
+| task-05 | Test Plans | `PlansScreen`, `prototype-plans.css` |
+| task-06 | Admin / Project Settings (keep `/admin/*` a separate global area), plus the branch's final regression sweep + PR description | `admin.css`, `admin/**` |
 
 Schema unchanged (**v14**) — this branch is CSS / classNames / fonts only.
+
+**2026-07-08 follow-up (task consolidation):** Shaun flagged that Cursor had not been hitting token
+limits in practice (measured on other branches: 5 combined tasks on one screen ≈ 51% usage; a single
+task on a ~1,300-line screen ≈ 45% usage) and asked for the 8 original tasks to be bundled into as
+few as possible without risking the ceiling, plus explicit "run continuously, don't stop for
+confirmation" language throughout. Sized each original task by the line count of the files it
+touches (`CasesScreen.tsx` 2,014 lines; `RunsScreen.tsx`+`prototype-runs.css` ~2,650; `PlansScreen.tsx`+`prototype-plans.css`
+~2,060; the admin area ~3,000 across 16 files — each already comparable to the measured 45% data
+point on its own) and kept those four screens solo; merged only the lighter foundation/shell/
+dashboard/remaining-screens tasks. Result: 8 tasks → 6, detailed in the table above. The former
+task-02 checkpoint ("stop after shell + Dashboard") is removed — there's no cross-task checkpoint
+now, since each task file is its own Cursor session and its own review point. The final
+regression-sweep + PR-description step (previously the end of the old task-08) moved to the end of
+the new task-06 (Admin), since that's now the last task to run.
 
 **Key decisions baked into the prompts:**
 - **Pure re-skin, zero behaviour change** is the branch's golden rule. The Test Runs three-pane execution UX and `/runs/api` are flagged protected (visual-only).
@@ -167,7 +184,7 @@ Shaun dictated a full roadmap this session (Next Steps / Improvements / Lesser I
 
 Current state in brief:
 
-- **`mvp-visual-overhaul`** `[~in progress]` — full-app Compass reskin; kickoff + task-01…08 prompts drafted at `docs/cursor-prompts/mvp-visual-overhaul/` (see "This session" above). Not yet run in Cursor. Schema stays v14 (visual-only). Reference mockup at `mockup/Relay Compass Reskin Mockup.html`.
+- **`mvp-visual-overhaul`** `[~in progress]` — full-app Compass reskin; kickoff + task-01…06 prompts drafted at `docs/cursor-prompts/mvp-visual-overhaul/` (consolidated from an original 8-task split — see "This session" above). Not yet run in Cursor. Schema stays v14 (visual-only). Reference mockup at `mockup/Relay Compass Reskin Mockup.html`.
 - **`mvp-custom-fields`** `[~in progress]` — three real task prompts drafted at `docs/cursor-prompts/mvp-custom-fields/` (task-01 field type parity, task-02 Owner mandatory field, task-03 per-field project assignment). Not yet run in Cursor. Would bump schema v14 → v15 (task-01) and possibly further (see each prompt).
 - **`mvp-dashboard-metrics`** `[x]` — implemented (tasks 01–04); see "Completed work" above. Ready for commit/PR after QA review.
 - **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.

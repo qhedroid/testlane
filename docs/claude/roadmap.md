@@ -9,11 +9,11 @@
 ## Next Steps (active priority)
 
 ### Compass Visual Overhaul (UI reskin) `[~in progress]`
-Branch `mvp-visual-overhaul` (created off `mvp-main`). Prompts at `docs/cursor-prompts/mvp-visual-overhaul/` — `_kickoff.md` + task-01…08. Visual reference: `mockup/Relay Compass Reskin Mockup.html` (self-contained; opens with no build). Not yet run in Cursor.
+Branch `mvp-visual-overhaul` (created off `mvp-main`). Prompts at `docs/cursor-prompts/mvp-visual-overhaul/` — `_kickoff.md` + task-01…06 (consolidated 2026-07-08 from an original 8-task split, one Cursor session per task file, each running continuously with no stop-and-ask between its internal parts — see `handoff.md` for the sizing rationale). Visual reference: `mockup/Relay Compass Reskin Mockup.html` (self-contained; opens with no build). Not yet run in Cursor.
 
 Original ask: apply the approved **Compass (TransPerfect)** design system across the whole app UI as a pure **re-skin**. Bring the visual improvements drafted in the Claude Design mockup to the live app first; rework/restore functionality on later branches. Ideally no functionality is lost or changed — Cursor re-skins what already exists.
 
-Approach (in the prompts): retarget the ~15 `:root` tokens in `fresh.css` + polish the shared primitive classes (task-01) so the bulk of the reskin cascades; then the app shell (task-02, then a **checkpoint/report**); then per-screen — Dashboard, Test Cases, Test Runs (**protected three-pane execution UX — visual only**), Test Plans, Admin/Project Settings, and remaining screens + modals. Schema-free (stays **v14**); CSS / classNames / fonts only.
+Approach (in the prompts): retarget the ~15 `:root` tokens in `fresh.css` + polish the shared primitive classes, then the app shell (both task-01); then Dashboard + the long-tail remaining screens/modals (task-02); then per-screen, one Cursor session each — Test Cases (task-03), Test Runs (task-04, **protected three-pane execution UX — visual only**), Test Plans (task-05), Admin/Project Settings (task-06, also carries the branch's final regression sweep + PR description). Schema-free (stays **v14**); CSS / classNames / fonts only.
 
 Key decisions:
 - **Zero behaviour change** is the golden rule; the Test Runs three-pane execution UX + `/runs/api` are protected (visual-only).

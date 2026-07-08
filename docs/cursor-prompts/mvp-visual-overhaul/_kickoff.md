@@ -1,8 +1,14 @@
 # Branch kickoff — `mvp-visual-overhaul` (Compass reskin)
 
-> Hand this whole file to the Cursor agent first, then let it run the numbered `task-NN-*.md`
-> files in order. This is the branch's framing doc — read it before task-01. Your
-> `.cursor/rules/*.mdc` already covers the frontend-only phase, smoke test, commit format and
+> This branch is split into 6 task files (`task-01-*.md` … `task-06-*.md`), each sized to comfortably
+> fit in a single Cursor agent session/conversation. Hand this kickoff file to Cursor first, then hand
+> it **one task file at a time**, waiting for that session to finish before starting the next. **Within
+> a task file, instruct Cursor to run everything in it — including any internal "Part A / Part B"
+> sections — back-to-back, without stopping to ask for confirmation between them.** It should only
+> stop if it hits a genuine blocker (a build error it can't resolve, a missing asset, or a change that
+> turns out not to be presentational). There is no other checkpoint/review gate on this branch — the
+> task-file boundaries themselves are the natural review points, since each is its own Cursor session.
+> Your `.cursor/rules/*.mdc` already covers the frontend-only phase, smoke test, commit format and
 > living-docs rules; this file does not repeat them, it adds the visual-overhaul-specific rules.
 
 Branch: `mvp-visual-overhaul` (already created, off latest `mvp-main`).
@@ -42,9 +48,9 @@ later branches. Nothing here should remove or change functionality.
 4. **Protected UX — Test Runs execution workspace.** The three-pane run workspace
    (`RunsScreen.tsx` + `.runs-v12` rules in `prototype-runs.css`) is explicitly protected. Reskin its
    colours/type/spacing **only**. Do not change the three-pane structure, the keyboard flow, the
-   result-recording behaviour, or `/runs/api`. (task-05)
+   result-recording behaviour, or `/runs/api`. (task-04)
 5. **Keep the `/admin/*` area a separate, global area.** Reskin it, but keep its visual separation
-   from the per-project shell legible. Do not merge admin nav into the project sidebar. (task-07)
+   from the per-project shell legible. Do not merge admin nav into the project sidebar. (task-06)
 6. **Keep the existing icon libraries.** The fresh app uses **Tabler Icons** (`<i className="ti ti-…">`);
    the admin area uses **Lucide React**. The mockup happens to use Material Icons Round, but both
    Tabler and Lucide are the same family of clean line icons — do **not** swap icon libraries
@@ -72,24 +78,33 @@ later branches. Nothing here should remove or change functionality.
 
 ## 4. Task sequence
 
-Run in order. **Checkpoint: stop after task-02 and report** (build + screenshots of shell +
-Dashboard) before continuing — the token foundation and shell set the tone for everything, and it's
-cheap to correct there. task-03 onward can then run continuously.
+Run the 6 task files in order, **one per Cursor session** — hand task-01 to Cursor, let it run to
+completion (including its internal Parts, continuously, no stopping for confirmation), then hand it
+task-02, and so on. Tasks were originally split into 8 finer-grained files purely to manage Cursor's
+token budget per session; in practice that budget has had comfortable headroom even at this coarser
+size (measured on other branches: 5 combined tasks on one screen ≈ 51% usage, a single task on a
+~1,300-line screen ≈ 45% usage), so they've been consolidated into 6 — each still sized to stay
+clear of the ceiling, based on the size of the files each one touches. task-03, 04, 05, and 06 each
+wrap one original task (Test Cases, Test Runs, Test Plans, Admin — the four screens with the
+largest individual files, left solo on purpose); task-01 and task-02 each bundle two lighter
+original tasks as internal Parts (see those files for the Part breakdown). There is no cross-task
+checkpoint anymore — each task file's own Verification section is the review point, and the file
+itself instructs Cursor not to stop partway through it.
 
 | Task | Scope | Primary files |
 |------|-------|---------------|
-| **task-01** | Compass token & primitive foundation | `fresh.css` (`:root` + shared classes), fonts |
-| **task-02** | App shell — sidebar + top bar | `FreshShell.tsx`, `FreshTopbar.tsx`, `ProjectSwitcher.tsx`, `ModuleSwitcher.tsx`, `fresh.css` |
-| **task-03** | Dashboard | `DashboardScreen.tsx`, `RunDonut.tsx`, `RunStatusInfographic.tsx`, `fresh.css` |
-| **task-04** | Test Cases | `CasesScreen.tsx`, `fresh.css` |
-| **task-05** | Test Runs (protected UX — visual only) | `RunsScreen.tsx`, `TestRunsTopbar.tsx`, `prototype-runs.css` |
-| **task-06** | Test Plans | `PlansScreen.tsx`, `prototype-plans.css` |
-| **task-07** | Admin / Project Settings | `admin.css`, `admin/**` pages + shell |
-| **task-08** | Remaining: Defects, Reports, Audit, Settings, modals, placeholders | `DefectsScreen.tsx`, `AuditScreen.tsx`, `SettingsScreen.tsx`, `*Modal.tsx`, `PlaceholderScreen.tsx`, `fresh.css` |
+| **task-01** | Compass token & primitive foundation (Part A) + app shell — sidebar + top bar (Part B) | `fresh.css` (`:root` + shared classes), fonts, `FreshShell.tsx`, `FreshTopbar.tsx`, `ProjectSwitcher.tsx`, `ModuleSwitcher.tsx` |
+| **task-02** | Dashboard (Part A) + remaining screens — Defects, Audit, per-project Settings, modals, placeholders (Part B) | `DashboardScreen.tsx`, `RunDonut.tsx`, `RunStatusInfographic.tsx`, `DefectsScreen.tsx`, `AuditScreen.tsx`, `SettingsScreen.tsx`, `*Modal.tsx`, `PlaceholderScreen.tsx`, `fresh.css` |
+| **task-03** | Test Cases | `CasesScreen.tsx`, `fresh.css` |
+| **task-04** | Test Runs (protected UX — visual only) | `RunsScreen.tsx`, `TestRunsTopbar.tsx`, `prototype-runs.css` |
+| **task-05** | Test Plans | `PlansScreen.tsx`, `prototype-plans.css` |
+| **task-06** | Admin / Project Settings, plus the branch's final wrap-up (full regression sweep + PR description) | `admin.css`, `admin/**` pages + shell |
 
 Each task ends with its own build + smoke test (see `.cursor/rules`). Because this is a visual
 branch, the smoke test is primarily "does every core route still render, still behave identically,
-and now look like the mockup" — capture before/after screenshots per task.
+and now look like the mockup" — capture before/after screenshots per task. The one-time,
+branch-wide final regression sweep and PR description now live at the end of task-06, since it's the
+last task to run.
 
 ## 5. Definition of done (per task)
 
