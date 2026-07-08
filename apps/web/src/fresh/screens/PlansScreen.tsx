@@ -50,10 +50,10 @@ function RunResultBar({ run }: { run: DemoRun }) {
   const s = runSummary(run)
   const total = s.total || 1
   const segments = [
-    { count: s.passed, color: '#2E7D32' },
-    { count: s.failed, color: '#C62828' },
-    { count: s.blocked, color: '#E65100' },
-    { count: s.notRun, color: 'var(--border2, #ccc)' },
+    { count: s.passed, color: 'var(--pass)' },
+    { count: s.failed, color: 'var(--fail)' },
+    { count: s.blocked, color: 'var(--block)' },
+    { count: s.notRun, color: 'var(--border2)' },
   ]
   return (
     <div className="pl-run-bar">
@@ -846,7 +846,7 @@ export function PlansScreen() {
                             fail={0}
                             blocked={0}
                             notrun={activeCases.length - resolvedCases.length}
-                            notrunColor="#555556"
+                            notrunColor="var(--border2)"
                             size={100}
                             interactive={false}
                             showCompleteLabel={false}

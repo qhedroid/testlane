@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **task-01 + task-02 implemented in Cursor.** Tasks 03–06 pending. Schema stays v14. See "Completed work — `mvp-visual-overhaul`" below.
+`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **task-01 through task-05 implemented in Cursor.** Task 06 (Admin) pending. Schema stays v14. See "Completed work — `mvp-visual-overhaul`" below.
 
 Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
 
@@ -86,7 +86,31 @@ QA evidence for this branch lands at `/tmp/relay-qa-mvp-visual-overhaul/qa-repor
 
 **Deliberate palette notes:** Blocked → Compass amber (`#E4AF03` / text `#8C6A00`). Skipped stays purple `#4527A0`.
 
-**Next:** task-03 (Test Cases).
+**Next:** task-04 (Test Runs) if not yet done; otherwise task-06 (Admin).
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-03) ✅
+
+**Schema:** unchanged (v14). Presentational CSS / className only.
+
+| What it delivered |
+|-------------------|
+| Test Cases reskin — toolbar search chrome (`.tc-search-*`), bulk bar accent tint, folder tree active rows without left-border, detail panel title/display type, step number chips, quick-create/folder inputs with Compass focus rings, empty-state display font; sparkline/status dot tokens in `CasesScreen` |
+
+**Next:** task-05 (Test Plans).
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-05) ✅
+
+**Schema:** unchanged (v14). Presentational CSS / colour constants only.
+
+| What it delivered |
+|-------------------|
+| Test Plans reskin — plan list pane (white surface, accent-lt selected row), detail header/tabs, overview cards (Compass radii/display type), query-group builder cards/badges/chips/inputs, run history + resolved tables aligned to `.tbl` look, `RunResultBar` status tokens, coverage donut `notrunColor` → `var(--border2)` |
+
+**Next:** task-06 (Admin + branch wrap-up).
 
 ---
 
@@ -99,7 +123,7 @@ QA evidence for this branch lands at `/tmp/relay-qa-mvp-visual-overhaul/qa-repor
 | Part A | Dashboard reskin — metric cards (Compass radii/type/accent stripes), donut status colours in `RunDonut`/`RunStatusInfographic`, active run card hover shadow, needs-attention stripes, coverage bar tokens; `DashboardScreen` Export → `.btn-neutral`, metric value colours → CSS vars |
 | Part B | Defects/Audit/Settings/placeholder CSS polish; modal backdrop + dialog Compass shadow/radius; `.inp` form chrome; source banners → Compass warning/accent/gray tints; audit seal icon → gray |
 
-**Next:** task-03 (Test Cases).
+**Next:** task-03 (Test Cases) — done; see task-03 section above.
 
 ---
 

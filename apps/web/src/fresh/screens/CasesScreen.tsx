@@ -40,7 +40,7 @@ const EXEC_COLOR: Record<ExecStatus, string> = {
   Passed:  'var(--pass)',
   Failed:  'var(--fail)',
   Blocked: 'var(--block)',
-  Skipped: 'var(--text3)',
+  Skipped: 'var(--skip)',
   'Not run': 'var(--text3)',
 }
 
@@ -842,29 +842,14 @@ export function CasesScreen() {
               ) : null}
             </div>
 
-            <div style={{ position: 'relative', marginLeft: 'auto' }}>
-              <i
-                className="ti ti-search"
-                style={{
-                  position: 'absolute', left: 7, top: '50%',
-                  transform: 'translateY(-50%)',
-                  fontSize: 12, color: 'var(--text3)', pointerEvents: 'none',
-                }}
-              />
+            <div className="tc-search-wrap">
+              <i className="ti ti-search tc-search-icon" />
               <input
                 type="text"
+                className="tc-search-input"
                 placeholder="Search cases…"
                 value={keywordSearch}
                 onChange={(e) => setKeywordSearch(e.target.value)}
-                style={{
-                  fontSize: 12,
-                  padding: '3px 7px 3px 24px',
-                  borderRadius: 4,
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  color: 'var(--text1)',
-                  width: 180,
-                }}
               />
             </div>
             <span style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
@@ -878,7 +863,7 @@ export function CasesScreen() {
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Clone</button>
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Move</button>
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Assign</button>
-            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', color: 'var(--fail)', borderColor: 'rgba(198,40,40,.3)' }}>Archive</button>
+            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', color: 'var(--fail)', borderColor: 'color-mix(in srgb, var(--fail) 30%, transparent)' }}>Archive</button>
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', marginLeft: 'auto' }} onClick={() => setSelectedIds(new Set())}>
               <i className="ti ti-x" style={{ fontSize: 11 }} /> Clear
             </button>
@@ -976,7 +961,7 @@ export function CasesScreen() {
                                           borderRadius: 1,
                                           background: s ? EXEC_COLOR[s] : 'var(--border)',
                                           opacity: s ? 1 : 0.4,
-                                          outline: sparkTooltip?.caseId === c.id && sparkTooltip?.barIndex === i ? '1.5px solid #000' : 'none',
+                                          outline: sparkTooltip?.caseId === c.id && sparkTooltip?.barIndex === i ? '1.5px solid var(--text1)' : 'none',
                                         }}
                                         onMouseEnter={s ? (e) => {
                                           if (sparkHideTimer.current) clearTimeout(sparkHideTimer.current)
