@@ -115,7 +115,7 @@ export function FreshShell({ children }: { children: ReactNode }) {
           </Link>
           <Link href="/admin" className={`sbi${isAdmin ? ' on' : ''}`} title="Admin">
             <span className="sbi-icon-lucide">
-              <ShieldCheck size={15} strokeWidth={2} />
+              <ShieldCheck size={18} strokeWidth={2} />
             </span>
             <span className="sbi-text"> Admin</span>
           </Link>

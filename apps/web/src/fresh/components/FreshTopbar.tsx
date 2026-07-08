@@ -57,12 +57,12 @@ export function FreshTopbar({
           <button
             type="button"
             className="search-trigger"
-            style={searchWidth ? { width: searchWidth, minWidth: searchWidth } : { minWidth: 220 }}
+            style={searchWidth ? { maxWidth: searchWidth, minWidth: searchWidth, flex: '0 1 auto' } : undefined}
             onClick={openSearch}
           >
-            <i className="ti ti-search" style={{ fontSize: 13 }} />
-            <span style={{ flex: 1 }}>{searchPlaceholder}</span>
-            <span className="kbd" style={{ marginLeft: 6 }}>⌘K</span>
+            <i className="ti ti-search" />
+            <span style={{ flex: 1, textAlign: 'left' }}>{searchPlaceholder}</span>
+            <span className="kbd">⌘K</span>
           </button>
         ) : null}
         {actions}

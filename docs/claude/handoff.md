@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Cursor prompts drafted (kickoff + task-01…06, consolidated from an original 8-task split — see below); not yet run in Cursor.** Branch created off `mvp-main`; no code committed yet. See "This session" below.
+`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **task-01 (foundation + shell) implemented in Cursor.** Tasks 02–06 pending. Schema stays v14. See "Completed work — `mvp-visual-overhaul`" below.
 
 Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
 
@@ -69,9 +69,24 @@ the new task-06 (Admin), since that's now the last task to run.
 - **Gotham SSm** display font: prompts tell Cursor to drop the licensed web files into `apps/web/public/fonts/`, else fall back to Open Sans (documented substitute) — no random substitute.
 - **Two icon systems + per-module CSS confirmed:** `fresh.css` (`:root` tokens + most screens), `admin.css`, `prototype-runs.css` (the live `.runs-v12` three-pane workspace), `prototype-plans.css`; `globals.css` is an empty reset. This is why the token retarget in task-01 is so leveraged.
 
-`docs/product/design-system.md` is slated to be rewritten during task-01 (replace the ad-hoc token table with the Compass set). Not yet run in Cursor, so not yet done.
+`docs/product/design-system.md` rewritten during task-01 with the Compass token set.
 
-QA evidence for this branch will land at `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` (per task).
+QA evidence for this branch lands at `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` (per task).
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-01) ✅
+
+**Schema:** unchanged (v14). CSS, font loading, and presentational shell markup only.
+
+| Part | What it delivered |
+|------|-------------------|
+| Part A | Compass `:root` tokens in `fresh.css`; light-mode pin; shared primitives (`.btn`, `.panel`, `.tbl`, `.pill`, `.chip`, `.prog`, status dots, result buttons); Open Sans via `next/font/google`; Gotham `@font-face` declared (files not yet in repo — Open Sans fallback active) |
+| Part B | Sidebar reskin (216px, white-chip active state, 68px collapsed rail); top bar reskin (56px, project switcher, ⌘K search, module switcher chrome); `FreshShell`, `FreshTopbar`, `ProjectSwitcher` presentational updates |
+
+**Deliberate palette notes:** Blocked → Compass amber (`#E4AF03` / text `#8C6A00`). Skipped stays purple `#4527A0`.
+
+**Next:** task-02 (Dashboard + remaining screens).
 
 ---
 
@@ -184,7 +199,7 @@ Shaun dictated a full roadmap this session (Next Steps / Improvements / Lesser I
 
 Current state in brief:
 
-- **`mvp-visual-overhaul`** `[~in progress]` — full-app Compass reskin; kickoff + task-01…06 prompts drafted at `docs/cursor-prompts/mvp-visual-overhaul/` (consolidated from an original 8-task split — see "This session" above). Not yet run in Cursor. Schema stays v14 (visual-only). Reference mockup at `mockup/Relay Compass Reskin Mockup.html`.
+- **`mvp-visual-overhaul`** `[~in progress]` — task-01 (foundation + shell) done; tasks 02–06 pending. Schema stays v14. QA: `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md`.
 - **`mvp-custom-fields`** `[~in progress]` — three real task prompts drafted at `docs/cursor-prompts/mvp-custom-fields/` (task-01 field type parity, task-02 Owner mandatory field, task-03 per-field project assignment). Not yet run in Cursor. Would bump schema v14 → v15 (task-01) and possibly further (see each prompt).
 - **`mvp-dashboard-metrics`** `[x]` — implemented (tasks 01–04); see "Completed work" above. Ready for commit/PR after QA review.
 - **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.
