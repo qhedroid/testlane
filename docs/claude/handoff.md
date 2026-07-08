@@ -159,7 +159,7 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 - Test Cases mockup's case list has real underlying mock data with titles/steps/owners — it just needs to be viewed in an actual browser (not read as raw markup) to see populated rows; no separate written spec needed.
 - My Work / Milestones / Requirements / Reports / AI Studio are all genuinely new but, like the rest of this mock app, are static/demo-only underneath (AI Studio's "Generate" flow has no real backend call) — safe to build as visual-only shells with hardcoded mock content, consistent with the app's existing frontend-only/demo-data pattern.
 
-**Next:** propose and confirm a task-07+ breakdown (grouping the 13 areas Shaun listed into sized Cursor sessions) before drafting the detailed prompts — in progress, see chat.
+**Task-07…13 drafted** at `docs/cursor-prompts/mvp-visual-overhaul/` (7 Cursor sessions, confirmed with Shaun before drafting): task-07 shell (sidebar/topbar/route stubs) → task-08 six new screens (Login, My Work, Milestones, Requirements, Reports, AI Studio) → task-09 Dashboard → task-10 Test Cases (hybrid) → task-11 Test Plans → task-12 Test Runs (protected) → task-13 Defects+Audit+Project Settings (bundled) + branch-wide final wrap-up. `_kickoff.md` §9 has the full Phase 2 ruleset (supersedes several Phase 1 rules — read before task-07). Not yet run in Cursor. No calibration data yet for this heavier component-authoring work — each task instructs Cursor to report usage % so later tasks can be resized if needed.
 
 ---
 

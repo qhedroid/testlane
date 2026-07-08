@@ -1,5 +1,12 @@
 # Branch kickoff — `mvp-visual-overhaul` (Compass reskin)
 
+> **This file now covers two phases.** §1–§8 below are **Phase 1** (tasks 01–06): a pure CSS/className
+> re-skin, complete and committed. **§9 (Phase 2, tasks 07–13)** is a larger follow-on that adopts more
+> of the mockup directly — new screens, sidebar/topbar structure changes, full per-screen rebuilds —
+> and **supersedes several of the Phase 1 golden rules below** for tasks 07 onward. If you're starting
+> task-07 or later, read §1–§8 for context, then read §9 carefully — it tells you exactly which Phase 1
+> rules still apply and which don't.
+
 > This branch is split into 6 task files (`task-01-*.md` … `task-06-*.md`), each sized to comfortably
 > fit in a single Cursor agent session/conversation. Hand this kickoff file to Cursor first, then hand
 > it **one task file at a time**, waiting for that session to finish before starting the next. **Within
@@ -140,3 +147,90 @@ This branch changes the visual system but not behaviour, routes, data, or schema
 The mockup shows the app under the working name **"Relay"** with a **"TransPerfect — Trial
 Interactive"** organization. Keep the app's current product name and wordmark as they are in the
 code — do not rename anything. Only the *visual style* changes.
+
+---
+
+## 9. Phase 2 — Compass IA/layout overhaul (tasks 07–13)
+
+Everything in §1–§8 governed Phase 1 (tasks 01–06, complete). After reviewing that result, Shaun
+requested a larger follow-on: bring over more of the mockup's actual structure, not just its colours.
+This is deliberately kept on this same branch rather than split into a new one. Read this section in
+full before starting task-07 — it changes some of the ground rules above.
+
+### 9.1 What's different from Phase 1
+
+1. **Zero-behaviour-change no longer applies universally.** Sidebar/topbar structure changes, new
+   screens, and full per-screen layout rebuilds are explicitly in scope for the screens named in the
+   task table below. **The Test Runs protected-UX rule (§2.4) is unchanged and still fully applies** —
+   nothing about Phase 2 relaxes that; task-12 restates it.
+2. **New screens are now in scope:** Login, My Work, Milestones, Requirements, Reports, AI Studio.
+   (§6's exclusion of these is lifted for these six specifically — everything else in §6 still applies.)
+3. **Layout restructuring is now in scope** for the screens named in the task table below — the
+   mockup's actual layout, not just its colours/type, is the target for those screens. Screens not
+   named in the Phase 2 task table (nothing currently outside it) keep the Phase 1 rule of
+   layout-stays.
+4. **Icon libraries still stay** (§2.6 unchanged). The six new screens/nav items need Tabler
+   equivalents chosen for the mockup's Material glyphs — task-07 lists the mapping.
+5. **Frontend-only phase still applies** (§2.7 unchanged) — no backend, no real auth, no real AI
+   calls. New screens are static/demo-content shells, consistent with how the rest of this app
+   already works (e.g. the existing "Pinned Modules" / mock defects / seed data pattern).
+
+### 9.2 Critical rule — read before every Phase 2 task
+
+Several screens are described as "abandon ours, implement the mockup's version" (Dashboard, Defects,
+Audit). The mockup's own content is static demo data written for a design mockup, not a real app.
+**`DashboardScreen.tsx` and `DefectsScreen.tsx` compute real values from `FreshProvider` state
+(`useFresh()`) today. Adopt the mockup's layout and component structure, but re-wire it to that same
+live data — never replace a live value with the mockup's hardcoded number** (e.g. "342 test cases",
+its specific donut percentages, its specific defect rows). `AuditScreen.tsx` is already static
+(`AUDIT_EVENTS` from `data/seed`), so swapping its content for the mockup's own static demo rows is
+fine — there's no live computation to lose there. Test Plans and Test Cases already compute live from
+`FreshProvider` too — the same rule applies to anything they display.
+
+### 9.3 Font
+
+Gotham SSm is now fully wired (`apps/web/public/fonts/gotham-ssm/`, weights 400/500/700, woff2+woff).
+There is no more Open Sans fallback caveat — nothing to do here, just don't remove the files or the
+`@font-face` rules.
+
+### 9.4 Task sequence (tasks 07–13)
+
+Run one task file per Cursor session, same pattern as Phase 1 — hand this whole kickoff file plus the
+task file, let it run to completion continuously, no stopping for confirmation except at a genuine
+blocker.
+
+| Task | Scope | Primary files |
+|------|-------|---------------|
+| **task-07** | Sidebar + top bar overhaul, plus route/nav scaffolding for the six new screens (pointing at placeholders until task-08 fills them in) | `FreshShell.tsx`, `FreshTopbar.tsx`, `TestRunsTopbar.tsx`, `project-routes.ts`, new `page.tsx` route stubs, `fresh.css` |
+| **task-08** | Six new screens, built out fully: Login, My Work, Milestones, Requirements, Reports, AI Studio | new screen components + routes, replacing task-07's placeholders |
+| **task-09** | Dashboard — full rebuild from the mockup's layout, live data preserved (§9.2) | `DashboardScreen.tsx`, `fresh.css` |
+| **task-10** | Test Cases — hybrid rebuild; the task file spells out exactly what's kept from the app vs. replaced from the mockup | `CasesScreen.tsx`, `fresh.css` |
+| **task-11** | Test Plans — full rebuild from the mockup's layout, live data preserved (§9.2) | `PlansScreen.tsx`, `prototype-plans.css` |
+| **task-12** | Test Runs — full rebuild from the mockup's structure; **protected UX, §2.4 still applies in full** | `RunsScreen.tsx`, `TestRunsTopbar.tsx`, `prototype-runs.css` |
+| **task-13** | Defects + Audit + Project Settings, bundled — three smaller, lower-risk screens | `DefectsScreen.tsx`, `AuditScreen.tsx`, `SettingsScreen.tsx`, `admin/**`, `fresh.css` |
+
+**Sizing note:** this is heavier work than Phase 1's CSS-only tasks — real component authoring from
+the mockup's markup, not targeted line edits — so Phase 1's measured 41–46% usage band does **not**
+necessarily transfer. There's no calibration data yet for this kind of work. Report the usage % after
+each task the same way Phase 1 did, so later tasks in this list can be resized (split further, or
+bundled more) if the early ones run hot or cold.
+
+### 9.5 Definition of done (Phase 2, per task)
+
+Same as §5, plus:
+- Any screen with live data (Dashboard, Defects, Test Cases, Test Plans, Test Runs) shows real,
+  correct `FreshProvider`-computed values — never the mockup's static demo numbers.
+- New screens render the mockup's static demo content with no console errors, using Tabler icons
+  (not Material Icons Round) for their nav entries and in-page icons.
+- Sidebar/nav labels use **Title Case** (e.g. "Test Cases," "My Work," "Audit History") even where
+  the mockup itself uses sentence case ("Test cases," "My work") — this is a deliberate correction,
+  not a mockup-copying error.
+- Living docs updated per each task file's own Documentation section.
+
+### 9.6 Mockup research reference
+
+`docs/claude/handoff.md`'s "2026-07-08 Phase 2" section has the full write-up of what was found by
+decoding the mockup bundle (nav order/labels, global topbar scope, Project Settings behaviour, Test
+Runs control parity, Test Cases real mock data, confirmation the six new screens are static/demo-only
+underneath). Read it once before task-07 rather than re-deriving these facts from the mockup file
+yourself.
