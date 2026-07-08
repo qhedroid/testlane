@@ -192,11 +192,33 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; all six routes HTTP 200; core regression routes PASS.
 
-**Next:** task-09 (Dashboard).
+**Next:** task-10 (Test Cases hybrid rebuild).
 
 **Note for task-13:** remove unused `FreshTopbar` `actions` prop once all screens stop passing screen-specific topbar actions.
 
 ---
+
+## Completed work — `mvp-visual-overhaul` (task-09) ✅
+
+**Schema:** unchanged (v14). Dashboard layout rebuild; new selectors only (no mutations).
+
+| What it delivered |
+|-------------------|
+| **Dashboard** — full mockup layout rebuild: KPI strip (6 tiles), completion donut + legend, results-over-time SVG chart (7d/30d/90d chips), results-by-assignee bars, open-runs list (click-through to run), milestones slice (static placeholder → `/milestones`), needs-attention panel (unlinked failures from live data) |
+| **Coverage by folder** — folded into Completion panel as "Lowest coverage by folder" (live data from active runs) |
+| **Selectors** — `computeDashboardKpis`, time series, pass trend, assignee bars, open runs, unlinked failures, coverage rows in `project-selectors.ts` |
+| **CSS** — `.dash-*` grid/panel/chart classes in `fresh.css` |
+| Dropped mockup "Hey Shaun" page head per Shaun's ask |
+
+**Reduced-fidelity fallbacks (seed data has no `executionLog` / `testedAt` on initial executions):**
+- Weekly Passed/Failed deltas show "As of today" until user records results in-session
+- Pass-trend sparkline and results-over-time chart show current snapshot as flat lines (labelled in UI)
+- After in-session execution changes, `executionLog` timestamps drive real deltas/trends
+
+**QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; `/DP/dashboard` + core regression routes PASS.
+
+**Next:** task-10 (Test Cases).
+
 
 ## Completed work — `mvp-visual-overhaul` (task-03) ✅
 
