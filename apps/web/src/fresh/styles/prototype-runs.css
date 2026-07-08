@@ -735,7 +735,7 @@
 .runs-v12 .sc-bar .sc-h{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3)}
 
 /* Test run management topbar */
-.runs-v12 .tr-topbar-actions{margin-left:auto}
+.runs-v12 .tr-topbar-actions{display:flex;align-items:center;gap:5px;margin-left:auto}
 .runs-v12 .tr-seal-btn{gap:5px}
 .runs-v12 .tr-icon-btn{padding:3px 7px;min-width:28px;justify-content:center}
 .runs-v12 .tr-icon-btn:disabled,.runs-v12 .tr-seal-btn:disabled{opacity:.45;cursor:not-allowed}

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { type ReactNode } from 'react'
 import { useFreshUI } from '../hooks/useFreshUI'
 import { ProjectSwitcher } from './ProjectSwitcher'
+import { TopbarGlobalActions } from './TopbarGlobalActions'
 
 export interface Breadcrumb {
   label: string
@@ -65,6 +66,7 @@ export function FreshTopbar({
             <span className="kbd">⌘K</span>
           </button>
         ) : null}
+        <TopbarGlobalActions />
         {actions}
       </div>
     </div>

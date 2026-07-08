@@ -62,7 +62,7 @@ export function TestRunsTopbar({
   }
 
   return (
-    <div className="ta tr-topbar-actions">
+    <div className="tr-topbar-actions">
       <button
         type="button"
         className="btn tr-seal-btn"

@@ -161,6 +161,21 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **Task-07…13 drafted** at `docs/cursor-prompts/mvp-visual-overhaul/` (7 Cursor sessions, confirmed with Shaun before drafting): task-07 shell (sidebar/topbar/route stubs) → task-08 six new screens (Login, My Work, Milestones, Requirements, Reports, AI Studio) → task-09 Dashboard → task-10 Test Cases (hybrid) → task-11 Test Plans → task-12 Test Runs (protected) → task-13 Defects+Audit+Project Settings (bundled) + branch-wide final wrap-up. `_kickoff.md` §9 has the full Phase 2 ruleset (supersedes several Phase 1 rules — read before task-07). Not yet run in Cursor. No calibration data yet for this heavier component-authoring work — each task instructs Cursor to report usage % so later tasks can be resized if needed.
 
+### Completed work — `mvp-visual-overhaul` (task-07) ✅
+
+**Schema:** unchanged (v14). Sidebar/topbar structure, route stubs, global topbar actions.
+
+| What it delivered |
+|-------------------|
+| Sidebar reskin — mockup nav order/grouping (Dashboard, My Work, Testing, Traceability); Title Case labels; Tabler icons for new items; removed Pinned Modules + Integrations; single "Project Settings" → `/admin` (sidebar swap preserved); sizing bump (13px/14px padding, 14.5px/500 font, 21px icons) |
+| Top bar — global cluster in `FreshTopbar` (New test case, New test run, AI Studio, Notifications, Help); wired to `openCreateCase` / global `CreateRunModal` via `useFreshUI`; `actions` prop retained for not-yet-migrated screens |
+| Route stubs — `/mywork`, `/milestones`, `/requirements`, `/aistudio`, `/login` placeholder pages; `MODULE_SLUGS` extended |
+| **Judgment call (flag for Shaun):** `/[projectKey]/settings` now redirects to `/admin` — per-project `SettingsScreen` orphaned from sidebar but route won't 404 |
+
+**Next:** task-08 (six new screen content).
+
+**Note for task-13:** remove unused `FreshTopbar` `actions` prop once all screens stop passing screen-specific topbar actions.
+
 ---
 
 ## Completed work — `mvp-visual-overhaul` (task-03) ✅

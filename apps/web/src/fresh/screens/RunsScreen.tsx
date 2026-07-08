@@ -12,6 +12,7 @@ import { CreateRunModal } from '../components/CreateRunModal'
 import { AddCasesToRunModal } from '../components/AddCasesToRunModal'
 import { EditRunModal } from '../components/EditRunModal'
 import { TestRunsTopbar } from '../components/TestRunsTopbar'
+import { TopbarGlobalActions } from '../components/TopbarGlobalActions'
 import { DEFECT_NAMES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
@@ -552,7 +553,9 @@ export function RunsScreen() {
           <ProjectSwitcher />
           <div className="proj-sep" />
           {breadcrumb}
-          <TestRunsTopbar
+          <div className="ta">
+            <TopbarGlobalActions />
+            <TestRunsTopbar
             currentRun={undefined}
             onSealToggle={handleSealToggle}
             onDuplicate={handleDuplicate}
@@ -561,6 +564,7 @@ export function RunsScreen() {
             onEdit={() => setEditOpen(true)}
             hasCases={hasCases}
           />
+          </div>
         </div>
         <div className="empty-state on">
           <div className="empty-card">
@@ -592,7 +596,9 @@ export function RunsScreen() {
           <ProjectSwitcher />
           <div className="proj-sep" />
           {breadcrumb}
-          <TestRunsTopbar
+          <div className="ta">
+            <TopbarGlobalActions />
+            <TestRunsTopbar
             currentRun={undefined}
             onSealToggle={handleSealToggle}
             onDuplicate={handleDuplicate}
@@ -601,6 +607,7 @@ export function RunsScreen() {
             onEdit={() => setEditOpen(true)}
             hasCases={hasCases}
           />
+          </div>
         </div>
         <div className="tr-lay tr-lay-select">
           <div className="ec-pane">
@@ -637,7 +644,9 @@ export function RunsScreen() {
           <ProjectSwitcher />
           <div className="proj-sep" />
           {breadcrumb}
-          <TestRunsTopbar
+          <div className="ta">
+            <TopbarGlobalActions />
+            <TestRunsTopbar
             currentRun={currentRun}
             onSealToggle={handleSealToggle}
             onDuplicate={handleDuplicate}
@@ -646,6 +655,7 @@ export function RunsScreen() {
             onEdit={() => setEditOpen(true)}
             hasCases={hasCases}
           />
+          </div>
         </div>
         <div className="tr-lay tr-lay-select">
           <div className="ec-pane">
