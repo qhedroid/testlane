@@ -1,6 +1,6 @@
-@font-face{font-family:"Gotham SSm";font-weight:400;font-style:normal;font-display:swap;src:url("/fonts/gotham-ssm/GothamSSm-Book.woff2") format("woff2")}
-@font-face{font-family:"Gotham SSm";font-weight:500;font-style:normal;font-display:swap;src:url("/fonts/gotham-ssm/GothamSSm-Medium.woff2") format("woff2")}
-@font-face{font-family:"Gotham SSm";font-weight:700;font-style:normal;font-display:swap;src:url("/fonts/gotham-ssm/GothamSSm-Bold.woff2") format("woff2")}
+@font-face{font-family:"Gotham SSm";font-weight:400;font-style:normal;font-display:swap;src:url("/fonts/gotham-ssm/GothamSSm-Book.woff2") format("woff2"),url("/fonts/gotham-ssm/GothamSSm-Book.woff") format("woff")}
+@font-face{font-family:"Gotham SSm";font-weight:500;font-style:normal;font-display:swap;src:url("/fonts/gotham-ssm/GothamSSm-Medium.woff2") format("woff2"),url("/fonts/gotham-ssm/GothamSSm-Medium.woff") format("woff")}
+@font-face{font-family:"Gotham SSm";font-weight:700;font-style:normal;font-display:swap;src:url("/fonts/gotham-ssm/GothamSSm-Bold.woff2") format("woff2"),url("/fonts/gotham-ssm/GothamSSm-Bold.woff") format("woff")}
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   /* Nav / brand (TransPerfect Dark Blue) */
@@ -22,7 +22,6 @@
   /* Type */
   --mono:ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;
   --sans:"Open Sans",-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-  /* TODO(display-font): drop Gotham SSm woff2 files into public/fonts/gotham-ssm/ — Open Sans fallback until then */
   --display:"Gotham SSm","Open Sans",-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   /* Radii (Compass) */
   --r-s:6px;--r-m:8px;--r-l:10px;--r-pill:100px;

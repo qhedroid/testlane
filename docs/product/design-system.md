@@ -33,7 +33,7 @@ Relay uses the **Compass (TransPerfect)** visual system. Tokens live in `apps/we
 | Role | Family | Notes |
 |---|---|---|
 | Body | **Open Sans** (`--sans`) | Loaded via `next/font/google` in root layout |
-| Display | **Gotham SSm** (`--display`) | Headings ≥20px, metric values; falls back to Open Sans until web files are in `public/fonts/gotham-ssm/` |
+| Display | **Gotham SSm** (`--display`) | Headings ≥20px, metric values; web files live in `public/fonts/gotham-ssm/` (weights 400/500/700, woff2+woff), falls back to Open Sans only if those files are ever removed |
 | Monospace | `--mono` | IDs, counts, timestamps |
 
 | Role | Size | Weight |

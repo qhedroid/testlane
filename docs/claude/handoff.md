@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **All tasks 01–06 complete.** Schema stays v14. Ready for commit of task-04+06 changes and PR to `mvp-main`. See "Completed work — `mvp-visual-overhaul`" below.
+`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Phase 1 (tasks 01–06, pure CSS/className re-skin) complete.** Schema stays v14. **Not ready for PR yet** — the branch continues with a Phase 2 (see "2026-07-08 Phase 2" below): a larger information-architecture/layout pass that adopts more of the mockup directly (new screens, sidebar/topbar changes, several screens rebuilt from the mockup), deliberately kept on this same branch rather than split into a new one (Shaun's call). The Phase 1 PR description at `pr-description-mvp-visual-overhaul.md` only covers tasks 01–06 and will need revisiting once Phase 2 also lands. See "Completed work — `mvp-visual-overhaul`" below for Phase 1 detail.
 
 Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
 
@@ -103,7 +103,7 @@ QA evidence for this branch lands at `/tmp/relay-qa-mvp-visual-overhaul/qa-repor
 
 **Deliberate palette notes:** Blocked → Compass amber (`#E4AF03` / text `#8C6A00`). Skipped stays purple `#4527A0`.
 
-**Next:** task-04 (Test Runs) — done; task-06 (Admin) — done. Branch complete.
+**Next:** task-04 (Test Runs) — done; task-06 (Admin) — done. Phase 1 complete; see "2026-07-08 Phase 2" below for what's next on this branch.
 
 ---
 
@@ -129,7 +129,37 @@ QA evidence for this branch lands at `/tmp/relay-qa-mvp-visual-overhaul/qa-repor
 | Admin reskin — sidebar white-chip active (matches main shell), Compass form chrome (34px inputs, focus rings), table/badge/card/modal tokens, toggles → `--pass`, selected rows → `--accent-lt` |
 | Branch wrap-up: full 19-route regression sweep PASS; PR description at `docs/cursor-prompts/mvp-visual-overhaul/pr-description-mvp-visual-overhaul.md` |
 
-**Branch status:** `mvp-visual-overhaul` tasks 01–06 complete. Pending: commit task-04+06 CSS changes, then open PR.
+**Branch status:** `mvp-visual-overhaul` Phase 1 (tasks 01–06) complete and committed. **Not opening a PR yet** — see "2026-07-08 Phase 2" below.
+
+---
+
+## 2026-07-08 Phase 2 — Compass IA/layout overhaul (kept on this branch)
+
+Shaun reviewed the Phase 1 (pure-reskin) result and requested a much larger follow-on pass: adopt more of the mockup directly rather than just its colours/type. This is explicitly **not** a pure re-skin anymore — it includes new screens, sidebar/topbar structural changes, and rebuilding several screens from the mockup. Deliberately kept on `mvp-visual-overhaul` rather than split into a new branch (Shaun's call, weighed against the recommendation to branch since this breaks the Phase 1 charter's "zero behaviour change / no new screens" rules).
+
+**Decisions locked in:**
+- Continue on `mvp-visual-overhaul`, no new branch. Phase 1's "branch complete" status and PR description are superseded until Phase 2 also lands.
+- Sidebar's current "Pinned Modules" section (eTMF Module, API Gateway, Add shortcut) — not in the mockup at all — is **removed**, not kept.
+- Login page is a **reachable route only** (`/login` or similar), not a gate on app load — no change to how the app is entered today, just an additional static page matching the mockup 1:1.
+- Font: Gotham SSm licensed woff2/woff files were found already embedded (base64) inside `mockup/Relay Compass Reskin Mockup.html` itself (real Hoefler & Co. files, TransPerfect-supplied, per the mockup's own header comment) — extracted directly into `apps/web/public/fonts/gotham-ssm/`, `fresh.css` `@font-face` rules updated with woff fallback, stale TODO removed, `design-system.md` updated. No more Open-Sans-fallback caveat.
+
+**Critical risk flagged for the task prompts (read before drafting task-07+):** several of Shaun's per-screen asks say "abandon ours completely" / "implement as-is from the mockup" (Dashboard, Defects, Audit, Test Plans). The mockup's own content is static demo data. Confirmed by reading the code:
+- `DashboardScreen.tsx` computes every widget live from `FreshProvider` (the `mvp-dashboard-metrics` work) — **must not** be replaced with the mockup's hardcoded numbers ("342 test cases" etc.); adopt its layout/component structure only, re-wire to the same live data.
+- `DefectsScreen.tsx` reads `activeDefects` from `useFresh()` (real local defects), merged with a static mock list — same rule: layout from mockup, real data underneath.
+- `AuditScreen.tsx` is already static (`AUDIT_EVENTS` from `data/seed`), so swapping to the mockup's own static demo audit rows is low-risk.
+- Test Plans/Test Cases already compute live from `FreshProvider`; Shaun's own notes for those are more surgical/hybrid already, lower risk of this trap.
+
+This must be a standing rule in every relevant task-07+ prompt: **mockup markup + real app data, never mockup's static numbers wholesale.**
+
+**Mockup research findings (from decoding `mockup/Relay Compass Reskin Mockup.html`'s self-contained bundle):**
+- Sidebar nav order/labels (mockup uses sentence case, e.g. "Test cases" — Shaun wants Title Case, an intentional deviation, not a copy-mockup-verbatim item): Dashboard, My work, [Testing] Test cases/Test plans/Test runs, Milestones, [Traceability] Requirements/Defects/Reports/Audit history, AI Studio. No Integrations entry (confirms removal).
+- Global top bar (search, New test case, New test run, AI Studio, Notifications, Help) renders once outside any per-screen conditional — confirms it's safe to freeze it identically across screens; each screen keeps its own local page-head for screen-specific actions.
+- "Project settings" in the mockup is a single sidebar item (bottom cluster, near collapse) opening one page with an embedded admin-subnav panel — different from the app's real behaviour of swapping the whole global sidebar into an admin nav. Shaun wants to keep the app's real swap-sidebar behaviour, only restyle the content per the mockup.
+- Test Runs mockup includes the actual Pass/Fail/Blocked/Skip buttons and P/F/B/S/↑↓/? keyboard-shortcut legend — structurally close to the protected three-pane workspace, lower risk than initially assumed, but Cursor must still wire mockup markup onto real handlers and run the full protected-UX regression check.
+- Test Cases mockup's case list has real underlying mock data with titles/steps/owners — it just needs to be viewed in an actual browser (not read as raw markup) to see populated rows; no separate written spec needed.
+- My Work / Milestones / Requirements / Reports / AI Studio are all genuinely new but, like the rest of this mock app, are static/demo-only underneath (AI Studio's "Generate" flow has no real backend call) — safe to build as visual-only shells with hardcoded mock content, consistent with the app's existing frontend-only/demo-data pattern.
+
+**Next:** propose and confirm a task-07+ breakdown (grouping the 13 areas Shaun listed into sized Cursor sessions) before drafting the detailed prompts — in progress, see chat.
 
 ---
 
@@ -279,7 +309,7 @@ Shaun dictated a full roadmap this session (Next Steps / Improvements / Lesser I
 
 Current state in brief:
 
-- **`mvp-visual-overhaul`** `[x]` — tasks 01–06 complete. Schema stays v14. QA: `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md`. PR description drafted.
+- **`mvp-visual-overhaul`** `[~in progress]` — Phase 1 (tasks 01–06, pure re-skin) `[x]` complete, schema stays v14, QA at `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md`, PR description drafted but superseded. Phase 2 (IA/layout overhaul, kept on this branch) started 2026-07-08 — see "2026-07-08 Phase 2" section above.
 - **`mvp-custom-fields`** `[~in progress]` — three real task prompts drafted at `docs/cursor-prompts/mvp-custom-fields/` (task-01 field type parity, task-02 Owner mandatory field, task-03 per-field project assignment). Not yet run in Cursor. Would bump schema v14 → v15 (task-01) and possibly further (see each prompt).
 - **`mvp-dashboard-metrics`** `[x]` — implemented (tasks 01–04); see "Completed work" above. Ready for commit/PR after QA review.
 - **`mvp-requirements-defects`** `[~draft]` — provisional notes only, at `docs/cursor-prompts/mvp-requirements-defects/draft-notes.md`. Includes an open question from Shaun (case/run detachment behavior) he wants to verify further before it's acted on.
