@@ -61,6 +61,23 @@ now, since each task file is its own Cursor session and its own review point. Th
 regression-sweep + PR-description step (previously the end of the old task-08) moved to the end of
 the new task-06 (Admin), since that's now the last task to run.
 
+**2026-07-08 actuals (calibrating the sizing model as tasks run):** measured Cursor usage per session
+so far — task-01 (foundation + shell, ~1,150 lines across 7 files, 2 original tasks merged) 46%;
+task-02 (Dashboard + remaining screens, ~2,250 lines across 14 files, 2 original tasks merged) 41%;
+task-03 + task-05 run together in one session as an explicit experiment (Test Cases + Test Plans,
+~4,074 lines combined — the two largest of the four remaining solo-sized tasks) 41%. All three
+sessions land in a tight 41–46% band regardless of file count or line volume, which is a stronger
+signal than line-count sizing alone predicted: usage looks dominated by fixed per-session overhead
+(reading `_kickoff.md`, `pnpm build`/`pnpm dev`, the smoke-test sweep) rather than scaling with
+content size within this range. Decision: bundle the two remaining tasks — task-04 (Test Runs,
+protected UX) and task-06 (Admin, plus the branch's final regression sweep + PR description) — into
+one final combined session too, run back-to-back the same way (no new merged file; Cursor is just
+pointed at both existing task files in one prompt, same pattern as the task-03+05 session). One
+caveat worth keeping in mind regardless of the token-budget headroom: task-04 is the branch's one
+protected-UX screen, so its own "protected-UX regression (critical)" verification step should still
+get the same careful attention it would if run alone — token safety margin doesn't reduce the
+behavioural-regression risk on that screen.
+
 **Key decisions baked into the prompts:**
 - **Pure re-skin, zero behaviour change** is the branch's golden rule. The Test Runs three-pane execution UX and `/runs/api` are flagged protected (visual-only).
 - **Icons stay** — the fresh app keeps Tabler (`ti ti-*`), admin keeps Lucide; no library swap (~180 `ti` sites). Material-glyph parity is a possible future `mvp-icon-migration`, out of scope here.
