@@ -192,7 +192,29 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; all six routes HTTP 200; core regression routes PASS.
 
-**Next:** task-11 (Test Plans rebuild).
+**Next:** task-12 (Test Runs protected UX rebuild).
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-11) ✅
+
+**Schema:** unchanged (v14). Layout/visual rebuild; all `resolvePlanCases()` and query-resolution logic unchanged.
+
+| What it delivered |
+|-------------------|
+| **Plan list pane** — rounded panel, `pl-cpill` count badge, `pl-item` rows with mockup id/title/meta typography, selected-row inset accent bar; resizable pane unchanged |
+| **Plan detail header** — 18px display title, inline meta line, `btn-sm`/`btn-neutral` action cluster, icon maximize button |
+| **Tabs** — `pl-dtabs` strip replacing `nav-tab-bar`; Test cases tab shows live resolved-case count badge |
+| **Overview** — three-column `pl-ov-card` metric tiles; horizontal coverage donut; open-run card shows TR-key + run name; live "Linked runs" count added |
+| **Run history** — `pl-gl-table` with toolbar header; segmented result bars + hover `RunStatusInfographic` tooltip unchanged |
+| **Query builder** — `pl-qg-card` cards, `pl-tagp` folder/source chips, restyled condition selects; add/remove/resolve behaviour unchanged |
+| **Resolved cases** — `pl-gl-table` with priority pills and source chips; live data from `resolvePlanCases()` |
+| **Page header** — not added (mockup `page-head` discarded per Shaun's ask) |
+| **CSS** — full Phase 2 rewrite of `prototype-plans.css` |
+
+**QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; `/DP/plans` + core regression routes PASS; Playwright screenshots captured.
+
+**Next:** task-12 (Test Runs protected UX rebuild).
 
 ---
 
@@ -212,7 +234,7 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; `/DP/testcases` + core regression routes PASS.
 
-**Next:** task-11 (Test Plans rebuild).
+**Next:** task-11 (Test Plans rebuild) — **done**; see task-11 section above.
 
 **Note for task-13:** remove unused `FreshTopbar` `actions` prop once all screens stop passing screen-specific topbar actions.
 
@@ -237,10 +259,7 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; `/DP/dashboard` + core regression routes PASS.
 
-**Next:** task-11 (Test Plans rebuild).
-
-
-## Completed work — `mvp-visual-overhaul` (task-03) ✅
+**Next:** task-11 (Test Plans rebuild) — **done**; see task-11 section above.
 
 **Schema:** unchanged (v14). Presentational CSS / className only.
 

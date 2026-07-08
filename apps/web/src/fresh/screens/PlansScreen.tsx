@@ -86,6 +86,13 @@ const OPERATOR_OPTIONS: { value: QueryOperator; label: string }[] = [
   { value: 'not_contains', label: 'not contains' },
 ]
 
+const PRIORITY_CLASS: Record<Case['priority'], string> = {
+  Critical: 'pri pr-crit',
+  High: 'pri pr-high',
+  Medium: 'pri pr-med',
+  Low: 'pri pr-low',
+}
+
 function ConditionQueryBody({
   query,
   onUpdate,
@@ -186,13 +193,13 @@ function FolderQueryBody({
               ? 'Unfiled'
               : (activeFolders.find((f) => f.id === fid)?.name ?? fid)
           return (
-            <div key={fid} className="pl-folder-chip">
-              <i className="ti ti-folder" style={{ fontSize: 11, color: 'var(--accent)' }} />
+            <span key={fid} className="pl-tagp">
+              <i className="ti ti-folder" style={{ fontSize: 13 }} />
               {label}
               <button type="button" title="Remove folder" onClick={() => removeFolder(fid)}>
                 <i className="ti ti-x" />
               </button>
-            </div>
+            </span>
           )
         })}
       </div>
@@ -315,21 +322,21 @@ function QueryGroupCard({
     query.type === 'condition' ? 'CONDITION' : query.type === 'folder' ? 'FOLDER' : 'STATIC'
 
   return (
-    <div className="pl-query-card">
-      <div className="pl-query-card-hd">
-        <span className="pl-query-type-badge">{typeLabel}</span>
-        <span className="pl-query-title">{query.title}</span>
-        <span className="pl-query-count">{resolvedCount}</span>
+    <div className="pl-qg-card">
+      <div className="pl-qg-hd">
+        <span className="pl-qg-type">{typeLabel}</span>
+        <span className="pl-qg-title">{query.title}</span>
+        <span className="pl-cpill">{resolvedCount}</span>
         <button
           type="button"
-          className="pl-query-remove"
+          className="pl-iconbtn pl-iconbtn-sm"
           title="Remove query group"
           onClick={onRemove}
         >
           <i className="ti ti-x" />
         </button>
       </div>
-      <div className="pl-query-card-body">
+      <div className="pl-qg-bd">
         {query.type === 'condition' && (
           <ConditionQueryBody query={query} onUpdate={onUpdate} />
         )}
@@ -585,13 +592,13 @@ export function PlansScreen() {
       <div className={`pl-lay${planMaximized ? ' pl-maximized' : ''}`}>
         <div className="pl-list-pane">
           <div className="pl-list-hd">
-            <i className="ti ti-clipboard-list" style={{ fontSize: 13, color: 'var(--text2)' }} />
-            <span className="st-ttl">Plans</span>
-            <span className="pnl-ct">{activePlans.length}</span>
+            <i className="ti ti-clipboard-list" style={{ fontSize: 17, color: 'var(--text3)' }} />
+            <span className="pl-list-title">Plans</span>
+            <span className="pl-cpill">{activePlans.length}</span>
+            <span className="pl-list-hd-spacer" />
             <button
               type="button"
-              className="btn btn-p"
-              style={{ fontSize: 11, padding: '3px 8px' }}
+              className="btn btn-p btn-xs"
               onClick={() => setCreatePlanOpen(true)}
             >
               <i className="ti ti-plus" style={{ fontSize: 11 }} /> New plan
@@ -614,12 +621,12 @@ export function PlansScreen() {
               filteredPlans.map((plan) => (
                 <div
                   key={plan.id}
-                  className={`pl-list-item${selectedPlan?.id === plan.id ? ' on' : ''}`}
+                  className={`pl-item${selectedPlan?.id === plan.id ? ' on' : ''}`}
                   onClick={() => navigateToPlan(plan)}
                 >
-                  <div className="pl-item-key">{plan.planKey}</div>
-                  <div className="pl-item-title">{plan.title}</div>
-                  <div className="pl-item-meta">
+                  <div className="k">{plan.planKey}</div>
+                  <div className="t">{plan.title}</div>
+                  <div className="m">
                     <span>{openRunCount(activeRuns, plan.id)} open</span>
                     <span>
                       Last:{' '}
@@ -704,39 +711,45 @@ export function PlansScreen() {
           ) : (
             <>
               <div className="pl-detail-hd">
-                <div className="pl-detail-title-row">
-                  <span className="dp-id">{selectedPlan.planKey}</span>
-                  <h2>{selectedPlan.title}</h2>
-                </div>
-                <div className="pl-detail-meta">
-                  <span>Created by: Shaun Sevume</span>
-                  <span>Created: {formatRelativeTime(selectedPlan.createdAt)}</span>
-                </div>
-                <div className="pl-detail-actions">
-                  <button
-                    type="button"
-                    className="dp-max-btn"
-                    title={planMaximized ? 'Restore panel width' : 'Maximize panel'}
-                    onClick={() => setPlanMaximized((v) => !v)}
-                  >
-                    <i
-                      className={`ti ${planMaximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`}
-                    />
-                  </button>
-                  <button type="button" className="btn btn-p" onClick={openSpawnModal}>
-                    <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
-                  </button>
-                  <button type="button" className="btn" onClick={() => openEditModal(selectedPlan)}>
-                    <i className="ti ti-edit" style={{ fontSize: 12 }} /> Edit
-                  </button>
-                  <div style={{ position: 'relative' }} ref={moreMenuRef}>
+                <div className="pl-detail-top">
+                  <div className="pl-detail-intro">
+                    <span className="pl-detail-id">{selectedPlan.planKey}</span>
+                    <h2 className="pl-detail-name">{selectedPlan.title}</h2>
+                    <div className="pl-detail-meta-line">
+                      Created by Shaun Sevume · Created {formatRelativeTime(selectedPlan.createdAt)}
+                      {selectedPlan.description ? ` · ${selectedPlan.description}` : ''}
+                    </div>
+                  </div>
+                  <div className="pl-detail-actions">
                     <button
                       type="button"
-                      className="btn"
-                      onClick={() => setMoreMenuOpen((v) => !v)}
+                      className="pl-iconbtn"
+                      title={planMaximized ? 'Restore panel width' : 'Maximize panel'}
+                      onClick={() => setPlanMaximized((v) => !v)}
                     >
-                      More…
+                      <i
+                        className={`ti ${planMaximized ? 'ti-arrows-minimize' : 'ti-arrows-maximize'}`}
+                        style={{ fontSize: 15 }}
+                      />
                     </button>
+                    <button type="button" className="btn btn-p btn-sm" onClick={openSpawnModal}>
+                      <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-neutral btn-sm"
+                      onClick={() => openEditModal(selectedPlan)}
+                    >
+                      <i className="ti ti-edit" style={{ fontSize: 12 }} /> Edit
+                    </button>
+                    <div style={{ position: 'relative' }} ref={moreMenuRef}>
+                      <button
+                        type="button"
+                        className="btn btn-neutral btn-sm"
+                        onClick={() => setMoreMenuOpen((v) => !v)}
+                      >
+                        More…
+                      </button>
                     {moreMenuOpen ? (
                       <div
                         className="ctx-menu"
@@ -772,72 +785,77 @@ export function PlansScreen() {
                         </button>
                       </div>
                     ) : null}
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="nav-tab-bar">
-                {(['overview', 'testcases'] as const).map((t) => (
-                  <div
-                    key={t}
-                    className={`nav-tab${tab === t ? ' on' : ''}`}
-                    onClick={() => setTab(t)}
-                  >
-                    {t === 'overview' ? 'Overview' : 'Test cases'}
-                  </div>
-                ))}
+                <div className="pl-dtabs">
+                  {(['overview', 'testcases'] as const).map((t) => (
+                    <div
+                      key={t}
+                      className={`pl-dtab${tab === t ? ' on' : ''}`}
+                      onClick={() => setTab(t)}
+                    >
+                      {t === 'overview' ? 'Overview' : 'Test cases'}
+                      {t === 'testcases' ? <span className="n">{resolvedCases.length}</span> : null}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="pl-detail-body">
                 {tab === 'overview' ? (
                   <>
                     <div className="pl-overview-cards">
-                      <div className="pl-card">
-                        <div className="pl-card-hd">
-                          <i className="ti ti-info-circle" style={{ fontSize: 13 }} />
+                      <div className="pl-ov-card">
+                        <div className="pl-ov-card-hd">
+                          <i className="ti ti-info-circle" style={{ fontSize: 15, color: 'var(--text3)' }} />
                           Test plan details
                         </div>
-                        <div className="pl-card-row">
+                        <div className="pl-ov-row">
                           <label>Created by</label>
                           <span>Shaun Sevume</span>
                         </div>
-                        <div className="pl-card-row">
+                        <div className="pl-ov-row">
                           <label>Created at</label>
                           <span>{formatRelativeTime(selectedPlan.createdAt)}</span>
                         </div>
-                        <div className="pl-card-row">
+                        <div className="pl-ov-row">
                           <label>Case count</label>
                           <span>{resolvedCases.length}</span>
                         </div>
+                        <div className="pl-ov-row">
+                          <label>Linked runs</label>
+                          <span>{planRunHistory.length}</span>
+                        </div>
                       </div>
 
-                      <div className="pl-card">
-                        <div className="pl-card-hd">
-                          <i className="ti ti-player-play" style={{ fontSize: 13 }} />
+                      <div className="pl-ov-card">
+                        <div className="pl-ov-card-hd">
+                          <i className="ti ti-player-play" style={{ fontSize: 15, color: 'var(--text3)' }} />
                           Open test run
                         </div>
                         <div className="pl-open-run">
                           {openRun ? (
                             <>
-                              <span style={{ fontSize: 11, color: 'var(--text3)' }}>Open test run</span>
                               <Link
                                 className="pl-open-run-key"
                                 href={testRunPath(activeProject.key, openRun.runKey)}
                               >
                                 TR-{openRun.runKey}
                               </Link>
+                              <div className="pl-open-run-name">{openRun.name}</div>
                             </>
                           ) : (
-                            <button type="button" className="btn btn-p" onClick={openSpawnModal}>
+                            <button type="button" className="btn btn-p btn-sm" onClick={openSpawnModal}>
                               <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
                             </button>
                           )}
                         </div>
                       </div>
 
-                      <div className="pl-card">
-                        <div className="pl-card-hd">
-                          <i className="ti ti-chart-donut" style={{ fontSize: 13 }} />
+                      <div className="pl-ov-card">
+                        <div className="pl-ov-card-hd">
+                          <i className="ti ti-chart-donut" style={{ fontSize: 15, color: 'var(--text3)' }} />
                           Test case coverage
                         </div>
                         <div className="pl-coverage-donut">
@@ -847,7 +865,7 @@ export function PlansScreen() {
                             blocked={0}
                             notrun={activeCases.length - resolvedCases.length}
                             notrunColor="var(--border2)"
-                            size={100}
+                            size={68}
                             interactive={false}
                             showCompleteLabel={false}
                           />
@@ -858,24 +876,22 @@ export function PlansScreen() {
                       </div>
                     </div>
 
-                    <div className="pl-panel">
-                      <div className="pl-panel-hd">
-                        <i className="ti ti-history" style={{ fontSize: 13, color: 'var(--text2)' }} />
-                        Run history
+                    <div className="pl-gl-table pl-run-history">
+                      <div className="pl-toolbar">
+                        <i className="ti ti-history" style={{ fontSize: 15, color: 'var(--text3)' }} />
+                        <h3>Run history</h3>
                       </div>
                       {planRunHistory.length === 0 ? (
-                        <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--text3)' }}>
-                          No test runs created from this plan yet.
-                        </div>
+                        <div className="pl-empty">No test runs created from this plan yet.</div>
                       ) : (
-                        <table className="pl-run-table">
+                        <table>
                           <thead>
                             <tr>
-                              <th>ID</th>
+                              <th style={{ width: 64 }}>ID</th>
                               <th>Title</th>
-                              <th>Results</th>
-                              <th>Created</th>
-                              <th>Closed</th>
+                              <th style={{ width: 190 }}>Results</th>
+                              <th style={{ width: 100 }}>Created</th>
+                              <th style={{ width: 100 }}>Closed</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -901,8 +917,10 @@ export function PlansScreen() {
                                 >
                                   <RunResultBar run={run} />
                                 </td>
-                                <td>{formatRelativeTime(run.createdAt)}</td>
-                                <td>
+                                <td style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                                  {formatRelativeTime(run.createdAt)}
+                                </td>
+                                <td style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
                                   {run.sealed
                                     ? formatRelativeTime(run.archivedAt ?? run.createdAt)
                                     : '—'}
@@ -1005,51 +1023,53 @@ export function PlansScreen() {
 
                     <div className="pl-tc-resolved">
                       <div className="pl-resolved-hd">
-                        <i className="ti ti-list-check" />
-                        Resolved test cases
-                        <span className="pl-resolved-count">{resolvedCasesAll.length} total</span>
-                      </div>
-                      <div className="pl-panel">
-                        {resolvedCasesAll.length === 0 ? (
-                          <div className="pl-resolved-empty">
-                            No test cases match the current query groups.
-                          </div>
-                        ) : (
-                          <table className="pl-resolved-table">
-                            <thead>
-                              <tr>
-                                <th>Key</th>
-                                <th>Title</th>
-                                <th>Priority</th>
-                                <th>Source</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {resolvedCasesAll.map((c) => {
-                                const sourceQuery = queries.find((q) =>
-                                  queryResolvedCases[q.id]?.some((rc) => rc.id === c.id),
-                                )
-                                return (
-                                  <tr key={c.id}>
-                                    <td>
-                                      <span className="pl-resolved-case-key">
-                                        {c.caseKey ?? c.id}
-                                      </span>
-                                    </td>
-                                    <td>{c.title}</td>
-                                    <td>{c.priority}</td>
-                                    <td>
-                                      <span className="pl-resolved-source">
-                                        {sourceQuery?.title ?? '—'}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
+                      <i className="ti ti-list-check" style={{ fontSize: 16, color: 'var(--text3)' }} />
+                      Resolved test cases
+                      <span className="pl-resolved-count">{resolvedCasesAll.length} shown</span>
+                    </div>
+                    <div className="pl-gl-table">
+                      {resolvedCasesAll.length === 0 ? (
+                        <div className="pl-resolved-empty">
+                          No test cases match the current query groups.
+                        </div>
+                      ) : (
+                        <table>
+                          <thead>
+                            <tr>
+                              <th style={{ width: 70 }}>Key</th>
+                              <th>Title</th>
+                              <th style={{ width: 84 }}>Priority</th>
+                              <th style={{ width: 140 }}>Source</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {resolvedCasesAll.map((c) => {
+                              const sourceQuery = queries.find((q) =>
+                                queryResolvedCases[q.id]?.some((rc) => rc.id === c.id),
+                              )
+                              return (
+                                <tr key={c.id}>
+                                  <td>
+                                    <span className="pl-resolved-case-key">
+                                      {c.caseKey ?? c.id}
+                                    </span>
+                                  </td>
+                                  <td>{c.title}</td>
+                                  <td>
+                                    <span className={PRIORITY_CLASS[c.priority]}>{c.priority}</span>
+                                  </td>
+                                  <td>
+                                    <span className="pl-tagp pl-resolved-source">
+                                      {sourceQuery?.title ?? '—'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                     </div>
                   </div>
                 )}
