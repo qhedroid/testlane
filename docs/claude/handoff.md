@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **task-01 (foundation + shell) implemented in Cursor.** Tasks 02–06 pending. Schema stays v14. See "Completed work — `mvp-visual-overhaul`" below.
+`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **task-01 + task-02 implemented in Cursor.** Tasks 03–06 pending. Schema stays v14. See "Completed work — `mvp-visual-overhaul`" below.
 
 Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
 
@@ -86,7 +86,20 @@ QA evidence for this branch lands at `/tmp/relay-qa-mvp-visual-overhaul/qa-repor
 
 **Deliberate palette notes:** Blocked → Compass amber (`#E4AF03` / text `#8C6A00`). Skipped stays purple `#4527A0`.
 
-**Next:** task-02 (Dashboard + remaining screens).
+**Next:** task-03 (Test Cases).
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-02) ✅
+
+**Schema:** unchanged (v14). Presentational CSS / className / donut colour constants only.
+
+| Part | What it delivered |
+|------|-------------------|
+| Part A | Dashboard reskin — metric cards (Compass radii/type/accent stripes), donut status colours in `RunDonut`/`RunStatusInfographic`, active run card hover shadow, needs-attention stripes, coverage bar tokens; `DashboardScreen` Export → `.btn-neutral`, metric value colours → CSS vars |
+| Part B | Defects/Audit/Settings/placeholder CSS polish; modal backdrop + dialog Compass shadow/radius; `.inp` form chrome; source banners → Compass warning/accent/gray tints; audit seal icon → gray |
+
+**Next:** task-03 (Test Cases).
 
 ---
 

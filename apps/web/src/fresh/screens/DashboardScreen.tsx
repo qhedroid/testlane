@@ -127,8 +127,8 @@ function runToCard(run: DemoRun): DashboardRunCard {
 }
 
 function coverageColor(pct: number): string {
-  if (pct >= 80) return '#2E7D32'
-  if (pct <= 50) return '#C62828'
+  if (pct >= 80) return 'var(--pass)'
+  if (pct <= 50) return 'var(--fail)'
   return 'var(--accent)'
 }
 
@@ -326,7 +326,7 @@ function DashboardView() {
         searchPlaceholder="Search everything…"
         actions={
           <>
-            <button type="button" className="btn"><i className="ti ti-download" style={{ fontSize: 12 }} /> Export</button>
+            <button type="button" className="btn btn-neutral"><i className="ti ti-download" style={{ fontSize: 12 }} /> Export</button>
             <Link href={projectHref('testruns')} className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run</Link>
           </>
         }
@@ -343,21 +343,21 @@ function DashboardView() {
           </div>
           <div className="mc c-green">
             <div className="mc-head">
-              <div><div className="mv" style={{ color: '#2E7D32' }}>{metrics.passRate}</div><div className="ml">Pass Rate</div></div>
+              <div><div className="mv" style={{ color: 'var(--pass)' }}>{metrics.passRate}</div><div className="ml">Pass Rate</div></div>
               <div className="mc-ic"><i className="ti ti-trending-up" /></div>
             </div>
             <div className="mt">{metrics.passRate === '—' ? 'No execution data' : 'Of executed cases'}</div>
           </div>
           <div className="mc c-red">
             <div className="mc-head">
-              <div><div className="mv" style={{ color: '#C62828' }}>{metrics.openFailures}</div><div className="ml">Open Failures</div></div>
+              <div><div className="mv" style={{ color: 'var(--fail)' }}>{metrics.openFailures}</div><div className="ml">Open Failures</div></div>
               <div className="mc-ic"><i className="ti ti-alert-circle" /></div>
             </div>
             <div className="mt">{metrics.openFailures === 0 ? 'No unlinked failures' : 'Unlinked failed executions'}</div>
           </div>
           <div className="mc c-amber">
             <div className="mc-head">
-              <div><div className="mv" style={{ color: '#E65100' }}>{metrics.blockedCases}</div><div className="ml">Blocked Cases</div></div>
+              <div><div className="mv" style={{ color: 'var(--block)' }}>{metrics.blockedCases}</div><div className="ml">Blocked Cases</div></div>
               <div className="mc-ic"><i className="ti ti-ban" /></div>
             </div>
             <div className="mt">{metrics.blockedCases === 0 ? 'No blocked cases' : 'Across active runs'}</div>
