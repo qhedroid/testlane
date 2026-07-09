@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
 import { AUDIT_EVENTS } from '../data/seed'
 import type { AuditEvent } from '../data/types'
+import { fetchRealAuditLog, realAuditEntryToEvent } from '@/lib/relay/audit-client'
 
 const FILTERS = ['All events', 'Test Cases', 'Test Runs', 'Test Plans', 'Users'] as const
 type AuditFilter = (typeof FILTERS)[number]
@@ -32,9 +33,37 @@ export function AuditScreen() {
   const { activeProject } = useFresh()
   const [activeFilter, setActiveFilter] = useState<AuditFilter>('All events')
 
+  // Real projects show the real audit_log (screen-level fetch — a deliberate
+  // exception to the reducer-sync pattern, see audit-client.ts's file header);
+  // local projects keep the static demo events.
+  const isReal = activeProject.source === 'real'
+  const [realEvents, setRealEvents] = useState<AuditEvent[] | null>(null)
+
+  useEffect(() => {
+    if (!isReal) {
+      setRealEvents(null)
+      return
+    }
+    let cancelled = false
+    setRealEvents(null)
+    fetchRealAuditLog(activeProject.id)
+      .then((entries) => {
+        if (!cancelled) setRealEvents(entries.map(realAuditEntryToEvent))
+      })
+      .catch((err) => {
+        console.error('[relay] Failed to load audit log:', err)
+        if (!cancelled) setRealEvents([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isReal, activeProject.id])
+
+  const events = isReal ? (realEvents ?? []) : AUDIT_EVENTS
+
   const filteredEvents = useMemo(
-    () => AUDIT_EVENTS.filter((ev) => matchesFilter(ev, activeFilter)),
-    [activeFilter],
+    () => events.filter((ev) => matchesFilter(ev, activeFilter)),
+    [events, activeFilter],
   )
 
   return (
@@ -55,7 +84,11 @@ export function AuditScreen() {
         <div className="page-head">
           <div>
             <h1>Audit History</h1>
-            <div className="sub">Demo · append-only event log across all modules</div>
+            <div className="sub">
+              {isReal
+                ? 'Append-only event log · live from the audit database'
+                : 'Demo · append-only event log across all modules'}
+            </div>
           </div>
           <div className="actions">
             <button type="button" className="btn btn-neutral">

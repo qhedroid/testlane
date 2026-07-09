@@ -5,14 +5,14 @@
 > which gets summarized/lost across sessions. Update it before ending any session that touched
 > this branch, even a short one that only got partway through a phase.
 
-Last updated: 2026-07-09 (new session: **Cases screen-wiring is built** — `CasesScreen.tsx` (+
-folders) now reads and writes the real API for real projects, via the reducer-sync/write-through
-architecture below, with zero changes to the screen file itself. See "Phase 2 screen-wiring
-(Cases) — built" for full detail, known UX trade-offs, and Shaun's local verification checklist.
-Claude-sandbox verified (tsc both packages + `pnpm build`), **not yet committed** as of this
-update. Prior state: project picker (`2403930`), Demo Project seed + cloning (`119850a`),
-hydration fix (`4ca5bfa`), double-redirect fix (`47caed6`) all committed. Next after Cases:
-Plans, then Dashboard, then Defects/Audit/Admin, Runs deliberately last.)
+Last updated: 2026-07-09 (same session, second pass: after Cases landed (`644f959`), Shaun asked
+to fix the two create-path UX glitches and wire **everything else at once** instead of stopping
+per screen. Now built: glitch fixes (Cases detail-panel/folder-selection follow id
+reconciliation), **Plans wired**, **Audit wired**, **Admin users wired**, and the
+Dashboard/Defects no-op decisions documented — see "Screen-wiring: the all-at-once pass" section
+below. Claude-sandbox verified (tsc both packages + `pnpm build`). **Runs remains the single
+deliberately-last piece** (protected UX + atomic `/api/runs/*` auth swap, per the standing Phase
+4 decision). Shaun-local verification of ALL wired screens is now the gate.)
 
 ## Backend-first, all phases — standing decision (read this before touching Phases 2–8)
 
@@ -216,11 +216,11 @@ against a live DB — needs `pnpm db:seed` run locally, see below):
 |-------|--------|
 | 1 — Foundation (auth/RBAC/User+Project API) | **Code complete, committed (`b430e50`, `4e5ad45`).** Shaun-local verification (real DB, real login flow, QA report) still needed before treating the phase as fully done. |
 | 2 — Test Cases backend | **Backend complete AND screen-wiring complete, Claude-sandbox verified** (`TestCaseService.ts` + `/api/projects/[projectId]/cases/*` + `/api/projects/[projectId]/folders/*` committed in `7fc415e`; screen-wiring built this session via `case-client.ts` + `FreshProvider` sync/write-through — see "Phase 2 screen-wiring (Cases) — built" below, **not yet committed**). Shaun-local verification still needed (checklist in that section). |
-| 3 — Test Plans backend | **Backend complete, Claude-sandbox verified** (`TestPlanService.ts` + `/api/projects/[projectId]/plans/*` + `.../plans/[planId]/cases`). `PlansScreen.tsx` wiring deferred (Shaun's "backend-first" call, see note above/below). Real design finding: the server has no equivalent of the frontend's dynamic `TestQuery`/condition-based plans — see `TestPlanService.ts`'s file header and `known-bugs.md`'s GAP-01. Not yet committed. |
+| 3 — Test Plans backend | **Backend AND screen-wiring complete, Claude-sandbox verified.** Backend committed in `7fc415e`; wiring built in the all-at-once pass (see section below): `plan-client.ts` + provider sync/write-through; GAP-01 resolved as "queries stay local-only, resolved case list pushed via `setPlanCases` on every queries change". Shaun-local verification still needed. |
 | 4 — Test Runs wiring | **Deliberately skipped this session, not just deferred like the others.** Unlike Phases 2/3/5/6 (new, currently-unused routes), `/api/runs/*` is already live and depended on by `/runs/api` + `pnpm api:validate` — swapping its auth source (dev header → real session) without also updating `RunsScreen.tsx`/`/runs/api`'s caller in the same atomic change would actively regress working, already-shipped functionality, not just leave something unwired. Needs to happen as one verified change together with the protected three-pane execution UX, not as a backend-only slice. **No code written for this phase.** |
-| 5 — Dashboard backend | **Backend complete, Claude-sandbox verified** (`DashboardService.ts` + `/api/projects/[projectId]/dashboard`). `DashboardScreen.tsx` wiring deferred. Scoped to only what real tables back today (`test_runs`/`test_run_cases`/`run_defect_links`) — Requirements coverage, Milestones, and results-over-time trend widgets have no backing data and stay out of scope, same reasoning as Phase 2/3's exclusions. Not yet committed. |
-| 6 — Defects/Audit backend | **Backend complete, Claude-sandbox verified** (`AuditService.ts` + `DefectService.ts` + `/api/projects/[projectId]/audit` + `/api/runs/[runId]/cases/[runCaseId]/defects` + `.../defects/[linkId]`). `createCase`/`updateCase`/`archiveCase` (Phase 2) and `createPlan`/`updatePlan`/`setPlanCases`/`archivePlan` (Phase 3) retrofitted to call `recordAudit()` on every mutation. `DefectsScreen.tsx`/`AuditScreen.tsx` wiring deferred. No new standalone `defects` table added — see `DefectService.ts`'s file header for why `run_defect_links` alone is this phase's deliberate scope. Not yet committed. |
-| 7 — Admin panel unification | **No new backend needed** — Phase 1 already built `UserService`/`ProjectService` + `/api/users/*` + `/api/projects/*`, which is everything `/admin/users`/`/admin/roles` need to read/write real data. This phase is ~100% screen-wiring (swap `AdminSettings` localStorage reads/writes for calls to the existing APIs), so it's entirely deferred to the screen-wiring pass along with Phases 2/3/5/6 — nothing to build backend-only here. **No code written this phase**, by design, not an oversight. |
+| 5 — Dashboard backend | **Backend committed (`7fc415e`); screen-wiring resolved as a deliberate NO-OP** (all-at-once pass): under the reducer-sync architecture, `DashboardScreen.tsx` computes everything client-side from `FreshProvider` state, which now syncs real cases/folders/plans — so Dashboard already shows real case data with zero changes. Its run-based widgets light up when Runs syncs (Phase 4). Consequence, flagged not hidden: `DashboardService.ts` + `/api/projects/[projectId]/dashboard` are currently **unused by the frontend** — kept as reference/future-API surface, or delete in a cleanup pass. |
+| 6 — Defects/Audit backend | **Backend committed (`7fc415e`). Audit screen-wiring complete** (all-at-once pass): `AuditScreen.tsx` fetches the real `/api/projects/[projectId]/audit` log for real projects via `audit-client.ts` (screen-level fetch — deliberate exception to reducer-sync, see that file's header), static demo events kept for local projects. **Defects screen-wiring deferred to the Runs pass (Phase 4), deliberately:** the only real defect data is `run_defect_links`, which hangs off `test_run_cases` — unusable until runs themselves sync; `DefectsScreen.tsx`'s local defect entities stay as-is until then. Shaun-local verification of Audit still needed. |
+| 7 — Admin panel unification | **Users wiring complete** (all-at-once pass): `user-client.ts` + provider `SYNC_REAL_USERS`/`RECONCILE_ADMIN_USER` + write-through on invite/update/role-change/disable/reactivate, with the granular Admin roles compressed onto `globalRole` (same mapping as the seed overhaul — the granular role itself stays local-only). `/admin/roles` role *definitions* stay entirely local — no backing table, same principle as every other exclusion. Requires a global-admin session for the user sync (server 403s otherwise; panel falls back to the local mock). Shaun-local verification still needed. |
 | 8 — Seeded demo project + regression sweep + PR | **Blocked on Shaun-local verification, as expected** — a full regression sweep and PR description can't be meaningfully produced until screens are actually wired and clickable. Seed data review: `packages/db/src/seed/insert.ts` already seeds test cases/plans/folders (Phase 0, pre-existing) so Cases/Plans backends have real rows to exercise once wired; no additions made this session since nothing consumes them yet beyond direct API calls. Full write-up when this phase is actually picked up. |
 
 ## Phase 2 screen-wiring note (read before continuing Phase 2 or starting 3/5/6/7)
@@ -520,6 +520,92 @@ fast enough (~40s) once the pnpm store is warm.
 - [ ] Regression: local-only projects (if any remain) still behave as pure-localStorage;
       `/DP/testruns` execution UX untouched.
 
+## Screen-wiring: the all-at-once pass (2026-07-09, same session as Cases)
+
+Shaun's call after Cases landed: fix the two create-path glitches, then wire everything else in
+one pass instead of stopping per screen. Runs stays deliberately last (standing Phase 4
+decision — protected UX + the `/api/runs/*` auth swap must be one atomic verified change).
+
+**1. Create-path glitch fixes (Cases):** `FreshProvider` now exposes `resolveEntityId(id)`
+(public read of the temp→real id remap). `CasesScreen.tsx` gained two small effects that follow
+RECONCILE id swaps: the open detail panel re-points at the reconciled case id (fixes the
+duplicate-case panel-close), and the folder tree selection + expanded-state follow a reconciled
+folder id (fixes the new-folder selection reset). These are the only screen-file changes.
+
+**2. Plans (`plan-client.ts` new, provider sync + write-through):** same architecture as Cases.
+GAP-01 resolved: **queries stay local-only** (the authoring model, localStorage-backed); on
+every `updatePlan(..., { queries })` the provider resolves them client-side via
+`resolvePlanCases()` and pushes the case-id list to `PUT .../plans/[planId]/cases`, so the
+server's static `test_plan_cases` tracks the queries and `TestRunService.createRun()` keeps
+working. Server plans with no local copy get a synthesized `static` query group (`q-server-*`
+ids) from their server case list — seeded Demo plans render fully. `mergeLocalOnlyPlanFields`:
+local *authored* queries win over the synthesized group on sync. planKey = server `PLAN-<nnn>`
+ref directly; `slugToPlanKey()` in demo-model.ts was taught to recognise the `PLAN-` prefix
+(URL routing would otherwise mangle it to `TP-PLAN-<nnn>`), and PlansScreen's not-found
+redirect now follows planKey reconciliation via `resolveEntityId` before falling back to the
+list. Write-throughs: `addPlan` (POST + RECONCILE_PLAN), `updatePlan` (PATCH title/description;
+PUT cases on queries change), `deletePlan` (DELETE → archive), `duplicatePlan` (POST with
+resolved caseIds). Backend change: `listPlans()` now excludes archived plans and returns
+ordered `caseIds` per plan (`PlanListItem`) — same no-N+1 reasoning as `listCases()`.
+
+**3. Audit (`audit-client.ts` new + `AuditScreen.tsx`):** real projects fetch
+`/api/projects/[projectId]/audit` (limit 100) and render rows through a display adapter
+(actor id → seed-user name, action verb + entity label + ref from the audit row's `newValue`,
+relative time, icon per action; all dynamic values HTML-escaped since the screen renders via
+dangerouslySetInnerHTML). Local projects keep the static demo events. This is a
+**screen-level fetch, not reducer-sync — deliberate exception** (read-only feed, no writes, no
+other consumer; putting it in DemoState would be schema churn for nothing).
+
+**4. Admin users (`user-client.ts` new, provider sync + write-through):** `SYNC_REAL_USERS`
+merges `GET /api/users` into `adminSettings.users` — matched by display name (both sides share
+the 8-name roster since the seed overhaul), matched rows keep local-only granular
+role/twoFa/projectAccess and adopt the server id/email/active state; "Demo User" and other
+unmatched local rows survive; unmatched server users get synthesized rows via the reverse role
+map. `currentActorUserId` is remapped if its row's id changes. Writes: invite → `POST
+/api/users` (shared dev password `relay-dev-2026` so the account can log in; RECONCILE by
+email since the admin reducer generates its temp id internally), update/role-change → PATCH
+with granular→`globalRole` compression, disable/reactivate → PATCH `isActive`. Email edits
+stay local-only (server updateUser has no email field). The user sync 403s for
+non-global-admin sessions — expected, panel falls back to the local mock. `/admin/roles` role
+definitions stay entirely local (no backing table).
+
+**5. Dashboard — deliberate no-op:** computes off now-synced reducer state; nothing to wire.
+`DashboardService`/route currently unused by the frontend (flagged in the Phase 5 row).
+
+**6. Defects — deferred to the Runs pass:** `run_defect_links` hangs off `test_run_cases`;
+unusable until runs sync. `DefectsScreen.tsx` untouched.
+
+**Files changed this pass:** new `apps/web/src/lib/relay/{plan,audit,user}-client.ts`;
+`FreshProvider.tsx` (resolveEntityId, plan/user sync + reconcile actions, write-throughs);
+`CasesScreen.tsx` (two follow-reconcile effects); `PlansScreen.tsx` (redirect follows key
+reconciliation); `AuditScreen.tsx` (real fetch + live subtitle); `demo-model.ts`
+(slugToPlanKey PLAN- prefix); `packages/db/services/TestPlanService.ts` (listPlans: exclude
+archived, include caseIds).
+
+**Verification — Claude sandbox (done):** `tsc --noEmit` clean both packages; `pnpm build`
+clean (29/29 pages). Note: a full web `tsc --noEmit` run takes >45s cold in-sandbox — use the
+`setsid` background pattern from the Cases section.
+
+**Verification — Shaun local (THE gate now — covers Cases + this pass together):**
+
+- [ ] Everything in the Cases checklist above (including confirming the two glitch fixes:
+      duplicate a case → detail panel stays open through the ref flip; create a folder →
+      selection sticks).
+- [ ] Plans: seeded Demo plans ("Critical Path" 6 cases, "Full Regression" 13) appear with
+      their case lists; create a plan → key flips TP-… → PLAN-…, URL follows, survives reload;
+      edit queries → reload → resolved case list persisted (check `test_plan_cases` rows);
+      delete a plan → gone locally, `status='archived'` in DB; duplicate a plan → real copy
+      with its case list.
+- [ ] Audit: real project shows live `case.*`/`plan.*` rows for actions just taken (actor
+      names, refs, relative times); local project still shows demo events.
+- [ ] Admin users (as Shaun/Noel — global admin): list shows the 8 real users with real
+      emails; invite a user → row appears, exists in DB, can log in with `relay-dev-2026`;
+      change a role → `globalRole` updates in DB per the compression map; disable/reactivate →
+      `is_active` flips; as a viewer session the panel falls back to the mock (console warn,
+      no crash).
+- [ ] Dashboard: renders real case/folder-derived widgets for the Demo Project; run widgets
+      still show local-run data only (expected until Phase 4).
+
 ## Phase 3 — Test Plans backend: detailed checklist
 
 Primary files per `plan.md`: `packages/db/services/TestPlanService.ts`,
@@ -549,7 +635,7 @@ Primary files per `plan.md`: `packages/db/services/TestPlanService.ts`,
       `.../plans/[planId]/cases/route.ts` (PUT → `setPlanCases`). Zod schemas: `createPlanBodySchema`,
       `updatePlanBodySchema`, `setPlanCasesBodySchema` — `projectId` from the route segment, same
       convention as Phase 2.
-- [ ] **`PlansScreen.tsx` wiring — NOT STARTED.** Deferred per the "backend-first" decision above.
+- [x] **`PlansScreen.tsx` wiring — DONE** (all-at-once pass; see that section above for detail).
 - [x] **Verification — Claude sandbox:** `tsc --noEmit` clean for both packages; `pnpm build`
       succeeded with all 3 new routes present.
 - [ ] **Verification — Shaun local:** not yet possible, same reasoning as Phase 2.
@@ -575,7 +661,9 @@ Primary files per `plan.md`: `packages/db/services/DashboardService.ts`,
       reasoning as Phase 2/3 excluding custom fields and dynamic plan queries.
 - [x] **Route:** `apps/web/src/app/api/projects/[projectId]/dashboard/route.ts` (GET only — no
       new zod schema needed, no request body/query params).
-- [ ] **`DashboardScreen.tsx` wiring — NOT STARTED.** Deferred per the "backend-first" decision.
+- [x] **`DashboardScreen.tsx` wiring — resolved as deliberate NO-OP** (all-at-once pass): the
+      screen computes off now-synced reducer state. `DashboardService`/route currently unused
+      by the frontend — see the Phase 5 status-table row.
 - [x] **Verification — Claude sandbox:** `tsc --noEmit` clean for both packages; `pnpm build`
       succeeded with the new route present.
 - [ ] **Verification — Shaun local:** not yet possible.
@@ -635,8 +723,9 @@ Primary files per `plan.md`: `packages/db/services/AuditService.ts`, `DefectsScr
 - [x] **`apps/web/src/lib/api/errors.ts`:** `DefectServiceError` import + status map
       (`RUN_NOT_FOUND`→404, `CASE_NOT_FOUND`→404, `LINK_NOT_FOUND`→404, `ALREADY_UNLINKED`→409) +
       `instanceof` branch.
-- [ ] **`DefectsScreen.tsx`/`AuditScreen.tsx` wiring — NOT STARTED.** Deferred per the
-      "backend-first" decision above.
+- [x] **`AuditScreen.tsx` wiring — DONE** (all-at-once pass). **`DefectsScreen.tsx` — deferred
+      to the Runs pass, deliberately** (run_defect_links is unusable until runs sync; see the
+      all-at-once section above).
 - [x] **Verification — Claude sandbox:** `tsc --noEmit` clean for both `@relay/db` and
       `@relay/web`; `pnpm build` succeeded — all 3 new routes present in the route table
       (`/api/projects/[projectId]/audit`, `/api/runs/[runId]/cases/[runCaseId]/defects`,
@@ -684,15 +773,13 @@ phase is actually picked up, after screen-wiring.
 - (Resolved) Phases 2/3/5/6 backends, the project picker, the Demo Project seed + cloning, and
   the hydration/double-redirect fixes are all committed (`7fc415e`, `2403930`, `119850a`,
   `4ca5bfa`, `47caed6`).
-- **The Cases screen-wiring built 2026-07-09 is uncommitted** (`case-client.ts` new,
-  `FreshProvider.tsx` + `TestCaseService.ts` modified, plus this file) — needs a commit per
-  `CLAUDE.md`'s commit-identity rule (per-commit env vars, not persisted git config).
-- **Remaining screen-wiring: Plans → Dashboard (likely little/no work) → Defects/Audit →
-  Admin → Runs last** (protected UX). Cases established the reusable pattern — follow
-  "Phase 2 screen-wiring (Cases) — built" above as the template. Wiring one screen at a time
-  with Shaun verifying locally between each remains the working agreement.
-- **Shaun-local verification of the Cases wiring is the immediate next gate** — checklist in
-  the Cases section above. Phases 1 and 2 both still carry unchecked "Shaun local" lines.
+- (Resolved) Cases screen-wiring committed (`644f959`).
+- **Remaining screen-wiring: Runs only** (protected UX, atomic `/api/runs/*` auth swap —
+  Phase 4), which also unlocks Defects and Dashboard's run-based widgets. Everything else
+  (Cases, Plans, Audit, Admin users, Dashboard-as-no-op) is wired as of the all-at-once pass.
+- **Shaun-local verification of ALL wired screens is the immediate next gate** — combined
+  checklist in "Screen-wiring: the all-at-once pass" above. Phases 1/2/3/6/7 all carry
+  unchecked "Shaun local" lines until then.
 
 ## Session log (append, don't rewrite)
 
@@ -747,3 +834,16 @@ phase is actually picked up, after screen-wiring.
   --noEmit` clean both packages, `pnpm build` clean. Three new sandbox workarounds noted (pnpm
   reinstall via npm --prefix; exact-URL font mock; setsid for >45s builds). **Not yet
   committed.**
+- **2026-07-09 (all-at-once pass):** Committed the Cases wiring as `644f959`, then per Shaun's
+  "fix the glitches and wire everything else at once, speed this up" instruction: fixed both
+  create-path glitches (provider `resolveEntityId` + two CasesScreen follow-reconcile effects),
+  wired Plans (new `plan-client.ts`; GAP-01 resolved as queries-stay-local + client-resolved
+  `setPlanCases` push; `slugToPlanKey` taught the PLAN- prefix; `listPlans` excludes archived +
+  returns caseIds), wired Audit (new `audit-client.ts`, screen-level fetch with escaped display
+  adapter), wired Admin users (new `user-client.ts`; name-matched SYNC_REAL_USERS merge;
+  invite/update/role/disable/reactivate write-through with granular→globalRole compression),
+  and documented Dashboard (deliberate no-op; DashboardService currently unused) and Defects
+  (deferred to the Runs pass) decisions. Claude-sandbox verified: tsc clean both packages,
+  build clean. Runs (Phase 4) is now the only remaining screen-wiring. Git-lock note: the FUSE
+  mount can't unlink `.git/HEAD.lock`/`tmp_obj_*` files during commits — clean them via the
+  file-delete permission tool after committing, or the next commit fails.

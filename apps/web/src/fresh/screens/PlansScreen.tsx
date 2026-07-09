@@ -372,6 +372,7 @@ export function PlansScreen() {
     deletePlan,
     duplicatePlan,
     spawnRunFromPlan,
+    resolveEntityId,
   } = useFresh()
 
   const planKeyFromUrl = parsePlanKey(pathname)
@@ -470,9 +471,17 @@ export function PlansScreen() {
   useEffect(() => {
     if (projectMismatch) return
     if (planKeyFromUrl && !selectedPlan) {
+      // Follow optimistic-create key reconciliation (real projects): the URL
+      // may still hold the temp TP-<n> key of a plan whose create just
+      // resolved to its real PLAN-<n> ref (FreshProvider's RECONCILE_PLAN).
+      const mapped = resolveEntityId(planKeyFromUrl)
+      if (mapped !== planKeyFromUrl && activePlans.some((p) => p.planKey === mapped)) {
+        router.replace(planPath(activeProject.key, mapped))
+        return
+      }
       router.replace(planPath(activeProject.key))
     }
-  }, [projectMismatch, planKeyFromUrl, selectedPlan, activeProject.key, router])
+  }, [projectMismatch, planKeyFromUrl, selectedPlan, activePlans, activeProject.key, router, resolveEntityId])
 
   useEffect(() => {
     if (!moreMenuOpen && !rowMenuOpen && !addQueryMenuOpen) return

@@ -236,9 +236,12 @@ export function planKeyToSlug(planKey: string): string {
   return planKey.replace(/^TP-/i, '')
 }
 
-/** Restore TP- prefix from a URL slug, e.g. 00001 → TP-00001. */
+/** Restore TP- prefix from a URL slug, e.g. 00001 → TP-00001. Real-backend
+ * plans use the server's `PLAN-<nnn>` ref as their planKey (which passes
+ * through planKeyToSlug unchanged) — recognise it here instead of mangling it
+ * into `TP-PLAN-<nnn>`. */
 export function slugToPlanKey(slug: string): string {
-  return /^TP-/i.test(slug) ? slug : `TP-${slug}`
+  return /^TP-/i.test(slug) || /^PLAN-/i.test(slug) ? slug : `TP-${slug}`
 }
 
 export const DEFAULT_SEED_PROJECT_ID = 'proj-ti-core'

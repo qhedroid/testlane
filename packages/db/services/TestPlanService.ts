@@ -35,7 +35,7 @@
  *   flag needed, unlike test_cases.
  */
 
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import {
   projects,
   testCases,
@@ -81,6 +81,11 @@ export interface PlanCaseRow {
 
 export interface PlanDetail extends PlanSummary {
   cases: PlanCaseRow[]
+}
+
+/** listPlans() row: summary + ordered member case ids (see listPlans docs). */
+export interface PlanListItem extends PlanSummary {
+  caseIds: string[]
 }
 
 export interface CreatePlanInput {
@@ -239,19 +244,6 @@ function toPlanSummary(row: typeof testPlans.$inferSelect, caseCount: number): P
   }
 }
 
-async function getPlanCaseCounts(planIds: string[]): Promise<Map<string, number>> {
-  if (planIds.length === 0) return new Map()
-  const rows = await db
-    .select({ testPlanId: testPlanCases.testPlanId })
-    .from(testPlanCases)
-    .where(inArray(testPlanCases.testPlanId, planIds))
-  const counts = new Map<string, number>()
-  for (const r of rows) {
-    counts.set(r.testPlanId, (counts.get(r.testPlanId) ?? 0) + 1)
-  }
-  return counts
-}
-
 /** Insert test_plan_cases rows for a set of case ids, in the given order, starting at position 0. */
 async function insertPlanCaseRows(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -274,15 +266,49 @@ async function insertPlanCaseRows(
 // Reads
 // ---------------------------------------------------------------------------
 
-export async function listPlans(actorId: string, projectId: string): Promise<PlanSummary[]> {
+/**
+ * List a project's non-archived plans, each with its ordered member case ids.
+ * Changed during the Plans screen-wiring pass: (1) archived plans are
+ * excluded — the frontend's deletePlan() removes plans from view, so archived
+ * ones reappearing on every sync would look like failed deletes; (2) caseIds
+ * are included so the frontend can synthesize its static query group without
+ * an N+1 getPlan() per plan on every project load (same reasoning as
+ * TestCaseService.listCases() returning full details).
+ */
+export async function listPlans(actorId: string, projectId: string): Promise<PlanListItem[]> {
   await assertProjectExists(projectId)
   await assertMinProjectRole(actorId, projectId, 'viewer')
 
-  const rows = await db.select().from(testPlans).where(eq(testPlans.projectId, projectId))
+  const rows = await db
+    .select()
+    .from(testPlans)
+    .where(and(eq(testPlans.projectId, projectId), ne(testPlans.status, 'archived')))
   if (rows.length === 0) return []
 
-  const counts = await getPlanCaseCounts(rows.map((r) => r.id))
-  return rows.map((row) => toPlanSummary(row, counts.get(row.id) ?? 0))
+  const pcRows = await db
+    .select({
+      testPlanId: testPlanCases.testPlanId,
+      testCaseId: testPlanCases.testCaseId,
+    })
+    .from(testPlanCases)
+    .where(
+      inArray(
+        testPlanCases.testPlanId,
+        rows.map((r) => r.id),
+      ),
+    )
+    .orderBy(testPlanCases.position)
+  const caseIdsByPlan = new Map<string, string[]>()
+  for (const pc of pcRows) {
+    const list = caseIdsByPlan.get(pc.testPlanId) ?? []
+    list.push(pc.testCaseId)
+    caseIdsByPlan.set(pc.testPlanId, list)
+  }
+
+  return rows.map((row) => {
+    const caseIds = caseIdsByPlan.get(row.id) ?? []
+    return { ...toPlanSummary(row, caseIds.length), caseIds }
+  })
 }
 
 export async function getPlan(

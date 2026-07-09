@@ -13,7 +13,7 @@ import {
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
 import { migrateDemoState } from './migrate-demo-state'
-import type { Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, Requirement, TestPlan } from './demo-model'
+import type { AdminUser, Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, Requirement, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
 import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
 import type { RolePermissions } from './rbac'
@@ -51,6 +51,23 @@ import {
   realFolderToLocal,
   updateRealCase,
 } from '@/lib/relay/case-client'
+import {
+  archiveRealPlan,
+  createRealPlan,
+  fetchRealPlans,
+  realPlanDetailToLocal,
+  realPlanToLocal,
+  setRealPlanCases,
+  updateRealPlan,
+} from '@/lib/relay/plan-client'
+import {
+  ADMIN_ROLE_TO_GLOBAL,
+  GLOBAL_TO_ADMIN_ROLE,
+  createRealUser,
+  fetchRealUsers,
+  updateRealUser,
+  type RealUser,
+} from '@/lib/relay/user-client'
 
 const STORAGE_KEY = 'relay-demo-v2'
 const DEMO_RESET_PARAM = 'relay-reset'
@@ -156,9 +173,12 @@ export type FreshAction =
   | { type: 'CREATE_DEFECT_AND_LINK'; defect: Defect; runId: string; caseId: string }
   | { type: 'LINK_DEFECT_TO_EXECUTION'; runId: string; caseId: string; defectId: string }
   | { type: 'HYDRATE'; state: DemoState }
-  | { type: 'SYNC_REAL_PROJECT_DATA'; projectId: string; folders: Folder[]; cases: Case[] }
+  | { type: 'SYNC_REAL_PROJECT_DATA'; projectId: string; folders: Folder[]; cases: Case[]; plans: TestPlan[] }
   | { type: 'RECONCILE_CASE'; tempId: string; case: Case }
   | { type: 'RECONCILE_FOLDER'; tempId: string; folder: Folder }
+  | { type: 'RECONCILE_PLAN'; tempId: string; plan: TestPlan }
+  | { type: 'SYNC_REAL_USERS'; users: RealUser[] }
+  | { type: 'RECONCILE_ADMIN_USER'; email: string; user: RealUser }
 
 /**
  * Merge fields the real backend has no tables for (comments, custom field
@@ -186,6 +206,19 @@ function mergeLocalOnlyCaseFields(serverCase: Case, localCase: Case | undefined)
       return localStep && localStep.comments.length > 0 ? { ...s, comments: localStep.comments } : s
     }),
   }
+}
+
+/**
+ * The plans equivalent of mergeLocalOnlyCaseFields: `queries` are the
+ * local-only authoring model (no server storage — GAP-01). If the local copy
+ * has any *authored* query group (anything other than the `q-server-*`
+ * static group synthesized by realPlanToLocal), it wins over the server's
+ * synthesized static list; otherwise the fresh server list is taken.
+ */
+function mergeLocalOnlyPlanFields(serverPlan: TestPlan, localPlan: TestPlan | undefined): TestPlan {
+  if (!localPlan) return serverPlan
+  const hasAuthoredQueries = localPlan.queries.some((q) => !q.id.startsWith('q-server-'))
+  return hasAuthoredQueries ? { ...serverPlan, queries: localPlan.queries } : serverPlan
 }
 
 function reducer(state: DemoState, action: FreshAction): DemoState {
@@ -827,6 +860,14 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const pendingFolders = state.folders.filter(
         (f) => f.projectId === projectId && !isRealId(f.id),
       )
+      const localProjectPlans = Object.values(state.plansById).filter(
+        (p) => p.projectId === projectId,
+      )
+      const localPlanById = new Map(localProjectPlans.map((p) => [p.id, p]))
+      const mergedPlans = action.plans.map((serverPlan) =>
+        mergeLocalOnlyPlanFields(serverPlan, localPlanById.get(serverPlan.id)),
+      )
+      const pendingPlans = localProjectPlans.filter((p) => !isRealId(p.id))
       next = {
         ...state,
         cases: [
@@ -839,6 +880,13 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           ...action.folders,
           ...pendingFolders,
         ],
+        plansById: {
+          ...Object.fromEntries(
+            Object.entries(state.plansById).filter(([, p]) => p.projectId !== projectId),
+          ),
+          ...Object.fromEntries(mergedPlans.map((p) => [p.id, p])),
+          ...Object.fromEntries(pendingPlans.map((p) => [p.id, p])),
+        },
       }
       break
     }
@@ -866,6 +914,100 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
             ),
           }
         }),
+      }
+      break
+    }
+    case 'RECONCILE_PLAN': {
+      const local = state.plansById[action.tempId]
+      if (!local) return state
+      const reconciled = mergeLocalOnlyPlanFields(action.plan, local)
+      const { [action.tempId]: _removed, ...rest } = state.plansById
+      next = {
+        ...state,
+        plansById: { ...rest, [reconciled.id]: reconciled },
+        // Local runs spawned from the plan in the reconcile window keep a
+        // valid planId reference (runs are still local-only).
+        runs: state.runs.map((r) =>
+          r.planId === action.tempId ? { ...r, planId: reconciled.id } : r,
+        ),
+      }
+      break
+    }
+    case 'SYNC_REAL_USERS': {
+      // Merge the real users table into the Admin mock user list (Phase 7).
+      // Server users are matched to existing local rows by display name (the
+      // 2026-07-09 seed/admin-mock overhaul aligned both sides on the same
+      // 8-name roster); matched rows keep their local-only granular fields
+      // (role, twoFa, projectAccess) and adopt the server id/email/active
+      // state. Unmatched local rows with temp ids (e.g. "Demo User", fresh
+      // invites still in flight) are kept; unmatched server users get a
+      // synthesized row with the compressed-role reverse mapping.
+      const byNameLocal = new Map(
+        state.adminSettings.users.map((u) => [u.name.trim().toLowerCase(), u]),
+      )
+      const matchedLocalIds = new Set<string>()
+      let currentActorUserId = state.currentActorUserId
+      const merged: AdminUser[] = action.users.map((su) => {
+        const local = byNameLocal.get(su.name.trim().toLowerCase())
+        if (local) {
+          matchedLocalIds.add(local.id)
+          if (currentActorUserId === local.id) currentActorUserId = su.id
+          return {
+            ...local,
+            id: su.id,
+            email: su.email,
+            status: !su.isActive
+              ? ('Disabled' as const)
+              : local.status === 'Disabled'
+                ? ('Active' as const)
+                : local.status,
+            lastLoginAt: su.lastLoginAt ? new Date(su.lastLoginAt).getTime() : local.lastLoginAt,
+          }
+        }
+        const [firstName, ...restName] = su.name.trim().split(/\s+/)
+        return {
+          id: su.id,
+          firstName: firstName ?? su.name,
+          lastName: restName.join(' '),
+          name: su.name,
+          email: su.email,
+          twoFa: false,
+          role: GLOBAL_TO_ADMIN_ROLE[su.globalRole] ?? ('Editor' as const),
+          status: su.isActive ? ('Active' as const) : ('Disabled' as const),
+          lastLoginAt: su.lastLoginAt ? new Date(su.lastLoginAt).getTime() : 0,
+          projectAccess: ['__all__'],
+        }
+      })
+      const keptLocal = state.adminSettings.users.filter(
+        (u) => !matchedLocalIds.has(u.id) && !isRealId(u.id),
+      )
+      next = {
+        ...state,
+        currentActorUserId,
+        adminSettings: { ...state.adminSettings, users: [...keptLocal, ...merged] },
+      }
+      break
+    }
+    case 'RECONCILE_ADMIN_USER': {
+      // An admin invite's POST resolved — adopt the server's real user id
+      // (matched by email, since admin/inviteUser generates its temp id
+      // inside the admin reducer where the callback can't see it).
+      const email = action.email.trim().toLowerCase()
+      const target = state.adminSettings.users.find(
+        (u) => u.email.trim().toLowerCase() === email,
+      )
+      if (!target || isRealId(target.id)) return state
+      let currentActorUserId = state.currentActorUserId
+      if (currentActorUserId === target.id) currentActorUserId = action.user.id
+      next = {
+        ...state,
+        currentActorUserId,
+        adminSettings: {
+          ...state.adminSettings,
+          users: state.adminSettings.users.map((u) =>
+            u.id === target.id ? { ...u, id: action.user.id, email: action.user.email } : u,
+          ),
+        },
       }
       break
     }
@@ -897,6 +1039,13 @@ interface FreshContextValue {
   dispatch: React.Dispatch<FreshAction>
   /** Whether the real-project fetch has resolved at least once (success or failure). See ProjectRouteSync.tsx. */
   realProjectsLoaded: boolean
+  /**
+   * Map a possibly-stale optimistic-create temp id to its reconciled real id
+   * (or return the id unchanged). Screens that hold entity ids in local state
+   * (open detail panel, selected folder) use this to follow RECONCILE_CASE /
+   * RECONCILE_FOLDER id swaps instead of losing their selection.
+   */
+  resolveEntityId: (id: string) => string
   activeProject: Project
   projects: Project[]
   activeFolders: Folder[]
@@ -1070,6 +1219,13 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     return idRemapRef.current.get(id)
   }, [])
 
+  // Public flavor of the remap for screens (see FreshContextValue doc). Reads
+  // the ref lazily, so callers get fresh mappings on the re-render the
+  // RECONCILE_* dispatch itself triggers.
+  const resolveEntityId = useCallback((id: string): string => {
+    return idRemapRef.current.get(id) ?? id
+  }, [])
+
   const resolveRealIdAsync = useCallback(
     async (id: string): Promise<string | undefined> => {
       const direct = resolveRealId(id)
@@ -1095,23 +1251,49 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     if (!realProjectsLoaded || activeProjectSource !== 'real') return
     const projectId = state.activeProjectId
     let cancelled = false
-    Promise.all([fetchRealFolders(projectId), fetchRealCases(projectId)])
-      .then(([realFolders, realCases]) => {
+    Promise.all([fetchRealFolders(projectId), fetchRealCases(projectId), fetchRealPlans(projectId)])
+      .then(([realFolders, realCases, realPlans]) => {
         if (cancelled) return
         dispatch({
           type: 'SYNC_REAL_PROJECT_DATA',
           projectId,
           folders: realFolders.map(realFolderToLocal),
           cases: realCases.map(realCaseToLocal),
+          plans: realPlans.map(realPlanToLocal),
         })
       })
       .catch((err) => {
-        console.error('[relay] Failed to sync cases/folders from the real API:', err)
+        console.error('[relay] Failed to sync cases/folders/plans from the real API:', err)
       })
     return () => {
       cancelled = true
     }
   }, [realProjectsLoaded, activeProjectSource, state.activeProjectId])
+
+  // Whether the real backend is present at all (users are global, not
+  // per-project — any registered real project implies a live API + session).
+  const hasRealBackend = useMemo(
+    () => Object.values(state.projectsById).some((p) => p.source === 'real'),
+    [state.projectsById],
+  )
+
+  // Sync the real users table into the Admin mock user list (Phase 7). The
+  // server 403s this for non-global-admin sessions — expected; the Admin
+  // panel then just keeps showing the local mock roster.
+  useEffect(() => {
+    if (!realProjectsLoaded || !hasRealBackend) return
+    let cancelled = false
+    fetchRealUsers()
+      .then((users) => {
+        if (!cancelled && users.length > 0) dispatch({ type: 'SYNC_REAL_USERS', users })
+      })
+      .catch((err) => {
+        console.warn('[relay] Could not sync real users (requires a global-admin session):', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [realProjectsLoaded, hasRealBackend])
 
   const activeProject = useMemo(
     () => getActiveProject(state) ?? Object.values(state.projectsById)[0],
@@ -1355,6 +1537,20 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     [state, resolveRealId],
   )
 
+  // Resolve a plan's queries to the real-ULID case ids the server should
+  // store, dropping cases whose own optimistic creates haven't reconciled yet
+  // (they get picked up on the next queries change / sync).
+  const resolveRealPlanCaseIds = useCallback(
+    (plan: TestPlan): string[] => {
+      const projectCases = state.cases.filter((c) => c.projectId === plan.projectId)
+      const projectFolders = state.folders.filter((f) => f.projectId === plan.projectId)
+      return resolvePlanCases(plan, projectCases, projectFolders)
+        .map((c) => resolveRealId(c.id))
+        .filter((id): id is string => !!id)
+    },
+    [state, resolveRealId],
+  )
+
   const addPlan = useCallback(
     (title: string, description?: string) => {
       const projectId = state.activeProjectId
@@ -1370,6 +1566,25 @@ export function FreshProvider({ children }: { children: ReactNode }) {
         queries: [],
       }
       dispatch({ type: 'ADD_PLAN', plan })
+
+      if (state.projectsById[projectId]?.source === 'real') {
+        const createPromise = (async () => {
+          const real = await createRealPlan(projectId, {
+            title,
+            ...(description?.trim() ? { description } : {}),
+          })
+          idRemapRef.current.set(plan.id, real.id)
+          // Also remap the temp planKey — PlansScreen's URL routing is keyed
+          // on planKey, not id, and follows this via resolveEntityId.
+          idRemapRef.current.set(planKey, real.planRef)
+          dispatch({ type: 'RECONCILE_PLAN', tempId: plan.id, plan: realPlanDetailToLocal(real) })
+          return real.id
+        })()
+        pendingRealCreatesRef.current.set(plan.id, createPromise)
+        createPromise.catch((err) => {
+          console.error('[relay] createPlan API call failed — plan kept locally only:', err)
+        })
+      }
       return { planKey, planId: plan.id }
     },
     [state],
@@ -1378,13 +1593,47 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const updatePlan = useCallback(
     (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>>) => {
       dispatch({ type: 'UPDATE_PLAN', planId, patch })
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source !== 'real') return
+      const plan = state.plansById[planId]
+      if (!plan) return
+      void (async () => {
+        const realId = await resolveRealIdAsync(planId)
+        if (!realId) {
+          console.warn('[relay] updatePlan: no real id for', planId, '— change kept locally only')
+          return
+        }
+        if (patch.title !== undefined || patch.description !== undefined) {
+          await updateRealPlan(projectId, realId, {
+            ...(patch.title !== undefined ? { title: patch.title } : {}),
+            ...('description' in patch ? { description: patch.description ?? null } : {}),
+          })
+        }
+        // Queries are local-only (GAP-01) — what the server tracks is the
+        // *resolved* case list, replaced wholesale on every queries change.
+        if (patch.queries) {
+          const caseIds = resolveRealPlanCaseIds({ ...plan, ...patch })
+          await setRealPlanCases(projectId, realId, caseIds)
+        }
+      })().catch((err) => console.error('[relay] updatePlan API call failed:', err))
     },
-    [],
+    [state, resolveRealIdAsync, resolveRealPlanCaseIds],
   )
 
-  const deletePlan = useCallback((planId: string) => {
-    dispatch({ type: 'DELETE_PLAN', planId })
-  }, [])
+  const deletePlan = useCallback(
+    (planId: string) => {
+      dispatch({ type: 'DELETE_PLAN', planId })
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source !== 'real') return
+      // Server-side this archives (status = 'archived') rather than deleting.
+      void (async () => {
+        const realId = await resolveRealIdAsync(planId)
+        if (!realId) return
+        await archiveRealPlan(projectId, realId)
+      })().catch((err) => console.error('[relay] archivePlan API call failed:', err))
+    },
+    [state, resolveRealIdAsync],
+  )
 
   const duplicatePlan = useCallback(
     (planId: string) => {
@@ -1402,9 +1651,27 @@ export function FreshProvider({ children }: { children: ReactNode }) {
         queries: original.queries.map((q) => ({ ...q, id: newId('tq') })),
       }
       dispatch({ type: 'DUPLICATE_PLAN', newPlan })
+
+      if (state.projectsById[projectId]?.source === 'real') {
+        const createPromise = (async () => {
+          const real = await createRealPlan(projectId, {
+            title: newPlan.title,
+            ...(newPlan.description?.trim() ? { description: newPlan.description } : {}),
+            caseIds: resolveRealPlanCaseIds(newPlan),
+          })
+          idRemapRef.current.set(newPlan.id, real.id)
+          idRemapRef.current.set(planKey, real.planRef)
+          dispatch({ type: 'RECONCILE_PLAN', tempId: newPlan.id, plan: realPlanDetailToLocal(real) })
+          return real.id
+        })()
+        pendingRealCreatesRef.current.set(newPlan.id, createPromise)
+        createPromise.catch((err) => {
+          console.error('[relay] duplicatePlan API call failed — copy kept locally only:', err)
+        })
+      }
       return { planKey, planId: newPlan.id }
     },
-    [state],
+    [state, resolveRealPlanCaseIds],
   )
 
   const spawnRunFromPlan = useCallback(
@@ -1527,25 +1794,69 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'admin/deleteApiKey', payload: { id } })
   }, [])
 
-  const inviteAdminUser = useCallback((payload: InviteUserPayload) => {
-    dispatch({ type: 'admin/inviteUser', payload })
-  }, [])
+  const inviteAdminUser = useCallback(
+    (payload: InviteUserPayload) => {
+      dispatch({ type: 'admin/inviteUser', payload })
+      if (!hasRealBackend) return
+      const name = `${payload.firstName.trim()} ${payload.lastName.trim()}`.trim()
+      createRealUser({ email: payload.email.trim(), name, role: payload.role })
+        .then((real) => {
+          dispatch({ type: 'RECONCILE_ADMIN_USER', email: payload.email, user: real })
+        })
+        .catch((err) => {
+          console.error('[relay] createUser API call failed — user kept locally only:', err)
+        })
+    },
+    [hasRealBackend],
+  )
 
-  const updateAdminUser = useCallback((payload: UpdateUserPayload) => {
-    dispatch({ type: 'admin/updateUser', payload })
-  }, [])
+  const updateAdminUser = useCallback(
+    (payload: UpdateUserPayload) => {
+      dispatch({ type: 'admin/updateUser', payload })
+      if (!hasRealBackend || !isRealId(payload.id)) return
+      // Email edits stay local-only — the server's updateUser has no email
+      // field (deliberate Phase 1 scope). Granular role compresses onto
+      // globalRole, same mapping as the seed overhaul.
+      updateRealUser(payload.id, {
+        name: `${payload.firstName.trim()} ${payload.lastName.trim()}`.trim(),
+        globalRole: ADMIN_ROLE_TO_GLOBAL[payload.role],
+      }).catch((err) => console.error('[relay] updateUser API call failed:', err))
+    },
+    [hasRealBackend],
+  )
 
-  const disableAdminUser = useCallback((id: string) => {
-    dispatch({ type: 'admin/disableUser', payload: { id } })
-  }, [])
+  const disableAdminUser = useCallback(
+    (id: string) => {
+      dispatch({ type: 'admin/disableUser', payload: { id } })
+      if (!hasRealBackend || !isRealId(id)) return
+      updateRealUser(id, { isActive: false }).catch((err) =>
+        console.error('[relay] disableUser API call failed:', err),
+      )
+    },
+    [hasRealBackend],
+  )
 
-  const reactivateAdminUser = useCallback((id: string) => {
-    dispatch({ type: 'admin/reactivateUser', payload: { id } })
-  }, [])
+  const reactivateAdminUser = useCallback(
+    (id: string) => {
+      dispatch({ type: 'admin/reactivateUser', payload: { id } })
+      if (!hasRealBackend || !isRealId(id)) return
+      updateRealUser(id, { isActive: true }).catch((err) =>
+        console.error('[relay] reactivateUser API call failed:', err),
+      )
+    },
+    [hasRealBackend],
+  )
 
-  const updateAdminUserRole = useCallback((id: string, role: DemoState['adminSettings']['users'][number]['role']) => {
-    dispatch({ type: 'admin/updateUserRole', payload: { id, role } })
-  }, [])
+  const updateAdminUserRole = useCallback(
+    (id: string, role: DemoState['adminSettings']['users'][number]['role']) => {
+      dispatch({ type: 'admin/updateUserRole', payload: { id, role } })
+      if (!hasRealBackend || !isRealId(id)) return
+      updateRealUser(id, { globalRole: ADMIN_ROLE_TO_GLOBAL[role] }).catch((err) =>
+        console.error('[relay] updateUserRole API call failed:', err),
+      )
+    },
+    [hasRealBackend],
+  )
 
   const createAdminRole = useCallback(
     (payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }) => {
@@ -1638,6 +1949,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       state,
       dispatch,
       realProjectsLoaded,
+      resolveEntityId,
       activeProject,
       projects,
       activeFolders,
@@ -1719,6 +2031,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     [
       state,
       realProjectsLoaded,
+      resolveEntityId,
       activeProject,
       projects,
       activeFolders,

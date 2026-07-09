@@ -22,6 +22,25 @@ Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin,
 
 ---
 
+## 2026-07-09 — `mvp-backend` all-at-once screen-wiring (Plans, Audit, Admin users + glitch fixes)
+
+Same session, after Cases landed (`644f959`): Shaun asked to fix the two create-path UX
+glitches and wire everything else in one pass. Done: glitch fixes (provider `resolveEntityId`
++ CasesScreen/PlansScreen follow-reconcile effects), **Plans** (new `plan-client.ts`; GAP-01
+resolved — queries stay local-only, resolved case lists pushed via `setPlanCases`; server
+`PLAN-<nnn>` refs as planKey with `slugToPlanKey` taught the prefix), **Audit** (new
+`audit-client.ts`, screen-level fetch of the real audit log with an HTML-escaped display
+adapter), **Admin users** (new `user-client.ts`; real users synced into the Admin mock by
+name-match; invite/role/disable write-through with granular→globalRole compression; role
+definitions stay local). **Dashboard: deliberate no-op** (computes off synced reducer state;
+`DashboardService`/route currently unused by the frontend). **Defects: deferred to the Runs
+pass** (run_defect_links unusable until runs sync). Claude-sandbox verified (tsc + build).
+**Runs (Phase 4) is now the only remaining screen-wiring.** Full detail + Shaun's combined
+local verification checklist: `docs/claude/mvp-backend/progress.md`, "Screen-wiring: the
+all-at-once pass".
+
+---
+
 ## 2026-07-09 — `mvp-backend` Cases screen-wiring built (first screen on the real API)
 
 Wired `CasesScreen.tsx` (+ folders) to the real backend — the first screen through the
