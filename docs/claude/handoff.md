@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-backend` — standing up the real backend. Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). **This session is planning/scoping only — no Cursor task files drafted yet.** See "2026-07-09 — mvp-backend scoping session" below for full detail.
+`mvp-backend` — standing up the real backend. Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). Scoping + sequencing complete, Phase 1 spec ready. **2026-07-09 pivot: Claude implements this branch directly (Shaun's instruction) instead of drafting Cursor prompts.** Live state now tracked at `docs/claude/mvp-backend/progress.md` (read this first) and `docs/claude/mvp-backend/plan.md`; the original `docs/cursor-prompts/mvp-backend/` files are kept as reference spec only. See "2026-07-09 — mvp-backend scoping session", "2026-07-09 — mvp-backend sequencing session — task-01 drafted", and "2026-07-09 — pivot to direct Claude implementation" below for full detail.
 
 Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin, Phase 1 + Phase 2, **merged to `mvp-main`** via PR #19 (`0e8ec98`).
 
@@ -49,6 +49,53 @@ Shaun's ask: stand up the real backend and convert the fresh UI's localStorage-d
 - **Definition of done for this branch:** every fresh screen (Dashboard/Cases/Plans/Runs/Defects/Audit/Admin) reads/writes the real API; login/session gates the app; a seeded demo project is explorable without manual setup.
 
 **Not yet decided / next session:** how to break "convert everything at once" into actual numbered Cursor tasks (sequencing within the branch, checkpoint cadence, first task's exact boundary). No `docs/cursor-prompts/mvp-backend/` files exist yet — next planning session should turn this into `task-01...` following the project's normal pattern, likely starting from auth/session per `ARCHITECTURE_BASELINE.md` §10's own "Phase 1 — Foundation, do not skip or reorder."
+
+---
+
+## 2026-07-09 — `mvp-backend` sequencing session — task-01 drafted
+
+Turned last session's locked scope into an actual 8-task sequence and drafted task-01 in full. Prompts now live at `docs/cursor-prompts/mvp-backend/` (`_kickoff.md` + `task-01-foundation-auth-rbac.md`).
+
+**Sequencing confirmed with Shaun before drafting:** task-01 boundary = auth/session + RBAC middleware + User/Project API, exactly the `ARCHITECTURE_BASELINE.md` §10 Phase 1 boundary — locked in as originally proposed, no change.
+
+**Checkpoint cadence decided:** unlike `mvp-visual-overhaul` (always one task per Cursor session), this branch bundles small/low-risk tasks and keeps risky ones solo. task-01 (foundation), task-04 (Test Runs wiring — this branch's protected-UX-equivalent screen), task-07 (Admin RBAC unification), and task-08 (seeding + full regression + PR description) run solo. task-02+03 (Test Cases + Test Plans backend) and task-05+06 (Dashboard + Defects/Audit backend) are bundling candidates, same principle as the visual-overhaul task-03+05 experiment — actual bundling is a live per-session call, not locked upfront.
+
+**Full 8-task sequence** (table + detail in `_kickoff.md`): task-01 Foundation (auth/RBAC/User+Project API) → task-02 Test Cases backend → task-03 Test Plans backend → task-04 Test Runs wiring (protected) → task-05 Dashboard backend → task-06 Defects/Audit backend → task-07 Admin panel unification → task-08 seeded demo project + full regression sweep + PR description.
+
+**Auth approach decided with Shaun:** NextAuth.js + Credentials provider (per `ARCHITECTURE_BASELINE.md`'s primary recommendation) — Shaun noted IAM is the eventual real auth provider, this is an interim step. Given that, task-01 uses NextAuth's **JWT session strategy, not a DB adapter** — avoids standing up 3 new adapter-managed tables (`sessions`/`accounts`/`verification_tokens`) that would just get thrown away once IAM lands. This is a documented judgment call in task-01's Background, not silently assumed.
+
+**Seeding timing decided:** deferred to a later task (task-08), not bundled into task-01 — task-01 stays focused on the auth/RBAC/API plumbing; the explorable seeded demo project lands once Test Cases/Plans/Runs services+routes actually exist to act on it, so seeded data isn't stubbed and un-usable in the interim.
+
+**Task-01 concrete scope (full detail in the task file):**
+- `next-auth` (v4, Credentials provider) + `bcryptjs` (not native `bcrypt` — avoids native-module build issues across the Docker/local split) added as new deps; neither existed anywhere in the repo before this (confirmed via `pnpm-lock.yaml` grep).
+- Seed users (`packages/db/src/seed/insert.ts`) get real `passwordHash` values — all six share one local-dev password (`relay-dev-2026`), documented in a new README section.
+- New: `packages/db/src/auth/verify-credentials.ts`, `apps/web/src/lib/auth/auth-options.ts`, `apps/web/src/app/api/auth/[...nextauth]/route.ts`, `apps/web/src/lib/api/session.ts` (`resolveSessionActor` — a **new, separate** helper from the existing header-based `resolveActor()` in `auth.ts`, which this task does not touch), `apps/web/src/middleware.ts` (route-level session gate, explicitly excludes `/api/runs/*` and `/api/health`).
+- New services: `packages/db/services/UserService.ts`, `packages/db/services/ProjectService.ts`, both built directly on the existing `assertMinProjectRole()` in `packages/db/src/rbac/assert-min-role.ts` (reused, not reimplemented) — plus `/api/users/*` and `/api/projects/*` routes following the exact `/api/runs/*` route-handler shape (`resolveActor` → zod parse → service call → `jsonSuccess`/`handleRouteError`).
+- `LoginScreen.tsx` (already built presentationally on `mvp-visual-overhaul` Phase 2, never wired) gets a real submit handler calling NextAuth's `signIn('credentials', …)`; new top-level `/login` route; `/[projectKey]/login` now redirects to it (mirrors the existing `/[projectKey]/settings` → `/admin` redirect precedent from task-07 on the visual-overhaul branch); minimal sign-out affordance added to `FreshTopbar.tsx` (none existed anywhere before).
+
+**Deliberately supersedes a prior decision, flagged explicitly in the task file:** `mvp-visual-overhaul` Phase 2 decided the login page should be "a reachable route only… not a gate on app load." `mvp-backend`'s own definition of done requires login/session to gate the app, so task-01 reverses that specific call on purpose — the task's Documentation/QA-report instructions both call this out so it doesn't read as an accidental regression later.
+
+**`/api/runs/*` explicitly untouched in task-01** — stays on the `x-relay-user-id` header hack until task-04, which is scoped separately specifically because it's the branch's one protected-UX screen and deserves its own regression pass when its auth source changes.
+
+**Not yet drafted:** task-02 through task-08 remain at the `_kickoff.md` table level (scope + primary files only) — full per-file detail gets drafted when each is picked up, same pattern as `mvp-custom-fields`'s task-02/03 not yet being fleshed out beyond task-01.
+
+---
+
+## 2026-07-09 — pivot to direct Claude implementation
+
+Shaun: "For this task of backend work, I want you (Claude) to do it, not Cursor... plan accordingly and write to files such that this can be worked on across multiple Claude chats if required."
+
+This reverses the project's global "Claude is a planning/prompt-drafting assistant, not an implementer" rule — but only for `mvp-backend`, and only because Shaun explicitly asked, which `CLAUDE.md`'s own role section already carves out as the one legitimate exception. Every other branch keeps the default Cursor-prompt-drafting role unchanged.
+
+**What changed:**
+- `CLAUDE.md`'s "Phase: Backend build" section rewritten: Claude implements this branch directly now, not Cursor. Added a pointer to `docs/claude/mvp-backend/` as the new session-continuity mechanism, and a new bullet in "Claude-specific files" pointing there. Added a bullet to "Cursor prompt organisation" flagging `mvp-backend` as the one exception to that whole section.
+- `docs/claude/mvp-backend/plan.md` (new) — durable plan: same 8-phase sequence as `docs/cursor-prompts/mvp-backend/_kickoff.md`, reframed for Claude-executed multi-session pacing instead of Cursor's per-session bundling model. Phase dependency column added (wasn't needed for the Cursor version since Cursor ran phases back-to-back in order anyway; matters more now that any phase could start in a fresh chat with only this file for context).
+- `docs/claude/mvp-backend/progress.md` (new) — the actual live-state file. Per-phase status table + Phase 1's Parts A–F broken into a checkbox checklist (all unchecked — no implementation code written yet) + a running session log. **This is the file to read first** on any future `mvp-backend` session; it's designed so a fresh Claude chat with zero memory of this conversation can see exactly what's done, what's next, and any open blocker, without re-deriving anything from chat history.
+- `docs/cursor-prompts/mvp-backend/_kickoff.md` and `task-01-foundation-auth-rbac.md` — both got a short banner marking them superseded *as Cursor prompts*. Their technical content (the phase table, and task-01's full Background/Parts A-F/Verification/Documentation/Out-of-scope spec) is unchanged and still the real spec Claude works from — not duplicated into the new files, just pointed to, to avoid maintaining two copies of a 25KB spec.
+
+**New constraint surfaced and documented (in `CLAUDE.md` and `plan.md`):** Claude's Cowork sandbox has Node but no Docker and no `pnpm` pre-installed — it cannot reach the local MySQL/OpenSearch containers `docker-compose.yml` defines. Split going forward: Claude verifies what it can in-sandbox (installs, `pnpm build`/typecheck without a live DB); anything needing a real DB connection (`pnpm dev`, login flow, seed script, API responses, the mandatory QA smoke test) needs Shaun to run locally and report back. `progress.md`'s checklist has separate "Claude sandbox" and "Shaun local" verification lines per phase for exactly this reason — don't mark a phase done with only one of the two checked, unless Shaun explicitly waives the local check.
+
+**Not yet done:** no implementation code written. Next session starts Phase 1 (auth/RBAC/User+Project API), Part A (dependencies/env vars) — see `docs/claude/mvp-backend/progress.md`'s checklist for the exact starting point.
 
 ---
 

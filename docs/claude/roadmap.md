@@ -8,8 +8,12 @@
 
 ## Next Steps (active priority)
 
-### Backend Build `[~draft]`
+### Backend Build `[~in progress]`
 Branch `mvp-backend` (created 2026-07-09 off `mvp-main`, after confirming `mvp-visual-overhaul` merged via PR #19). Full scoping detail, prior-art findings, and locked-in decisions are in `handoff.md`'s "2026-07-09 — mvp-backend scoping session" section — treat that as the source of truth, this is a pointer.
+
+**2026-07-09 sequencing session:** full 8-phase sequence drafted (originally as Cursor prompts, see below); Phase 1 (Foundation — NextAuth.js Credentials provider w/ JWT session strategy, RBAC route middleware, `UserService`/`ProjectService` + `/api/users/*`/`/api/projects/*`, real login wiring) drafted in full. Full detail in `handoff.md`'s "2026-07-09 — mvp-backend sequencing session" section, including the deliberate supersession of `mvp-visual-overhaul`'s "login is not a gate" decision and the bcryptjs/JWT-strategy judgment calls.
+
+**2026-07-09 pivot:** Shaun asked Claude to implement this branch directly instead of drafting Cursor prompts, structured for continuity across multiple Claude (Cowork) chats. Live tracking moved to `docs/claude/mvp-backend/progress.md` (current state, read first) and `docs/claude/mvp-backend/plan.md` (durable phase plan); `docs/cursor-prompts/mvp-backend/` kept as superseded reference spec, not deleted. No implementation code written yet — see `handoff.md`'s "2026-07-09 — pivot to direct Claude implementation" section.
 
 Original ask: stand up the real backend and convert the fresh UI's localStorage-driven functionality onto it — full conversion, not a single vertical-slice validation. "We're aiming to convert it all to backend functionality at once."
 
