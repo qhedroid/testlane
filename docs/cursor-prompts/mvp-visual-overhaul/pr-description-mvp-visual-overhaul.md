@@ -65,10 +65,16 @@ Applies the approved **Compass (TransPerfect)** visual system across the entire 
 - Queue pane + exec detail pane mockup structure; result footer with icon buttons + keyboard legend
 - Protected UX verified unchanged (P/F/B/S, auto-advance, arrow keys — Shaun manual sign-off 2026-07-09)
 
-**Visual overhaul: Rebuild defects, audit, and admin polish** (pending commit — task-13)
+**Visual overhaul: Rebuild defects, audit, and admin polish** ([`ffb0411`](https://github.com/qhedroid/Relay/commit/ffb0411))
 - Defects: mockup `.gl-table` toolbar (All defects + count + status chips + Details toggle), `.tbl` table, detail panel; live `activeDefects` preserved
 - Audit History: mockup event-row styling (circular icon chips, timestamps, ref links); page header kept; filter tabs unchanged
 - Admin/Project Settings: section card treatment, 240px/1fr form rows, table/card refinements in `admin.css`
+
+### Living docs sync (task-14)
+
+**Docs: sync living docs to Phase 2, close out mvp-visual-overhaul planning** ([`658225b`](https://github.com/qhedroid/Relay/commit/658225b))
+- `user-guide.md` / `feature-flow.md` brought current with every Phase 2 UI change: new Navigation section (sidebar groups, global top bar), rebuilt Dashboard description, Test Cases toolbar relocation, Test Runs page-head actions, Defects/Audit task-13 layout, Settings redirect
+- Docs-only — no `apps/**` changes
 
 ---
 
@@ -78,6 +84,7 @@ Applies the approved **Compass (TransPerfect)** visual system across the entire 
 - **Page headers discarded** on Dashboard, Test Cases, Test Plans, Test Runs, Defects — Audit History is the exception (header kept per Shaun's ask). Defects page-head removal is a task-13 judgement call; easy to reverse
 - **Requirements data source** (task-08): uses live `activeRequirements` when demo data exists, otherwise falls back to static `REQ-*` rows
 - **Reduced-fidelity dashboard panels**: milestones slice uses static placeholder content linking to `/milestones`; some mockup KPI sublines simplified
+- **Dropped from Dashboard** (task-09): the pre-Phase-2 "Critical" filter chip and expandable run-card pattern (Overview/Assignees/Defects tabs per card) are gone, replaced by the mockup's flatter "Open test runs" list. Confirmed intentional with Shaun 2026-07-09; not a regression to fix
 - **Blocked status colour** deliberately changed to Compass amber (`#E4AF03`, text `#8C6A00`) — approved mockup alignment
 - **Skipped status colour** deliberately kept as the app's existing purple (`#4527A0`) — not changed to gray
 - **Icon libraries unchanged** — Tabler (`ti`) in fresh app, Lucide in admin. Material Icons Round glyph parity is out of scope
