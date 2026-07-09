@@ -40,11 +40,22 @@ When starting work on a new branch, always create a new sub-folder. Never place 
 
 **Cross-cutting planning sessions.** If a session's work spans multiple future feature areas rather than one specific branch (e.g. a broad recon/roadmap-triage session), commit that work on its own planning branch (e.g. `mvp-further-planning`) rather than directly on `mvp-main` or shoehorning it into an unrelated feature branch. `roadmap.md`, `testiny-recon-notes.md`, and any `draft-notes.md` files are the kind of output that belongs there.
 
-## Phase: Frontend-only prototype
+## Phase: Frontend-only prototype (default — all branches except `mvp-backend`)
 - Do NOT implement or modify backend, DB/schema, Docker, auth, or API routes.
 - Do NOT wire UI to real APIs. Persistence is client-side only (FreshProvider + localStorage).
 - If a task appears to require backend work, stop and ask for confirmation.
 - Mock/demo data is acceptable.
+
+## Phase: Backend build (`mvp-backend` branch only)
+Started 2026-07-09. Goal: replace the fresh UI's localStorage persistence with the real MySQL/Drizzle backend, module by module, until the whole app runs on it — not a single validation slice.
+
+- Backend/DB/schema/Docker/auth/API route work is **in scope** on this branch. The frontend-only restriction above does not apply here.
+- **Local only.** Docker Compose (MySQL + OpenSearch containers already exist) — no AWS/Terraform/ECS/Aurora provisioning on this branch; that's a separate later phase.
+- **OpenSearch stays a no-op stub for now.** Cmd+K and list search run on plain MySQL queries until a dedicated search-wiring pass.
+- **Admin panel is in scope.** Unify its Users/Roles management onto the real `users`/`project_roles` tables instead of the separate `AdminSettings` localStorage blob.
+- **Custom Fields is explicitly out of scope on this branch** — do not touch `mvp-custom-fields` schema/scope while working here.
+- **Claude's role is unchanged even for backend work** — plan and draft Cursor prompts; do not implement directly unless explicitly asked for a specific change.
+- End state for this branch: every fresh screen (Dashboard/Cases/Plans/Runs/Defects/Audit/Admin) reads and writes the real API; a seeded, explorable demo project exists in the DB (real test cases/plans/runs, not empty tables) so the app is demoable without manual setup; login/session gates the app for the first time.
 
 ## Before making any changes
 1. Read relevant `docs/_authoritative/*` files for the feature area.

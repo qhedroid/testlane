@@ -8,7 +8,22 @@
 
 ## Next Steps (active priority)
 
-### Compass Visual Overhaul (UI reskin) `[~in progress]`
+### Backend Build `[~draft]`
+Branch `mvp-backend` (created 2026-07-09 off `mvp-main`, after confirming `mvp-visual-overhaul` merged via PR #19). Full scoping detail, prior-art findings, and locked-in decisions are in `handoff.md`'s "2026-07-09 — mvp-backend scoping session" section — treat that as the source of truth, this is a pointer.
+
+Original ask: stand up the real backend and convert the fresh UI's localStorage-driven functionality onto it — full conversion, not a single vertical-slice validation. "We're aiming to convert it all to backend functionality at once."
+
+In scope: auth/session (NextAuth, currently nonexistent), the missing per-module services (`ProjectService`/`TestCaseService`/`TestPlanService`/`UserService`/`DashboardService`/`AuditService`), API routes beyond `/api/runs/*`, wiring every fresh screen off localStorage onto the real API, a seeded explorable "live" demo project backed by real DB rows, and unifying the Admin panel's Users/Roles onto the real `users`/`project_roles` tables. Reuses substantial prior art already in `/runs/api`: 21-table Drizzle schema (close to the 20-table target), full RBAC role-hierarchy resolution (`assertMinProjectRole`), and real `TestRunService`/`ExecutionService`.
+
+Out of scope for this branch: AWS/cloud deployment (Terraform/ECS/Aurora — local Docker only), real OpenSearch wiring (stays a no-op stub, search runs on plain MySQL for now), `mvp-custom-fields` (separate open branch, not touched).
+
+**Subsumes** the "Add a 'live' demo project" item below — don't run that draft separately; its outcome (a seeded, explorable demo project) is this branch's own end-state requirement.
+
+**Not yet done:** no `docs/cursor-prompts/mvp-backend/` task files exist. Next session needs to turn "convert everything at once" into actual numbered tasks — sequencing, checkpoint cadence, and the first task's exact boundary are still open.
+
+### Compass Visual Overhaul (UI reskin) `[x]`
+**Merged to `mvp-main` via PR #19 (`0e8ec98`).**
+
 Branch `mvp-visual-overhaul` (created off `mvp-main`). **Phase 1** (pure CSS/className re-skin, tasks 01–06) is complete and committed — see `handoff.md`. **Phase 2** (started 2026-07-08) is a larger information-architecture/layout pass requested after reviewing Phase 1: adopt more of the mockup directly, including new screens (My Work, Milestones, Requirements, Reports, AI Studio, Login), sidebar/topbar structural changes, and rebuilding Dashboard/Audit/Test Cases/Test Plans/Test Runs/Project Settings from the mockup rather than just re-skinning them in place. Kept on this same branch rather than split into a new one (Shaun's deliberate call). Full detail, decisions, and the critical "mockup markup + real app data, not mockup's static numbers" rule are in `handoff.md`'s "2026-07-08 Phase 2" section. Phase 2 prompts drafted: task-07…13 at `docs/cursor-prompts/mvp-visual-overhaul/` (7 Cursor sessions — see `_kickoff.md` §9 for the full ruleset). Not yet run in Cursor.
 
 Original ask: apply the approved **Compass (TransPerfect)** design system across the whole app UI as a pure **re-skin**. Bring the visual improvements drafted in the Claude Design mockup to the live app first; rework/restore functionality on later branches. Ideally no functionality is lost or changed — Cursor re-skins what already exists.
@@ -91,8 +106,8 @@ Provisional notes at `docs/cursor-prompts/mvp-test-runs-extra/draft-notes.md` (a
   - **Confirmed on Testiny:** description sits directly beneath the run title, editable inline.
 - Add a keyboard shortcut to quickly clear a result status.
 
-### Add a "live" demo project `[~draft]`
-Provisional notes at `docs/cursor-prompts/mvp-live-demo-project/draft-notes.md`.
+### Add a "live" demo project `[~draft]` — subsumed by `mvp-backend`
+Provisional notes at `docs/cursor-prompts/mvp-live-demo-project/draft-notes.md`. **2026-07-09: subsumed by the Backend Build item above** — its own end state requires a seeded, explorable demo project backed by real DB rows, which satisfies this ask. Don't run this draft separately; fold it into `mvp-backend`'s seeding work when that's scoped.
 
 Keep the current stale demo project, but add a second one with real, non-static test cases/runs (real ids, valid field values) so Shaun can showcase arrow navigation, auto case numbering, run creation, etc. without prior setup.
 - **Note:** this is a prerequisite/enabler for the two Test Cases Extra history/Runs-tab fixes above being meaningfully demoable — worth sequencing before or alongside those, even though it's filed under "Improvements."

@@ -16,9 +16,39 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Phase 1 (tasks 01–06) and Phase 2 (tasks 07–13) both complete.** Schema stays v14. **Ready for PR** — see `docs/cursor-prompts/mvp-visual-overhaul/pr-description-mvp-visual-overhaul.md` for the combined Phase 1 + Phase 2 MR description.
+`mvp-backend` — standing up the real backend. Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). **This session is planning/scoping only — no Cursor task files drafted yet.** See "2026-07-09 — mvp-backend scoping session" below for full detail.
 
-Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
+Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin, Phase 1 + Phase 2, **merged to `mvp-main`** via PR #19 (`0e8ec98`).
+
+---
+
+## 2026-07-09 — `mvp-backend` scoping session
+
+Shaun's ask: stand up the real backend and convert the fresh UI's localStorage-driven functionality onto it — not a single vertical-slice validation, but full conversion ("Everything. Right now we have a lot of frontend functionality. We're aiming to convert it all to backend functionality at once.").
+
+**`CLAUDE.md` updated:** the "Phase: Frontend-only prototype" rule now scopes explicitly to "all branches except `mvp-backend`"; a new "Phase: Backend build (`mvp-backend` branch only)" section lists what's in/out of scope for this branch (see file). Claude's planning-only role is unchanged even for backend work.
+
+**Branch state confirmed:** `mvp-visual-overhaul` merged (`0e8ec98`). Branches already merged into `mvp-main`: `mvp-dashboard-metrics`, `mvp-test-plans`, `mvp-requirements-defects-slice`, `rel-001-manual-runs-audit`, `mvp-further-planning`. Only `mvp-custom-fields` remains open/unmerged (schema v14→v15) — explicitly **ignored for this branch** per Shaun ("Forgot mvp-custom-fields for now").
+
+**Prior art found in `/runs/api` — more built out than the docs implied, reuse rather than rebuild:**
+- `packages/db/schema.ts` (1,381 lines) — 21 Drizzle MySQL tables, already close to `ARCHITECTURE_BASELINE.md`'s 20-table target (organisations, users, projects, projectRoles, folders, testCases, testCaseSteps, testPlans, testPlanCases, testRuns, testRunCases, runCaseStepSnapshots, runStepResults, runAssignees, runDefectLinks, runExecutionComments, auditLog, recentViews, savedFilters, attachmentsMetadata).
+- `packages/db/src/rbac/assert-min-role.ts` — `assertMinProjectRole()` already implements the full role hierarchy + project-level override exactly per spec (`super_admin > admin > contributor > viewer`, effective role = max(global, project)).
+- `packages/db/services/TestRunService.ts` (992 lines) and `ExecutionService.ts` (270 lines) — real run-spawn snapshot transaction and case-result recording, both audited.
+- `packages/db/src/seed/index.ts` — seeds 6 real named users (Noel, Shaun, Monica, Nasir, Jamil, Arvindh — overlaps with the roadmap's "User Management" real-names ask) across 6 projects (CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway); CTMS has a plan (PLAN-001) with 4 cases.
+- `docker-compose.yml` already runs both `mysql` and `opensearch` containers locally.
+- `packages/db/src/opensearch/client.ts` — no-op stub only; no NextAuth dependency installed anywhere yet (checked `package.json` — auth is genuinely greenfield).
+
+**Missing (build order, roughly dependency-ordered):** auth/session (no NextAuth, no login wiring — current dev-only header hack `x-relay-user-id`) → `ProjectService`/`TestCaseService`/`TestPlanService`/`UserService`/`DashboardService`/`AuditService` (only Test Run/Execution services exist today) → API routes for every module beyond `/api/runs/*` → wiring each fresh screen off localStorage onto the real API, module by module → a seeded, explorable "live" demo project backed by real DB rows (not a template clone) → Admin panel wired to real `users`/`project_roles`.
+
+**Scope decisions locked in with Shaun:**
+- **Infra:** local only. Docker MySQL/OpenSearch, real API, auth. No AWS/Terraform/ECS/Aurora on this branch — that's a distinct later phase.
+- **Search:** defer real OpenSearch. Cmd+K and list search run on plain MySQL queries for now; the container + client stub stay as-is until a dedicated search-wiring pass.
+- **Admin panel:** in scope. Unify Users/Roles management onto the real `users`/`project_roles` tables — this also resolves two known roadmap issues (`mvp-role-management`'s disconnected static/dynamic role systems; `mvp-user-management`'s fake admin-panel names) as a side effect, worth flagging when that work is actually scoped.
+- **Custom Fields:** out of scope, don't touch.
+- **Demo data:** the "live demo project" roadmap item (`mvp-live-demo-project`, previously `[~draft]`) is effectively subsumed by this branch's own end-state requirement — a seeded, explorable demo project backed by real data. Don't run that draft separately; fold it into `mvp-backend`'s seeding work.
+- **Definition of done for this branch:** every fresh screen (Dashboard/Cases/Plans/Runs/Defects/Audit/Admin) reads/writes the real API; login/session gates the app; a seeded demo project is explorable without manual setup.
+
+**Not yet decided / next session:** how to break "convert everything at once" into actual numbered Cursor tasks (sequencing within the branch, checkpoint cadence, first task's exact boundary). No `docs/cursor-prompts/mvp-backend/` files exist yet — next planning session should turn this into `task-01...` following the project's normal pattern, likely starting from auth/session per `ARCHITECTURE_BASELINE.md` §10's own "Phase 1 — Foundation, do not skip or reorder."
 
 ---
 
