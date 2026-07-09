@@ -10,7 +10,7 @@ import { DEFAULT_PROJECT_KEY, parseProjectPath, projectPath } from '../lib/proje
 export function ProjectRouteSync() {
   const pathname = usePathname()
   const router = useRouter()
-  const { state, setActiveProject, activeProject } = useFresh()
+  const { state, setActiveProject, activeProject, realProjectsLoaded } = useFresh()
   const redirecting = useRef(false)
 
   // Read activeProjectId via ref so the effect can check it without depending on it.
@@ -35,6 +35,15 @@ export function ProjectRouteSync() {
       return
     }
 
+    // Don't redirect away from an as-yet-unrecognized project key until the
+    // real-project fetch has resolved at least once. Without this, visiting
+    // e.g. /DEMO/dashboard would redirect to /DP/dashboard (real projects
+    // not registered yet) and then immediately redirect back to /DEMO once
+    // they load — a visible double-redirect flicker (found testing
+    // mvp-backend's "wire everything" session). Once real projects have
+    // loaded, an unrecognized key really is invalid and should still redirect.
+    if (!realProjectsLoaded) return
+
     if (redirecting.current) return
     redirecting.current = true
     const fallbackKey = activeProject?.key ?? DEFAULT_PROJECT_KEY
@@ -42,7 +51,7 @@ export function ProjectRouteSync() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // Intentional: state.activeProjectId removed — effect must only react to URL/project-list
   // changes; activeProjectId is read via ref above to avoid the reversion race condition.
-  }, [pathname, state.projectsById, setActiveProject, activeProject?.key, router])
+  }, [pathname, state.projectsById, setActiveProject, activeProject?.key, router, realProjectsLoaded])
 
   return null
 }

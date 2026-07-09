@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useState,
   type ReactNode,
 } from 'react'
 import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed'
@@ -770,6 +771,8 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
 interface FreshContextValue {
   state: DemoState
   dispatch: React.Dispatch<FreshAction>
+  /** Whether the real-project fetch has resolved at least once (success or failure). See ProjectRouteSync.tsx. */
+  realProjectsLoaded: boolean
   activeProject: Project
   projects: Project[]
   activeFolders: Folder[]
@@ -892,15 +895,29 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   // fetch fails (e.g. offline, session not ready yet), we just log and leave
   // whatever project state already exists — the app stays usable, it just
   // won't see real data until a later successful fetch/reload.
+  // Tracks whether the real-project fetch above has resolved at least once
+  // (success or failure) — exposed via context so ProjectRouteSync.tsx can
+  // hold off on its "unknown project key -> redirect" logic until we've
+  // actually had a chance to register real projects. Without this, visiting
+  // e.g. /DEMO/dashboard would redirect to /DP/dashboard (URL key not found
+  // yet, since the fetch is still in flight) and then immediately redirect
+  // back to /DEMO once the fetch resolves — a visible double-redirect
+  // flicker Shaun hit in practice.
+  const [realProjectsLoaded, setRealProjectsLoaded] = useState(false)
+
   useEffect(() => {
     let cancelled = false
     fetchRealProjects()
       .then((projects) => {
-        if (cancelled || projects.length === 0) return
-        dispatch({ type: 'REGISTER_REAL_PROJECTS', projects })
+        if (cancelled) return
+        if (projects.length > 0) {
+          dispatch({ type: 'REGISTER_REAL_PROJECTS', projects })
+        }
+        setRealProjectsLoaded(true)
       })
       .catch((err) => {
         console.error('[relay] Failed to load real projects, staying on local project state:', err)
+        if (!cancelled) setRealProjectsLoaded(true)
       })
     return () => {
       cancelled = true
@@ -1343,6 +1360,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       dispatch,
+      realProjectsLoaded,
       activeProject,
       projects,
       activeFolders,
@@ -1423,6 +1441,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     }),
     [
       state,
+      realProjectsLoaded,
       activeProject,
       projects,
       activeFolders,

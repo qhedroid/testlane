@@ -76,16 +76,40 @@ standard, accepted pattern for localStorage-backed state under SSR. Verified via
 `pnpm build`; **not yet re-verified live** — Shaun should reload `/DEMO/dashboard` (and a couple of
 other routes) and confirm the hydration error is gone.
 
-**Known related rough edge, not yet fixed (flagging, not silently ignoring):** because
-`fetchRealProjects()` is an async network call, there's an inherent window right after mount where
-the URL says e.g. `/DEMO/dashboard` but `state.projectsById` doesn't have the real "DEMO" project
-registered yet (only the local placeholder does). `ProjectRouteSync.tsx`'s existing
-unknown-project-key redirect can fire during that window and bounce the user to `/DP/dashboard`,
-then bounce back to `/DEMO/dashboard` a moment later once `REGISTER_REAL_PROJECTS` actually runs
-and removes the stale local project. Self-corrects, no data loss, but it's a visible double-redirect
-flicker on first load. Not fixed this pass (would need a "don't redirect until the real-project
-fetch has resolved at least once" gate) — worth revisiting if it's noticeable enough in practice
-to bother Shaun.
+**Follow-up fix (Shaun asked directly): the double-redirect flicker described above is now fixed.**
+Added `realProjectsLoaded: boolean` to `FreshProvider`'s context (`useState`, set to `true` in
+both the success and failure branch of the `fetchRealProjects()` effect — i.e. once we've
+*attempted* the fetch, regardless of outcome). `ProjectRouteSync.tsx`'s redirect effect now returns
+early (does nothing) if an unrecognized project key is hit while `!realProjectsLoaded` — it only
+falls through to the actual redirect once the real-project fetch has resolved at least once, by
+which point `state.projectsById` already reflects the real projects (the `REGISTER_REAL_PROJECTS`
+dispatch and the `setRealProjectsLoaded(true)` call happen in the same effect callback, so React
+batches them into one re-render — no window where `realProjectsLoaded` is true but the real
+projects aren't registered yet). Verified via `tsc --noEmit` + `pnpm build`; not yet re-verified
+live.
+
+## "Are we populating the DB, or just wiring the backend?" — Shaun's question, answered here
+
+Both, but they're two separate things and only one is done so far. The seed script
+(`packages/db/src/seed/demo-project-seed.ts`) genuinely inserts real rows — folders, cases, steps,
+plans, plan-cases, runs, run-cases, step-snapshots, step-results, defect-links, run-assignees —
+into a real MySQL database. That only happens when `pnpm db:seed` is actually *run* against the
+local DB, though — it's not automatic on app boot, and it only reflects whatever was last committed
+at the time it was run. If the Demo Project looks empty or the "Create Demo Project" button is
+missing, the most likely explanation is simply that `pnpm db:seed` hasn't been (re-)run since the
+Demo Project was added to the seed script (commit `119850a`) — worth double-checking the seed
+script's console output actually printed the "Demo Project (slug demo): ..." line before assuming
+anything else is wrong.
+
+Separately — and this is the part that's **not done yet, regardless of seeding** — none of the
+fresh screens (Cases/Plans/Dashboard/Runs/Defects/Audit) read from the real API at all yet. They
+still render entirely from `FreshProvider`'s local reducer state, which starts empty for any
+newly-registered real project (see `REGISTER_REAL_PROJECTS`'s reducer case — it deliberately does
+not populate cases/runs/etc. for real projects, since that's exactly the sync-in wiring described
+in "Screen-wiring architecture pivot" above, not yet built). So even with `pnpm db:seed` freshly
+run and the Demo Project fully populated server-side, every screen will *still* show it as empty
+until that sync-in wiring actually happens — this isn't a bug, it's the literal next piece of work
+(see "Open questions / blockers" below).
 
 ## Optimistic writes — decided, flagged for later revisit
 
