@@ -13,7 +13,6 @@ export function ProjectSwitcher() {
     setActiveProject,
     updateProject,
     deleteProject,
-    addDemoProject,
   } = useFresh()
   const router = useRouter()
   const pathname = usePathname()
@@ -84,11 +83,11 @@ export function ProjectSwitcher() {
     setDraftName(currentName)
   }
 
-  function handleAddDemoProject() {
-    const { key } = addDemoProject()
-    close()
-    router.push(projectPath(key, 'dashboard'))
-  }
+  // "Add demo project" (clone-current-project) removed from the switcher —
+  // real projects (mvp-backend "wire everything" session) replaced the old
+  // client-only demo-project model; cloning doesn't map onto real DB
+  // projects. `addDemoProject()` itself is left in FreshProvider unused
+  // rather than deleted, in case this needs reverting.
 
   return (
     <>
@@ -130,24 +129,26 @@ export function ProjectSwitcher() {
                       <i className={`ti ${project.id === activeProject?.id ? 'ti-check' : 'ti-square'}`} />
                       <span className="proj-item-name">{project.name}</span>
                     </button>
-                    <div className="proj-row-actions">
-                      <button
-                        type="button"
-                        className="proj-icon-btn"
-                        title="Rename project"
-                        onClick={(e) => { e.stopPropagation(); startRename(project.id, project.name) }}
-                      >
-                        <i className="ti ti-pencil" />
-                      </button>
-                      <button
-                        type="button"
-                        className="proj-icon-btn danger"
-                        title="Delete project"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(project.id, project.name) }}
-                      >
-                        <i className="ti ti-trash" />
-                      </button>
-                    </div>
+                    {project.source === 'real' ? null : (
+                      <div className="proj-row-actions">
+                        <button
+                          type="button"
+                          className="proj-icon-btn"
+                          title="Rename project"
+                          onClick={(e) => { e.stopPropagation(); startRename(project.id, project.name) }}
+                        >
+                          <i className="ti ti-pencil" />
+                        </button>
+                        <button
+                          type="button"
+                          className="proj-icon-btn danger"
+                          title="Delete project"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(project.id, project.name) }}
+                        >
+                          <i className="ti ti-trash" />
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -160,10 +161,6 @@ export function ProjectSwitcher() {
             >
               <i className="ti ti-plus" />
               Create project…
-            </button>
-            <button type="button" className="proj-action" onClick={handleAddDemoProject}>
-              <i className="ti ti-copy" />
-              Add demo project
             </button>
             <button type="button" className="proj-action muted" disabled title="Coming soon">
               <i className="ti ti-settings" />

@@ -1,0 +1,72 @@
+/**
+ * project-client.ts
+ *
+ * Real-backend project list/create, used to replace the fresh app's single
+ * client-only "Demo Project" (DP) with the actual DB projects (CTMS, eTMF,
+ * Viewer, SSO/IAM, Reporting, API Gateway — see packages/db/src/seed/ids.ts).
+ *
+ * Unlike api-client.ts (which targets the legacy /api/runs/* dev-header
+ * auth), these calls hit the nested /api/projects/* routes, which use the
+ * real NextAuth session cookie (resolveSessionActor) — no x-relay-user-id
+ * header needed. The browser sends the session cookie automatically on
+ * same-origin fetches, so no extra headers are required here.
+ */
+
+import { RELAY_ORG_ID } from './config'
+import type { ApiErrorBody, ApiSuccessBody } from '@/lib/api/types'
+
+export class RelayApiError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'RelayApiError'
+  }
+}
+
+async function parseResponse<T>(res: Response): Promise<T> {
+  const json = (await res.json()) as ApiSuccessBody<T> | ApiErrorBody
+  if (!res.ok) {
+    const err = 'error' in json ? json.error : { code: 'UNKNOWN', message: res.statusText }
+    throw new RelayApiError(err.code, err.message)
+  }
+  return (json as ApiSuccessBody<T>).data
+}
+
+export interface RealProject {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  status: string
+}
+
+export async function fetchRealProjects(): Promise<RealProject[]> {
+  const data = await parseResponse<{ projects: RealProject[] }>(
+    await fetch('/api/projects', { credentials: 'same-origin' }),
+  )
+  return data.projects
+}
+
+export interface CreateRealProjectInput {
+  slug: string
+  name: string
+  description?: string
+}
+
+export async function createRealProject(input: CreateRealProjectInput): Promise<RealProject> {
+  return parseResponse<RealProject>(
+    await fetch('/api/projects', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orgId: RELAY_ORG_ID,
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+      }),
+    }),
+  )
+}

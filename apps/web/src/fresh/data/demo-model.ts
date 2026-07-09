@@ -52,6 +52,15 @@ export interface Project {
   description?: string
   /** When `'demo'`, project shows seeded dashboard UI and was created from the immutable demo template. */
   seedTemplate?: 'demo'
+  /**
+   * `'real'` = backed by an actual row in the real DB `projects` table (id is
+   * the real ULID, registered via FreshProvider's REGISTER_REAL_PROJECTS on
+   * mount from GET /api/projects — see project-client.ts). `'local'`/undefined
+   * = a purely client-side/localStorage project with no backend row. Real
+   * projects can't be renamed/deleted from this UI (no backend support for
+   * that yet) — ProjectSwitcher.tsx hides those actions when this is 'real'.
+   */
+  source?: 'real' | 'local'
   /** IDs from `adminSettings.customFields` that are active for this project. */
   activeCustomFieldIds: string[]
   /** Per-project overrides for org-level policies; omitted fields default to inherit in UI. */

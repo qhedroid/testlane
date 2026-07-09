@@ -35,6 +35,7 @@ import {
 import { findRunById } from './run-utils'
 import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatDefectKey, formatPlanKey, formatRequirementKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
+import { fetchRealProjects } from '@/lib/relay/project-client'
 
 const STORAGE_KEY = 'relay-demo-v2'
 const DEMO_RESET_PARAM = 'relay-reset'
@@ -105,6 +106,10 @@ export type FreshAction =
   | AdminAction
   | { type: 'ADD_DEMO_PROJECT' }
   | { type: 'CREATE_PROJECT'; name: string; key: string; description?: string }
+  | {
+      type: 'REGISTER_REAL_PROJECTS'
+      projects: { id: string; slug: string; name: string; description?: string | null }[]
+    }
   | { type: 'UPDATE_PROJECT'; projectId: string; patch: Partial<Pick<Project, 'name' | 'key' | 'description'>> }
   | { type: 'UPDATE_ACTIVE_CUSTOM_FIELDS'; projectId: string; activeCustomFieldIds: string[] }
   | { type: 'UPDATE_PROJECT_SETTINGS'; projectId: string; projectSettings: ProjectSettings }
@@ -183,6 +188,101 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           ...state.projectsById,
           [action.projectId]: { ...existing, ...action.patch },
         },
+      }
+      break
+    }
+    case 'REGISTER_REAL_PROJECTS': {
+      // Replaces the fresh app's single client-only "Demo Project" (DP) with
+      // the real backend projects (mvp-backend "wire everything" session,
+      // Shaun's "build a real project picker" call — see handoff.md). Real
+      // projects use their actual DB ULID as `id` and `slug.toUpperCase()` as
+      // `key`, so every existing folder/case/run/plan action (which all key
+      // off `state.activeProjectId`) keeps working unchanged. No-op if the
+      // fetch returned nothing (e.g. offline) or everything is already
+      // registered, so this doesn't thrash/re-persist on every render.
+      const incoming = action.projects
+      if (incoming.length === 0) return state
+
+      const existingRealIds = new Set(
+        Object.values(state.projectsById)
+          .filter((p) => p.source === 'real')
+          .map((p) => p.id),
+      )
+      const incomingIds = new Set(incoming.map((p) => p.id))
+      const alreadyRegistered =
+        existingRealIds.size === incomingIds.size &&
+        incoming.every((p) => existingRealIds.has(p.id))
+      if (alreadyRegistered) return state
+
+      const projectsById: Record<string, Project> = { ...state.projectsById }
+      const currentRunIdByProject = { ...state.currentRunIdByProject }
+      const nextCaseNumByProject = { ...state.nextCaseNumByProject }
+      const nextRunNumByProject = { ...state.nextRunNumByProject }
+      const nextPlanNumByProject = { ...state.nextPlanNumByProject }
+      const nextRequirementNumByProject = { ...(state.nextRequirementNumByProject ?? {}) }
+      const nextDefectNumByProject = { ...(state.nextDefectNumByProject ?? {}) }
+
+      // Drop any non-real (local-only) projects — real projects fully replace
+      // them once the backend is wired, rather than coexisting confusingly.
+      for (const [id, p] of Object.entries(projectsById)) {
+        if (p.source === 'real') continue
+        delete projectsById[id]
+        delete currentRunIdByProject[id]
+        delete nextCaseNumByProject[id]
+        delete nextRunNumByProject[id]
+        delete nextPlanNumByProject[id]
+        delete nextRequirementNumByProject[id]
+        delete nextDefectNumByProject[id]
+      }
+
+      for (const p of incoming) {
+        const existing = projectsById[p.id]
+        projectsById[p.id] = {
+          id: p.id,
+          name: p.name,
+          key: p.slug.toUpperCase(),
+          description: p.description ?? undefined,
+          source: 'real',
+          activeCustomFieldIds: existing?.activeCustomFieldIds ?? [],
+          projectSettings: existing?.projectSettings,
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
+        }
+        if (!(p.id in currentRunIdByProject)) currentRunIdByProject[p.id] = ''
+        if (!(p.id in nextCaseNumByProject)) nextCaseNumByProject[p.id] = 1
+        if (!(p.id in nextRunNumByProject)) nextRunNumByProject[p.id] = 1
+        if (!(p.id in nextPlanNumByProject)) nextPlanNumByProject[p.id] = 1
+        if (!(p.id in nextRequirementNumByProject)) nextRequirementNumByProject[p.id] = 1
+        if (!(p.id in nextDefectNumByProject)) nextDefectNumByProject[p.id] = 1
+      }
+
+      const remainingProjectIds = new Set(Object.keys(projectsById))
+      let activeProjectId = state.activeProjectId
+      if (!remainingProjectIds.has(activeProjectId)) {
+        activeProjectId = incoming[0]?.id ?? activeProjectId
+      }
+
+      next = {
+        ...state,
+        projectsById,
+        activeProjectId,
+        currentRunIdByProject,
+        nextCaseNumByProject,
+        nextRunNumByProject,
+        nextPlanNumByProject,
+        nextRequirementNumByProject,
+        nextDefectNumByProject,
+        folders: state.folders.filter((f) => remainingProjectIds.has(f.projectId)),
+        cases: state.cases.filter((c) => remainingProjectIds.has(c.projectId)),
+        runs: state.runs.filter((r) => remainingProjectIds.has(r.projectId)),
+        plansById: Object.fromEntries(
+          Object.entries(state.plansById).filter(([, pl]) => remainingProjectIds.has(pl.projectId)),
+        ),
+        requirementsById: Object.fromEntries(
+          Object.entries(state.requirementsById ?? {}).filter(([, r]) => remainingProjectIds.has(r.projectId)),
+        ),
+        defectsById: Object.fromEntries(
+          Object.entries(state.defectsById ?? {}).filter(([, d]) => remainingProjectIds.has(d.projectId)),
+        ),
       }
       break
     }
@@ -756,6 +856,28 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     const qs = params.toString()
     const next = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`
     window.history.replaceState(null, '', next)
+  }, [])
+
+  // Replace the client-only "Demo Project" with the real backend projects on
+  // mount (mvp-backend "wire everything" session). Runs once per mount;
+  // REGISTER_REAL_PROJECTS itself no-ops if the same set is already
+  // registered, so this is safe under React 18 dev-mode double-invoke. If the
+  // fetch fails (e.g. offline, session not ready yet), we just log and leave
+  // whatever project state already exists — the app stays usable, it just
+  // won't see real data until a later successful fetch/reload.
+  useEffect(() => {
+    let cancelled = false
+    fetchRealProjects()
+      .then((projects) => {
+        if (cancelled || projects.length === 0) return
+        dispatch({ type: 'REGISTER_REAL_PROJECTS', projects })
+      })
+      .catch((err) => {
+        console.error('[relay] Failed to load real projects, staying on local project state:', err)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const activeProject = useMemo(

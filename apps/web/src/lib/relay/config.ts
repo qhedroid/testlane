@@ -1,6 +1,11 @@
 /** Seeded CTMS project — local dev default. */
 export const RELAY_PROJECT_ID = '01SEED00000000000000000010'
 
+/** The single seeded org every project/user belongs to (local dev only). Needed
+ * client-side for POST /api/projects (createProjectBodySchema requires orgId),
+ * since the real session token doesn't carry orgId today. */
+export const RELAY_ORG_ID = '01SEED00000000000000000001'
+
 /** PLAN-001 on CTMS — default plan for create run. */
 export const RELAY_TEST_PLAN_ID = '01SEED00000000000000000400'
 
