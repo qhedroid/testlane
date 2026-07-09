@@ -60,6 +60,33 @@ could actually change:
 Plans, Defects, Audit. This is the concrete next step — see "Open questions / blockers" at the
 bottom of this file.
 
+**Bug found + fixed (Shaun, testing locally on `/DEMO/dashboard`):** a real, reproducible React
+hydration mismatch — SSR rendered the empty-cases dashboard state while the client's hydration
+pass rendered the populated-dashboard state. Root cause: `FreshProvider`'s `useReducer(reducer,
+undefined, loadState)` read `localStorage` *synchronously as the client's first render*, which
+has to match SSR's HTML (no `localStorage` on the server) for hydration to succeed — any
+persisted state that differs at all from a fresh `buildInitialDemoState()` guarantees a mismatch.
+This was always a latent risk in this app's architecture, but `REGISTER_REAL_PROJECTS` made it hit
+in practice: after one visit, localStorage always ends up holding a project set that differs from
+the server's fresh single-local-project baseline. Fixed by moving the `localStorage` read out of
+the `useReducer` initializer (now `buildInitialDemoState` directly, matching SSR exactly) and into
+a post-mount `useEffect` that dispatches `{ type: 'HYDRATE', state: loadState() }`. Trade-off: a
+brief flash from fresh/empty state to the real persisted state immediately after mount — the
+standard, accepted pattern for localStorage-backed state under SSR. Verified via `tsc --noEmit` +
+`pnpm build`; **not yet re-verified live** — Shaun should reload `/DEMO/dashboard` (and a couple of
+other routes) and confirm the hydration error is gone.
+
+**Known related rough edge, not yet fixed (flagging, not silently ignoring):** because
+`fetchRealProjects()` is an async network call, there's an inherent window right after mount where
+the URL says e.g. `/DEMO/dashboard` but `state.projectsById` doesn't have the real "DEMO" project
+registered yet (only the local placeholder does). `ProjectRouteSync.tsx`'s existing
+unknown-project-key redirect can fire during that window and bounce the user to `/DP/dashboard`,
+then bounce back to `/DEMO/dashboard` a moment later once `REGISTER_REAL_PROJECTS` actually runs
+and removes the stale local project. Self-corrects, no data loss, but it's a visible double-redirect
+flicker on first load. Not fixed this pass (would need a "don't redirect until the real-project
+fetch has resolved at least once" gate) — worth revisiting if it's noticeable enough in practice
+to bother Shaun.
+
 ## Optimistic writes — decided, flagged for later revisit
 
 When a real-project write action (create/update/delete a case, folder, plan, etc.) fires, the UI

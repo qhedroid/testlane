@@ -852,7 +852,29 @@ interface FreshContextValue {
 const FreshContext = createContext<FreshContextValue | null>(null)
 
 export function FreshProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, loadState)
+  // SSR-safe, deterministic default — matches what the server rendered
+  // exactly. `loadState()` (localStorage-backed) is now only ever called
+  // from the effect below, which only runs client-side after hydration.
+  //
+  // Fix (mvp-backend "wire everything" session): this used to be
+  // `useReducer(reducer, undefined, loadState)`, which read `localStorage`
+  // synchronously as part of the client's very first render — a render that
+  // has to match the server's HTML for hydration to succeed. Since SSR has
+  // no `localStorage`, any persisted state that differs at all from a fresh
+  // `buildInitialDemoState()` (which is virtually guaranteed once real
+  // projects get registered — see REGISTER_REAL_PROJECTS below) caused a
+  // real, reproducible hydration mismatch (Shaun hit this on
+  // /DEMO/dashboard: SSR rendered the empty-cases state, the client's
+  // localStorage-derived state had a different case count). Deferring the
+  // localStorage read to a post-mount effect means the very first client
+  // render always matches SSR, at the cost of a brief flash from
+  // "fresh/empty" to "actual persisted" state immediately after mount —
+  // the standard, accepted trade-off for localStorage-backed state under SSR.
+  const [state, dispatch] = useReducer(reducer, undefined, buildInitialDemoState)
+
+  useEffect(() => {
+    dispatch({ type: 'HYDRATE', state: loadState() })
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !isDemoResetRequested()) return
