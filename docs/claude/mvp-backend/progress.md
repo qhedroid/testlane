@@ -5,13 +5,14 @@
 > which gets summarized/lost across sessions. Update it before ending any session that touched
 > this branch, even a short one that only got partway through a phase.
 
-Last updated: 2026-07-09 (session continues: after all 8 phases' backends were built, Shaun said
-"let's try wiring all at once" — see "Screen-wiring architecture pivot" section below for the
-reducer-sync/write-through approach this settled on, "Optimistic writes" for the write-flow
-decision, and "Demo Project + cloning" for the new 7th project and its clone-on-demand feature.
-Project-picker foundation is committed (`2403930`). Demo Project seed + clone feature are built
-and typecheck/build-verified but **not yet committed** as of this update. Actual Cases/Plans/
-Dashboard/Defects/Audit/Admin/Runs screen-wiring has not started yet — next concrete step.).
+Last updated: 2026-07-09 (new session: **Cases screen-wiring is built** — `CasesScreen.tsx` (+
+folders) now reads and writes the real API for real projects, via the reducer-sync/write-through
+architecture below, with zero changes to the screen file itself. See "Phase 2 screen-wiring
+(Cases) — built" for full detail, known UX trade-offs, and Shaun's local verification checklist.
+Claude-sandbox verified (tsc both packages + `pnpm build`), **not yet committed** as of this
+update. Prior state: project picker (`2403930`), Demo Project seed + cloning (`119850a`),
+hydration fix (`4ca5bfa`), double-redirect fix (`47caed6`) all committed. Next after Cases:
+Plans, then Dashboard, then Defects/Audit/Admin, Runs deliberately last.)
 
 ## Backend-first, all phases — standing decision (read this before touching Phases 2–8)
 
@@ -56,9 +57,12 @@ could actually change:
    model as directly as cases/folders/plans do, and it's the one already-live, protected-UX route
    family (see Phase 4's row).
 
-**Not yet built:** the actual sync-in / write-through wiring described above for Cases, Folders,
-Plans, Defects, Audit. This is the concrete next step — see "Open questions / blockers" at the
-bottom of this file.
+**Status of the sync-in / write-through wiring per module:** Cases + Folders **built** (see
+"Phase 2 screen-wiring (Cases) — built" below — it established the reusable pattern: client file
+with adapters → `SYNC_REAL_PROJECT_DATA`-style reducer sync → write-through in the provider
+callbacks → `RECONCILE_*` temp-id swap). Plans, Defects, Audit still to do the same way;
+Dashboard likely needs little/no work (it computes off the already-synced reducer state); Runs
+deliberately last (protected UX, different data-shape mapping — see Phase 4's row).
 
 **Bug found + fixed (Shaun, testing locally on `/DEMO/dashboard`):** a real, reproducible React
 hydration mismatch — SSR rendered the empty-cases dashboard state while the client's hydration
@@ -211,7 +215,7 @@ against a live DB — needs `pnpm db:seed` run locally, see below):
 | Phase | Status |
 |-------|--------|
 | 1 — Foundation (auth/RBAC/User+Project API) | **Code complete, committed (`b430e50`, `4e5ad45`).** Shaun-local verification (real DB, real login flow, QA report) still needed before treating the phase as fully done. |
-| 2 — Test Cases backend | **Backend complete, Claude-sandbox verified** (`TestCaseService.ts` + `/api/projects/[projectId]/cases/*` + `/api/projects/[projectId]/folders/*`). **`CasesScreen.tsx` wiring NOT started** — see "Phase 2 screen-wiring note" below before attempting it. Not yet committed. |
+| 2 — Test Cases backend | **Backend complete AND screen-wiring complete, Claude-sandbox verified** (`TestCaseService.ts` + `/api/projects/[projectId]/cases/*` + `/api/projects/[projectId]/folders/*` committed in `7fc415e`; screen-wiring built this session via `case-client.ts` + `FreshProvider` sync/write-through — see "Phase 2 screen-wiring (Cases) — built" below, **not yet committed**). Shaun-local verification still needed (checklist in that section). |
 | 3 — Test Plans backend | **Backend complete, Claude-sandbox verified** (`TestPlanService.ts` + `/api/projects/[projectId]/plans/*` + `.../plans/[planId]/cases`). `PlansScreen.tsx` wiring deferred (Shaun's "backend-first" call, see note above/below). Real design finding: the server has no equivalent of the frontend's dynamic `TestQuery`/condition-based plans — see `TestPlanService.ts`'s file header and `known-bugs.md`'s GAP-01. Not yet committed. |
 | 4 — Test Runs wiring | **Deliberately skipped this session, not just deferred like the others.** Unlike Phases 2/3/5/6 (new, currently-unused routes), `/api/runs/*` is already live and depended on by `/runs/api` + `pnpm api:validate` — swapping its auth source (dev header → real session) without also updating `RunsScreen.tsx`/`/runs/api`'s caller in the same atomic change would actively regress working, already-shipped functionality, not just leave something unwired. Needs to happen as one verified change together with the protected three-pane execution UX, not as a backend-only slice. **No code written for this phase.** |
 | 5 — Dashboard backend | **Backend complete, Claude-sandbox verified** (`DashboardService.ts` + `/api/projects/[projectId]/dashboard`). `DashboardScreen.tsx` wiring deferred. Scoped to only what real tables back today (`test_runs`/`test_run_cases`/`run_defect_links`) — Requirements coverage, Milestones, and results-over-time trend widgets have no backing data and stay out of scope, same reasoning as Phase 2/3's exclusions. Not yet committed. |
@@ -386,16 +390,135 @@ above for the one part of this phase that's deliberately not started yet.
       from `/api/runs`'s flat `?projectId=` convention since these routes are properly nested).
       Zod schemas in `schemas.ts`: `listCasesQuerySchema`, `createCaseBodySchema`,
       `updateCaseBodySchema`, `createFolderBodySchema`.
-- [ ] **`CasesScreen.tsx` wiring — NOT STARTED.** See "Phase 2 screen-wiring note" above.
+- [x] **`CasesScreen.tsx` wiring — DONE** (2026-07-09, later session). Full detail in
+      "Phase 2 screen-wiring (Cases) — built" below. Zero changes to `CasesScreen.tsx` itself —
+      the reducer-sync/write-through architecture absorbed everything in `FreshProvider.tsx` +
+      a new `case-client.ts`.
 - [x] **Verification — Claude sandbox:** `tsc --noEmit` clean for both `@relay/db` and
       `@relay/web`; `pnpm build` succeeded, all 4 new routes present in the route table.
-- [ ] **Verification — Shaun local:** not yet possible — no screen calls these routes yet, so
-      there's nothing to click through. Once `CasesScreen.tsx` is wired, needs the same
-      login-as-different-roles + CRUD smoke test pattern as Phase 1.
+      (Re-verified after the screen-wiring changes — same result.)
+- [ ] **Verification — Shaun local:** now possible — see the checklist in "Phase 2
+      screen-wiring (Cases) — built" below. **Still needed.**
 - [ ] **Documentation:** `docs/product/user-guide.md`/`feature-flow.md`/`FRONTEND_CONTRACTS.md`
-      not yet updated for the new case/folder endpoints (deferred until the screen is wired, so
-      the docs reflect real, working behavior rather than an unwired backend slice).
-- [ ] **Commit** — not yet committed.
+      not yet updated for the new case/folder endpoints (deferred until Shaun's local
+      verification confirms the wiring actually works end-to-end, so the docs reflect verified
+      behavior).
+- [ ] **Commit** — backend committed (`7fc415e`); screen-wiring not yet committed.
+
+## Phase 2 screen-wiring (Cases) — built (2026-07-09, not yet committed)
+
+First screen wired via the reducer-sync/write-through architecture (see "Screen-wiring
+architecture pivot" above). `CasesScreen.tsx` itself is **unchanged** — it keeps reading
+`activeCases`/`activeFolders` and calling `addCase`/`replaceCase`/`deleteCase`/`addFolder`
+exactly as before; all the real-API plumbing lives in the provider and a new client file.
+
+**Files changed:**
+
+- `apps/web/src/lib/relay/case-client.ts` (new) — mirrors `project-client.ts`'s pattern
+  (nested session-auth routes, same `parseResponse`/`RelayApiError` shape). Contains:
+  `fetchRealFolders`/`fetchRealCases`/`createRealCase`/`updateRealCase`/`archiveRealCase`/
+  `createRealFolder`; the frontend↔backend adapters (`realCaseToLocal`,
+  `localCaseToCreateBody`, `localCasePatchToUpdateBody`, `realFolderToLocal`); priority/type
+  casing converters (DB lowercase enums ↔ frontend Capitalized strings, unknown types fall
+  back to `functional`); the static 8-seed-user id↔name map (`SEED_USER_NAME_BY_ID`, IDs from
+  `packages/db/src/seed/ids.ts` — note ids.ts's key names predate the seed-user rename, the
+  display names match current `insert.ts`); and `isRealId()` (26-char ULID test, used to
+  distinguish real ids from local `newId()` temp ids everywhere below).
+- `apps/web/src/fresh/data/FreshProvider.tsx` — three new reducer actions:
+  `SYNC_REAL_PROJECT_DATA` (replaces a real project's cases/folders with server data, merging
+  local-only fields back in per case and keeping still-pending optimistic creates),
+  `RECONCILE_CASE` and `RECONCILE_FOLDER` (swap an optimistic create's temp id for the server's
+  real ULID + ref once its POST resolves; case reconcile also remaps run
+  `caseOrder`/`executions` references defensively). A module-level `mergeLocalOnlyCaseFields()`
+  helper implements the hybrid-screen rule: comments, custom-field values, requirement links,
+  references, and template stay localStorage-backed (no DB tables — by design, out of branch
+  scope) and are preserved across every sync/reconcile; step comments match by step id, falling
+  back to position (server regenerates ULIDs for steps submitted with temp ids). In the
+  component: a sync effect (fetch folders+cases whenever the active project is real, same
+  trigger pattern as `REGISTER_REAL_PROJECTS`), `idRemapRef` (temp id → real ULID) +
+  `pendingRealCreatesRef` (temp id → in-flight create promise, so a write against a
+  not-yet-reconciled entity waits for the real id instead of missing the server), and
+  write-through in `addCase`/`updateCase`/`replaceCase`/`deleteCase`/`addFolder` — local
+  dispatch first (optimistic, per the standing decision above), API call in background,
+  `RECONCILE_*` dispatch on create success, `console.error` + keep-local on failure.
+- `packages/db/services/TestCaseService.ts` — `listCases()` now returns full `CaseDetail[]`
+  (steps, tags, preconditions, description) instead of `CaseSummary[]`. Deliberate change: the
+  screen renders step content and tag chips straight from its in-memory case list, so a
+  summary-only list would have forced an N+1 per-case detail fetch on every project load. The
+  previous implementation already paid a step-rows query for counts; this just selects the full
+  rows. Route/schema unchanged (additive response change on a route nothing else consumes yet).
+
+**Adapter decisions (flagged, not silently resolved — these are the mismatches the "Phase 2
+screen-wiring note" above predicted):**
+
+- **caseKey:** server `caseRef` (`TC-1005`, unpadded) is used directly. An optimistic create
+  briefly shows the local zero-padded key (`TC-00015`) until the POST resolves and
+  `RECONCILE_CASE` swaps it — visible for well under a second on local dev.
+- **assignee:** static 8-user map. A name outside the seeded roster is sent as `assignedTo:
+  null` (server has no users row for it) but kept as-is locally — it round-trips back to
+  unassigned after a reload+sync. Real name→id lookup is Phase 7 territory.
+- **deleteCase:** server archives (`is_archived = true`), local removes from state — the
+  archived case is invisible to the UI either way (list fetch excludes archived), but the DB
+  row survives, per schema invariant.
+- **steps:** temp step ids are stripped from write bodies (fail the API's ULID check), so the
+  server regenerates step ULIDs on every save that touches steps; steps with an empty action
+  are omitted from requests entirely (API 400s on them) and stay local-only until given text.
+
+**Known minor UX trade-offs (watch for these during local verification — both are
+create-path-only, brief, and fixable with a small screen-level effect if they annoy):**
+
+1. **Duplicate case:** the context-menu Duplicate opens the detail panel with the temp id
+   (`CasesScreen.tsx` line ~1117); when the create's reconcile lands moments later the id
+   changes and the panel closes itself. Reopening shows the case fine.
+2. **New folder:** `commitNewFolder` selects the new folder by temp id; the tree selection
+   resets when the reconcile swaps the id. The folder itself is fine (it's empty either way).
+
+**Known races/limitations (accepted for demo, documented so they aren't rediscovered):**
+
+- A create whose POST *fails* keeps the case/folder locally forever with a temp id and a
+  console error — no retry queue. Same for any failed update/archive (local state keeps the
+  change, server doesn't).
+- An edit fired between a create and its reconcile resolves the real id via the pending-create
+  promise, so the normal quick-create→edit flow is covered; but if the create failed, the edit
+  is skipped with a console warning.
+- A sync resolving *after* a local edit that was made while the fetch was in flight can
+  briefly overwrite the edit with pre-edit server state (the write-through PATCH then makes the
+  server catch up on next sync). Window is fetch-latency-sized; acceptable locally.
+
+**Verification — Claude sandbox (done):** rsync→`/tmp/relay-verify`, `tsc --noEmit` clean for
+`@relay/db` and `@relay/web`, `pnpm build` succeeded (29/29 pages, full route table present).
+Two sandbox notes for future sessions, adding to the existing ones under "Open questions /
+blockers": (1) `pnpm` was again missing and the previously-noted leftover install was gone —
+`npm install -g pnpm --prefix ~/.npm-global` works fine (no `corepack` needed), then invoke
+`~/.npm-global/bin/pnpm`. (2) `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` must point at a JSON file
+mapping the *exact* font URL to CSS text — an empty `{}` fails with "Missing mocked response
+for URL: https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap";
+map that URL to any valid `@font-face` CSS string. (3) Background processes do **not** survive
+between bash tool calls in this sandbox — a `pnpm build` that outruns the 45s tool timeout can
+be run via `setsid bash -c '... > /tmp/build.log 2>&1' &` within a single call and completes
+fast enough (~40s) once the pnpm store is warm.
+
+**Verification — Shaun local (STILL NEEDED before this phase is done):**
+
+- [ ] Log in, land on `/DEMO/dashboard`, go to Test Cases → the seeded Demo Project data
+      appears (4 folders incl. nested "Password Recovery", 13 non-archived cases, real
+      `TC-<n>` refs, step counts 1–8, assignees showing real team names).
+- [ ] Quick-add a case → appears instantly with a padded temp key, key flips to a real
+      `TC-<n>` ref within a beat; survives a hard reload (i.e. it's really in MySQL).
+- [ ] Edit a case in the detail panel (title, priority, type, steps, assignee) → save →
+      hard reload → changes persisted.
+- [ ] Delete a case → gone from UI; in DB it's `is_archived = 1`, not deleted.
+- [ ] Create a folder, and a nested folder → survive reload; create a case inside a
+      just-created folder immediately → lands in that folder server-side after reload.
+- [ ] Watch for the two known UX trade-offs above (duplicate-case panel close, new-folder
+      selection reset) — confirm they're tolerable or ask for the screen-level fix.
+- [ ] Custom fields / comments / requirement links on cases in the Demo Project still work and
+      survive reload (they're localStorage-backed — the hybrid rule — so they should behave
+      exactly as before).
+- [ ] `GET /api/projects/<demoId>/audit` (or the DB `audit_log` table) shows `case.created`/
+      `case.updated`/`case.archived` rows for the actions above.
+- [ ] Regression: local-only projects (if any remain) still behave as pure-localStorage;
+      `/DP/testruns` execution UX untouched.
 
 ## Phase 3 — Test Plans backend: detailed checklist
 
@@ -558,16 +681,18 @@ phase is actually picked up, after screen-wiring.
   future session hits `pnpm: command not found`, check for a similar leftover global install
   before trying to reinstall pnpm from scratch via `corepack` (which itself failed with `EACCES`
   trying to symlink into `/usr/bin` in this sandbox).
-- **Six phases' worth of code (2, 3, 5, 6) plus this session's documentation updates are all
-  currently uncommitted working-tree changes** — nothing beyond `b430e50`/`4e5ad45` has been
-  committed. Needs a commit (or several) before ending the session, per `CLAUDE.md`'s
-  commit-identity rule (per-commit env vars, not persisted git config).
-- **Every phase's screen-wiring (Cases, Plans, Runs, Dashboard, Defects, Audit, Admin) is now the
-  single remaining body of work** before `mvp-backend`'s branch-level "definition of done" is met.
-  Recommendation, not yet acted on: wire one screen at a time, verify it locally with Shaun, then
-  move to the next — see the "Phase 2 screen-wiring note" above for the fuller reasoning (real
-  frontend/backend model mismatches were found for cases/plans that a screen-wiring pass has to
-  actively resolve, not just mechanically swap the data source).
+- (Resolved) Phases 2/3/5/6 backends, the project picker, the Demo Project seed + cloning, and
+  the hydration/double-redirect fixes are all committed (`7fc415e`, `2403930`, `119850a`,
+  `4ca5bfa`, `47caed6`).
+- **The Cases screen-wiring built 2026-07-09 is uncommitted** (`case-client.ts` new,
+  `FreshProvider.tsx` + `TestCaseService.ts` modified, plus this file) — needs a commit per
+  `CLAUDE.md`'s commit-identity rule (per-commit env vars, not persisted git config).
+- **Remaining screen-wiring: Plans → Dashboard (likely little/no work) → Defects/Audit →
+  Admin → Runs last** (protected UX). Cases established the reusable pattern — follow
+  "Phase 2 screen-wiring (Cases) — built" above as the template. Wiring one screen at a time
+  with Shaun verifying locally between each remains the working agreement.
+- **Shaun-local verification of the Cases wiring is the immediate next gate** — checklist in
+  the Cases section above. Phases 1 and 2 both still carry unchecked "Shaun local" lines.
 
 ## Session log (append, don't rewrite)
 
@@ -607,3 +732,18 @@ phase is actually picked up, after screen-wiring.
   screen-wiring + Shaun-local access. Full per-phase checklists added above. This session also hit
   and worked around a `pnpm: command not found` sandbox quirk (see "Open questions / blockers").
   **Nothing from this session is committed yet.**
+- **2026-07-09 (Cases screen-wiring):** Wired `CasesScreen.tsx` (+ folders) to the real API —
+  the first screen through the reducer-sync/write-through architecture. New
+  `apps/web/src/lib/relay/case-client.ts` (fetch fns + all frontend↔backend adapters + static
+  seed-user id↔name map); `FreshProvider.tsx` gained `SYNC_REAL_PROJECT_DATA`/`RECONCILE_CASE`/
+  `RECONCILE_FOLDER` reducer actions, a real-project sync effect, and optimistic write-through
+  on `addCase`/`updateCase`/`replaceCase`/`deleteCase`/`addFolder` with temp-id→real-id
+  reconciliation (including pending-create promise chaining for writes against
+  not-yet-reconciled entities); `TestCaseService.listCases()` extended to return full
+  `CaseDetail[]` so the screen doesn't need N+1 detail fetches. `CasesScreen.tsx` itself
+  unchanged. Two known create-path UX trade-offs and the accepted failure-mode limitations are
+  documented in the new "Phase 2 screen-wiring (Cases) — built" section, along with Shaun's
+  local verification checklist (the immediate next gate). Claude-sandbox verified: `tsc
+  --noEmit` clean both packages, `pnpm build` clean. Three new sandbox workarounds noted (pnpm
+  reinstall via npm --prefix; exact-URL font mock; setsid for >45s builds). **Not yet
+  committed.**

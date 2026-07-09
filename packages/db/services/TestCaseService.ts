@@ -376,8 +376,15 @@ async function resolveFolderAndDescendantIds(
  * in memory and does all filtering/paging client-side — matching that
  * exactly avoids a screen rewrite when this route gets wired in. Revisit if
  * project case counts grow large enough for this to matter.
+ *
+ * Returns full CaseDetail rows (steps, tags, preconditions, description)
+ * rather than thin summaries — changed during the Cases screen-wiring pass:
+ * the screen renders step content and tag chips directly from its in-memory
+ * case list, so a summary-only list would force an N+1 per-case detail fetch
+ * on every project load. One extra step-rows query here (which the previous
+ * step-*count* implementation already paid) is far cheaper.
  */
-export async function listCases(input: ListCasesInput): Promise<CaseSummary[]> {
+export async function listCases(input: ListCasesInput): Promise<CaseDetail[]> {
   const { actorId, projectId, folderId, includeArchived } = input
   await assertProjectExists(projectId)
   await assertMinProjectRole(actorId, projectId, 'viewer')
@@ -412,8 +419,8 @@ export async function listCases(input: ListCasesInput): Promise<CaseSummary[]> {
 
   if (rows.length === 0) return []
 
-  const stepCounts = await db
-    .select({ testCaseId: testCaseSteps.testCaseId })
+  const stepRows = await db
+    .select()
     .from(testCaseSteps)
     .where(
       inArray(
@@ -421,12 +428,31 @@ export async function listCases(input: ListCasesInput): Promise<CaseSummary[]> {
         rows.map((r) => r.id),
       ),
     )
-  const countByCase = new Map<string, number>()
-  for (const s of stepCounts) {
-    countByCase.set(s.testCaseId, (countByCase.get(s.testCaseId) ?? 0) + 1)
+    .orderBy(testCaseSteps.position)
+  const stepsByCase = new Map<string, typeof stepRows>()
+  for (const s of stepRows) {
+    const list = stepsByCase.get(s.testCaseId) ?? []
+    list.push(s)
+    stepsByCase.set(s.testCaseId, list)
   }
 
-  return rows.map((row) => toCaseSummary(row, countByCase.get(row.id) ?? 0))
+  return rows.map((row) => {
+    const steps = stepsByCase.get(row.id) ?? []
+    return {
+      ...toCaseSummary(row, steps.length),
+      preconditions: row.preconditions,
+      description: row.description,
+      automationStatus: row.automationStatus as CaseDetail['automationStatus'],
+      tags: (row.tags as string[]) ?? [],
+      createdBy: row.createdBy,
+      steps: steps.map((s) => ({
+        id: s.id,
+        position: s.position,
+        action: s.action,
+        expectedResult: s.expectedResult,
+      })),
+    }
+  })
 }
 
 export async function getCase(

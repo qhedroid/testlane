@@ -22,6 +22,25 @@ Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin,
 
 ---
 
+## 2026-07-09 — `mvp-backend` Cases screen-wiring built (first screen on the real API)
+
+Wired `CasesScreen.tsx` (+ folders) to the real backend — the first screen through the
+reducer-sync/write-through architecture decided in the "wire everything" session. The screen
+file itself is unchanged: a new `apps/web/src/lib/relay/case-client.ts` owns fetch functions
+and all frontend↔backend adapters (priority/type casing, `assignee` name ↔ `assignedTo` ULID
+via a static 8-seed-user map, unpadded server `TC-<n>` refs as caseKey), and
+`FreshProvider.tsx` gained a real-project sync effect plus optimistic write-through on
+`addCase`/`updateCase`/`replaceCase`/`deleteCase`/`addFolder` with temp-id→real-id
+reconciliation. `TestCaseService.listCases()` now returns full `CaseDetail[]` (steps/tags/
+preconditions) to avoid N+1 fetches. Custom fields/comments/requirement links stay
+localStorage-backed (hybrid screen, by design). Claude-sandbox verified (typecheck + build);
+**not yet committed**; Shaun-local verification is the next gate. Full detail, known UX
+trade-offs, and the verification checklist: `docs/claude/mvp-backend/progress.md`, section
+"Phase 2 screen-wiring (Cases) — built". Next screens: Plans → Dashboard → Defects/Audit →
+Admin → Runs last.
+
+---
+
 ## 2026-07-09 — `mvp-backend` Phases 2/3/5/6 backend built (all-phases push)
 
 Shaun: "Can you run all the phases to completion?" — referring to the remaining 7 phases (2–8) in

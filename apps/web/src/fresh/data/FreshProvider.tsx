@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -37,6 +38,19 @@ import { findRunById } from './run-utils'
 import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatDefectKey, formatPlanKey, formatRequirementKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
 import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
 import { fetchRealProjects } from '@/lib/relay/project-client'
+import {
+  archiveRealCase,
+  createRealCase,
+  createRealFolder,
+  fetchRealCases,
+  fetchRealFolders,
+  isRealId,
+  localCasePatchToUpdateBody,
+  localCaseToCreateBody,
+  realCaseToLocal,
+  realFolderToLocal,
+  updateRealCase,
+} from '@/lib/relay/case-client'
 
 const STORAGE_KEY = 'relay-demo-v2'
 const DEMO_RESET_PARAM = 'relay-reset'
@@ -142,6 +156,37 @@ export type FreshAction =
   | { type: 'CREATE_DEFECT_AND_LINK'; defect: Defect; runId: string; caseId: string }
   | { type: 'LINK_DEFECT_TO_EXECUTION'; runId: string; caseId: string; defectId: string }
   | { type: 'HYDRATE'; state: DemoState }
+  | { type: 'SYNC_REAL_PROJECT_DATA'; projectId: string; folders: Folder[]; cases: Case[] }
+  | { type: 'RECONCILE_CASE'; tempId: string; case: Case }
+  | { type: 'RECONCILE_FOLDER'; tempId: string; folder: Folder }
+
+/**
+ * Merge fields the real backend has no tables for (comments, custom field
+ * values, requirement links, references, template) from an existing local
+ * copy of a case onto its server-fetched version. This is what makes
+ * CasesScreen a *hybrid* screen for real projects — real data where the DB
+ * backs it, localStorage data where it doesn't (per the Phase 2 screen-wiring
+ * note in docs/claude/mvp-backend/progress.md).
+ *
+ * Step comments are matched by step id first, falling back to position —
+ * the server regenerates ULIDs for steps submitted with temp local ids, so
+ * id-match alone would drop comments right after an optimistic create.
+ */
+function mergeLocalOnlyCaseFields(serverCase: Case, localCase: Case | undefined): Case {
+  if (!localCase) return serverCase
+  return {
+    ...serverCase,
+    generalComments: localCase.generalComments,
+    customFieldValues: localCase.customFieldValues,
+    requirementIds: localCase.requirementIds,
+    references: localCase.references,
+    template: localCase.template,
+    steps: serverCase.steps.map((s, i) => {
+      const localStep = localCase.steps.find((ls) => ls.id === s.id) ?? localCase.steps[i]
+      return localStep && localStep.comments.length > 0 ? { ...s, comments: localStep.comments } : s
+    }),
+  }
+}
 
 function reducer(state: DemoState, action: FreshAction): DemoState {
   if (isAdminAction(action)) {
@@ -761,6 +806,85 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       next = { ...state, runs }
       break
     }
+    case 'SYNC_REAL_PROJECT_DATA': {
+      // Server data replaces this project's cases/folders wholesale, with two
+      // exceptions: (1) local-only fields are merged back in per case (see
+      // mergeLocalOnlyCaseFields), and (2) optimistic creates whose POST
+      // hasn't reconciled yet (still carrying temp non-ULID ids) are kept, so
+      // an in-flight create isn't wiped by a concurrently-resolving sync.
+      // Real-id local cases the server no longer returns are dropped
+      // (archived/removed elsewhere).
+      const { projectId } = action
+      const localCasesById = new Map(
+        state.cases.filter((c) => c.projectId === projectId).map((c) => [c.id, c]),
+      )
+      const mergedCases = action.cases.map((serverCase) =>
+        mergeLocalOnlyCaseFields(serverCase, localCasesById.get(serverCase.id)),
+      )
+      const pendingCases = state.cases.filter(
+        (c) => c.projectId === projectId && !isRealId(c.id),
+      )
+      const pendingFolders = state.folders.filter(
+        (f) => f.projectId === projectId && !isRealId(f.id),
+      )
+      next = {
+        ...state,
+        cases: [
+          ...state.cases.filter((c) => c.projectId !== projectId),
+          ...mergedCases,
+          ...pendingCases,
+        ],
+        folders: [
+          ...state.folders.filter((f) => f.projectId !== projectId),
+          ...action.folders,
+          ...pendingFolders,
+        ],
+      }
+      break
+    }
+    case 'RECONCILE_CASE': {
+      // An optimistic create's POST resolved — swap the temp local id/caseKey
+      // for the server's real ULID and TC-<n> ref. Run references to the temp
+      // id are remapped defensively (runs are still local-only, but a case
+      // added to a run in the reconcile window shouldn't dangle).
+      const local = state.cases.find((c) => c.id === action.tempId)
+      if (!local) return state
+      const reconciled = mergeLocalOnlyCaseFields(action.case, local)
+      next = {
+        ...state,
+        cases: state.cases.map((c) => (c.id === action.tempId ? reconciled : c)),
+        runs: state.runs.map((r) => {
+          if (!r.caseOrder.includes(action.tempId) && !(action.tempId in r.executions)) return r
+          return {
+            ...r,
+            caseOrder: r.caseOrder.map((id) => (id === action.tempId ? reconciled.id : id)),
+            executions: Object.fromEntries(
+              Object.entries(r.executions).map(([id, ex]) => [
+                id === action.tempId ? reconciled.id : id,
+                ex,
+              ]),
+            ),
+          }
+        }),
+      }
+      break
+    }
+    case 'RECONCILE_FOLDER': {
+      const exists = state.folders.some((f) => f.id === action.tempId)
+      if (!exists) return state
+      next = {
+        ...state,
+        folders: state.folders.map((f) => {
+          if (f.id === action.tempId) return action.folder
+          if (f.parentId === action.tempId) return { ...f, parentId: action.folder.id }
+          return f
+        }),
+        cases: state.cases.map((c) =>
+          c.folderId === action.tempId ? { ...c, folderId: action.folder.id } : c,
+        ),
+      }
+      break
+    }
     default:
       return state
   }
@@ -924,6 +1048,71 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // ---------------------------------------------------------------------
+  // Real-project write-through plumbing (Cases screen-wiring pass)
+  //
+  // Optimistic writes: local dispatch fires first (today's exact feel), the
+  // real API call runs in the background and reconciles afterward. Demo-only
+  // decision — see "Optimistic writes" in docs/claude/mvp-backend/progress.md
+  // for the standing note to revisit before any real production use.
+  //
+  // idRemapRef: temp newId() id -> real server ULID, filled in as each
+  // optimistic create's POST resolves. pendingRealCreatesRef: temp id -> the
+  // in-flight create promise, so writes against a not-yet-reconciled entity
+  // (e.g. delete a case whose create POST is still in flight) can wait for
+  // the real id instead of silently missing the server.
+  // ---------------------------------------------------------------------
+  const idRemapRef = useRef(new Map<string, string>())
+  const pendingRealCreatesRef = useRef(new Map<string, Promise<string>>())
+
+  const resolveRealId = useCallback((id: string): string | undefined => {
+    if (isRealId(id)) return id
+    return idRemapRef.current.get(id)
+  }, [])
+
+  const resolveRealIdAsync = useCallback(
+    async (id: string): Promise<string | undefined> => {
+      const direct = resolveRealId(id)
+      if (direct) return direct
+      const pending = pendingRealCreatesRef.current.get(id)
+      if (!pending) return undefined
+      try {
+        return await pending
+      } catch {
+        return undefined
+      }
+    },
+    [resolveRealId],
+  )
+
+  // Sync the active real project's cases + folders from the real API into
+  // reducer state (same pattern REGISTER_REAL_PROJECTS uses for the project
+  // list itself). Screens keep reading activeCases/activeFolders unchanged —
+  // this is the "reducer-sync" half of the screen-wiring architecture pivot.
+  const activeProjectSource = state.projectsById[state.activeProjectId]?.source
+
+  useEffect(() => {
+    if (!realProjectsLoaded || activeProjectSource !== 'real') return
+    const projectId = state.activeProjectId
+    let cancelled = false
+    Promise.all([fetchRealFolders(projectId), fetchRealCases(projectId)])
+      .then(([realFolders, realCases]) => {
+        if (cancelled) return
+        dispatch({
+          type: 'SYNC_REAL_PROJECT_DATA',
+          projectId,
+          folders: realFolders.map(realFolderToLocal),
+          cases: realCases.map(realCaseToLocal),
+        })
+      })
+      .catch((err) => {
+        console.error('[relay] Failed to sync cases/folders from the real API:', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [realProjectsLoaded, activeProjectSource, state.activeProjectId])
+
   const activeProject = useMemo(
     () => getActiveProject(state) ?? Object.values(state.projectsById)[0],
     [state],
@@ -954,30 +1143,95 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>) => {
       const id = newId('case')
       const now = new Date().toISOString()
+      const projectId = state.activeProjectId
       const newCase: Case = {
         ...data,
         id,
-        projectId: state.activeProjectId,
+        projectId,
         createdAt: now,
         updatedAt: now,
       }
       dispatch({ type: 'ADD_CASE', case: newCase })
+
+      if (state.projectsById[projectId]?.source === 'real') {
+        const createPromise = (async () => {
+          // The case may target a folder whose own optimistic create is still
+          // in flight — wait for that folder's real id before building the body.
+          if (data.folderId && !resolveRealId(data.folderId)) {
+            await pendingRealCreatesRef.current.get(data.folderId)?.catch(() => undefined)
+          }
+          const real = await createRealCase(
+            projectId,
+            localCaseToCreateBody({ ...data, folderId: data.folderId ?? null }, resolveRealId),
+          )
+          idRemapRef.current.set(id, real.id)
+          dispatch({ type: 'RECONCILE_CASE', tempId: id, case: realCaseToLocal(real) })
+          return real.id
+        })()
+        pendingRealCreatesRef.current.set(id, createPromise)
+        createPromise.catch((err) => {
+          console.error('[relay] createCase API call failed — case kept locally only:', err)
+        })
+      }
       return id
     },
-    [state],
+    [state, resolveRealId],
   )
 
-  const updateCase = useCallback((caseId: string, patch: Partial<Case>) => {
-    dispatch({ type: 'UPDATE_CASE', caseId, patch })
-  }, [])
+  const updateCase = useCallback(
+    (caseId: string, patch: Partial<Case>) => {
+      dispatch({ type: 'UPDATE_CASE', caseId, patch })
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source !== 'real') return
+      const body = localCasePatchToUpdateBody(patch, resolveRealId)
+      if (!body) return // patch touched only local-only fields — nothing to send
+      void (async () => {
+        const realId = await resolveRealIdAsync(caseId)
+        if (!realId) {
+          console.warn('[relay] updateCase: no real id for', caseId, '— change kept locally only')
+          return
+        }
+        await updateRealCase(projectId, realId, body)
+      })().catch((err) => console.error('[relay] updateCase API call failed:', err))
+    },
+    [state, resolveRealId, resolveRealIdAsync],
+  )
 
-  const replaceCase = useCallback((caseItem: Case) => {
-    dispatch({ type: 'REPLACE_CASE', case: caseItem })
-  }, [])
+  const replaceCase = useCallback(
+    (caseItem: Case) => {
+      dispatch({ type: 'REPLACE_CASE', case: caseItem })
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source !== 'real') return
+      // A full Case is just a patch with every backend-supported key present.
+      const body = localCasePatchToUpdateBody(caseItem, resolveRealId)
+      if (!body) return
+      void (async () => {
+        const realId = await resolveRealIdAsync(caseItem.id)
+        if (!realId) {
+          console.warn('[relay] replaceCase: no real id for', caseItem.id, '— change kept locally only')
+          return
+        }
+        await updateRealCase(projectId, realId, body)
+      })().catch((err) => console.error('[relay] replaceCase API call failed:', err))
+    },
+    [state, resolveRealId, resolveRealIdAsync],
+  )
 
-  const deleteCase = useCallback((caseId: string) => {
-    dispatch({ type: 'DELETE_CASE', caseId })
-  }, [])
+  const deleteCase = useCallback(
+    (caseId: string) => {
+      dispatch({ type: 'DELETE_CASE', caseId })
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source !== 'real') return
+      // Server-side this archives rather than hard-deletes — a documented
+      // behavior difference (see TestCaseService.ts's file header).
+      void (async () => {
+        const realId = await resolveRealIdAsync(caseId)
+        if (!realId) return
+        await archiveRealCase(projectId, realId)
+      })().catch((err) => console.error('[relay] archiveCase API call failed:', err))
+    },
+    [state, resolveRealIdAsync],
+  )
 
   const updateExecution = useCallback(
     (caseId: string, patch: Partial<CaseExecution>) => {
@@ -1069,13 +1323,36 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const addFolder = useCallback(
     (name: string, parentId?: string | null) => {
       const id = newId('folder')
+      const projectId = state.activeProjectId
       dispatch({
         type: 'ADD_FOLDER',
-        folder: { id, projectId: state.activeProjectId, name, parentId: parentId ?? null },
+        folder: { id, projectId, name, parentId: parentId ?? null },
       })
+
+      if (state.projectsById[projectId]?.source === 'real') {
+        const createPromise = (async () => {
+          // Parent may itself be an optimistic create still in flight.
+          let realParentId: string | null = parentId ? (resolveRealId(parentId) ?? null) : null
+          if (parentId && !realParentId) {
+            realParentId =
+              (await pendingRealCreatesRef.current.get(parentId)?.catch(() => undefined)) ?? null
+          }
+          const real = await createRealFolder(projectId, {
+            name,
+            ...(realParentId ? { parentId: realParentId } : {}),
+          })
+          idRemapRef.current.set(id, real.id)
+          dispatch({ type: 'RECONCILE_FOLDER', tempId: id, folder: realFolderToLocal(real) })
+          return real.id
+        })()
+        pendingRealCreatesRef.current.set(id, createPromise)
+        createPromise.catch((err) => {
+          console.error('[relay] createFolder API call failed — folder kept locally only:', err)
+        })
+      }
       return id
     },
-    [state.activeProjectId],
+    [state, resolveRealId],
   )
 
   const addPlan = useCallback(
