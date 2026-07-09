@@ -162,6 +162,58 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 ---
 
+## Login & Authentication (`mvp-backend` Phase 1)
+
+**Route:** `/login` (top-level; `/:projectKey/login` redirects here).
+
+**Current state:** **Real, API-backed.** NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables — session state lives in an encrypted cookie, not `sessions`/`accounts`/`verification_tokens` tables).
+
+**Auth gate:** `apps/web/src/middleware.ts` requires a valid session for every route except `/login`, `/api/auth/*`, `/api/runs/*` (still on the legacy header), `/api/health`, `/_next/*`, `/fonts/*`. Logged-out visits redirect to `/login?callbackUrl=<original path>`.
+
+**Endpoints:**
+
+| Method | Path | Body | Response | Notes |
+|--------|------|------|----------|-------|
+| GET/POST | `/api/auth/[...nextauth]` | NextAuth-managed | NextAuth-managed | Sign-in/sign-out/session/CSRF endpoints, standard NextAuth v4 surface |
+
+**Client usage:** `signIn('credentials', { email, password, redirect: false })` / `signOut({ callbackUrl: '/login' })` from `next-auth/react`; `useSession()` for the top-bar `UserMenu`.
+
+**Seed credentials:** all six seed users share one local-dev password, `relay-dev-2026` (see `README.md` "Local dev login"). Hashed with `bcryptjs`, cost factor 12, stored in `users.password_hash`.
+
+---
+
+## User API (`mvp-backend` Phase 1)
+
+**Real, API-backed.** Gated by `resolveSessionActor()` (real session) + an admin-or-above global-role check in `UserService.ts` — not `assertMinProjectRole()`, since there's no project scope for a user list.
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| GET | `/api/users` | — | `{ data: { users: UserSummary[] } }` | `INSUFFICIENT_PERMISSIONS` (403) |
+| POST | `/api/users` | `{ orgId, email, name, globalRole, password }` | `{ data: UserSummary }` (201) | `INSUFFICIENT_PERMISSIONS` (403), `EMAIL_TAKEN` (409), `VALIDATION_ERROR` (400) |
+| PATCH | `/api/users/:userId` | `{ name?, globalRole?, isActive? }` | `{ data: UserSummary }` | `INSUFFICIENT_PERMISSIONS` (403), `USER_NOT_FOUND` (404), `LAST_ADMIN` (409), `VALIDATION_ERROR` (400) |
+
+`UserSummary`: `{ id, name, email, globalRole, isActive, lastLoginAt }`.
+
+**Not yet wired to any fresh screen** — `/admin/users` still reads/writes the localStorage `AdminSettings` blob (unification is a later phase).
+
+---
+
+## Project API (`mvp-backend` Phase 1)
+
+**Real, API-backed.** `listProjects`/`createProject` gated by a global admin-or-above check; `assignProjectRole` gated by `assertMinProjectRole(actorId, projectId, 'admin')` (reused from `packages/db/src/rbac/assert-min-role.ts`).
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| GET | `/api/projects` | — | `{ data: { projects: ProjectSummary[] } }` | `INSUFFICIENT_PERMISSIONS` (403) |
+| POST | `/api/projects` | `{ orgId, slug, name, description? }` | `{ data: ProjectSummary }` (201) | `INSUFFICIENT_PERMISSIONS` (403), `DUPLICATE_SLUG` (409), `VALIDATION_ERROR` (400) |
+| POST | `/api/projects/:projectId/roles` | `{ userId, role }` | `{ data: { ok: true } }` | `INSUFFICIENT_PERMISSIONS` (403), `PROJECT_NOT_FOUND` (404), `VALIDATION_ERROR` (400) |
+
+`ProjectSummary`: `{ id, slug, name, description, status }`. `super_admin`/`admin` (global) see every active project in the org; `contributor`/`viewer` see only projects they hold a `project_roles` row for.
+
+**Not yet wired to any fresh screen** — `ProjectSwitcher.tsx` still reads a static/local project list (deferred to a later phase, once there's more than one backend-wired module to switch between meaningfully).
+
+---
+
 ## Audit History
 
 **Route:** `/audit`
@@ -222,7 +274,7 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 - `GET /api/users`
 - `PATCH /api/workspace/settings`
 
-**Known backend dependency:** Seed users/projects exist; no settings API; no real auth.
+**Known backend dependency:** Seed users/projects exist; no settings API yet. Real login/session now exists (`/login`, NextAuth) but this screen is not yet wired to the real `/api/users`/`/api/projects` routes.
 
 **Out of scope:** SSO configuration, API keys, billing.
 

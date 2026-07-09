@@ -4,7 +4,7 @@ import { config as loadEnv } from 'dotenv'
 import { closeDb, getDb } from '../index'
 import { clearSeedData } from './clear'
 import { ids, seedRefs, SEED_ORG_SLUG } from './ids'
-import { insertSeedData } from './insert'
+import { insertSeedData, SEED_DEV_PASSWORD } from './insert'
 
 const monorepoRoot = path.resolve(process.cwd(), '../..')
 loadEnv({ path: path.join(monorepoRoot, '.env') })
@@ -47,6 +47,15 @@ export async function runSeed(): Promise<void> {
   console.log('  projectId:', seedRefs.projectId)
   console.log('  testPlanId:', seedRefs.testPlanId)
   console.log('  createdBy:', seedRefs.createdBy, '(Shaun Sevume, admin)')
+  console.log('')
+  console.log('Local dev login — shared password for all seed users:')
+  console.log(' ', SEED_DEV_PASSWORD)
+  console.log('  noel.quadri@relay-dev.local     (Noel Quadri, super_admin)')
+  console.log('  shaun.sevume@relay-dev.local    (Shaun Sevume, admin)')
+  console.log('  priya.nair@relay-dev.local      (Monica Dayalani, contributor)')
+  console.log('  marcus.webb@relay-dev.local     (Nasir Dipto, admin)')
+  console.log('  james.osullivan@relay-dev.local (Jamil Khan, contributor)')
+  console.log('  viewer@relay-dev.local          (Arvindh Chandran, viewer)')
 }
 
 async function main(): Promise<void> {

@@ -8,6 +8,11 @@ import {
   type UpdateCaseResultErrorCode,
 } from '@relay/db/services/execution'
 import { RunReadError, type RunReadErrorCode } from '@relay/db/services/run-read'
+import { UserServiceError, type UserServiceErrorCode } from '@relay/db/services/user'
+import {
+  ProjectServiceError,
+  type ProjectServiceErrorCode,
+} from '@relay/db/services/project'
 import { jsonError } from './response'
 
 const RUN_CREATION_STATUS: Record<RunCreationErrorCode, number> = {
@@ -37,6 +42,19 @@ const UPDATE_RESULT_STATUS: Record<UpdateCaseResultErrorCode, number> = {
   TRANSACTION_FAILED: 500,
 }
 
+const USER_SERVICE_STATUS: Record<UserServiceErrorCode, number> = {
+  INSUFFICIENT_PERMISSIONS: 403,
+  EMAIL_TAKEN: 409,
+  USER_NOT_FOUND: 404,
+  LAST_ADMIN: 409,
+}
+
+const PROJECT_SERVICE_STATUS: Record<ProjectServiceErrorCode, number> = {
+  INSUFFICIENT_PERMISSIONS: 403,
+  DUPLICATE_SLUG: 409,
+  PROJECT_NOT_FOUND: 404,
+}
+
 export function handleRouteError(err: unknown) {
   if (err instanceof ZodError) {
     return jsonError('VALIDATION_ERROR', 'Request validation failed', 400, err.flatten())
@@ -54,6 +72,16 @@ export function handleRouteError(err: unknown) {
 
   if (err instanceof UpdateCaseResultError) {
     const status = UPDATE_RESULT_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof UserServiceError) {
+    const status = USER_SERVICE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof ProjectServiceError) {
+    const status = PROJECT_SERVICE_STATUS[err.code] ?? 500
     return jsonError(err.code, err.message, status)
   }
 

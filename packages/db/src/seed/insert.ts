@@ -1,3 +1,4 @@
+import bcryptjs from 'bcryptjs'
 import { sql } from 'drizzle-orm'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import {
@@ -14,6 +15,9 @@ import {
 import type * as schema from '../../schema'
 import { ids } from './ids'
 
+/** Shared local-dev password for all seed users. Documented in README.md. */
+export const SEED_DEV_PASSWORD = 'relay-dev-2026'
+
 export async function insertSeedData(
   db: MySql2Database<typeof schema>,
 ): Promise<void> {
@@ -24,6 +28,8 @@ export async function insertSeedData(
     isActive: true,
   })
 
+  const devPasswordHash = bcryptjs.hashSync(SEED_DEV_PASSWORD, 12)
+
   await db.insert(users).values([
     {
       id: ids.users.noel,
@@ -32,6 +38,7 @@ export async function insertSeedData(
       name: 'Noel Quadri',
       globalRole: 'super_admin',
       isActive: true,
+      passwordHash: devPasswordHash,
     },
     {
       id: ids.users.shaun,
@@ -40,6 +47,7 @@ export async function insertSeedData(
       name: 'Shaun Sevume',
       globalRole: 'admin',
       isActive: true,
+      passwordHash: devPasswordHash,
     },
     {
       id: ids.users.priya,
@@ -48,6 +56,7 @@ export async function insertSeedData(
       name: 'Monica Dayalani',
       globalRole: 'contributor',
       isActive: true,
+      passwordHash: devPasswordHash,
     },
     {
       id: ids.users.marcus,
@@ -56,6 +65,7 @@ export async function insertSeedData(
       name: 'Nasir Dipto',
       globalRole: 'admin',
       isActive: true,
+      passwordHash: devPasswordHash,
     },
     {
       id: ids.users.james,
@@ -64,6 +74,7 @@ export async function insertSeedData(
       name: 'Jamil Khan',
       globalRole: 'contributor',
       isActive: true,
+      passwordHash: devPasswordHash,
     },
     {
       id: ids.users.viewer,
@@ -72,6 +83,7 @@ export async function insertSeedData(
       name: 'Arvindh Chandran',
       globalRole: 'viewer',
       isActive: true,
+      passwordHash: devPasswordHash,
     },
   ])
 

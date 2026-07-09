@@ -1,6 +1,6 @@
 # Relay — Feature Flow Map
 
-*Living document · Last verified: 9 July 2026 · Branch: `mvp-visual-overhaul`*
+*Living document · Last verified: 9 July 2026 · Branch: `mvp-backend`*
 
 Product and implementation flow map for the team. Complements authoritative contracts in `docs/_authoritative/**` with journey-oriented status and test checklists.
 
@@ -27,11 +27,13 @@ Product and implementation flow map for the team. Complements authoritative cont
 | Settings | `settings` | redirect → `/admin` | `/:key/settings` | Redirect only (legacy route) |
 | Integrations | `integrations` | `PlaceholderScreen` | `/:key/integrations` | Placeholder |
 | Audit | `audit` | `AuditScreen` | `/:key/audit` | Static seed |
-| Login | — | `LoginScreen` | `/:key/login` | Static demo page; **not** an auth gate |
+| Login | — | `LoginScreen` | `/login` (top-level; `/:key/login` redirects here) | **Real auth gate** — NextAuth Credentials, JWT session |
 | Admin | — | `AdminShell` + page content | `/admin`, `/admin/profile` … `/admin/audit-log` | Mock + localStorage |
 | API runs | — | `ApiRunsWorkspace` | `/runs/api` | **API / MySQL** |
 
 **Legacy unprefixed redirects** (`LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/:activeProjectKey/<module>`.
+
+**Auth gate:** `apps/web/src/middleware.ts` requires a valid NextAuth session for every route except `/login`, `/api/auth/*`, `/api/runs/*`, `/api/health`, `/_next/*`, `/fonts/*`. Logged-out visits redirect to `/login?callbackUrl=<original path>`.
 
 **Root:** `/` → `/DP/dashboard`.
 
@@ -171,10 +173,11 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 
 | Area | Behaviour |
 |------|-----------|
-| Admin users/roles UI | Seed + CRUD in localStorage; audit log on mutations |
+| Admin users/roles UI | Seed + CRUD in localStorage; audit log on mutations. Not yet wired to the real `/api/users/*`/`/api/projects/*` routes (later phase) |
 | Demo screens | **No role checks** — all actions available |
 | Seal / reopen run | UI toggle only; no admin gate |
 | `/runs/api` | Dev header `x-relay-user-id` / `NEXT_PUBLIC_RELAY_USER_ID`; service-layer RBAC on mutations |
+| `/api/users/*`, `/api/projects/*` | **Real session auth** (`resolveSessionActor`) + real RBAC — `assertMinProjectRole()`/global-admin check enforced server-side. Not called by any fresh screen yet (admin panel still reads localStorage) |
 
 ---
 
@@ -182,6 +185,8 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 
 | Module / feature | Status | Persistence | Notes |
 |------------------|--------|-------------|-------|
+| Login / session gate | **Implemented** | MySQL (`users.password_hash`) + JWT cookie | NextAuth Credentials provider, JWT session strategy; `middleware.ts` gates all pages/most API routes; sign-out via top-bar `UserMenu` |
+| User + Project API (`/api/users/*`, `/api/projects/*`) | **Implemented** (backend only) | MySQL | `UserService`/`ProjectService`; real RBAC; not called by any fresh screen yet |
 | Shell & navigation | **Implemented** | Client | Sidebar (Testing/Traceability groups), global top bar (New test case/run, AI Studio, Notifications, Help), Cmd+K; Pinned Modules and Integrations nav removed |
 | Project switcher & CRUD | **Implemented** | localStorage | URL sync; cascade delete |
 | Dashboard | **Implemented** | localStorage | Phase 2 layout: KPI strip, completion donut, results-over-time chart, assignee bars, open runs, milestones slice, needs attention; live selectors |
@@ -259,8 +264,8 @@ flowchart LR
 
 | Module | Expected APIs (minimum) |
 |--------|-------------------------|
-| Auth | Session, SSO, user context |
-| Projects | CRUD, membership, role assignment |
+| Auth | ~~Session, user context~~ — **done** (`/api/auth/[...nextauth]`, NextAuth JWT); SSO still outstanding |
+| Projects | ~~CRUD, membership, role assignment~~ — **done** (`/api/projects/*`, `/api/projects/:id/roles`); not yet called from any fresh screen |
 | Test cases | CRUD, folders, steps, bulk import |
 | Test plans | CRUD, spawn run |
 | Test runs | CRUD, seal, snapshot cases, case/step results |
@@ -362,10 +367,15 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 - [ ] Prompt row, quick actions, draft preview render
 - [ ] Generate/Accept/Edit/Discard are non-functional demo controls
 
-### Login — `/:key/login`
+### Login — `/login`
 
-- [ ] Full-bleed login layout renders; Sign In / SSO navigate to dashboard
-- [ ] Does not gate app entry; `/` still goes to dashboard
+- [ ] Full-bleed login layout renders
+- [ ] Logged out: visiting any app route redirects to `/login?callbackUrl=...`
+- [ ] Sign In with a seed user + `relay-dev-2026` redirects to the callback URL (or dashboard)
+- [ ] Wrong password shows an inline error, does not redirect
+- [ ] SSO button is a visual placeholder (disabled/"Coming soon"), does not navigate
+- [ ] `/:key/login` redirects to `/login`
+- [ ] Top-bar user menu shows name/email/role; Sign Out returns to `/login`
 
 ### Audit — `/:key/audit`
 

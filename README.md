@@ -89,14 +89,39 @@ Expect `"status":"ok"` and `"mysql":"ok"`.
 
 ---
 
+## Local dev login
+
+After `pnpm db:seed`, the app has real NextAuth-backed login (JWT session, Credentials
+provider). All six seed users share one local-dev password:
+
+```
+relay-dev-2026
+```
+
+| Email | Name | Global role |
+|-------|------|-------------|
+| `noel.quadri@relay-dev.local` | Noel Quadri | super_admin |
+| `shaun.sevume@relay-dev.local` | Shaun Sevume | admin |
+| `priya.nair@relay-dev.local` | Monica Dayalani | contributor |
+| `marcus.webb@relay-dev.local` | Nasir Dipto | admin |
+| `james.osullivan@relay-dev.local` | Jamil Khan | contributor |
+| `viewer@relay-dev.local` | Arvindh Chandran | viewer |
+
+Visiting any app route while logged out redirects to `/login`. `/api/runs/*` is the one
+exception — it still authenticates via the legacy `x-relay-user-id` dev header pending a
+later phase (`mvp-backend` task/phase 4) that moves it onto real sessions too.
+
+---
+
 ## What works today
 
+- Real login/session (NextAuth Credentials, JWT strategy) gates the app
 - Create test runs from a seeded plan (CTMS / PLAN-001)
 - List runs and open run detail with execution cases
 - Three-pane execution workspace: run list · case list · case detail
 - Update case status and execution comments (persisted via API)
 - Client-side status filters and case search within a run
-- Dev RBAC via `x-relay-user-id` header (seed users; no real login)
+- `/api/runs/*` still uses `x-relay-user-id` header auth (seed users) pending later wiring
 - `pnpm api:validate` HTTP contract suite
 
 API contract: [`docs/implementation/api-contracts.md`](docs/implementation/api-contracts.md)
@@ -105,7 +130,7 @@ API contract: [`docs/implementation/api-contracts.md`](docs/implementation/api-c
 
 ## Current limitations
 
-- No real authentication or SSO
+- No real SSO (the login screen's SSO button is a visual placeholder)
 - No production deployment
 - No dashboard
 - No global search

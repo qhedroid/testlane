@@ -16,7 +16,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 14`, multi-project + admin access + actor + test plans + local requirements/defects) |
 | Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
 | IDs (backend) | ULID |
-| Auth (dev only) | `x-relay-user-id` header; `NEXT_PUBLIC_RELAY_USER_ID` |
+| Auth | Real: NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables) — gates all page routes + `/api/users/*`/`/api/projects/*` via `apps/web/src/middleware.ts`. `/api/runs/*` is the one exception, still on the dev `x-relay-user-id` header / `NEXT_PUBLIC_RELAY_USER_ID` pending a later wiring phase |
 
 ---
 
@@ -81,8 +81,13 @@ Machine-readable contracts: `apps/web/src/lib/relay/prototype-contracts.ts`.
 | GET/POST | `/api/runs` | `/runs/api` |
 | GET | `/api/runs/:runId` | `/runs/api` |
 | POST | `/api/runs/:runId/cases/:runCaseId/result` | `/runs/api` |
+| GET/POST | `/api/auth/[...nextauth]` | NextAuth session/JWT endpoints |
+| GET/POST | `/api/users` | Real session auth + RBAC; not yet called by any fresh screen |
+| PATCH | `/api/users/:userId` | Real session auth + RBAC; not yet called by any fresh screen |
+| GET/POST | `/api/projects` | Real session auth + RBAC; not yet called by any fresh screen |
+| POST | `/api/projects/:projectId/roles` | Real session auth + RBAC; not yet called by any fresh screen |
 
-Detail: [`docs/implementation/api-contracts.md`](../implementation/api-contracts.md) (backend-phase reference).
+Detail: [`docs/implementation/api-contracts.md`](../implementation/api-contracts.md) (backend-phase reference), [`FRONTEND_CONTRACTS.md`](FRONTEND_CONTRACTS.md).
 
 ---
 
@@ -91,7 +96,8 @@ Detail: [`docs/implementation/api-contracts.md`](../implementation/api-contracts
 - `TestRunService.create()` — spawn run from plan, snapshot cases/steps, audit write
 - `ExecutionService.updateCaseResult()` — case-level result + audit write
 - `listProjectRuns`, `getRunDetail` — read paths for `/runs/api`
-- RBAC in services (`assertMinProjectRole`); no login UI
+- RBAC in services (`assertMinProjectRole`); real login UI now exists (`/login`, NextAuth)
+- `UserService`/`ProjectService` — user + project CRUD, project-role assignment, both admin+ gated
 
 MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/schema-rationale.md`](../database/schema-rationale.md) (backend-phase reference).
 
@@ -101,7 +107,7 @@ MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/sche
 
 | Item | Status |
 |------|--------|
-| Login / session | Not started |
+| Login / session | **Implemented** (`mvp-backend` Phase 1) — NextAuth Credentials, JWT session, real `/login` gate |
 | Demo `/runs` → API wiring | Not started |
 | Case/plan/project CRUD APIs | Not started |
 | Step-level results in `/runs/api` UI | Not exposed |

@@ -1,6 +1,6 @@
 # Relay — User Guide
 
-*Living document · Last verified: 9 July 2026 · Branch: `mvp-visual-overhaul`*
+*Living document · Last verified: 9 July 2026 · Branch: `mvp-backend`*
 
 This guide explains how to use Relay from a user perspective. It describes the **frontend prototype** as it works today in the browser.
 
@@ -20,11 +20,11 @@ The current app is a **frontend prototype**: most data lives in your browser (de
 
 | What works | What is simulated |
 |------------|-------------------|
-| Full UI walkthrough without Docker | No real login or SSO |
+| Real login/session gates the whole app (NextAuth, seed users) | No real SSO — the SSO button is a visual placeholder |
 | Create/edit cases and runs in the browser | Data is not shared across users or machines |
 | Step-level execution, sealing, project switching | Legacy seed TI-* defect refs on some runs; no real Jira sync |
-| Admin panel forms persist in localStorage | **Demo RBAC** on user/role admin screens via actor switcher |
-| `/runs/api` persists to MySQL when Docker is running | Demo test runs UI is not wired to MySQL |
+| Admin panel forms persist in localStorage | **Demo RBAC** on user/role admin screens via actor switcher (real RBAC now enforced on `/api/users/*` and `/api/projects/*`) |
+| `/runs/api` persists to MySQL when Docker is running | Demo test runs UI is not wired to MySQL; `/api/runs/*` still uses the legacy `x-relay-user-id` header (pending a later phase) |
 
 **Reset demo data** (browser console):
 
@@ -33,7 +33,7 @@ localStorage.removeItem('relay-demo-v2')
 location.reload()
 ```
 
-**Run locally:** `pnpm install && pnpm dev` → open http://127.0.0.1:3000 (redirects to `/DP/dashboard`).
+**Run locally:** `pnpm install && pnpm db:seed && pnpm dev` → open http://127.0.0.1:3000 — you'll be redirected to `/login`. Sign in with any seed user (see "Login" below), which then redirects to `/DP/dashboard`.
 
 ---
 
@@ -259,11 +259,15 @@ Demo AI workspace: prompt input, quick-action cards, draft preview with Accept/E
 
 ---
 
-## Login (demo page)
+## Login
 
-**Route:** `/DP/login`
+**Route:** `/login` (top-level, not project-prefixed)
 
-Compass-style sign-in page reachable from navigation for demo purposes. **Not an authentication gate** — the app loads normally without visiting login. Sign In and SSO buttons navigate to the project dashboard.
+Real authentication gate (NextAuth Credentials provider, JWT session). Visiting any app route while logged out redirects here with a `callbackUrl` back to where you were headed. Sign in with a seed user's email and the shared local-dev password (`relay-dev-2026` — see `README.md`'s "Local dev login" section for all six accounts) to continue. The "Continue with TransPerfect SSO" button is a visual placeholder only.
+
+The old project-prefixed `/:key/login` route now just redirects here — login has no project context until after you're signed in.
+
+A small user menu in the top bar (next to the project switcher) shows your name/email/role and has a **Sign Out** action.
 
 ---
 
@@ -352,7 +356,8 @@ Neither connects to a read API yet. Backend writes audit rows on run create and 
 
 ## Known limitations
 
-- No authentication — demo assumes a single local user
+- Real login/session now gates the app (see "Login" above), but `/api/runs/*` still uses the legacy `x-relay-user-id` header pending a later wiring phase
+- No real SSO — the SSO button on `/login` is a visual placeholder
 - No multi-user collaboration or server sync for the prototype UI
 - Test plans are not editable and do not drive run creation automatically
 - `/DP/cases` bookmark slug is obsolete (404)
@@ -381,7 +386,7 @@ See also [`docs/claude/known-bugs.md`](../claude/known-bugs.md) for active inves
 
 When the demo UI is wired to APIs (planned, not started for `/DP/testruns`):
 
-- Login and session; RBAC enforced per action
+- ~~Login and session~~ — done (NextAuth Credentials, JWT session); RBAC enforced per action via `assertMinProjectRole()` on the new `/api/users/*`/`/api/projects/*` routes; `/api/runs/*` still pending
 - Test cases, plans, runs, and results persisted in MySQL
 - Plan spawn creates a run via `POST /api/runs` with case snapshots
 - Audit log read API for project and admin views

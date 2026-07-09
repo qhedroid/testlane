@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-backend` — standing up the real backend. Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). Scoping + sequencing complete, Phase 1 spec ready. **2026-07-09 pivot: Claude implements this branch directly (Shaun's instruction) instead of drafting Cursor prompts.** Live state now tracked at `docs/claude/mvp-backend/progress.md` (read this first) and `docs/claude/mvp-backend/plan.md`; the original `docs/cursor-prompts/mvp-backend/` files are kept as reference spec only. See "2026-07-09 — mvp-backend scoping session", "2026-07-09 — mvp-backend sequencing session — task-01 drafted", and "2026-07-09 — pivot to direct Claude implementation" below for full detail.
+`mvp-backend` — standing up the real backend. Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). **Phase 1 (Foundation: auth/RBAC/User+Project API) implemented 2026-07-09 — code complete, Claude-sandbox verified, pending Shaun-local verification before commit.** Claude implements this branch directly (Shaun's instruction) instead of drafting Cursor prompts. Live state tracked at `docs/claude/mvp-backend/progress.md` (read this first) and `docs/claude/mvp-backend/plan.md`; the original `docs/cursor-prompts/mvp-backend/` files are kept as reference spec only. See "2026-07-09 — mvp-backend Phase 1 (Foundation) implemented" (top of this section), and below it "2026-07-09 — mvp-backend scoping session", "2026-07-09 — mvp-backend sequencing session — task-01 drafted", and "2026-07-09 — pivot to direct Claude implementation" for full history.
 
 Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin, Phase 1 + Phase 2, **merged to `mvp-main`** via PR #19 (`0e8ec98`).
 
@@ -78,6 +78,31 @@ Turned last session's locked scope into an actual 8-task sequence and drafted ta
 **`/api/runs/*` explicitly untouched in task-01** — stays on the `x-relay-user-id` header hack until task-04, which is scoped separately specifically because it's the branch's one protected-UX screen and deserves its own regression pass when its auth source changes.
 
 **Not yet drafted:** task-02 through task-08 remain at the `_kickoff.md` table level (scope + primary files only) — full per-file detail gets drafted when each is picked up, same pattern as `mvp-custom-fields`'s task-02/03 not yet being fleshed out beyond task-01.
+
+---
+
+## 2026-07-09 — `mvp-backend` Phase 1 (Foundation) implemented ✅ — pending Shaun-local verification
+
+Implemented Phase 1 (auth/RBAC/User+Project API) in full per `docs/cursor-prompts/mvp-backend/task-01-foundation-auth-rbac.md`'s Parts A–F, directly (per the pivot below). Full file-level detail and exact state is in `docs/claude/mvp-backend/progress.md` — this entry is the short version.
+
+**What landed:**
+- Real login: NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables). All six seed users get a `passwordHash` (bcryptjs, cost 12), shared local-dev password `relay-dev-2026` (see `README.md`'s new "Local dev login" section).
+- `apps/web/src/middleware.ts` — new route-level session gate. Every page route and most API routes now require a valid session; `/login`, `/api/auth/*`, `/api/health`, and `/api/runs/*` (explicitly, deliberately) stay exempt. `/api/runs/*` still uses the legacy `x-relay-user-id` header — untouched, as scoped, pending a later phase.
+- `UserService`/`ProjectService` (`packages/db/services/`) + their routes (`/api/users/*`, `/api/projects/*`, `/api/projects/:id/roles`) — real session auth (`resolveSessionActor`, a new helper separate from the existing header-based `resolveActor()`) + real RBAC (global admin-or-above check for users; `assertMinProjectRole()` reused for project-role assignment). Not yet called by any fresh screen — that's later phase work (Admin panel unification, `ProjectSwitcher` wiring).
+- `LoginScreen.tsx` wired to real `signIn()`; new top-level `/login` route; `/:projectKey/login` now redirects there (mirrors the `/:projectKey/settings` → `/admin` precedent); new `UserMenu.tsx` top-bar sign-out affordance.
+- **Deliberately supersedes** `mvp-visual-overhaul` Phase 2's "login is a reachable route only, not a gate" decision — `mvp-backend`'s own definition of done requires this reversal; called out explicitly so it doesn't read as an accidental regression.
+
+**Documentation updated:** `README.md`, `docs/product/user-guide.md`, `docs/product/feature-flow.md`, `docs/_authoritative/AS_BUILT_SNAPSHOT.md`, `docs/_authoritative/FRONTEND_CONTRACTS.md` (new Login/User-API/Project-API contract sections) — all per the task spec's Documentation section.
+
+**Sandbox constraint discovered this session (documented in `progress.md` for future phases):** `pnpm install`/`build` cannot run directly against the mounted `Relay/` workspace folder — it's a FUSE mount with write-once-per-file semantics, and pnpm's temp-file churn hits `EPERM`. Worked around by `rsync`-ing to a `/tmp` scratch copy for verification only (real source edits still go through Edit/Write on the real path as normal). A related but separate constraint: the sandbox's network egress blocks `fonts.googleapis.com`, which fails `pnpm build` on `next/font/google` unless `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` is set for the verification build — confirmed via direct `curl` that this is a pre-existing sandbox limitation, unrelated to this diff.
+
+**Verified in-sandbox:** `tsc --noEmit` clean for `@relay/db` and `@relay/web`; full `pnpm build` succeeded (29 app routes + 9 API routes compiled and statically generated, 55.2 kB middleware chunk).
+
+**Not yet verified (needs Shaun, locally, against real Docker MySQL):** `pnpm db:seed` prints the new credential block; logged-out redirect works; login as `shaun.sevume@relay-dev.local` / `relay-dev-2026` lands on `/DP/dashboard`; sign-out works; `GET /api/users` 403s as viewer / 200s as super_admin; `POST /api/projects` 403s as contributor / 201s as admin; `/api/runs`/`/DP/testruns` unaffected.
+
+**Not yet committed** — waiting on the above local verification, then a commit-identity confirmation per `CLAUDE.md`'s commit-identity rule, before this lands as a real commit.
+
+**Next:** Shaun runs the local verification above and reports back; once confirmed, commit Phase 1 and move to Phase 2 (Test Cases backend) per `docs/claude/mvp-backend/plan.md`.
 
 ---
 

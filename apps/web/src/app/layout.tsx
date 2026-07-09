@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Open_Sans } from 'next/font/google'
 import type { ReactNode } from 'react'
+import { Providers } from './providers'
 import './globals.css'
 
 const openSans = Open_Sans({
@@ -24,7 +25,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"
         />
       </head>
-      <body className={openSans.className}>{children}</body>
+      <body className={openSans.className}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }

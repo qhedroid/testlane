@@ -1,13 +1,40 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { signIn } from 'next-auth/react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { DEFAULT_PROJECT_KEY, projectPath } from '../lib/project-routes'
 
 export function LoginScreen() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  function signIn() {
-    router.push(projectPath(DEFAULT_PROJECT_KEY, 'dashboard'))
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      })
+
+      if (!result || result.error) {
+        setError('Incorrect email or password.')
+        return
+      }
+
+      const callbackUrl = searchParams.get('callbackUrl') ?? projectPath(DEFAULT_PROJECT_KEY, 'dashboard')
+      router.push(callbackUrl)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -37,34 +64,48 @@ export function LoginScreen() {
         <div className="login-form-wrap">
           <h2 className="login-title">Sign In</h2>
           <p className="login-desc">Use your TransPerfect account to continue to Relay.</p>
-          <label className="login-label" htmlFor="login-email">Email</label>
-          <input
-            id="login-email"
-            className="inp login-inp"
-            type="email"
-            placeholder="you@transperfect.com"
-            autoComplete="username"
-          />
-          <label className="login-label" htmlFor="login-password">Password</label>
-          <input
-            id="login-password"
-            className="inp login-inp"
-            type="password"
-            placeholder="••••••••"
-            autoComplete="current-password"
-          />
-          <div className="login-forgot">
-            <button type="button" className="login-link">Forgot Password?</button>
-          </div>
-          <button type="button" className="btn btn-p login-submit" onClick={signIn}>
-            Sign In
-          </button>
+          <form onSubmit={handleSubmit}>
+            {error ? <p className="form-error" style={{ marginBottom: 12 }}>{error}</p> : null}
+            <label className="login-label" htmlFor="login-email">Email</label>
+            <input
+              id="login-email"
+              className="inp login-inp"
+              type="email"
+              placeholder="you@transperfect.com"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <label className="login-label" htmlFor="login-password">Password</label>
+            <input
+              id="login-password"
+              className="inp login-inp"
+              type="password"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <div className="login-forgot">
+              <button type="button" className="login-link">Forgot Password?</button>
+            </div>
+            <button type="submit" className="btn btn-p login-submit" disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign In'}
+            </button>
+          </form>
           <div className="login-divider">
             <span />
             <span>or</span>
             <span />
           </div>
-          <button type="button" className="btn btn-neutral login-sso" onClick={signIn}>
+          <button
+            type="button"
+            className="btn btn-neutral login-sso"
+            title="Coming soon"
+            disabled
+          >
             <i className="ti ti-world" aria-hidden />
             Continue with TransPerfect SSO
           </button>
