@@ -16,7 +16,7 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Phase 1 (tasks 01–06, pure CSS/className re-skin) complete.** Schema stays v14. **Not ready for PR yet** — the branch continues with a Phase 2 (see "2026-07-08 Phase 2" below): a larger information-architecture/layout pass that adopts more of the mockup directly (new screens, sidebar/topbar changes, several screens rebuilt from the mockup), deliberately kept on this same branch rather than split into a new one (Shaun's call). The Phase 1 PR description at `pr-description-mvp-visual-overhaul.md` only covers tasks 01–06 and will need revisiting once Phase 2 also lands. See "Completed work — `mvp-visual-overhaul`" below for Phase 1 detail.
+`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Phase 1 (tasks 01–06) and Phase 2 (tasks 07–13) both complete.** Schema stays v14. **Ready for PR** — see `docs/cursor-prompts/mvp-visual-overhaul/pr-description-mvp-visual-overhaul.md` for the combined Phase 1 + Phase 2 MR description.
 
 Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
 
@@ -198,7 +198,28 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **QA:** `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` — build PASS; all six routes HTTP 200; core regression routes PASS.
 
-**Next:** task-13 (Defects + Audit + Project Settings bundled) + branch wrap-up.
+**Next:** task-13 (Defects + Audit + Project Settings bundled) + branch wrap-up — **done**; see task-13 section below. Branch ready for PR.
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-13) ✅ — branch complete
+
+**Schema:** unchanged (v14). Defects + Audit layout rebuilds; admin visual polish; branch wrap-up.
+
+| What it delivered |
+|-------------------|
+| **Defects** — mockup `.gl-table` toolbar ("All defects" + shown count + status chips + Details toggle), shared `.tbl` table with assignee avatars, right detail panel; live `activeDefects` + `MOCK_DEFECTS` preserved; search + severity filter retained |
+| **Audit History** — mockup event-row styling (30px circular icon chips, 13px descriptions, ref links); **page header kept**; filter tabs unchanged; Export CSV button presentational |
+| **Admin / Project Settings** — `admin.css` polish: section cards, 240px/1fr form rows with dividers, tighter page title, table/card refinements; no RBAC/CRUD changes |
+| **Branch wrap-up** — full regression sweep (tasks 01–13 routes); PR description revised for both phases; QA report at `/tmp/relay-qa-mvp-visual-overhaul/qa-report.md` |
+
+**Judgement calls flagged in QA:**
+- Defects page header discarded (consistent with Dashboard/TC/TP/TR) — easy to reverse
+- Requirements data-source fallback (live vs static) documented in PR Caveats
+
+**QA:** build PASS; 24/24 production-build route checks PASS; task-13 does not touch Test Runs execution code (Shaun verified protected UX after task-12).
+
+**Branch status:** `mvp-visual-overhaul` Phase 1 + Phase 2 **complete**. Ready for PR to `mvp-main`.
 
 ---
 

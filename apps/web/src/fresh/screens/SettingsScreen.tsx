@@ -71,7 +71,7 @@ export function SettingsScreen() {
             </Link>
           </div>
           <div className="pnl-body settings-table-wrap">
-            <table className="defects-table">
+            <table className="tbl">
               <thead>
                 <tr>
                   <th>User</th>
