@@ -258,7 +258,12 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const remainingProjectIds = new Set(Object.keys(projectsById))
       let activeProjectId = state.activeProjectId
       if (!remainingProjectIds.has(activeProjectId)) {
-        activeProjectId = incoming[0]?.id ?? activeProjectId
+        // Prefer the seeded Demo Project (slug 'demo') as the default landing
+        // project — it's the richly-populated, explorable one — falling back
+        // to whichever real project happens to come first if it's missing
+        // for some reason (e.g. local DB not yet seeded with it).
+        const demo = incoming.find((p) => p.slug === 'demo')
+        activeProjectId = demo?.id ?? incoming[0]?.id ?? activeProjectId
       }
 
       next = {

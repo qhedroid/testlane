@@ -17,6 +17,7 @@
     "./services/dashboard": "./services/DashboardService.ts",
     "./services/audit": "./services/AuditService.ts",
     "./services/defect": "./services/DefectService.ts",
+    "./services/project-clone": "./services/ProjectCloneService.ts",
     "./auth/verify-credentials": "./src/auth/verify-credentials.ts",
     "./rbac/assert-min-role": "./src/rbac/assert-min-role.ts"
   },

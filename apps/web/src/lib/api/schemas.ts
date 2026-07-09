@@ -201,6 +201,22 @@ export type ListDefectLinksQuery = z.infer<typeof listDefectLinksQuerySchema>
 // Audit log reads (Phase 6) use the nested /api/projects/[projectId]/...
 // convention, matching cases/plans/dashboard.
 
+// Project cloning ("Create Demo Project") — projectId (clone source) comes
+// from the route segment, not the body.
+
+export const cloneProjectBodySchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase letters, numbers, and hyphens')
+    .optional(),
+  name: z.string().trim().min(1).max(255).optional(),
+})
+
+export type CloneProjectBody = z.infer<typeof cloneProjectBodySchema>
+
 export const listAuditLogQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional(),
   before: z.coerce.date().optional(),

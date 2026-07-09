@@ -3,13 +3,15 @@
 import { planKeyToSlug, slugToPlanKey } from '../data/demo-model'
 
 // Real backend default (mvp-backend "wire everything" session — real project
-// picker replaced the old client-only 'DP' demo project). Matches the CTMS
-// project slug from packages/db/src/seed/ids.ts (same project
-// apps/web/src/lib/relay/config.ts's RELAY_PROJECT_ID already points at for
-// /runs/api). Only used as an ultimate fallback before/if the real project
-// list hasn't loaded yet — see ProjectRouteSync.tsx and FreshProvider.tsx's
-// REGISTER_REAL_PROJECTS mount effect.
-export const DEFAULT_PROJECT_KEY = 'CTMS'
+// picker replaced the old client-only 'DP' demo project). Matches the
+// seeded "Demo Project" (slug 'demo') from
+// packages/db/src/seed/demo-project-seed.ts — the richly-populated,
+// explorable project every account should land on by default. Only used as
+// an ultimate fallback before/if the real project list hasn't loaded yet —
+// see ProjectRouteSync.tsx and FreshProvider.tsx's REGISTER_REAL_PROJECTS
+// mount effect (which also actively prefers the Demo Project when choosing
+// the default active project, not just this string fallback).
+export const DEFAULT_PROJECT_KEY = 'DEMO'
 
 export const MODULE_SLUGS = {
   dashboard: 'dashboard',

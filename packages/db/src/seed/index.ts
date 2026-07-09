@@ -40,8 +40,13 @@ export async function runSeed(): Promise<void> {
   console.log('')
   console.log('Organisation:', SEED_ORG_SLUG)
   console.log('Users: 8 (Noel, Shaun, Monica, Nasir, Jamil, Arvindh, Nadim, Syed)')
-  console.log('Projects: CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway')
+  console.log('Projects: CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway, Demo Project')
   console.log('CTMS plan:', ids.plans.ctmsRegression, '(PLAN-001, active, 4 cases)')
+  console.log(
+    'Demo Project (slug "demo"):',
+    ids.projects.demo,
+    '— 4 folders, 14 cases (1-8 steps each), 2 plans, 4 runs (2 sealed/historical, 1 in-progress, 1 not-started). Every seed user has a project role. Default landing project.',
+  )
   console.log('')
   console.log('TestRunService.create() inputs:')
   console.log('  projectId:', seedRefs.projectId)

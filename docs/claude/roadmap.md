@@ -25,6 +25,8 @@ Out of scope for this branch: AWS/cloud deployment (Terraform/ECS/Aurora — loc
 
 **Not yet done:** no `docs/cursor-prompts/mvp-backend/` task files exist. Next session needs to turn "convert everything at once" into actual numbered tasks — sequencing, checkpoint cadence, and the first task's exact boundary are still open.
 
+**2026-07-09 follow-up (screen-wiring pass):** all 8 phases' backends built; Shaun asked to wire every screen at once. Full detail in `docs/claude/mvp-backend/progress.md` — key items worth surfacing here for the broader backlog: (1) writes to real projects are **optimistic** (instant local UI, server call reconciles after) — Shaun explicitly flagged this needs revisiting before any real production use, since a live version should wait for the server to avoid client/server disagreement; (2) a real 7th "Demo Project" + a "Create Demo Project" clone-on-demand feature were added as the default explorable landing project.
+
 ### Compass Visual Overhaul (UI reskin) `[x]`
 **Merged to `mvp-main` via PR #19 (`0e8ec98`).**
 

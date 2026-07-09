@@ -5,14 +5,13 @@
 > which gets summarized/lost across sessions. Update it before ending any session that touched
 > this branch, even a short one that only got partway through a phase.
 
-Last updated: 2026-07-09 (session: Shaun asked to "run all the phases to completion." Agreed
-approach — see "Backend-first, all phases" note below — build/verify every phase's backend
-(services + API routes) this session, defer ALL screen-wiring to a later pass once every backend
-exists and can be tested together against Shaun's local Docker DB in one sweep. Phases 2, 3, 5, 6
-backends are now code-complete + Claude-sandbox-verified. Phase 4 deliberately skipped — see its
-row below. Phase 7 needs no new backend (see its row). Phase 8 only partially actionable in-sandbox.
-**Nothing from this session is committed yet** — Phase 1 + seed/role overhaul are still the only
-commits (`b430e50`, `4e5ad45`).).
+Last updated: 2026-07-09 (session continues: after all 8 phases' backends were built, Shaun said
+"let's try wiring all at once" — see "Screen-wiring architecture pivot" section below for the
+reducer-sync/write-through approach this settled on, "Optimistic writes" for the write-flow
+decision, and "Demo Project + cloning" for the new 7th project and its clone-on-demand feature.
+Project-picker foundation is committed (`2403930`). Demo Project seed + clone feature are built
+and typecheck/build-verified but **not yet committed** as of this update. Actual Cases/Plans/
+Dashboard/Defects/Audit/Admin/Runs screen-wiring has not started yet — next concrete step.).
 
 ## Backend-first, all phases — standing decision (read this before touching Phases 2–8)
 
@@ -25,6 +24,136 @@ and defer every screen's actual data-source cutover to a follow-up pass, so Case
 Dashboard/Defects/Audit/Admin all get wired and regression-tested together against Shaun's real
 Docker MySQL in one sweep, rather than piecemeal and unverified. Phase 4 is the one exception
 that couldn't even get a backend-only slice — see its row below for why.
+
+## Screen-wiring architecture pivot (read before wiring any screen)
+
+Shaun then asked to actually wire everything at once, accepting the risk ("if it goes bad we have
+this commit to rollback to"). Two big things had to be resolved before any screen's data-source
+could actually change:
+
+1. **The "DP" project problem.** Every fresh screen renders under a single client-only project key
+   ("DP"/"Demo Project", id `proj-ti-core`) with zero relationship to the real DB's projects.
+   Resolved by building a real project picker — see "Project-picker foundation" below. Committed
+   as `2403930`.
+2. **Per-screen rewrite vs. reducer-sync.** Original plan was to rewrite each screen to fetch its
+   own data via a dedicated API client (mirrored on `api-client.ts`'s pattern) — this is what
+   `docs/claude/handoff.md`'s and this file's earlier phase notes assumed. Attempting Cases
+   surfaced a better approach: Dashboard's rich widgets (open-runs list, per-assignee bars,
+   coverage-by-folder, trend charts) are *all* computed client-side in `project-selectors.ts` over
+   `activeCases`/`activeRuns`/`activeFolders` — plain reads off `FreshProvider`'s reducer state, not
+   direct API calls. Rewriting every screen independently would mean re-deriving that computation
+   layer per screen (duplicated, higher regression risk, and Dashboard would either lose its rich
+   widgets or need its own parallel computation logic).
+
+   **Decided instead:** keep every screen's existing code (JSX, filtering, selectors) unchanged.
+   Make `FreshProvider`'s reducer state *sync* from the real API for the active real project (fetch
+   real cases/folders/plans/runs on load, dispatch them into local state — same pattern
+   `REGISTER_REAL_PROJECTS` already uses for projects themselves), and make the *write* actions
+   (`addCase`/`replaceCase`/`deleteCase`/`addFolder`/plan and run equivalents) call the real API in
+   addition to the local dispatch. Every screen "just works" against real data with minimal/no
+   changes to the screen files themselves. Runs stays last and gets its own dedicated pass — its
+   data shape (run/case execution snapshots) doesn't map onto the local `DemoRun`/`CaseExecution`
+   model as directly as cases/folders/plans do, and it's the one already-live, protected-UX route
+   family (see Phase 4's row).
+
+**Not yet built:** the actual sync-in / write-through wiring described above for Cases, Folders,
+Plans, Defects, Audit. This is the concrete next step — see "Open questions / blockers" at the
+bottom of this file.
+
+## Optimistic writes — decided, flagged for later revisit
+
+When a real-project write action (create/update/delete a case, folder, plan, etc.) fires, the UI
+updates immediately (today's exact feel — a temp/local id shows the new row right away) while the
+real API call happens in the background and reconciles the row afterward, rather than waiting for
+the server round-trip before showing anything. Shaun confirmed this on 2026-07-09: "Optimistic as
+it is still a demo." **Explicit standing note to revisit later:** before any real (non-demo)
+production use, this should be revisited — the ideal live-data version waits for the server to
+avoid a window where the client and server can disagree about what was actually saved (e.g. a
+save that fails permissions/validation after the row already appeared to succeed). Not a concern
+for this demo/local-dev phase; flagged here so it isn't forgotten once this moves past that.
+
+## Demo Project (7th project) + "Create Demo Project" cloning
+
+Shaun's ask (2026-07-09, same session): a real 7th DB project — "Demo Project" — richly seeded so
+Dashboard/Cases/Plans/Runs all have real, varied, explorable data on first login (Testiny-style
+demo), plus a "Create Demo Project" button that deep-clones a fresh copy of it on demand, and makes
+it the default landing project.
+
+**Built this session** (typecheck + build verified; **not yet committed**, and not yet verified
+against a live DB — needs `pnpm db:seed` run locally, see below):
+
+- `packages/db/src/seed/ids.ts` — added `ids.projects.demo`.
+- `packages/db/src/seed/demo-project-seed.ts` (new) — `insertDemoProjectSeed()`: 4 folders (one
+  nested, "Password Recovery" under "Authentication"), 14 test cases with step counts from 1 to 8
+  (varying priority/type/tags/assignee/folder; one archived, two unfiled), 2 test plans built from
+  different conditions ("Critical Path" = priority-in-critical/high AND folder-in-Auth/Checkout,
+  6 cases; "Full Regression" = all non-archived, 13 cases) persisted as static `test_plan_cases`,
+  and 4 runs spanning every lifecycle stage: two **sealed/historical** (Sprint 40 ~18 days ago,
+  Sprint 42 ~6 days ago — same real tax-calc bug failing in both, for narrative continuity and a
+  genuine 2-point trend), one **active/in-progress** (Critical Path, half executed), one
+  **active/not-started** (Full Regression, freshly spawned, zero executions). Two `run_defect_links`
+  on notable failures; `run_case_step_snapshots` generated from each case's live steps; a few
+  `run_step_results` on two multi-step cases; `run_assignees` per run. Every one of the 8 seed
+  users gets an explicit `project_roles` row on this project (unlike the other 6, which only grant
+  3 of 8 users a role) — it's meant to be the one project every account can see regardless of
+  global role.
+- `packages/db/src/seed/insert.ts` — calls `insertDemoProjectSeed()`; merged its ref-counter rows
+  into `seedRefCounters()`.
+- `packages/db/src/seed/index.ts` — console output mentions the new project.
+- `packages/db/services/ProjectCloneService.ts` (new) — `cloneProject({ actorId, sourceProjectId,
+  slug?, name? })` deep-clones folders/cases/steps/plans/plan-cases/runs/run-cases/step-snapshots/
+  step-results/defect-links/run-assignees into a brand-new project with fresh IDs throughout
+  (`audit_log`/`run_execution_comments` deliberately NOT cloned — supplementary, not needed for
+  the copy to be fully explorable on its own). **Deliberately generic** (clones ANY project by id,
+  not demo-specific) — the frontend always passes the real Demo Project's id as the source.
+  **Any active user can clone** (not gated to global admin like `createProject()` — cloning
+  read-only demo content is lower-stakes and meant to be self-serve); the cloning actor is granted
+  an `admin` `project_roles` row on the new project so it's visible to them even if they aren't a
+  global admin. `ProjectCloneError` codes: `PROJECT_NOT_FOUND`/`INSUFFICIENT_PERMISSIONS`/
+  `DUPLICATE_SLUG`.
+- `packages/db/package.json` — added `./services/project-clone` export.
+- `apps/web/src/lib/api/errors.ts` / `schemas.ts` — `ProjectCloneError` status map + branch;
+  `cloneProjectBodySchema` (optional `slug`/`name` overrides).
+- `apps/web/src/app/api/projects/[projectId]/clone/route.ts` (new) — POST only, real-session auth.
+- `apps/web/src/lib/relay/project-client.ts` — added `cloneRealProject(sourceProjectId)` +
+  `DEMO_PROJECT_SLUG` constant.
+- `apps/web/src/fresh/components/ProjectSwitcher.tsx` — "Create Demo Project" button is back
+  (finds the real Demo Project by `key === 'DEMO'`, calls `cloneRealProject`, full-reloads to the
+  new project's dashboard on success).
+- `apps/web/src/fresh/lib/project-routes.ts` — `DEFAULT_PROJECT_KEY` changed to `'DEMO'`.
+- `apps/web/src/fresh/data/FreshProvider.tsx` — `REGISTER_REAL_PROJECTS` now prefers the project
+  with `slug === 'demo'` as the default active project (not just whichever real project comes
+  first from `listProjects()`'s DB-order response).
+
+**Deliberate scope gaps (documented, not silently dropped):**
+- **Requirements linking is NOT modeled** in the demo project's cases — there's still no
+  `requirements` table in `schema.ts` (out of scope for this whole branch, per `TestCaseService.ts`'s
+  file header). Cases are varied in every dimension the real schema *can* represent (steps,
+  priority, type, tags, assignee, folder, archived) but don't fake requirement links.
+- **Plan "conditions" are resolved once, at seed time, then persisted as a static case list** —
+  the real schema still has no dynamic-query storage (`known-bugs.md` GAP-01). The two demo plans
+  look like they came from real conditions (and did, conceptually) but won't re-resolve themselves
+  if the underlying cases change later — same static-list limitation `TestPlanService.setPlanCases()`
+  already has.
+- **Historical trend granularity:** the real schema has no append-only per-case execution
+  transition log (unlike the frontend prototype's `executionLog`) — only a final status + one
+  `executed_at` per (run, case). The two sealed runs use realistic backdated timestamps so a real
+  trend can be reconstructed as "one data point per run," not "one point per status transition" —
+  coarser than the local prototype's model, but genuine, not fabricated. Per-case sparklines
+  (hover-to-see-history) should still work once Runs is wired, since they can be built from a
+  case's `test_run_cases` rows across every run it's appeared in, ordered by run date — no extra
+  schema needed for that specific feature.
+- **Cloning wipes on reseed:** `clearSeedData()` deletes every project under the seed org
+  (matched generically by `orgId`, not by a fixed project-id list) — so any cloned Demo Project
+  copies a user creates via the button are wiped the next time someone runs `pnpm db:seed`. This is
+  consistent with the seed script's existing "full reset" behavior, not a new bug, but worth
+  knowing.
+- **Not yet verified against a live DB.** `insertDemoProjectSeed()`/`cloneProject()` typecheck
+  cleanly and the build succeeds, but neither has actually been run against real MySQL — Shaun
+  needs to run `pnpm db:seed` locally and confirm: the console output lists the Demo Project, no
+  FK/constraint errors, and the seeded data looks right (folder nesting, step counts, run statuses,
+  defect links). Then try the "Create Demo Project" button and confirm the clone actually works and
+  is fully independent of the original (edits to the clone don't affect the source).
 
 ## Overall status
 

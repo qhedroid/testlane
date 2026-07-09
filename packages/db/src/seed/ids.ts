@@ -23,6 +23,10 @@ export const ids = {
     ssoIam: '01SEED00000000000000000013',
     reporting: '01SEED00000000000000000014',
     apiGateway: '01SEED00000000000000000015',
+    /** 7th project — richly-seeded explorable demo (folders/cases/plans/runs at
+     * every lifecycle stage). See demo-project-seed.ts. Default landing project
+     * for the fresh app and the "Create Demo Project" clone-source. */
+    demo: '01SEED00000000000000000016',
   },
 
   folders: {

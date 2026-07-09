@@ -29,6 +29,10 @@ import {
   DefectServiceError,
   type DefectServiceErrorCode,
 } from '@relay/db/services/defect'
+import {
+  ProjectCloneError,
+  type ProjectCloneErrorCode,
+} from '@relay/db/services/project-clone'
 import { InsufficientPermissionsError } from '@relay/db/rbac/assert-min-role'
 import { jsonError } from './response'
 
@@ -107,6 +111,12 @@ const DEFECT_SERVICE_STATUS: Record<DefectServiceErrorCode, number> = {
   ALREADY_UNLINKED: 409,
 }
 
+const PROJECT_CLONE_STATUS: Record<ProjectCloneErrorCode, number> = {
+  PROJECT_NOT_FOUND: 404,
+  INSUFFICIENT_PERMISSIONS: 403,
+  DUPLICATE_SLUG: 409,
+}
+
 export function handleRouteError(err: unknown) {
   if (err instanceof ZodError) {
     return jsonError('VALIDATION_ERROR', 'Request validation failed', 400, err.flatten())
@@ -154,6 +164,11 @@ export function handleRouteError(err: unknown) {
 
   if (err instanceof DefectServiceError) {
     const status = DEFECT_SERVICE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof ProjectCloneError) {
+    const status = PROJECT_CLONE_STATUS[err.code] ?? 500
     return jsonError(err.code, err.message, status)
   }
 

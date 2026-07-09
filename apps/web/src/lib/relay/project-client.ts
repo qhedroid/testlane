@@ -70,3 +70,23 @@ export async function createRealProject(input: CreateRealProjectInput): Promise<
     }),
   )
 }
+
+/** The seeded Demo Project's slug — see packages/db/src/seed/demo-project-seed.ts. */
+export const DEMO_PROJECT_SLUG = 'demo'
+
+/**
+ * "Create Demo Project" — deep-clones the seeded Demo Project (folders,
+ * cases, plans, runs, everything) into a brand new real project. Any active
+ * user can call this (see the route/service file headers for why it's not
+ * admin-gated like createRealProject above).
+ */
+export async function cloneRealProject(sourceProjectId: string): Promise<RealProject> {
+  return parseResponse<RealProject>(
+    await fetch(`/api/projects/${sourceProjectId}/clone`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }),
+  )
+}

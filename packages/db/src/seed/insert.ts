@@ -14,6 +14,7 @@ import {
 } from '../../schema'
 import type * as schema from '../../schema'
 import { ids } from './ids'
+import { demoProjectRefCounterRows, insertDemoProjectSeed } from './demo-project-seed'
 
 /** Shared local-dev password for all seed users. Documented in README.md. */
 export const SEED_DEV_PASSWORD = 'relay-dev-2026'
@@ -591,6 +592,8 @@ export async function insertSeedData(
     },
   ])
 
+  await insertDemoProjectSeed(db)
+
   await ensureRefCountersTable(db)
   await seedRefCounters(db)
 }
@@ -632,6 +635,7 @@ async function seedRefCounters(db: MySql2Database<typeof schema>): Promise<void>
     { projectId: ids.projects.apiGateway, entityType: 'case', nextValue: 1002 },
     { projectId: ids.projects.apiGateway, entityType: 'run', nextValue: 1 },
     { projectId: ids.projects.apiGateway, entityType: 'plan', nextValue: 1 },
+    ...demoProjectRefCounterRows(),
   ]
 
   for (const row of rows) {

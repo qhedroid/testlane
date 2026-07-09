@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useFresh } from '../data/FreshProvider'
 import { CreateProjectModal } from './CreateProjectModal'
 import { DEFAULT_PROJECT_KEY, projectPath, switchProjectPath } from '../lib/project-routes'
+import { cloneRealProject, DEMO_PROJECT_SLUG, RelayApiError } from '@/lib/relay/project-client'
 
 export function ProjectSwitcher() {
   const {
@@ -20,8 +21,11 @@ export function ProjectSwitcher() {
   const [createOpen, setCreateOpen] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [cloning, setCloning] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const demoProject = projects.find((p) => p.source === 'real' && p.key === DEMO_PROJECT_SLUG.toUpperCase())
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -83,11 +87,24 @@ export function ProjectSwitcher() {
     setDraftName(currentName)
   }
 
-  // "Add demo project" (clone-current-project) removed from the switcher —
-  // real projects (mvp-backend "wire everything" session) replaced the old
-  // client-only demo-project model; cloning doesn't map onto real DB
-  // projects. `addDemoProject()` itself is left in FreshProvider unused
-  // rather than deleted, in case this needs reverting.
+  // "Add demo project" (clone-current-project, client-only) is gone — real
+  // projects (mvp-backend "wire everything" session) replaced the old
+  // client-only demo-project model. `addDemoProject()` itself is left in
+  // FreshProvider unused rather than deleted, in case this needs reverting.
+  // Its replacement, "Create Demo Project", deep-clones the real seeded Demo
+  // Project via POST /api/projects/:id/clone (see ProjectCloneService.ts).
+  async function handleCloneDemoProject() {
+    if (!demoProject || cloning) return
+    setCloning(true)
+    close()
+    try {
+      const cloned = await cloneRealProject(demoProject.id)
+      window.location.assign(projectPath(cloned.slug.toUpperCase(), 'dashboard'))
+    } catch (err) {
+      window.alert(err instanceof RelayApiError ? err.message : 'Failed to create demo project copy.')
+      setCloning(false)
+    }
+  }
 
   return (
     <>
@@ -162,6 +179,18 @@ export function ProjectSwitcher() {
               <i className="ti ti-plus" />
               Create project…
             </button>
+            {demoProject ? (
+              <button
+                type="button"
+                className="proj-action"
+                onClick={handleCloneDemoProject}
+                disabled={cloning}
+                title="Get a fresh copy of the Demo Project — folders, cases, plans, and runs included"
+              >
+                <i className="ti ti-copy" />
+                {cloning ? 'Creating…' : 'Create Demo Project'}
+              </button>
+            ) : null}
             <button type="button" className="proj-action muted" disabled title="Coming soon">
               <i className="ti ti-settings" />
               Project settings
