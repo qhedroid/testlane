@@ -169,6 +169,16 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 
 **2026-07-09 task-13 sizing concern.** task-13 as currently scoped is not just 3 screens — it also carries the *entire* branch final wrap-up: a full regression sweep across every route touched in both phases (~13 routes + all `/admin/*` sub-pages), a re-confirmation of protected Test Runs UX "one more time," a full PR description rewrite covering both phases, and the final `handoff.md` branch-complete update. Phase 1's equivalent (task-06) bundled "Admin reskin + 19-route regression sweep + PR description" as its own **solo** task. Stacking task-13's 3 screens *in front of* that same scale of wrap-up work, right after task-12 (solo) already spiked to 61%, is a real risk of the session running token-thin exactly when the final regression sweep and PR description need full attention. **Decided 2026-07-09:** Shaun opted to run task-13 as-is, bundled (3 screens + full wrap-up, one session) — a deliberate, informed call given the sizing concern above, not an oversight. If this session reports high usage or the final regression sweep / PR description look rushed, that's the first place to check.
 
+**Result:** task-13 landed at **~54%** — back within the solo band, not a repeat of task-12's spike, despite carrying 3 screens plus the full branch wrap-up. Bundling didn't cost as much here as feared. **Full Phase 2 calibration set (all 7 tasks):** 48, 55, 50, 54, 47, 61, 54 — one clear outlier (task-12, 61%, the protected/most structurally complex screen), everything else in a 47–55% band regardless of solo vs. bundled. Takeaway for any future Phase 3-style work on this app: budget ~50–55% per session as the norm, treat screens with heavy behavioural/keyboard complexity (not just visual complexity) as the real risk factor for spikes, not bundle size or line count alone.
+
+**Claude review of task-13 (2026-07-09):** commit `ffb0411` checked out clean — Defects preserves live `activeDefects` + `MOCK_DEFECTS` merge (no data-trap regression), Audit keeps its page header and filter tabs as instructed, admin polish touched only `admin.css`/`SettingsScreen.tsx` styling with no RBAC/CRUD changes. Fixed one loose end in `pr-description-mvp-visual-overhaul.md`: the task-13 commit entry had a `(pending commit — task-13)` placeholder instead of a linked SHA (written before the commit existed) — updated to link `ffb0411`.
+
+**Gap found and being fixed:** `docs/product/user-guide.md` and `docs/product/feature-flow.md` were last updated at task-08 (new screens/routes) and **not touched by task-07, 09, 10, 11, 12, or 13** — despite `CLAUDE.md`'s mandatory living-docs rule ("update both when changing user-visible behaviour, routes, ... or module flow"), which should have applied to task-07's nav/sidebar restructuring and every task-09–13 screen rebuild. Root cause: several Phase 2 task files (07, 09–13) never included a "Documentation" section instructing Cursor to update these files — a gap in the task prompts as drafted, not a Cursor execution slip. Confirmed specific drift by reading both files in full: `user-guide.md`'s `## Settings` section still describes the old settings-preview page (now a pure `/admin` redirect since task-07); its Dashboard section doesn't mention the task-09 rebuild (KPI strip, completion donut, results-over-time chart, assignee bars, milestones slice); neither file mentions the new always-on global top bar cluster (task-07) or the Test Cases toolbar relocation (task-10); `feature-flow.md`'s Settings feature-status row and manual-test-checklist item are inconsistent with its own already-updated routes table (which does correctly show the redirect). The routes table, persistence model, schema notes, RBAC section, and dependency diagram in `feature-flow.md` are otherwise already accurate as of task-08 — this is a targeted-fix gap, not a full rewrite.
+
+**Decided 2026-07-09:** Shaun opted to fix before PR. Drafted `docs/cursor-prompts/mvp-visual-overhaul/task-14-living-docs-sync.md` (docs-only, no `apps/**` changes) — **done**; see task-14 section below.
+
+**Unflagged finding from reviewing task-14's diff (2026-07-09):** task-14's honest checklist rewrite surfaced that task-09's Dashboard rebuild dropped real interactive behaviour that existed before Phase 2 — the *Critical* filter chip (runs-with-failures filter) and the expandable run-card pattern (Overview/Assignees/Defects tabs per card) were replaced by the mockup's flatter static "Open test runs" list. Confirmed in code: `DashboardScreen.tsx` still has a dead `Critical: 'crit'` constant (line 30) with no remaining reference anywhere else in the file — the filter UI/logic is gone, just an orphaned leftover. The completion donut's hover-tooltip interactivity (`interactive` prop) was preserved, so it's not a total loss of interactivity, just those two specific pieces. This was never called out as a judgement call in task-09's own handoff entry or QA notes, unlike Dashboard's other flagged decisions (milestones static placeholder, reduced-fidelity trend fallback, discarded page header) — it surfaced only because task-14's checklist had to be honest about what's actually on the screen now. Given Shaun's brief for Dashboard was "abandon ours completely, implement as-is from the mockup," this may well be an accepted consequence of that instruction rather than a mistake — but it wasn't a **confirmed** decision the way the other Dashboard tradeoffs were. Flagged to Shaun 2026-07-09; not yet resolved.
+
 ### Completed work — `mvp-visual-overhaul` (task-07) ✅
 
 **Schema:** unchanged (v14). Sidebar/topbar structure, route stubs, global topbar actions.
@@ -220,6 +230,21 @@ This must be a standing rule in every relevant task-07+ prompt: **mockup markup 
 **QA:** build PASS; 24/24 production-build route checks PASS; task-13 does not touch Test Runs execution code (Shaun verified protected UX after task-12).
 
 **Branch status:** `mvp-visual-overhaul` Phase 1 + Phase 2 **complete**. Ready for PR to `mvp-main`.
+
+---
+
+## Completed work — `mvp-visual-overhaul` (task-14) ✅ — docs-only follow-up
+
+**Schema:** unchanged (v14). No `apps/**` changes.
+
+| What it delivered |
+|-------------------|
+| **`user-guide.md`** — synced to Phase 2: Navigation section (sidebar groups, global top bar); Dashboard rewrite; Test Cases toolbar relocation; Test Runs page-head; Defects/Audit task-13 layout; Settings redirect; removed stale settings-preview / Pinned Modules references |
+| **`feature-flow.md`** — feature status table, shell nav notes, Dashboard/Test cases/Test runs/Defects/Settings/Audit checklists updated |
+
+**Usage:** ~42% (docs-only session).
+
+**Branch status:** unchanged — ready for PR after commit.
 
 ---
 

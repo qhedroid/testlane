@@ -1,6 +1,6 @@
 # Relay — Feature Flow Map
 
-*Living document · Last verified: July 2026 · Branch: `mvp-visual-overhaul`*
+*Living document · Last verified: 9 July 2026 · Branch: `mvp-visual-overhaul`*
 
 Product and implementation flow map for the team. Complements authoritative contracts in `docs/_authoritative/**` with journey-oriented status and test checklists.
 
@@ -109,7 +109,7 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 | Browser persistence | `localStorage` key **`relay-demo-v2`** | Survives refresh; per browser |
 | Demo seed | `buildInitialDemoState()`, `demo-template.ts`, `seed.ts` | Initial load + “Add demo project” clone |
 | API workspace | MySQL via `/api/runs/*` | `/runs/api` only |
-| Static mock | `mock-data.ts`, seed arrays | Defects, settings preview, plan list, project audit |
+| Static mock | `mock-data.ts`, seed arrays | Defects TI-* rows, plan list, project audit |
 
 **Not persisted in prototype:** test plans (seed only), project-level audit timeline, defects module data, reports/integrations placeholders.
 
@@ -182,9 +182,9 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 
 | Module / feature | Status | Persistence | Notes |
 |------------------|--------|-------------|-------|
-| Shell & navigation | **Implemented** | Client | Sidebar, module switcher, Cmd+K |
+| Shell & navigation | **Implemented** | Client | Sidebar (Testing/Traceability groups), global top bar (New test case/run, AI Studio, Notifications, Help), Cmd+K; Pinned Modules and Integrations nav removed |
 | Project switcher & CRUD | **Implemented** | localStorage | URL sync; cascade delete |
-| Dashboard | **Implemented** | localStorage | Real metrics for all projects; empty-cases onboarding state |
+| Dashboard | **Implemented** | localStorage | Phase 2 layout: KPI strip, completion donut, results-over-time chart, assignee bars, open runs, milestones slice, needs attention; live selectors |
 | Test cases — tree & table | **Implemented** | localStorage | Filters, pagination, search |
 | Test cases — detail & CRUD | **Implemented** | localStorage | Tabs, custom fields, context menu |
 | Test cases — URL sync | **Implemented** | — | `/testcases/tc/:caseKey` |
@@ -201,12 +201,12 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 | Test cases — requirements create/link | **Implemented** | localStorage | Requirements tab; REQ-* keys |
 | Test cases — defects view-only | **Implemented** | localStorage | Derived from run execution links |
 | Test runs — requirements view-only | **Implemented** | localStorage | From linked case requirements |
-| Defects module screen | **Partial** | Mock + localStorage | Static TI-* + local DEF-*; create disabled |
+| Defects module screen | **Partial** | Mock + localStorage | Table toolbar + detail panel; static TI-* + local DEF-*; create disabled |
 | Defects in-run create/link | **Implemented** | localStorage | Failed/Blocked + unsealed only |
-| Reports | **Placeholder** | — | |
-| Integrations (project) | **Placeholder** | — | |
-| Settings (project) | **Partial** | Static mock | Read-only |
-| Audit (project) | **Partial** | Static seed | |
+| Reports | **Placeholder** | — | Static demo content |
+| Integrations (project) | **Placeholder** | — | Route exists; sidebar link removed |
+| Settings (project) | **Redirect** | — | `/:key/settings` → `/admin`; sidebar "Project Settings" entry |
+| Audit (project) | **Partial** | Static seed | Page header + filter chips + event rows |
 | Admin panel (all sections) | **Implemented** | localStorage | 11 routes under `/admin` |
 | Admin — user management | **Implemented** | localStorage | Invite, silent invite, edit, disable/reactivate, project access |
 | Admin — role management | **Implemented** | localStorage | Built-in + custom roles, permission matrix |
@@ -248,9 +248,8 @@ flowchart LR
 
 - Frontend-only phase — no demo UI API wiring ([`MVP_FRONTEND_ONLY_SCOPE.md`](../_authoritative/MVP_FRONTEND_ONLY_SCOPE.md))
 - `/DP/cases` 404; use `/DP/testcases`
-- Run spawn does not snapshot case steps immutably (edits to cases after spawn affect the same case objects in a run)
 - Run spawn does not snapshot case steps immutably (edits affect same case objects)
-- Project settings in switcher disabled
+- `/:key/integrations` placeholder not in sidebar
 - CasesScreen project-switch flicker (BUG-02) — deferred
 - Authoritative docs may lag code ([`AS_BUILT_SNAPSHOT.md`](../_authoritative/AS_BUILT_SNAPSHOT.md) still references `/cases` slug in places)
 
@@ -279,24 +278,26 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Dashboard — `/:key/dashboard`
 
-- [ ] Demo project shows real metric cards, run cards, attention list, folder coverage
+- [ ] KPI strip shows Executed %, Passed, Failed, Blocked, Open runs, pass-trend sparkline from live data
+- [ ] Completion donut + legend; lowest-coverage-by-folder rows when applicable
+- [ ] Results-over-time chart renders; 7d / 30d / 90d chips switch window
+- [ ] Results-by-assignee bars populate for executed cases
+- [ ] Open test runs list links through to `/testruns/tr/:runKey`
+- [ ] Milestones slice renders static placeholders with link to `/milestones`
+- [ ] Needs attention lists unlinked failures; rows link to test runs
 - [ ] New blank project (zero cases) shows “Add your first test cases” empty state
-- [ ] Project with cases but no runs shows zero-state metrics (no NaN%, no crash)
-- [ ] Critical filter shows only runs with failures
-- [ ] Run-card donut shows Skipped as its own segment; hover tooltips on wedges
-- [ ] Expanded Overview text row reconciles pass + fail + blocked + skipped + not run = total
-- [ ] Linking a defect removes failure from needs-attention panel
-- [ ] *New Run* / attention links open testruns
+- [ ] Trend/delta panels show flat “as of today” / snapshot note when seed has no dated `executionLog`
 - [ ] No console errors on load
 
 ### Test cases — `/:key/testcases`
 
 - [ ] Folder expand/collapse and folder search
+- [ ] Case-list pane toolbar shows Create test run, Import, Quick create, New case (not in global top bar)
 - [ ] Quick create and New case modal persist after refresh
 - [ ] Row ⋯ menu: duplicate, edit, delete
 - [ ] Detail panel ← → navigation and URL `/tc/:caseKey`
 - [ ] Filter panel and keyword search
-- [ ] Create test run from toolbar
+- [ ] Create test run from case-list toolbar
 - [ ] Project switch → cases scoped to new project
 - [ ] Legacy `/cases` redirects to `/:key/testcases`
 
@@ -314,6 +315,8 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Test runs — `/:key/testruns`
 
+- [ ] Global top bar shows New test case, New test run, AI Studio, Notifications, Help on this screen too
+- [ ] Page-head shows Close/Re-open, Edit, Report, More… (not in global top bar)
 - [ ] Create run modal → navigates to `/tr/:runKey`
 - [ ] Empty run shows empty state; Add cases modal works
 - [ ] Run picker search and switch updates URL
@@ -325,12 +328,15 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Defects — `/:key/defects`
 
-- [ ] Table and detail panel render
+- [ ] Toolbar: All defects, shown count, search, severity filter, status chips, Details toggle
+- [ ] Table rows select defect; detail panel opens/closes
+- [ ] Local DEF-* rows appear with TI-* mock data
 - [ ] New defect button disabled
 
 ### Settings — `/:key/settings`
 
-- [ ] Read-only fields display
+- [ ] Visiting `/:key/settings` redirects to `/admin`
+- [ ] Sidebar shows single **Project Settings** entry (not separate Settings + Admin links)
 
 ### Reports / Integrations — `/:key/reports`, `/:key/integrations`
 
@@ -363,7 +369,9 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Audit — `/:key/audit`
 
-- [ ] Timeline renders; filter chips toggle (client-side)
+- [ ] Page header (title, subtitle, Export CSV) renders
+- [ ] Filter chips toggle client-side (All events / Test Cases / Test Runs / Test Plans / Users)
+- [ ] Event rows show icon chips, descriptions with ref links, timestamps
 
 ### Admin — `/admin/users`, `/admin/roles`
 
