@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 
 const KPI = [
@@ -63,7 +62,6 @@ export function MyWorkScreen() {
   return (
     <div className="view">
       <FreshTopbar breadcrumbs={[{ label: 'My Work' }]} showSearch={false} />
-      <PrototypeBanner />
 
       <div className="screen-wrap">
         <div className="page-head">

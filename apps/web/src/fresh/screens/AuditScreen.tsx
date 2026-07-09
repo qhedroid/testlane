@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
 import { AUDIT_EVENTS } from '../data/seed'
 import type { AuditEvent } from '../data/types'
@@ -78,7 +77,6 @@ export function AuditScreen() {
         searchWidth={200}
         showSearch
       />
-      <PrototypeBanner />
 
       <div className="screen-wrap audit-screen-wrap">
         <div className="page-head">

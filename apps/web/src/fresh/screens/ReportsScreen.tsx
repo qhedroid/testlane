@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 
 type ReportTab = 'run' | 'req' | 'failure' | 'flaky' | 'workload'
 
@@ -140,7 +139,6 @@ export function ReportsScreen() {
   return (
     <div className="view">
       <FreshTopbar breadcrumbs={[{ label: 'Reports' }]} showSearch={false} />
-      <PrototypeBanner />
 
       <div className="screen-wrap">
         <div className="page-head">

@@ -55,14 +55,14 @@ export async function runSeed(): Promise<void> {
   console.log('')
   console.log('Local dev login — shared password for all seed users:')
   console.log(' ', SEED_DEV_PASSWORD)
-  console.log('  noel.quadri@relay-dev.local     (Noel Quadri, super_admin — Administrator)')
-  console.log('  shaun.sevume@relay-dev.local    (Shaun Sevume, admin — Administrator)')
-  console.log('  priya.nair@relay-dev.local      (Monica Dayalani, contributor — Editor)')
-  console.log('  marcus.webb@relay-dev.local     (Nasir Dipto, contributor — Run Executor)')
-  console.log('  james.osullivan@relay-dev.local (Jamil Khan, contributor — Run Executor)')
-  console.log('  viewer@relay-dev.local          (Arvindh Chandran, contributor — Editor)')
-  console.log('  nadim.sharif@relay-dev.local    (Nadim Sharif, viewer — Viewer)')
-  console.log('  syed.ahmed@relay-dev.local      (Syed Ahmed, contributor — Run Manager)')
+  console.log('  nquadri@ti.com     (Noel Quadri, super_admin — Administrator)')
+  console.log('  ssevume@ti.com    (Shaun Sevume, admin — Administrator)')
+  console.log('  mdayalani@ti.com      (Monica Dayalani, contributor — Editor)')
+  console.log('  ndipto@ti.com     (Nasir Dipto, contributor — Run Executor)')
+  console.log('  jkhan@ti.com (Jamil Khan, contributor — Run Executor)')
+  console.log('  achandran@ti.com          (Arvindh Chandran, contributor — Editor)')
+  console.log('  nsharif@ti.com    (Nadim Sharif, viewer — Viewer)')
+  console.log('  sahmed@ti.com      (Syed Ahmed, contributor — Run Manager)')
 }
 
 async function main(): Promise<void> {

@@ -105,14 +105,14 @@ four values, so it's a compressed mapping, not a 1:1 match.
 
 | Email | Name | Global role (DB) | Admin role |
 |-------|------|-------------|------------|
-| `noel.quadri@relay-dev.local` | Noel Quadri | super_admin | Administrator |
-| `shaun.sevume@relay-dev.local` | Shaun Sevume | admin | Administrator |
-| `priya.nair@relay-dev.local` | Monica Dayalani | contributor | Editor |
-| `marcus.webb@relay-dev.local` | Nasir Dipto | contributor | Run Executor |
-| `james.osullivan@relay-dev.local` | Jamil Khan | contributor | Run Executor |
-| `viewer@relay-dev.local` | Arvindh Chandran | contributor | Editor |
-| `nadim.sharif@relay-dev.local` | Nadim Sharif | viewer | Viewer |
-| `syed.ahmed@relay-dev.local` | Syed Ahmed | contributor | Run Manager |
+| `nquadri@ti.com` | Noel Quadri | super_admin | Administrator |
+| `ssevume@ti.com` | Shaun Sevume | admin | Administrator |
+| `mdayalani@ti.com` | Monica Dayalani | contributor | Editor |
+| `ndipto@ti.com` | Nasir Dipto | contributor | Run Executor |
+| `jkhan@ti.com` | Jamil Khan | contributor | Run Executor |
+| `achandran@ti.com` | Arvindh Chandran | contributor | Editor |
+| `nsharif@ti.com` | Nadim Sharif | viewer | Viewer |
+| `sahmed@ti.com` | Syed Ahmed | contributor | Run Manager |
 
 Visiting any app route while logged out redirects to `/login`. `/api/runs/*` is the one
 exception — it still authenticates via the legacy `x-relay-user-id` dev header pending a

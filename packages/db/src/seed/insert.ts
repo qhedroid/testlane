@@ -35,7 +35,7 @@ export async function insertSeedData(
     {
       id: ids.users.noel,
       orgId: ids.org,
-      email: 'noel.quadri@relay-dev.local',
+      email: 'nquadri@ti.com',
       name: 'Noel Quadri',
       globalRole: 'super_admin',
       isActive: true,
@@ -44,7 +44,7 @@ export async function insertSeedData(
     {
       id: ids.users.shaun,
       orgId: ids.org,
-      email: 'shaun.sevume@relay-dev.local',
+      email: 'ssevume@ti.com',
       name: 'Shaun Sevume',
       globalRole: 'admin',
       isActive: true,
@@ -53,7 +53,7 @@ export async function insertSeedData(
     {
       id: ids.users.priya,
       orgId: ids.org,
-      email: 'priya.nair@relay-dev.local',
+      email: 'mdayalani@ti.com',
       name: 'Monica Dayalani',
       globalRole: 'contributor',
       isActive: true,
@@ -62,7 +62,7 @@ export async function insertSeedData(
     {
       id: ids.users.marcus,
       orgId: ids.org,
-      email: 'marcus.webb@relay-dev.local',
+      email: 'ndipto@ti.com',
       name: 'Nasir Dipto',
       // Run Executor (frontend admin role) -> contributor. Was 'admin'; downgraded
       // to match the "Run Executor" designation from Shaun's 2026-07-09 role pass.
@@ -73,7 +73,7 @@ export async function insertSeedData(
     {
       id: ids.users.james,
       orgId: ids.org,
-      email: 'james.osullivan@relay-dev.local',
+      email: 'jkhan@ti.com',
       name: 'Jamil Khan',
       globalRole: 'contributor', // Run Executor
       isActive: true,
@@ -82,7 +82,7 @@ export async function insertSeedData(
     {
       id: ids.users.viewer,
       orgId: ids.org,
-      email: 'viewer@relay-dev.local',
+      email: 'achandran@ti.com',
       name: 'Arvindh Chandran',
       // Editor (frontend admin role) -> contributor. Was 'viewer'; upgraded to
       // match the "Editor" designation from Shaun's 2026-07-09 role pass.
@@ -93,7 +93,7 @@ export async function insertSeedData(
     {
       id: ids.users.nadim,
       orgId: ids.org,
-      email: 'nadim.sharif@relay-dev.local',
+      email: 'nsharif@ti.com',
       name: 'Nadim Sharif',
       globalRole: 'viewer', // Viewer
       isActive: true,
@@ -102,7 +102,7 @@ export async function insertSeedData(
     {
       id: ids.users.syed,
       orgId: ids.org,
-      email: 'syed.ahmed@relay-dev.local',
+      email: 'sahmed@ti.com',
       name: 'Syed Ahmed',
       globalRole: 'contributor', // Run Manager -> contributor (DB has no distinct Run Manager role)
       isActive: true,

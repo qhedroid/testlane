@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { RunDonut } from '../components/RunDonut'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
 import type { CasePriority } from '../data/demo-model'
@@ -107,7 +106,6 @@ function DashboardEmptyCases({ projectName }: { projectName: string }) {
           </Link>
         }
       />
-      <PrototypeBanner />
       <div className="dash-wrap">
         <div className="panel dash-empty-panel">
           <i className="ti ti-layout-dashboard dash-empty-icon" />
@@ -197,7 +195,6 @@ function DashboardView() {
           </>
         }
       />
-      <PrototypeBanner />
       <div className="dash-wrap">
         <div className="kpi-strip dash-kpi-strip">
           <div className="kpi-tile">

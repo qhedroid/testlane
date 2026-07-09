@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { useFresh } from '../data/FreshProvider'
 import { formatRelativeTime } from '../data/demo-model'
@@ -128,7 +127,6 @@ export function DefectsScreen() {
           </button>
         }
       />
-      <PrototypeBanner />
 
       <div className="def-lay">
         <div className={`def-split${detailOpen && selected ? ' def-split-open' : ''}`}>

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
 import type { AdminCustomField, Case, CaseExecution, CasePriority, CaseStep, DemoRun, ExecStatus, Folder } from '../data/demo-model'
 import {
@@ -615,7 +614,6 @@ export function CasesScreen() {
           { label: 'Test cases' },
         ]}
       />
-      <PrototypeBanner />
       <div className={`tc-lay${detailMaximized ? ' dp-maximized' : ''}`}>
         <div className="suite-tree">
           <div className="st-hd">

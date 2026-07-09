@@ -978,8 +978,16 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           projectAccess: ['__all__'],
         }
       })
+      // Unmatched local rows are DROPPED, with exactly two exceptions:
+      // "Demo User" (Shaun's explicit keep — the local current-actor
+      // mechanism) and in-flight invites (temp 'admin-user-inv-*' ids whose
+      // POST hasn't reconciled). This is what clears stale fake/mock users
+      // (Alice Chen etc.) out of old persisted localStorage state — the real
+      // users table is the source of truth for who exists now.
       const keptLocal = state.adminSettings.users.filter(
-        (u) => !matchedLocalIds.has(u.id) && !isRealId(u.id),
+        (u) =>
+          !matchedLocalIds.has(u.id) &&
+          (u.id === SEED_ADMIN_USER_ID || u.id.startsWith('admin-user-inv')),
       )
       next = {
         ...state,

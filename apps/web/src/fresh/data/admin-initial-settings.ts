@@ -95,14 +95,14 @@ function seedApiKeys(): AdminApiKey[] {
 function seedUsers(): AdminUser[] {
   return [
     user(SEED_USER_IDS.demo, 'Demo', 'User', 'demo@relay.app', 'Owner', 'Active', NOW),
-    user(SEED_USER_IDS.shaun, 'Shaun', 'Sevume', 'shaun.sevume@relay-dev.local', 'Administrator', 'Active', ago(HOUR)),
-    user(SEED_USER_IDS.noel, 'Noel', 'Quadri', 'noel.quadri@relay-dev.local', 'Administrator', 'Active', ago(3 * HOUR)),
-    user(SEED_USER_IDS.syed, 'Syed', 'Ahmed', 'syed.ahmed@relay-dev.local', 'Run Manager', 'Active', ago(DAY)),
-    user(SEED_USER_IDS.jamil, 'Jamil', 'Khan', 'james.osullivan@relay-dev.local', 'Run Executor', 'Active', ago(2 * DAY), ['DP', 'CTMS']),
-    user(SEED_USER_IDS.nasir, 'Nasir', 'Dipto', 'marcus.webb@relay-dev.local', 'Run Executor', 'Active', ago(5 * HOUR), ['DP']),
-    user(SEED_USER_IDS.monica, 'Monica', 'Dayalani', 'priya.nair@relay-dev.local', 'Editor', 'Active', ago(30 * MIN), ['DP', 'CTMS']),
-    user(SEED_USER_IDS.arvindh, 'Arvindh', 'Chandran', 'viewer@relay-dev.local', 'Editor', 'Active', ago(4 * DAY), ['CTMS']),
-    user(SEED_USER_IDS.nadim, 'Nadim', 'Sharif', 'nadim.sharif@relay-dev.local', 'Viewer', 'Active', ago(6 * DAY), ['IAM']),
+    user(SEED_USER_IDS.shaun, 'Shaun', 'Sevume', 'ssevume@ti.com', 'Administrator', 'Active', ago(HOUR)),
+    user(SEED_USER_IDS.noel, 'Noel', 'Quadri', 'nquadri@ti.com', 'Administrator', 'Active', ago(3 * HOUR)),
+    user(SEED_USER_IDS.syed, 'Syed', 'Ahmed', 'sahmed@ti.com', 'Run Manager', 'Active', ago(DAY)),
+    user(SEED_USER_IDS.jamil, 'Jamil', 'Khan', 'jkhan@ti.com', 'Run Executor', 'Active', ago(2 * DAY), ['DP', 'CTMS']),
+    user(SEED_USER_IDS.nasir, 'Nasir', 'Dipto', 'ndipto@ti.com', 'Run Executor', 'Active', ago(5 * HOUR), ['DP']),
+    user(SEED_USER_IDS.monica, 'Monica', 'Dayalani', 'mdayalani@ti.com', 'Editor', 'Active', ago(30 * MIN), ['DP', 'CTMS']),
+    user(SEED_USER_IDS.arvindh, 'Arvindh', 'Chandran', 'achandran@ti.com', 'Editor', 'Active', ago(4 * DAY), ['CTMS']),
+    user(SEED_USER_IDS.nadim, 'Nadim', 'Sharif', 'nsharif@ti.com', 'Viewer', 'Active', ago(6 * DAY), ['IAM']),
   ]
 }
 

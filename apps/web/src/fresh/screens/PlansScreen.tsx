@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { RunDonut } from '../components/RunDonut'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
 import type {
@@ -596,7 +595,6 @@ export function PlansScreen() {
         searchPlaceholder="Search plans…"
         searchWidth={200}
       />
-      <PrototypeBanner />
 
       <div className={`pl-lay${planMaximized ? ' pl-maximized' : ''}`}>
         <div className="pl-list-pane">

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
 import type { Requirement, RequirementStatus } from '../data/demo-model'
 import { formatRelativeTime } from '../data/demo-model'
@@ -88,7 +87,6 @@ export function RequirementsScreen() {
   return (
     <div className="view">
       <FreshTopbar breadcrumbs={[{ label: 'Requirements' }]} showSearch={false} />
-      <PrototypeBanner />
 
       <div className="screen-wrap requirements-lay">
         <div className="page-head">
