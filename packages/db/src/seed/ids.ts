@@ -12,6 +12,8 @@ export const ids = {
     marcus: '01SEED00000000000000000005',
     james: '01SEED00000000000000000006',
     viewer: '01SEED00000000000000000007',
+    nadim: '01SEED00000000000000000008',
+    syed: '01SEED00000000000000000009',
   },
 
   projects: {

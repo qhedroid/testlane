@@ -63,7 +63,9 @@ export async function insertSeedData(
       orgId: ids.org,
       email: 'marcus.webb@relay-dev.local',
       name: 'Nasir Dipto',
-      globalRole: 'admin',
+      // Run Executor (frontend admin role) -> contributor. Was 'admin'; downgraded
+      // to match the "Run Executor" designation from Shaun's 2026-07-09 role pass.
+      globalRole: 'contributor',
       isActive: true,
       passwordHash: devPasswordHash,
     },
@@ -72,7 +74,7 @@ export async function insertSeedData(
       orgId: ids.org,
       email: 'james.osullivan@relay-dev.local',
       name: 'Jamil Khan',
-      globalRole: 'contributor',
+      globalRole: 'contributor', // Run Executor
       isActive: true,
       passwordHash: devPasswordHash,
     },
@@ -81,7 +83,27 @@ export async function insertSeedData(
       orgId: ids.org,
       email: 'viewer@relay-dev.local',
       name: 'Arvindh Chandran',
-      globalRole: 'viewer',
+      // Editor (frontend admin role) -> contributor. Was 'viewer'; upgraded to
+      // match the "Editor" designation from Shaun's 2026-07-09 role pass.
+      globalRole: 'contributor',
+      isActive: true,
+      passwordHash: devPasswordHash,
+    },
+    {
+      id: ids.users.nadim,
+      orgId: ids.org,
+      email: 'nadim.sharif@relay-dev.local',
+      name: 'Nadim Sharif',
+      globalRole: 'viewer', // Viewer
+      isActive: true,
+      passwordHash: devPasswordHash,
+    },
+    {
+      id: ids.users.syed,
+      orgId: ids.org,
+      email: 'syed.ahmed@relay-dev.local',
+      name: 'Syed Ahmed',
+      globalRole: 'contributor', // Run Manager -> contributor (DB has no distinct Run Manager role)
       isActive: true,
       passwordHash: devPasswordHash,
     },

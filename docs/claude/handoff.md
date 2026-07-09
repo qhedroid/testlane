@@ -81,6 +81,39 @@ Turned last session's locked scope into an actual 8-task sequence and drafted ta
 
 ---
 
+## 2026-07-09 — Phase 1 post-commit fixes + seed user/role overhaul
+
+**Committed:** Phase 1 landed as `b430e50` (authored/committed as Shaun Sevume — confirmed this session's git config already matched his identity, so no override needed; see commit-identity rule in `CLAUDE.md`).
+
+**Bug found + fixed after commit:** Shaun reported `/login` CSS looked completely broken after getting the dev server running (separately, `next-auth/react` module-not-found was just a stale `pnpm install`, not a real bug). Root cause: `fresh.css` — a single global stylesheet, not scoped per-component — is only imported by `(app)/layout.tsx` and `admin/layout.tsx`. The new top-level `apps/web/src/app/login/page.tsx` (added in Phase 1, deliberately outside the `(app)` group since login has no project context) never imported it, so every `.login-*`/`.btn`/`.inp`/`.form-error` class rendered unstyled. Fixed by adding `import '@/fresh/styles/fresh.css'` directly to `login/page.tsx` — same pattern `admin/layout.tsx` already uses independently. Rebuilt clean.
+
+**Seed user/role overhaul (Shaun's ask, same session):** Asked to rename/expand seed users and assign Admin-panel roles (Owner/Administrator/Run Manager/Run Executor/Editor/Viewer). Two ambiguities surfaced and were resolved via clarifying questions:
+1. Those granular role names only exist in the frontend Admin mock model (`apps/web/src/fresh/data/rbac.ts`'s `AdminUserRole`) — the DB's `users.globalRole` enum only has 4 values (super_admin/admin/contributor/viewer). Shaun confirmed: update **both**.
+2. Arvindh Chandran was named but not assigned a role in the initial ask — confirmed **Editor**.
+
+**Discovered mid-task:** `apps/web/src/fresh/data/team-users.ts` already canonicalizes the exact 8-name roster (Noel Quadri, Shaun Sevume, Nasir Dipto, Monica Dayalani, Jamil Khan, Arvindh Chandran, Nadim Sharif, Syed Ahmed) as "the single source of truth for assignee/person names in the UI," with a `LEGACY_ASSIGNEE_MAP` already mapping old placeholder names (Marcus Webb, Priya Nair, James O'Sullivan, Aisha Rahman, Fatima Al-Amin, Alex Viewer) onto it — and `apps/web/src/fresh/data/seed.ts`'s demo case/run/defect/audit data already uses these 8 names throughout. This predates this session; it confirms the two systems that were *not* yet aligned were specifically the DB seed and the Admin mock panel, not the main fresh app.
+
+**DB seed (`packages/db/src/seed/`):** Added Nadim Sharif (`nadim.sharif@relay-dev.local`) and Syed Ahmed (`syed.ahmed@relay-dev.local`) as two new seed users (`ids.ts` gets `users.nadim`/`users.syed`). Changed Nasir Dipto's `globalRole` from `admin` → `contributor` (Run Executor) and Arvindh Chandran's from `viewer` → `contributor` (Editor) — both are real permission changes, not cosmetic, flagged here so they're not mistaken for a bug later. Full compression mapping (DB has no 1:1 equivalent for the 6 granular roles):
+
+| Person | Admin role | DB globalRole |
+|---|---|---|
+| Noel Quadri | Administrator | `super_admin` (unchanged — already satisfies "Administrator or above") |
+| Shaun Sevume | Administrator | `admin` (unchanged) |
+| Monica Dayalani | Editor | `contributor` (unchanged) |
+| Nasir Dipto | Run Executor | `contributor` (changed from `admin`) |
+| Jamil Khan | Run Executor | `contributor` (unchanged) |
+| Arvindh Chandran | Editor | `contributor` (changed from `viewer`) |
+| Nadim Sharif | Viewer | `viewer` (new) |
+| Syed Ahmed | Run Manager | `contributor` (new) |
+
+`README.md`'s "Local dev login" table updated with both columns side by side; `packages/db/src/seed/index.ts`'s console output updated to print both role systems per user.
+
+**Frontend Admin mock (`apps/web/src/fresh/data/admin-initial-settings.ts`):** Replaced all 9 non-"Demo User" fake mock identities (Alice Chen, Bob Smith, Carol Jones, David Park, Eva Martinez, Frank Liu, Grace Kim, Jordan Lee, "Internal Bot") with the 8 real team members and their assigned roles; "Demo User" (Owner) left untouched per Shaun's "keep as Demo User" instruction. Reassigned the 4 mock API keys that referenced the removed fake user IDs (`alice-dev`→`noel-dev`, `bob-ci`→`monica-ci`, `carol-sync`→`arvindh-sync`, `eva-export`→`syed-export`) rather than leaving them dangling. Renamed the 3 stale `byUser` references in the mock audit log (Alice Chen→Noel Quadri, Bob Smith→Monica Dayalani, Carol Jones→Arvindh Chandran) so the audit trail doesn't reference nonexistent users. Side effect worth flagging: the removed fake users demonstrated "Pending invite"/"Silent created"/"Disabled" statuses in the Admin Users screen — all 8 real people are now "Active," so that status-variety demo is gone unless restored separately later. `Project Administrator` (a 7th built-in role, project-scoped) has 0 assigned users now — still a valid selectable role, just unused in this mapping.
+
+Verified: `tsc --noEmit` clean for both packages, `pnpm build` succeeded (via the `/tmp/relay-verify` workaround) after this change too.
+
+---
+
 ## 2026-07-09 — `mvp-backend` Phase 1 (Foundation) implemented ✅ — pending Shaun-local verification
 
 Implemented Phase 1 (auth/RBAC/User+Project API) in full per `docs/cursor-prompts/mvp-backend/task-01-foundation-auth-rbac.md`'s Parts A–F, directly (per the pivot below). Full file-level detail and exact state is in `docs/claude/mvp-backend/progress.md` — this entry is the short version.
