@@ -13,6 +13,9 @@ interface FreshUIContextValue {
   createCaseFolderId: string | null
   openCreateCase: (folderId?: string | null) => void
   closeCreateCase: () => void
+  createRunOpen: boolean
+  openCreateRun: () => void
+  closeCreateRun: () => void
 }
 
 const FreshUIContext = createContext<FreshUIContextValue | null>(null)
@@ -22,6 +25,7 @@ export function FreshUIProvider({ children }: { children: ReactNode }) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [createCaseOpen, setCreateCaseOpen] = useState(false)
   const [createCaseFolderId, setCreateCaseFolderId] = useState<string | null>(null)
+  const [createRunOpen, setCreateRunOpen] = useState(false)
 
   const openSearch = useCallback(() => setSearchOpen(true), [])
   const closeSearch = useCallback(() => setSearchOpen(false), [])
@@ -32,6 +36,8 @@ export function FreshUIProvider({ children }: { children: ReactNode }) {
     setCreateCaseOpen(true)
   }, [])
   const closeCreateCase = useCallback(() => setCreateCaseOpen(false), [])
+  const openCreateRun = useCallback(() => setCreateRunOpen(true), [])
+  const closeCreateRun = useCallback(() => setCreateRunOpen(false), [])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -43,6 +49,7 @@ export function FreshUIProvider({ children }: { children: ReactNode }) {
         setSearchOpen(false)
         setShortcutsOpen(false)
         setCreateCaseOpen(false)
+        setCreateRunOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -61,8 +68,11 @@ export function FreshUIProvider({ children }: { children: ReactNode }) {
       createCaseFolderId,
       openCreateCase,
       closeCreateCase,
+      createRunOpen,
+      openCreateRun,
+      closeCreateRun,
     }),
-    [searchOpen, shortcutsOpen, createCaseOpen, createCaseFolderId, openSearch, closeSearch, openShortcuts, closeShortcuts, openCreateCase, closeCreateCase],
+    [searchOpen, shortcutsOpen, createCaseOpen, createCaseFolderId, createRunOpen, openSearch, closeSearch, openShortcuts, closeShortcuts, openCreateCase, closeCreateCase, openCreateRun, closeCreateRun],
   )
 
   return <FreshUIContext.Provider value={value}>{children}</FreshUIContext.Provider>

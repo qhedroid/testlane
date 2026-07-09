@@ -94,9 +94,9 @@ export function ProjectSwitcher() {
     <>
       <div className="proj-switcher" ref={ref}>
         <button type="button" className="proj-btn" onClick={() => setOpen((v) => !v)}>
-          <i className="ti ti-apps" style={{ fontSize: 14, color: 'var(--accent)' }} />
+          <i className="ti ti-folder" style={{ fontSize: 15, color: 'var(--text3)' }} />
           <span className="pn">{activeProject?.name ?? 'Project'}</span>
-          <i className="ti ti-chevron-down" style={{ fontSize: 10, opacity: 0.5 }} />
+          <i className="ti ti-chevron-down" />
         </button>
         {open ? (
           <div className="proj-dd open">

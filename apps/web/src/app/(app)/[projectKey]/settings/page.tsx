@@ -1,5 +1,5 @@
-import { SettingsScreen } from '@/fresh/screens/SettingsScreen'
+import { redirect } from 'next/navigation'
 
 export default function ProjectSettingsPage() {
-  return <SettingsScreen />
+  redirect('/admin')
 }

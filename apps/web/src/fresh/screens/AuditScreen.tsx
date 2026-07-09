@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { PrototypeBanner } from '../components/PrototypeBanner'
+import { useFresh } from '../data/FreshProvider'
 import { AUDIT_EVENTS } from '../data/seed'
 import type { AuditEvent } from '../data/types'
 
@@ -28,6 +29,7 @@ function matchesFilter(ev: AuditEvent, filter: AuditFilter): boolean {
 }
 
 export function AuditScreen() {
+  const { activeProject } = useFresh()
   const [activeFilter, setActiveFilter] = useState<AuditFilter>('All events')
 
   const filteredEvents = useMemo(
@@ -40,7 +42,7 @@ export function AuditScreen() {
       <FreshTopbar
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
-          { label: 'TI-Core Platform' },
+          { label: activeProject.name },
           { label: 'Audit History' },
         ]}
         searchPlaceholder="Search audit…"
@@ -48,8 +50,22 @@ export function AuditScreen() {
         showSearch
       />
       <PrototypeBanner />
-      <div className="audit-wrap">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+
+      <div className="screen-wrap audit-screen-wrap">
+        <div className="page-head">
+          <div>
+            <h1>Audit History</h1>
+            <div className="sub">Demo · append-only event log across all modules</div>
+          </div>
+          <div className="actions">
+            <button type="button" className="btn btn-neutral">
+              <i className="ti ti-download" style={{ fontSize: 13 }} />
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div className="audit-filter-row">
           {FILTERS.map((label) => (
             <span
               key={label}
@@ -59,38 +75,26 @@ export function AuditScreen() {
               {label}
             </span>
           ))}
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-            {filteredEvents.length} events · mock data
-          </span>
+          <span className="audit-count">{filteredEvents.length} events</span>
         </div>
-        <div className="panel" style={{ flex: 1, overflow: 'hidden' }}>
-          <div className="pnl-hd">
-            <i className="ti ti-history" style={{ fontSize: 13, color: 'var(--accent)' }} />
-            <span className="pnl-ttl">Audit log</span>
-            <span className="pnl-ct">{filteredEvents.length}</span>
-            <span style={{ fontSize: 10.5, color: 'var(--text3)', marginLeft: 'auto' }}>Append-only · mock timeline</span>
-            <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px', marginLeft: 6 }}>
-              <i className="ti ti-download" style={{ fontSize: 11 }} /> Export
-            </button>
-          </div>
-          <div className="pnl-body">
-            {filteredEvents.length === 0 ? (
-              <p className="audit-empty">No events match this filter.</p>
-            ) : (
-              filteredEvents.map((ev, i) => (
-                <div key={i} className="audit-row">
-                  <div className={`audit-ic ${ev.icon}`}>
-                    <i className={`ti ${ev.iconClass}`} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="audit-desc" dangerouslySetInnerHTML={{ __html: ev.html }} />
-                    <div className="audit-ctx">{ev.ctx}</div>
-                  </div>
-                  <div className="audit-time">{ev.time}</div>
+
+        <div className="panel audit-panel">
+          {filteredEvents.length === 0 ? (
+            <p className="audit-empty">No events match this filter.</p>
+          ) : (
+            filteredEvents.map((ev, i) => (
+              <div key={i} className="aud-row">
+                <div className={`aud-ic aud-ic-${ev.icon}`}>
+                  <i className={`ti ${ev.iconClass}`} />
                 </div>
-              ))
-            )}
-          </div>
+                <div className="aud-main">
+                  <div className="aud-desc" dangerouslySetInnerHTML={{ __html: ev.html }} />
+                  <div className="aud-ctx">{ev.ctx}</div>
+                </div>
+                <div className="aud-time">{ev.time}</div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

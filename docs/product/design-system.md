@@ -1,68 +1,103 @@
-# Design system — Relay
+# Design system — Relay (Compass reskin)
+
+Relay uses the **Compass (TransPerfect)** visual system. Tokens live in `apps/web/src/fresh/styles/fresh.css` (`:root`). The app is **light-mode only** (`color-scheme: light`).
 
 ## Brand
 
-**Name:** Relay
+**Name:** Relay (unchanged — product name is not rebranded)
 
-**Rationale:** Implies the handoff cycle of test case → plan → run → result. Clean, professional, no startup connotations.
-
-**Mark:** Two staggered chevrons (the passing and receiving team) with a filled dot (the baton — execution data being transferred).
+**Mark:** Two staggered chevrons with a filled dot (execution handoff). Sidebar wordmark sits on TransPerfect Dark Blue.
 
 ## Colour tokens
 
-| Token | Light mode | Dark mode | Use |
-|---|---|---|---|
-| Primary (Navy) | `#042C53` | `#042C53` | Mark, wordmark, nav background |
-| Accent (Blue) | `#185FA5` | `#185FA5` | Baton dot, interactive elements, CTAs |
-| Dark accent | — | `#6AADE8` | Mark stroke on dark backgrounds |
-| Tint | `#E6F1FB` | — | Selected states, highlights |
+| Token | Value | Use |
+|---|---|---|
+| `--navy` | `#003B71` | Brand / nav text on light surfaces |
+| `--navy-hover` | `#002B53` | Nav hover (reserved) |
+| `--sidebar-bg` | `#003B71` | Sidebar background |
+| `--accent` | `#1976D2` | GlobalLink Blue — links, CTAs, interactive |
+| `--accent-hover` | `#004FAA` | Primary button hover |
+| `--accent-lt` | `#ECF5FF` | Selected rows, active highlights |
+| `--bg` | `#F6F7F9` | App canvas |
+| `--surface` | `#FFFFFF` | Cards, panels, top bar |
+| `--surface2` | `#FBFBFC` | Table headers, subtle fills, search field |
+| `--border` | `#DBE1E5` | Default borders |
+| `--border2` | `#BAC5CD` | Stronger borders, kbd |
+| `--text` / `--text1` | `#0B1821` | Primary text |
+| `--text2` | `#324553` | Secondary text |
+| `--text3` | `#5C707E` | Muted / metadata |
+| `--hover` | `#F6F7F9` | Row / menu hover |
 
 ## Typography
 
-System sans-serif stack: `-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif`
-
-Monospace: `ui-monospace, 'Cascadia Code', 'SF Mono', monospace` — used for IDs, counts, timestamps
+| Role | Family | Notes |
+|---|---|---|
+| Body | **Open Sans** (`--sans`) | Loaded via `next/font/google` in root layout |
+| Display | **Gotham SSm** (`--display`) | Headings ≥20px, metric values; web files live in `public/fonts/gotham-ssm/` (weights 400/500/700, woff2+woff), falls back to Open Sans only if those files are ever removed |
+| Monospace | `--mono` | IDs, counts, timestamps |
 
 | Role | Size | Weight |
 |---|---|---|
 | Page title | 14px | 600 |
-| Section label | 10px | 600, uppercase, 0.08em spacing |
+| Section label (sidebar) | 10px | 700, uppercase, 0.12em spacing |
 | Body | 13px | 400 |
+| Nav item | 14px | 400 (600 when active) |
 | Table row | 12.5px | 400 |
+| Table header | 10.5px | 600, uppercase |
+| Button | 12.5px | 600 |
 | Metadata | 10.5–11px | 400 |
 | Monospace | 11px | 400 |
 
+## Radii
+
+| Token | Value | Use |
+|---|---|---|
+| `--r-s` | 6px | Buttons, inputs, search |
+| `--r-m` | 8px | Dropdowns, popovers |
+| `--r-l` | 10px | Panels / cards |
+| `--r-pill` | 100px | Pills, chips, progress tracks |
+
 ## Status colours
 
-| Status | Text | Background | Use |
+| Status | Text / fill | Background | Notes |
 |---|---|---|---|
-| Pass | `#2E7D32` | `#E8F5E9` | Passed results |
-| Fail | `#C62828` | `#FFEBEE` | Failed results, critical severity |
-| Blocked | `#E65100` | `#FFF3E0` | Blocked results, high severity |
-| Skip | `#4527A0` | `#EDE7F6` | Skipped results |
-| Not run | `#7A92AB` | `#F5F8FB` | Pending execution |
-| Active | `#185FA5` | `#E6F1FB` | Active runs and plans |
+| Pass | `#108718` (`--pass`) | `#ECFBEE` (`--pass-bg`) | Passed results |
+| Fail | `#C50007` (`--fail`) | `#FFE4E4` (`--fail-bg`) | Failed results, critical |
+| Blocked | `#E4AF03` (`--block`) fill only | `#FFF5D4` (`--block-bg`) | Use `--block-text` (`#8C6A00`) for readable text on light bg |
+| Skip | `#4527A0` (`--skip`) | `#EDE7F6` (`--skip-bg`) | Skipped — deliberately kept purple (not Compass gray) |
+| Not run | `--text3` | `--surface2` | Pending execution |
+| Active | `--accent` | `--accent-lt` | Active runs, plans, chips |
+
+## Priority text
+
+| Level | Token | Value |
+|---|---|---|
+| Critical | `--crit-text` | `#C50007` |
+| High | `--high-text` | `#8C6A00` |
+| Medium | `--med-text` | `#004FAA` |
 
 ## Layout principles
 
-**Operational density.** This is an internal engineering tool, not a consumer product. Default to more information per screen, not less.
+**Operational density.** Internal engineering tool — 13px body baseline retained (not mockup 14px globally).
 
-**Split-pane navigation.** Every major view uses a persistent left list and a right detail panel. Users never lose context navigating between items.
+**Split-pane navigation.** Persistent left list + right detail on major views.
 
-**Resizable panels.** The left panels in Test Cases and Test Runs are drag-resizable. QA engineers have different monitor setups and workflow needs.
+**Resizable panels.** Suite tree, plan list, case detail — drag-resizable.
 
-**Keyboard-first execution.** The Test Runs view is keyboard-navigable throughout. P/F/B/S mark results, J/K navigate cases, D links defects.
+**Keyboard-first execution.** Test Runs: P/F/B/S, J/K, D — unchanged by reskin.
 
 ## Component patterns
 
-**Status pills:** `<span class="pill p-pass">✓ Pass</span>` — consistent across all views.
+**Status pills:** `.pill.p-pass` etc. — pill radius, leading dot.
 
-**Priority labels:** CRITICAL / HIGH / MEDIUM / LOW — toggleable via the Priorities button in the runs toolbar.
+**Buttons:** `.btn` (neutral), `.btn-neutral` (grey secondary), `.btn-p` (primary blue).
 
-**Tab bars:** used in detail panels (Details / Steps / Activity / History / Comments / Defects) and in Test Plans (Overview / Test Cases / Runs / Metrics).
+**Sidebar active nav:** white rounded chip on dark blue (`#003B71`), navy text/icon.
 
-**Donut charts:** SVG stroke-dasharray technique, 68×68px viewBox. Shows pass/fail/blocked/not-run breakdown.
+**Top bar:** 56px — project switcher, ⌘K search, module switcher, actions.
 
-**Quick Create:** Inline row input in Test Cases — Enter to create, Esc to close. Creates a case locally in session.
+**Tables:** `.tbl` — sticky uppercase headers on `--surface2`, selected row `--accent-lt`.
 
-**Keyboard shortcut bar:** persistent footer in Test Runs, showing all active shortcuts.
+**Chips:** `.chip.on` — accent tint + border.
+
+**Donut charts:** SVG stroke-dasharray; colours read status tokens.

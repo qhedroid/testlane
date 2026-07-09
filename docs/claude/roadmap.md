@@ -8,6 +8,22 @@
 
 ## Next Steps (active priority)
 
+### Compass Visual Overhaul (UI reskin) `[~in progress]`
+Branch `mvp-visual-overhaul` (created off `mvp-main`). **Phase 1** (pure CSS/className re-skin, tasks 01–06) is complete and committed — see `handoff.md`. **Phase 2** (started 2026-07-08) is a larger information-architecture/layout pass requested after reviewing Phase 1: adopt more of the mockup directly, including new screens (My Work, Milestones, Requirements, Reports, AI Studio, Login), sidebar/topbar structural changes, and rebuilding Dashboard/Audit/Test Cases/Test Plans/Test Runs/Project Settings from the mockup rather than just re-skinning them in place. Kept on this same branch rather than split into a new one (Shaun's deliberate call). Full detail, decisions, and the critical "mockup markup + real app data, not mockup's static numbers" rule are in `handoff.md`'s "2026-07-08 Phase 2" section. Phase 2 prompts drafted: task-07…13 at `docs/cursor-prompts/mvp-visual-overhaul/` (7 Cursor sessions — see `_kickoff.md` §9 for the full ruleset). Not yet run in Cursor.
+
+Original ask: apply the approved **Compass (TransPerfect)** design system across the whole app UI as a pure **re-skin**. Bring the visual improvements drafted in the Claude Design mockup to the live app first; rework/restore functionality on later branches. Ideally no functionality is lost or changed — Cursor re-skins what already exists.
+
+Approach (in the prompts): retarget the ~15 `:root` tokens in `fresh.css` + polish the shared primitive classes, then the app shell (both task-01); then Dashboard + the long-tail remaining screens/modals (task-02); then per-screen, one Cursor session each — Test Cases (task-03), Test Runs (task-04, **protected three-pane execution UX — visual only**), Test Plans (task-05), Admin/Project Settings (task-06, also carries the branch's final regression sweep + PR description). Schema-free (stays **v14**); CSS / classNames / fonts only.
+
+Key decisions:
+- **Zero behaviour change** is the golden rule; the Test Runs three-pane execution UX + `/runs/api` are protected (visual-only).
+- **Icons stay** — Tabler (`ti ti-*`) in the fresh app, Lucide in admin; no Material-Icons swap (that would touch ~180 call sites — a possible future `mvp-icon-migration`).
+- Status colours: **Blocked → amber** (`#E4AF03`); **Skipped kept as the app's existing purple** (`#4527A0`), explicitly *not* grayed (the reference mockup was updated to match).
+- **Gotham SSm** display font dropped into `apps/web/public/fonts/`, else Open Sans fallback (documented substitute).
+- `docs/product/design-system.md` gets rewritten to the Compass token set during task-01 (by Cursor, on implementation).
+
+Sequencing: self-contained and schema-free, so it can land independently of the feature branches. If run alongside `mvp-custom-fields`, expect merge conflicts in `fresh.css`/`admin.css` (both touch styling) and `AdminCustomFieldsPageContent.tsx` — sequence or rebase.
+
 ### Custom Fields `[~in progress]`
 Branch `mvp-custom-fields`, prompts at `docs/cursor-prompts/mvp-custom-fields/` (task-01, task-02, task-03 — see that folder). Full recon detail in `docs/claude/testiny-recon-notes.md`.
 
@@ -93,5 +109,5 @@ Test Runs Lesser items (Steps redesign, Create-run button, commenting) are track
 - **Test Runs Lesser:** improve commenting to be closer to Testiny's add/edit/view style, especially from a step's Details tab.
 - **Searching:** remove the raw internal case ID (long number) from global search results — only show friendly ids (TC-XXXX, TR-XXXX, etc).
 - **MTI Stuff:** use the CTMS domain overview as a basis for MTI structure — Shaun will go through this directly, not actionable yet.
-- **Audit History:** log all frontend actions to the audit log, attributed to the current actor. Depends on User Management improvements landing first (sequencing already noted by Shaun).
+- **Audit History:** log all frontend actions to the audit log, attributed to the current actor. Depends on User Management improvements landing first (sequencing already noted by Shaun). *(Note: `mvp-visual-overhaul` reskins the existing Audit History screen visually; this item — making it log real actions — is the separate functional follow-up.)*
 - **Permissions Management Extra:** add a feature to manage permissions. Blocked — need to confirm the permission set with Syed or Vijay before scoping.

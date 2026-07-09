@@ -6,14 +6,18 @@ export const DEFAULT_PROJECT_KEY = 'DP'
 
 export const MODULE_SLUGS = {
   dashboard: 'dashboard',
+  mywork: 'mywork',
   cases: 'testcases',
   testruns: 'testruns',
   plans: 'plans',
+  milestones: 'milestones',
+  requirements: 'requirements',
   audit: 'audit',
   defects: 'defects',
   settings: 'settings',
   reports: 'reports',
   integrations: 'integrations',
+  aistudio: 'aistudio',
 } as const
 
 export type ModuleSlug = keyof typeof MODULE_SLUGS
@@ -25,16 +29,22 @@ const SLUG_TO_MODULE: Record<string, ModuleSlug> = Object.fromEntries(
 /** Legacy unprefixed paths → module slug */
 export const LEGACY_PATH_TO_MODULE: Record<string, ModuleSlug> = {
   '/dashboard': 'dashboard',
+  '/my-work': 'mywork',
+  '/mywork': 'mywork',
   '/cases': 'cases',
   '/test-cases': 'cases',
   '/runs': 'testruns',
   '/plans': 'plans',
   '/test-plans': 'plans',
+  '/milestones': 'milestones',
+  '/requirements': 'requirements',
   '/audit': 'audit',
   '/defects': 'defects',
   '/settings': 'settings',
   '/reports': 'reports',
   '/integrations': 'integrations',
+  '/aistudio': 'aistudio',
+  '/ai-studio': 'aistudio',
   '/testcases': 'cases',
 }
 

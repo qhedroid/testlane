@@ -63,11 +63,11 @@ export function RunStatusInfographic({
       </div>
       <div className="run-status-col">
         <ul className="run-status-list">
-          {statusLi('Passed', pass, '#2E7D32', 'Passed')}
-          {statusLi('Failed', fail, '#C62828', 'Failed')}
-          {statusLi('Blocked', blocked, '#E65100', 'Blocked')}
+          {statusLi('Passed', pass, '#108718', 'Passed')}
+          {statusLi('Failed', fail, '#C50007', 'Failed')}
+          {statusLi('Blocked', blocked, '#E4AF03', 'Blocked')}
           {skipped > 0 ? statusLi('Skipped', skipped, '#4527A0', 'Skipped') : null}
-          {statusLi('Not run', notrun, 'var(--text3)', 'Not run')}
+          {statusLi('Not run', notrun, '#BAC5CD', 'Not run')}
         </ul>
       </div>
     </div>
