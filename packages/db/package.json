@@ -12,7 +12,13 @@
     "./services/run-read": "./src/runs/read.ts",
     "./services/user": "./services/UserService.ts",
     "./services/project": "./services/ProjectService.ts",
-    "./auth/verify-credentials": "./src/auth/verify-credentials.ts"
+    "./services/test-case": "./services/TestCaseService.ts",
+    "./services/test-plan": "./services/TestPlanService.ts",
+    "./services/dashboard": "./services/DashboardService.ts",
+    "./services/audit": "./services/AuditService.ts",
+    "./services/defect": "./services/DefectService.ts",
+    "./auth/verify-credentials": "./src/auth/verify-credentials.ts",
+    "./rbac/assert-min-role": "./src/rbac/assert-min-role.ts"
   },
   "scripts": {
     "generate": "drizzle-kit generate",

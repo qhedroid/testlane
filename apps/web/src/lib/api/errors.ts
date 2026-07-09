@@ -13,6 +13,23 @@ import {
   ProjectServiceError,
   type ProjectServiceErrorCode,
 } from '@relay/db/services/project'
+import {
+  TestCaseServiceError,
+  type TestCaseServiceErrorCode,
+} from '@relay/db/services/test-case'
+import {
+  TestPlanServiceError,
+  type TestPlanServiceErrorCode,
+} from '@relay/db/services/test-plan'
+import {
+  DashboardServiceError,
+  type DashboardServiceErrorCode,
+} from '@relay/db/services/dashboard'
+import {
+  DefectServiceError,
+  type DefectServiceErrorCode,
+} from '@relay/db/services/defect'
+import { InsufficientPermissionsError } from '@relay/db/rbac/assert-min-role'
 import { jsonError } from './response'
 
 const RUN_CREATION_STATUS: Record<RunCreationErrorCode, number> = {
@@ -55,6 +72,41 @@ const PROJECT_SERVICE_STATUS: Record<ProjectServiceErrorCode, number> = {
   PROJECT_NOT_FOUND: 404,
 }
 
+// Note: TestCaseService relies on the shared assertMinProjectRole() for RBAC
+// (throws InsufficientPermissionsError, handled generically below) rather than
+// its own INSUFFICIENT_PERMISSIONS code — every operation is project-scoped.
+const TEST_CASE_SERVICE_STATUS: Record<TestCaseServiceErrorCode, number> = {
+  PROJECT_NOT_FOUND: 404,
+  FOLDER_NOT_FOUND: 404,
+  CASE_NOT_FOUND: 404,
+  DUPLICATE_CASE_REF: 409,
+  REF_COUNTER_TIMEOUT: 503,
+  TRANSACTION_FAILED: 500,
+}
+
+const TEST_PLAN_SERVICE_STATUS: Record<TestPlanServiceErrorCode, number> = {
+  PROJECT_NOT_FOUND: 404,
+  PLAN_NOT_FOUND: 404,
+  CASES_UNAVAILABLE: 400,
+  DUPLICATE_PLAN_REF: 409,
+  REF_COUNTER_TIMEOUT: 503,
+  TRANSACTION_FAILED: 500,
+}
+
+const DASHBOARD_SERVICE_STATUS: Record<DashboardServiceErrorCode, number> = {
+  PROJECT_NOT_FOUND: 404,
+}
+
+// Note: DefectService relies on the shared assertMinProjectRole() for RBAC
+// (throws InsufficientPermissionsError, handled generically below), same as
+// TestCaseService/TestPlanService.
+const DEFECT_SERVICE_STATUS: Record<DefectServiceErrorCode, number> = {
+  RUN_NOT_FOUND: 404,
+  CASE_NOT_FOUND: 404,
+  LINK_NOT_FOUND: 404,
+  ALREADY_UNLINKED: 409,
+}
+
 export function handleRouteError(err: unknown) {
   if (err instanceof ZodError) {
     return jsonError('VALIDATION_ERROR', 'Request validation failed', 400, err.flatten())
@@ -83,6 +135,34 @@ export function handleRouteError(err: unknown) {
   if (err instanceof ProjectServiceError) {
     const status = PROJECT_SERVICE_STATUS[err.code] ?? 500
     return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof TestCaseServiceError) {
+    const status = TEST_CASE_SERVICE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof TestPlanServiceError) {
+    const status = TEST_PLAN_SERVICE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof DashboardServiceError) {
+    const status = DASHBOARD_SERVICE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof DefectServiceError) {
+    const status = DEFECT_SERVICE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  // Fix (Phase 2): assertMinProjectRole() (reused directly by several services,
+  // e.g. ProjectService.assignProjectRole, TestCaseService) throws this plain
+  // error class, which previously had no branch here and fell through to a
+  // misleading 500 INTERNAL_ERROR instead of a 403.
+  if (err instanceof InsufficientPermissionsError) {
+    return jsonError('INSUFFICIENT_PERMISSIONS', err.message, 403)
   }
 
   if (err instanceof Error && err.message === 'UNAUTHORIZED') {

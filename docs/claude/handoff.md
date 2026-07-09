@@ -16,9 +16,81 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-backend` — standing up the real backend. Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). **Phase 1 (Foundation: auth/RBAC/User+Project API) implemented 2026-07-09 — code complete, Claude-sandbox verified, pending Shaun-local verification before commit.** Claude implements this branch directly (Shaun's instruction) instead of drafting Cursor prompts. Live state tracked at `docs/claude/mvp-backend/progress.md` (read this first) and `docs/claude/mvp-backend/plan.md`; the original `docs/cursor-prompts/mvp-backend/` files are kept as reference spec only. See "2026-07-09 — mvp-backend Phase 1 (Foundation) implemented" (top of this section), and below it "2026-07-09 — mvp-backend scoping session", "2026-07-09 — mvp-backend sequencing session — task-01 drafted", and "2026-07-09 — pivot to direct Claude implementation" for full history.
+`mvp-backend` — standing up the real backend. Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). **Phase 1 (Foundation: auth/RBAC/User+Project API) committed (`b430e50`, `4e5ad45`).** Shaun then asked to "run all the phases to completion" — Phases 2 (Test Cases), 3 (Test Plans), 5 (Dashboard), and 6 (Defects+Audit) backends are now code-complete and Claude-sandbox-verified (typecheck + `pnpm build`, no live DB), but **not yet committed** and their screens are **not yet wired**. Phase 4 (Test Runs auth wiring) deliberately skipped this pass — see the "Phases 2/3/5/6 backend built" entry below for why. Phase 7 needs no new backend. Phase 8 blocked on the rest. Claude implements this branch directly (Shaun's instruction) instead of drafting Cursor prompts. Live state tracked at `docs/claude/mvp-backend/progress.md` (read this first — has the full per-phase checklists) and `docs/claude/mvp-backend/plan.md`; the original `docs/cursor-prompts/mvp-backend/` files are kept as reference spec only. See "2026-07-09 — mvp-backend Phases 2/3/5/6 backend built (all-phases push)" (top of this section), and below it "2026-07-09 — mvp-backend Phase 1 (Foundation) implemented", "2026-07-09 — Phase 1 post-commit fixes + seed user/role overhaul", "2026-07-09 — mvp-backend scoping session", "2026-07-09 — mvp-backend sequencing session — task-01 drafted", and "2026-07-09 — pivot to direct Claude implementation" for full history.
 
 Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin, Phase 1 + Phase 2, **merged to `mvp-main`** via PR #19 (`0e8ec98`).
+
+---
+
+## 2026-07-09 — `mvp-backend` Phases 2/3/5/6 backend built (all-phases push)
+
+Shaun: "Can you run all the phases to completion?" — referring to the remaining 7 phases (2–8) in
+`docs/claude/mvp-backend/plan.md`. Agreed approach given this sandbox has no Docker/browser:
+**backend-first** — build and Claude-sandbox-verify every phase's *backend* (services + API
+routes) this session, defer every screen's actual localStorage→API cutover to a later pass, so
+all affected screens (Cases/Plans/Runs/Dashboard/Defects/Audit/Admin) get wired and regression-
+tested together against Shaun's real Docker MySQL in one sweep instead of piecemeal/unverified.
+Full per-phase detail (files, decisions, verification) is in `docs/claude/mvp-backend/progress.md`
+— this entry is the short version.
+
+**Phase 2 (Test Cases)** and **Phase 3 (Test Plans)** backends were already built earlier in this
+session (see progress.md) — `TestCaseService.ts`/`TestPlanService.ts` + their nested
+`/api/projects/[projectId]/{cases,folders,plans}/**` routes.
+
+**Phase 4 (Test Runs wiring) deliberately skipped, not just deferred like the others:** unlike
+Phases 2/3/5/6 (new, currently-unused routes — low-risk to add without a live DB to test against),
+`/api/runs/*` is already live and depended on by `/runs/api` + `pnpm api:validate`. Swapping its
+auth source (the dev `x-relay-user-id` header → real session) without also updating
+`RunsScreen.tsx`'s caller in the same atomic, verified change would actively regress shipped,
+working functionality — not just leave something unwired. This has to happen as one change
+together with the protected three-pane execution UX, not as a backend-only slice.
+
+**Phase 5 (Dashboard)** — new `DashboardService.ts` (`getDashboardSummary`) aggregating from real
+tables (`test_runs`/`test_run_cases`/`run_defect_links`/`test_cases`) exactly what
+`project-selectors.ts` currently computes client-side: active run count, pass rate, open/unlinked
+failure counts, run coverage %, result breakdown. Deliberately excludes widgets with no backing
+data yet (Requirements coverage, Milestones, historical trend charts) — same "match what's
+actually backed today" principle as Phases 2/3. New route: `/api/projects/[projectId]/dashboard`.
+
+**Phase 6 (Defects + Audit)** — new `AuditService.ts` (`recordAudit()` reusable insert helper +
+`listAuditLog()` project-scoped read), retrofitted into every Phase 2/3 mutation
+(`createCase`/`updateCase`/`archiveCase`, `createPlan`/`updatePlan`/`setPlanCases`/`archivePlan`)
+since those didn't write audit rows when first built. New `DefectService.ts` manages
+`run_defect_links` only (`listDefectLinks`/`linkDefect`/`unlinkDefect`) — **no new standalone
+`defects` table added**; the frontend's richer defect model (severity/status/etc.) has zero
+backing table today and stays out of scope, consistent with every other phase's exclusions.
+Defect-link routes live under `/api/runs/[runId]/cases/[runCaseId]/defects/**` (matching the
+existing sibling `/result` route's flat, dev-header-auth convention, since it's the same
+`/api/runs/*` family — safe to add without touching Phase 4's live routes). Audit read lives at
+`/api/projects/[projectId]/audit` (nested, real-session auth, matching Phases 2/3/5's convention).
+
+**Phase 7 (Admin panel unification)** — confirmed to need **zero new backend**: Phase 1 already
+built everything `/admin/users`/`/admin/roles` need. 100% screen-wiring, folded into the same
+deferred pass as the others.
+
+**Phase 8 (seed finalization + regression + PR)** — confirmed blocked on the rest; a real
+regression sweep and PR description can't be produced before screens are wired and Shaun can click
+through them locally. Reviewed existing seed data (already sufficient for the new backends to be
+exercised via direct API calls); nothing added since no screen consumes it yet.
+
+**Verified in-sandbox (all four phases together):** `tsc --noEmit` clean for both `@relay/db` and
+`@relay/web`; `pnpm build` succeeded — every new route present in the route table
+(`/api/projects/[projectId]/{cases,folders,plans,dashboard,audit}/**`,
+`/api/runs/[runId]/cases/[runCaseId]/defects/**`), no live DB needed for any of it.
+
+**Sandbox quirk hit this session:** `pnpm` wasn't on `PATH` (unlike prior sessions) — `corepack
+enable`/`prepare` both failed with `EACCES` trying to symlink into `/usr/bin`. Found and reused a
+leftover global pnpm install from a prior session
+(`/sessions/trusting-awesome-bell/.npm-global/lib/node_modules/pnpm/bin/pnpm.cjs`, invoked via
+`node <path> ...`) rather than fighting the install. Noted in `progress.md` for future sessions.
+
+**Not yet done:** none of Phases 2/3/5/6's code is committed yet (still sitting as working-tree
+changes alongside this session's documentation updates) — needs a commit before this branch's
+state is durable. No screen has been wired to any of these new routes yet — that's the single
+remaining body of work before `mvp-backend`'s branch-level definition of done is met, and the
+recommendation (not yet acted on) is to do it one screen at a time with Shaun verifying each
+locally, given the real frontend/backend model mismatches Phase 2/3's research already surfaced
+(case ref format, priority/type casing, assignee-vs-assignedTo, the Test Plans dynamic-query gap).
 
 ---
 

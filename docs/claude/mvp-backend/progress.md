@@ -5,20 +5,72 @@
 > which gets summarized/lost across sessions. Update it before ending any session that touched
 > this branch, even a short one that only got partway through a phase.
 
-Last updated: 2026-07-09 (session: implemented Phase 1, Parts A–F, in full).
+Last updated: 2026-07-09 (session: Shaun asked to "run all the phases to completion." Agreed
+approach — see "Backend-first, all phases" note below — build/verify every phase's backend
+(services + API routes) this session, defer ALL screen-wiring to a later pass once every backend
+exists and can be tested together against Shaun's local Docker DB in one sweep. Phases 2, 3, 5, 6
+backends are now code-complete + Claude-sandbox-verified. Phase 4 deliberately skipped — see its
+row below. Phase 7 needs no new backend (see its row). Phase 8 only partially actionable in-sandbox.
+**Nothing from this session is committed yet** — Phase 1 + seed/role overhaul are still the only
+commits (`b430e50`, `4e5ad45`).).
+
+## Backend-first, all phases — standing decision (read this before touching Phases 2–8)
+
+Shaun asked to run all 8 phases to completion in one sitting. Given this sandbox has no
+Docker/browser, screen-wiring (rewiring a fresh screen off `FreshProvider`/localStorage onto a
+new API) can't be exercised end-to-end here — only backend code (services + routes) can be
+built/typechecked/verified without a live DB. Agreed approach: build and verify every phase's
+*backend* only this session (new, currently-unused routes — low risk, fully verifiable in-sandbox),
+and defer every screen's actual data-source cutover to a follow-up pass, so Cases/Plans/Runs/
+Dashboard/Defects/Audit/Admin all get wired and regression-tested together against Shaun's real
+Docker MySQL in one sweep, rather than piecemeal and unverified. Phase 4 is the one exception
+that couldn't even get a backend-only slice — see its row below for why.
 
 ## Overall status
 
 | Phase | Status |
 |-------|--------|
-| 1 — Foundation (auth/RBAC/User+Project API) | **Code complete, Claude-sandbox verified.** Shaun-local verification (real DB, real login flow, QA report) still needed before treating the phase as fully done. |
-| 2 — Test Cases backend | Not started |
-| 3 — Test Plans backend | Not started |
-| 4 — Test Runs wiring | Not started |
-| 5 — Dashboard backend | Not started |
-| 6 — Defects/Audit backend | Not started |
-| 7 — Admin panel unification | Not started |
-| 8 — Seeded demo project + regression sweep + PR | Not started |
+| 1 — Foundation (auth/RBAC/User+Project API) | **Code complete, committed (`b430e50`, `4e5ad45`).** Shaun-local verification (real DB, real login flow, QA report) still needed before treating the phase as fully done. |
+| 2 — Test Cases backend | **Backend complete, Claude-sandbox verified** (`TestCaseService.ts` + `/api/projects/[projectId]/cases/*` + `/api/projects/[projectId]/folders/*`). **`CasesScreen.tsx` wiring NOT started** — see "Phase 2 screen-wiring note" below before attempting it. Not yet committed. |
+| 3 — Test Plans backend | **Backend complete, Claude-sandbox verified** (`TestPlanService.ts` + `/api/projects/[projectId]/plans/*` + `.../plans/[planId]/cases`). `PlansScreen.tsx` wiring deferred (Shaun's "backend-first" call, see note above/below). Real design finding: the server has no equivalent of the frontend's dynamic `TestQuery`/condition-based plans — see `TestPlanService.ts`'s file header and `known-bugs.md`'s GAP-01. Not yet committed. |
+| 4 — Test Runs wiring | **Deliberately skipped this session, not just deferred like the others.** Unlike Phases 2/3/5/6 (new, currently-unused routes), `/api/runs/*` is already live and depended on by `/runs/api` + `pnpm api:validate` — swapping its auth source (dev header → real session) without also updating `RunsScreen.tsx`/`/runs/api`'s caller in the same atomic change would actively regress working, already-shipped functionality, not just leave something unwired. Needs to happen as one verified change together with the protected three-pane execution UX, not as a backend-only slice. **No code written for this phase.** |
+| 5 — Dashboard backend | **Backend complete, Claude-sandbox verified** (`DashboardService.ts` + `/api/projects/[projectId]/dashboard`). `DashboardScreen.tsx` wiring deferred. Scoped to only what real tables back today (`test_runs`/`test_run_cases`/`run_defect_links`) — Requirements coverage, Milestones, and results-over-time trend widgets have no backing data and stay out of scope, same reasoning as Phase 2/3's exclusions. Not yet committed. |
+| 6 — Defects/Audit backend | **Backend complete, Claude-sandbox verified** (`AuditService.ts` + `DefectService.ts` + `/api/projects/[projectId]/audit` + `/api/runs/[runId]/cases/[runCaseId]/defects` + `.../defects/[linkId]`). `createCase`/`updateCase`/`archiveCase` (Phase 2) and `createPlan`/`updatePlan`/`setPlanCases`/`archivePlan` (Phase 3) retrofitted to call `recordAudit()` on every mutation. `DefectsScreen.tsx`/`AuditScreen.tsx` wiring deferred. No new standalone `defects` table added — see `DefectService.ts`'s file header for why `run_defect_links` alone is this phase's deliberate scope. Not yet committed. |
+| 7 — Admin panel unification | **No new backend needed** — Phase 1 already built `UserService`/`ProjectService` + `/api/users/*` + `/api/projects/*`, which is everything `/admin/users`/`/admin/roles` need to read/write real data. This phase is ~100% screen-wiring (swap `AdminSettings` localStorage reads/writes for calls to the existing APIs), so it's entirely deferred to the screen-wiring pass along with Phases 2/3/5/6 — nothing to build backend-only here. **No code written this phase**, by design, not an oversight. |
+| 8 — Seeded demo project + regression sweep + PR | **Blocked on Shaun-local verification, as expected** — a full regression sweep and PR description can't be meaningfully produced until screens are actually wired and clickable. Seed data review: `packages/db/src/seed/insert.ts` already seeds test cases/plans/folders (Phase 0, pre-existing) so Cases/Plans backends have real rows to exercise once wired; no additions made this session since nothing consumes them yet beyond direct API calls. Full write-up when this phase is actually picked up. |
+
+## Phase 2 screen-wiring note (read before continuing Phase 2 or starting 3/5/6/7)
+
+Shaun asked to run all 8 phases to completion in one sitting. Phase 2's backend (service +
+routes) is done and typechecks/builds clean — that part is low-risk and fully verifiable without
+a live DB. The remaining half of every phase from here on — actually rewiring a fresh screen off
+`FreshProvider`/localStorage onto the new API — is a different risk profile: this sandbox has no
+Docker/browser, so none of that wiring can be exercised end-to-end before Shaun sees it. Phase 2
+research already surfaced several real mismatches a screen-wiring pass has to resolve, not just
+mechanically "swap the data source":
+- Case ref format: DB/seed uses `TC-1005` (unpadded); the frontend prototype's own
+  `formatCaseKey` produces `TC-00001`. `TestCaseService` deliberately matches the DB/seed
+  convention — the API's case refs will NOT look like today's localStorage demo refs.
+- `priority`/`type` are lowercase enums in the DB, capitalized/freeform strings in
+  `demo-model.ts`'s `Case` type — needs an explicit adapter layer, not a direct pass-through.
+- `assignee` (free-text display string) vs `assignedTo` (a real `users.id` FK) — no resolution
+  path exists today; a real implementation needs a name/email → user-id lookup.
+- Custom fields and Requirements linking have no backing DB tables at all (by design — out of
+  `mvp-backend`'s scope) and must stay on `FreshProvider`/localStorage even after cases/folders
+  move to the real API — i.e. `CasesScreen.tsx` becomes a **hybrid** screen, same pattern
+  `mvp-visual-overhaul` used for Dashboard/Defects (real data where it exists, local data where
+  it doesn't), not a full cutover.
+- `CasesScreen.tsx` keeps its entire case list in memory and does all filtering/search/paging
+  client-side; `TestCaseService.listCases()` is deliberately unpaginated to match that today, but
+  this should be revisited if case counts grow.
+
+None of this is a blocker — it's normal integration work — but it's exactly the kind of change
+that should get a real browser + real Docker MySQL in the loop before being trusted, especially
+repeated across Cases, Plans, Runs (**protected** execution UX), Dashboard, Defects/Audit, and
+Admin. Recommendation for whoever picks this up next: wire one screen, stop, have Shaun verify it
+locally, then continue — rather than wiring all six blind in one pass. Flagged here rather than
+silently proceeding, per Shaun's own repeated preference for judgment calls to be visible and
+correctable rather than assumed.
 
 ## Phase 1 — Foundation: detailed checklist
 
@@ -105,10 +157,211 @@ the whole spec.
       row, HTTP API table, backend services, not-built table), `docs/_authoritative/FRONTEND_CONTRACTS.md`
       (new "Login & Authentication", "User API", "Project API" sections with full request/response/error-code
       contracts), `docs/claude/handoff.md` (new completed-work entry) — all updated.
-- [ ] **Commit** — ask Shaun for identity per `CLAUDE.md`'s commit-identity rule before
-      committing Phase 1's code changes (separate from the docs-only commits already made
-      during scoping). Not yet committed — waiting on Shaun-local verification first, per
-      `CLAUDE.md`'s smoke-test-before-push convention.
+- [x] **Commit** — committed as `b430e50` (Phase 1 code) and `4e5ad45` (seed user/role
+      overhaul, see below), both authored/committed as Shaun Sevume — confirmed this session's
+      git config already matched his identity, so no override needed. Pushed to nowhere yet
+      (local branch only).
+
+## Post-Phase-1 fixes (same session)
+
+- **`/login` CSS bug, fixed:** `fresh.css` is a single global stylesheet imported only by
+  `(app)/layout.tsx` and `admin/layout.tsx` — the new top-level `apps/web/src/app/login/page.tsx`
+  (outside the `(app)` group on purpose) never imported it, so the login screen rendered
+  completely unstyled. Fixed by importing `fresh.css` directly in `login/page.tsx`, same
+  pattern `admin/layout.tsx` already uses independently.
+- **Seed user/role overhaul (Shaun's ask):** expanded the 6 seed users to 8 (added Nadim Sharif,
+  Syed Ahmed), changed Nasir Dipto `admin`→`contributor` and Arvindh Chandran `viewer`→`contributor`,
+  and synced the frontend Admin mock panel's fake users (Alice Chen, Bob Smith, etc.) to the same
+  8 real names with Owner/Administrator/Run Manager/Run Executor/Editor/Viewer roles. Full
+  DB-role-compression mapping table is in `docs/claude/handoff.md`'s "Phase 1 post-commit fixes"
+  entry — not duplicated here.
+
+## Phase 2 — Test Cases backend: detailed checklist
+
+Primary files per `plan.md`: `packages/db/services/TestCaseService.ts`,
+`apps/web/src/app/api/**/cases/**`, `CasesScreen.tsx`. See the "Phase 2 screen-wiring note"
+above for the one part of this phase that's deliberately not started yet.
+
+- [x] **Service:** `packages/db/services/TestCaseService.ts` — `listFolders`, `createFolder`,
+      `listCases` (unpaginated, matches the frontend's in-memory model; recursive
+      folder-and-descendants resolution mirrors `demo-model.ts`'s `casesInFolder()`), `getCase`,
+      `createCase` (transactional `TC-<n>` ref generation via `ref_counters`, mirrors
+      `TestRunService.generateRunRef()`), `updateCase` (whole-object-shaped patch, matching the
+      frontend's only save path `replaceCase()`), `archiveCase` (soft delete — `is_archived = true`,
+      per schema.ts's "never hard-deleted" invariant; frontend's `deleteCase()` removes state
+      entirely, a documented behavior difference for whenever the screen gets wired).
+      `TestCaseServiceError` codes: `PROJECT_NOT_FOUND`/`FOLDER_NOT_FOUND`/`CASE_NOT_FOUND`/
+      `DUPLICATE_CASE_REF`/`REF_COUNTER_TIMEOUT`/`TRANSACTION_FAILED` (no
+      `INSUFFICIENT_PERMISSIONS` — RBAC goes through the shared `assertMinProjectRole()` instead).
+- [x] **Bug fix surfaced while wiring this up:** `assertMinProjectRole()`'s
+      `InsufficientPermissionsError` (used directly by `ProjectService.assignProjectRole` since
+      Phase 1, and now by every `TestCaseService` write) had no branch in
+      `apps/web/src/lib/api/errors.ts` — it silently fell through to a 500 instead of a 403. Fixed
+      by adding a generic `instanceof InsufficientPermissionsError` branch, plus a new
+      `packages/db/package.json` export (`./rbac/assert-min-role`) so `errors.ts` can import it.
+- [x] **Routes:** `apps/web/src/app/api/projects/[projectId]/cases/route.ts` (GET list, POST
+      create), `apps/web/src/app/api/projects/[projectId]/cases/[caseId]/route.ts` (GET detail,
+      PATCH update, DELETE→archive), `apps/web/src/app/api/projects/[projectId]/folders/route.ts`
+      (GET list, POST create) — `projectId` comes from the route segment, not query/body (differs
+      from `/api/runs`'s flat `?projectId=` convention since these routes are properly nested).
+      Zod schemas in `schemas.ts`: `listCasesQuerySchema`, `createCaseBodySchema`,
+      `updateCaseBodySchema`, `createFolderBodySchema`.
+- [ ] **`CasesScreen.tsx` wiring — NOT STARTED.** See "Phase 2 screen-wiring note" above.
+- [x] **Verification — Claude sandbox:** `tsc --noEmit` clean for both `@relay/db` and
+      `@relay/web`; `pnpm build` succeeded, all 4 new routes present in the route table.
+- [ ] **Verification — Shaun local:** not yet possible — no screen calls these routes yet, so
+      there's nothing to click through. Once `CasesScreen.tsx` is wired, needs the same
+      login-as-different-roles + CRUD smoke test pattern as Phase 1.
+- [ ] **Documentation:** `docs/product/user-guide.md`/`feature-flow.md`/`FRONTEND_CONTRACTS.md`
+      not yet updated for the new case/folder endpoints (deferred until the screen is wired, so
+      the docs reflect real, working behavior rather than an unwired backend slice).
+- [ ] **Commit** — not yet committed.
+
+## Phase 3 — Test Plans backend: detailed checklist
+
+Primary files per `plan.md`: `packages/db/services/TestPlanService.ts`,
+`apps/web/src/app/api/**/plans/**`, `PlansScreen.tsx`. Modeled directly on Phase 2's
+`TestCaseService.ts` shape.
+
+- [x] **Service:** `packages/db/services/TestPlanService.ts` — `listPlans`, `getPlan` (joins
+      `testPlanCases`+`testCases` for a full case list with title/ref/position), `createPlan`
+      (transactional `PLAN-<nnn>` zero-padded ref generation, matching the seed's existing
+      convention — unlike Phase 2's deliberately-unpadded case refs), `updatePlan` (patch),
+      `setPlanCases` (wholesale delete+reinsert of `test_plan_cases` — the static-list equivalent
+      of the frontend's dynamic query resolution), `archivePlan` (`status = 'archived'`, no
+      separate `is_archived` flag needed since `test_plans.status` already has a 3-value enum).
+      `TestPlanServiceError` codes: `PROJECT_NOT_FOUND`/`PLAN_NOT_FOUND`/`CASES_UNAVAILABLE`/
+      `DUPLICATE_PLAN_REF`/`REF_COUNTER_TIMEOUT`/`TRANSACTION_FAILED`.
+- [x] **Major design finding (documented in `known-bugs.md`'s GAP-01, not silently resolved):**
+      the frontend's `TestPlan` model is dynamic/query-based (`queries: TestQuery[]`, case list
+      recomputed live via `resolvePlanCases()`); the DB schema has zero storage for that —
+      `test_plans` only relates to cases via the static `test_plan_cases` join table. This isn't
+      an oversight: `TestRunService.createRun()` (already built, Phase 0) already hard-depends on
+      `test_plan_cases` being pre-populated at spawn time, with no awareness of dynamic queries.
+      `TestPlanService` therefore only supports the static-list model — whoever wires
+      `PlansScreen.tsx` needs to decide whether to add a future `test_plan_queries` table or
+      resolve queries client-side and call `setPlanCases()` with the result.
+- [x] **Routes:** `apps/web/src/app/api/projects/[projectId]/plans/route.ts` (GET list, POST
+      create), `.../plans/[planId]/route.ts` (GET detail, PATCH update, DELETE→archive),
+      `.../plans/[planId]/cases/route.ts` (PUT → `setPlanCases`). Zod schemas: `createPlanBodySchema`,
+      `updatePlanBodySchema`, `setPlanCasesBodySchema` — `projectId` from the route segment, same
+      convention as Phase 2.
+- [ ] **`PlansScreen.tsx` wiring — NOT STARTED.** Deferred per the "backend-first" decision above.
+- [x] **Verification — Claude sandbox:** `tsc --noEmit` clean for both packages; `pnpm build`
+      succeeded with all 3 new routes present.
+- [ ] **Verification — Shaun local:** not yet possible, same reasoning as Phase 2.
+- [ ] **Documentation:** `user-guide.md`/`feature-flow.md`/`FRONTEND_CONTRACTS.md` not yet updated
+      — deferred until the screen is wired, same reasoning as Phase 2.
+- [ ] **Commit** — not yet committed.
+
+## Phase 5 — Dashboard backend: detailed checklist
+
+Primary files per `plan.md`: `packages/db/services/DashboardService.ts`,
+`apps/web/src/app/api/**/dashboard/**`, `DashboardScreen.tsx`.
+
+- [x] **Service:** `packages/db/services/DashboardService.ts` — `getDashboardSummary(actorId,
+      projectId)` returns `activeRunCount`, `passRatePct`, `openFailureCount`,
+      `unlinkedFailureCount` (failures/blocked with no `run_defect_links` row yet),
+      `runCoveragePct` (distinct cases covered by an active run ÷ total non-archived cases),
+      `totalCaseCount`, and a `resultBreakdown` (pass/fail/blocked/skip/notRun) — all computed
+      from real tables (`test_runs`/`test_run_cases`/`run_defect_links`/`test_cases`).
+      `DashboardServiceError` has only one code: `PROJECT_NOT_FOUND`.
+- [x] **Deliberate scope decision:** the frontend Dashboard also shows widgets with zero backing
+      data today — Requirements coverage, Milestones, and any historical trend-over-time chart
+      (needs periodic snapshots this schema doesn't capture). All excluded this phase, same
+      reasoning as Phase 2/3 excluding custom fields and dynamic plan queries.
+- [x] **Route:** `apps/web/src/app/api/projects/[projectId]/dashboard/route.ts` (GET only — no
+      new zod schema needed, no request body/query params).
+- [ ] **`DashboardScreen.tsx` wiring — NOT STARTED.** Deferred per the "backend-first" decision.
+- [x] **Verification — Claude sandbox:** `tsc --noEmit` clean for both packages; `pnpm build`
+      succeeded with the new route present.
+- [ ] **Verification — Shaun local:** not yet possible.
+- [ ] **Documentation:** not yet updated, same reasoning as Phases 2/3.
+- [ ] **Commit** — not yet committed.
+
+## Phase 6 — Defects + Audit backend: detailed checklist
+
+Primary files per `plan.md`: `packages/db/services/AuditService.ts`, `DefectsScreen.tsx`,
+`AuditScreen.tsx`. Also added (not in `plan.md`'s file list, but needed to fulfil the phase's
+"real defect persistence" half): `packages/db/services/DefectService.ts`.
+
+- [x] **`AuditService.ts` (new):** `recordAudit(input, tx?)` — thin reusable insert helper other
+      services call inline, accepting an optional transaction client so the audit row commits
+      atomically with its mutation (mirrors the ad-hoc pattern `ExecutionService.updateCaseResult()`
+      already used inline for run results, just factored out so it isn't copy-pasted per
+      service). `listAuditLog({ actorId, projectId, limit?, before? })` — project-scoped,
+      RBAC-gated (`assertMinProjectRole(..., 'viewer')`) read, ordered newest-first, capped at 200
+      rows.
+- [x] **Audit retrofit into Phase 2/3 services** (mutations didn't write audit rows when first
+      built — this phase closes that gap):
+      `packages/db/services/TestCaseService.ts` — `createCase` records `case.created` (inside its
+      existing transaction), `updateCase` records `case.updated` (inside its existing
+      transaction), `archiveCase` records `case.archived` (no transaction existed there before or
+      after — matches the function's original no-tx shape).
+      `packages/db/services/TestPlanService.ts` — `createPlan` records `plan.created` (in-tx),
+      `updatePlan` records `plan.updated` (no tx, matches original shape), `setPlanCases` records
+      `plan.cases_set` (in-tx), `archivePlan` records `plan.archived` (no tx).
+- [x] **`DefectService.ts` (new)** — manages `run_defect_links` only; **no new standalone
+      `defects` table added this phase** (see file header for the full reasoning: the frontend's
+      `DefectsScreen.tsx` models defects as first-class objects with severity/status/etc., which
+      has zero backing table today — out of scope, same pattern as every other phase's
+      exclusions). `listDefectLinks` (project/run/case-scoped, viewer+, defaults to active-only —
+      `unlinked_at IS NULL`), `linkDefect` (contributor+, inserts + records `defect.linked` in one
+      transaction), `unlinkDefect` (contributor+, soft-delete via `unlinked_at`/`unlinked_by`,
+      records `defect.unlinked` — matches `run_defect_links`' documented "never hard-deleted, link
+      history preserved" invariant). `DefectServiceError` codes: `RUN_NOT_FOUND`/`CASE_NOT_FOUND`/
+      `LINK_NOT_FOUND`/`ALREADY_UNLINKED` (no `INSUFFICIENT_PERMISSIONS` — same
+      `assertMinProjectRole()` pattern as Phase 2/3).
+- [x] **Routing convention decision:** defect-link routes live under `/api/runs/[runId]/cases/
+      [runCaseId]/defects/**` (flat, `resolveActor()` dev-header auth, `projectId` passed
+      explicitly in the body/query) rather than nested under `/api/projects/[projectId]/...` —
+      matching the existing sibling route `/api/runs/[runId]/cases/[runCaseId]/result/route.ts`'s
+      convention, since defect links hang off the same `/api/runs/*` family. This is still safe
+      without waiting for Phase 4: these are net-new, currently-unused routes, not a modification
+      of the already-live `/api/runs/*` routes Phase 4 is deliberately leaving alone. The audit
+      read endpoint, by contrast, lives at `/api/projects/[projectId]/audit` (nested,
+      `resolveSessionActor()` real-session auth) — matching Phase 2/3/5's convention, since it's a
+      project-level read with no run/case context.
+- [x] **Routes:** `apps/web/src/app/api/runs/[runId]/cases/[runCaseId]/defects/route.ts` (GET
+      list, POST link), `.../defects/[linkId]/route.ts` (DELETE → unlink, `projectId` as a query
+      param since DELETE request bodies are unreliable across clients/proxies),
+      `apps/web/src/app/api/projects/[projectId]/audit/route.ts` (GET). Zod schemas:
+      `linkDefectBodySchema`, `unlinkDefectBodySchema`, `listDefectLinksQuerySchema`,
+      `listAuditLogQuerySchema`.
+- [x] **`packages/db/package.json` exports added:** `./services/audit`, `./services/defect`.
+- [x] **`apps/web/src/lib/api/errors.ts`:** `DefectServiceError` import + status map
+      (`RUN_NOT_FOUND`→404, `CASE_NOT_FOUND`→404, `LINK_NOT_FOUND`→404, `ALREADY_UNLINKED`→409) +
+      `instanceof` branch.
+- [ ] **`DefectsScreen.tsx`/`AuditScreen.tsx` wiring — NOT STARTED.** Deferred per the
+      "backend-first" decision above.
+- [x] **Verification — Claude sandbox:** `tsc --noEmit` clean for both `@relay/db` and
+      `@relay/web`; `pnpm build` succeeded — all 3 new routes present in the route table
+      (`/api/projects/[projectId]/audit`, `/api/runs/[runId]/cases/[runCaseId]/defects`,
+      `.../defects/[linkId]`), plus the earlier Phase 2/3/5 routes still present.
+- [ ] **Verification — Shaun local:** not yet possible, same reasoning as Phases 2/3/5.
+- [ ] **Documentation:** not yet updated, same reasoning as Phases 2/3/5.
+- [ ] **Commit** — not yet committed.
+
+## Phase 7 — Admin panel unification: note
+
+No backend work needed or attempted this phase. Phase 1 already built everything
+`/admin/users`/`/admin/roles` need (`UserService`/`ProjectService` + `/api/users/*` +
+`/api/projects/*`) — this phase per `plan.md` is entirely "swap the `AdminSettings` localStorage
+reads/writes for calls to those existing APIs," i.e. 100% screen-wiring with zero new backend
+surface. Folded into the same deferred screen-wiring pass as Phases 2/3/5/6 rather than treated
+as its own separate step — there's nothing backend-only to build or verify here.
+
+## Phase 8 — Seed finalization + regression sweep + PR: note
+
+Not attempted beyond a brief review this session — this phase's actual work (full regression
+sweep across all fresh screens + `/admin/*`, PR description) fundamentally requires the screens to
+be wired first (Phases 2/3/5/6/7's deferred work) and a live browser + Docker MySQL Claude's
+sandbox doesn't have. Seed data check: `packages/db/src/seed/insert.ts` (pre-existing, Phase 0)
+already seeds test cases/folders/plans per project, so `TestCaseService`/`TestPlanService` have
+real rows to exercise via direct API calls today even before any screen is wired — no additions
+made this session since nothing new consumes seed data yet. Full write-up (seed extension
+decisions, regression checklist, PR description per `CLAUDE.md`'s MR format) deferred to when this
+phase is actually picked up, after screen-wiring.
 
 ## Open questions / blockers
 
@@ -118,6 +371,23 @@ the whole spec.
   `pnpm install`/`pnpm build` directly against the mounted `Relay/` workspace folder — it fails
   with `EPERM` on pnpm's temp-file churn because that folder is write-once-per-file. Use the
   `rsync`-to-`/tmp` workaround documented in Part A's "Verification — Claude sandbox" line above.
+- Sandbox note (new this session): `pnpm` was not on `PATH` in this session's sandbox instance
+  (prior sessions apparently had it globally available). Found a working install left over from a
+  prior session at `/sessions/trusting-awesome-bell/.npm-global/lib/node_modules/pnpm/bin/pnpm.cjs`
+  and invoked it directly via `node <path> ...` rather than relying on a bare `pnpm` command — if a
+  future session hits `pnpm: command not found`, check for a similar leftover global install
+  before trying to reinstall pnpm from scratch via `corepack` (which itself failed with `EACCES`
+  trying to symlink into `/usr/bin` in this sandbox).
+- **Six phases' worth of code (2, 3, 5, 6) plus this session's documentation updates are all
+  currently uncommitted working-tree changes** — nothing beyond `b430e50`/`4e5ad45` has been
+  committed. Needs a commit (or several) before ending the session, per `CLAUDE.md`'s
+  commit-identity rule (per-commit env vars, not persisted git config).
+- **Every phase's screen-wiring (Cases, Plans, Runs, Dashboard, Defects, Audit, Admin) is now the
+  single remaining body of work** before `mvp-backend`'s branch-level "definition of done" is met.
+  Recommendation, not yet acted on: wire one screen at a time, verify it locally with Shaun, then
+  move to the next — see the "Phase 2 screen-wiring note" above for the fuller reasoning (real
+  frontend/backend model mismatches were found for cases/plans that a screen-wiring pass has to
+  actively resolve, not just mechanically swap the data source).
 
 ## Session log (append, don't rewrite)
 
@@ -143,3 +413,17 @@ the whole spec.
   pre-existing constraint, confirmed via direct `curl`). All Documentation-section files updated.
   **Not committed** — Shaun-local verification (real DB, real login flow, QA report) and a
   commit-identity confirmation are the two remaining items before Phase 1 is fully done.
+- **2026-07-09 (seed/role overhaul):** Shaun asked to rename/expand seed users to 8 real names
+  with specific roles, applied to both the DB seed and the frontend Admin mock panel. Implemented
+  and committed as `4e5ad45` (see "Post-Phase-1 fixes" section above for the full file list).
+- **2026-07-09 (all-phases backend push):** Shaun asked to "run all the phases to completion."
+  Agreed a "backend-first" approach for the remaining 7 phases (see the standing-decision note
+  near the top of this file). Built and Claude-sandbox-verified (typecheck + `pnpm build`, no live
+  DB needed) the backends for Phase 2 (Test Cases — already done in a prior part of this same
+  session), Phase 3 (Test Plans), Phase 5 (Dashboard), and Phase 6 (Defects + Audit, including
+  retrofitting `recordAudit()` calls into Phase 2/3's existing mutation functions). Phase 4 (Test
+  Runs wiring) deliberately skipped rather than half-done — explained in its status-table row
+  above. Phase 7 confirmed to need no new backend at all. Phase 8 confirmed blocked on
+  screen-wiring + Shaun-local access. Full per-phase checklists added above. This session also hit
+  and worked around a `pnpm: command not found` sandbox quirk (see "Open questions / blockers").
+  **Nothing from this session is committed yet.**

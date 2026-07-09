@@ -6,6 +6,35 @@
 
 ---
 
+## GAP-01 — Test Plans: dynamic queries have no server-side equivalent (mvp-backend Phase 3)
+
+Not a bug in shipped behavior (nothing is broken yet — `PlansScreen.tsx` hasn't been wired to
+the real API). Flagging now because it will bite whoever wires `PlansScreen.tsx` to
+`packages/db/services/TestPlanService.ts` next.
+
+**The mismatch:** the frontend prototype's `TestPlan` (`apps/web/src/fresh/data/demo-model.ts`)
+stores `queries: TestQuery[]` — condition/folder/static groups — and recomputes the case list
+live via `resolvePlanCases()` every time it's needed. The real DB schema (`packages/db/schema.ts`)
+has no column anywhere for `TestQuery`/`QueryCondition` data; `test_plans` only relates to cases
+via `test_plan_cases`, a plain static join table. This isn't an oversight introduced by
+`TestPlanService` — `TestRunService.createRun()` (implemented well before `mvp-backend`) already
+hard-depends on `test_plan_cases` being pre-populated at spawn time, with zero query awareness.
+
+**What `TestPlanService.ts` does about it:** only supports the static-list model.
+`setPlanCases(planId, caseIds)` replaces a plan's case membership wholesale — the caller (not the
+server) is responsible for resolving whatever criteria produced that list.
+
+**Open question for whoever wires the screen:** either (a) keep `queries` as client-side-only
+metadata, resolve them locally exactly like today, and push the resolved `caseIds` to
+`setPlanCases()` whenever they change (no server schema change, plans just look "static" from
+the API's point of view), or (b) add real server-side query storage (new
+`test_plan_queries`/similar table + resolution logic) so plans stay genuinely dynamic even via
+the API. Option (a) is the lower-effort, lower-risk choice and matches how `spawnRunFromPlan()`
+already behaves today (it resolves once, at spawn time, then the run's case list is frozen) — but
+it's a real product call, not just an implementation detail, so flag it rather than assume.
+
+---
+
 ## BUG-01 — Project switch: first attempt fails, second succeeds
 
 ### Symptom
