@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { RunDonut } from '../components/RunDonut'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
 import type { CasePriority } from '../data/demo-model'
 import { formatRelativeTime, PRIORITY_TO_LEGACY } from '../data/demo-model'
+import { fetchRealDashboardSummary, type RealDashboardSummary } from '@/lib/relay/dashboard-client'
 import {
   collectDashboardUnlinkedFailures,
   computeDashboardAssigneeBars,
@@ -127,7 +128,45 @@ function DashboardView() {
   const { activeProject, activeRuns, activeCases, activeFolders } = useFresh()
   const [timeWindow, setTimeWindow] = useState<DashboardWindow>(30)
 
-  const kpis = useMemo(() => computeDashboardKpis(activeRuns), [activeRuns])
+  // Server-computed summary (data-layer refactor): the KPI strip and donut
+  // prefer SQL-aggregated numbers from GET /api/projects/:id/dashboard,
+  // falling back to the client-side computation until the fetch resolves.
+  // The richer widgets below still derive from synced reducer state.
+  const [serverSummary, setServerSummary] = useState<RealDashboardSummary | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setServerSummary(null)
+    fetchRealDashboardSummary(activeProject.id)
+      .then((summary) => {
+        if (!cancelled) setServerSummary(summary)
+      })
+      .catch((err) => {
+        console.warn('[relay] Dashboard summary fetch failed — using client-side numbers:', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeProject.id])
+
+  const kpis = useMemo(() => {
+    const local = computeDashboardKpis(activeRuns)
+    if (!serverSummary) return local
+    const b = serverSummary.resultBreakdown
+    const total = b.pass + b.fail + b.blocked + b.skip + b.notRun
+    const executed = total - b.notRun
+    return {
+      ...local,
+      executedPct: total > 0 ? Math.round((executed / total) * 100) : 0,
+      totalExecuted: executed,
+      totalCases: total,
+      passed: b.pass,
+      failed: b.fail,
+      blocked: b.blocked,
+      skipped: b.skip,
+      notRun: b.notRun,
+      openRunCount: serverSummary.activeRunCount,
+    }
+  }, [activeRuns, serverSummary])
   const openRuns = useMemo(
     () => computeDashboardOpenRuns(activeRuns, activeCases),
     [activeRuns, activeCases],

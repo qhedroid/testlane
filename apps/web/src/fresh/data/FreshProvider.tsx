@@ -1258,9 +1258,17 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   // this is the "reducer-sync" half of the screen-wiring architecture pivot.
   const activeProjectSource = state.projectsById[state.activeProjectId]?.source
 
+  // Perf: don't re-fetch a project's data if it was synced very recently
+  // (e.g. rapid project/tab switches). Writes are server-confirmed before
+  // they land in state, so a fresh cache can't hide unsaved changes.
+  const lastSyncAtRef = useRef(new Map<string, number>())
+  const SYNC_FRESHNESS_MS = 30_000
+
   useEffect(() => {
     if (!realProjectsLoaded || activeProjectSource !== 'real') return
     const projectId = state.activeProjectId
+    const lastSyncAt = lastSyncAtRef.current.get(projectId)
+    if (lastSyncAt && Date.now() - lastSyncAt < SYNC_FRESHNESS_MS) return
     let cancelled = false
     Promise.all([
       fetchRealFolders(projectId),
@@ -1270,6 +1278,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     ])
       .then(([realFolders, realCases, realPlans, realRuns]) => {
         if (cancelled) return
+        lastSyncAtRef.current.set(projectId, Date.now())
         const planTitleById = new Map(realPlans.map((p) => [p.id, p.title]))
         for (const r of realRuns) {
           runCaseIdsRef.current.set(r.id, runCaseIdMap(r.cases))
@@ -1320,13 +1329,18 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     () => getActiveProject(state) ?? Object.values(state.projectsById)[0],
     [state],
   )
-  const projects = useMemo(() => listProjects(state), [state])
-  const activeFolders = useMemo(() => listActiveProjectFolders(state), [state])
-  const activeCases = useMemo(() => listActiveProjectTestCases(state), [state])
-  const activeRuns = useMemo(() => listActiveProjectRuns(state), [state])
-  const activePlans = useMemo(() => listActiveProjectPlans(state), [state])
-  const activeRequirements = useMemo(() => listActiveProjectRequirements(state), [state])
-  const activeDefects = useMemo(() => listActiveProjectDefects(state), [state])
+  // Perf: deps narrowed to the slices each selector actually reads, so e.g.
+  // recording a run result doesn't rebuild the cases/folders/plans arrays
+  // (and everything memoized on them downstream).
+  /* eslint-disable react-hooks/exhaustive-deps */
+  const projects = useMemo(() => listProjects(state), [state.projectsById])
+  const activeFolders = useMemo(() => listActiveProjectFolders(state), [state.folders, state.activeProjectId])
+  const activeCases = useMemo(() => listActiveProjectTestCases(state), [state.cases, state.activeProjectId])
+  const activeRuns = useMemo(() => listActiveProjectRuns(state), [state.runs, state.activeProjectId])
+  const activePlans = useMemo(() => listActiveProjectPlans(state), [state.plansById, state.activeProjectId])
+  const activeRequirements = useMemo(() => listActiveProjectRequirements(state), [state.requirementsById, state.activeProjectId])
+  const activeDefects = useMemo(() => listActiveProjectDefects(state), [state.defectsById, state.activeProjectId])
+  /* eslint-enable react-hooks/exhaustive-deps */
   const currentRun = useMemo(() => getCurrentRun(state), [state])
   const currentActor = useMemo(() => {
     const id = state.currentActorUserId ?? SEED_ADMIN_USER_ID

@@ -928,3 +928,25 @@ as its own separate step — there's nothing backend-only to build or verify her
   **Branch definition of done met: every fresh screen reads/writes the real API, login gates
   the app, the seeded Demo Project is explorable without manual setup. Ready for PR to
   `mvp-main`.**
+- **2026-07-10 (data-layer hardening — post-review pass, Shaun's call after the planned-vs-actual
+  architecture review):** Three commits. (1) **DP = the real seeded project** — Demo Project slug
+  renamed `demo`→`dp` (URLs `/DP/...`, clones `dp-2...`; requires re-running `pnpm db:seed`), and
+  the **localStorage-only fallback project is gone**: `buildInitialDemoState()` is empty,
+  `mergeSeedRuns` is a passthrough, persisted local projects are stripped on load
+  (`dropLocalProjects`), legacy demo-key migration skips real projects, and FreshProvider renders
+  a connect/retry **BootGate** when no projects exist instead of faking one. (2) **Wait-for-server
+  writes**: every create/update/delete across cases/folders/plans/runs/admin dispatches locally
+  only after the API confirms — the entire temp-id reconciliation layer (idRemapRef,
+  pendingRealCreatesRef, resolveEntityId, RECONCILE_CASE/FOLDER/PLAN/RUN + screen follow-effects)
+  is deleted (net −226 lines); failed writes show dismissible error toasts; `updateExecution`
+  (P/F/B/S) is the one optimistic path with manual rollback; new ADD_RUN action for
+  server-created runs; create/duplicate callbacks are async and screens navigate with real
+  server refs. (3) **Dashboard + perf**: KPI strip/donut now use the previously-unused
+  `GET /api/projects/:id/dashboard` (new `dashboard-client.ts`; richer widgets still client-
+  computed off synced state); sync gets a 30s freshness window per project (safe now that writes
+  are server-confirmed); provider selector memos narrowed to their state slices for referential
+  stability. TanStack Query deliberately deferred (Shaun approved manual-in-provider now; the
+  removal of reconciliation makes a future Query migration simpler). Docs updated (user-guide
+  Data sources, AS_BUILT data architecture + routes). Sandbox-verified: tsc + build clean per
+  stage. **Needs Shaun-local re-verification**: reseed, `/DP/...` URLs, create flows now wait
+  for the server (brief pending feel), P/F/B/S unchanged, BootGate appears when DB is down.

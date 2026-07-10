@@ -26,11 +26,11 @@ As of `mvp-backend`, the app runs on a **real MySQL backend**: login gates the a
 | Test runs: spawn-from-plan, results (P/F/B/S + notes), seal/reopen, archive, `RUN-<nnnn>` refs | Ad-hoc (plan-less) runs, per-step results, the per-transition execution log, run descriptions |
 | Audit log, Admin user list/invite/role/disable (global admins) | Defect entities (`DEF-*`), requirements, reports, custom fields admin |
 
-Writes are **optimistic**: the UI updates instantly and the API call completes in the background (a demo-scale decision — a production build would wait for the server).
+Writes **wait for the server**: creates/edits/deletes commit locally only after the API confirms (failures surface as error toasts). The one exception is P/F/B/S result recording, which is optimistic for keyboard speed and rolls back automatically if the server rejects it. There is no localStorage-only fallback project any more — if the API is unreachable, the app shows a connect/retry screen.
 
 **Reset the local cache:** visit any page with `?relay-reset=1` (or `localStorage.removeItem('relay-demo-v2')` in the console). This never touches the database — server data re-syncs on next load.
 
-**Run locally:** `pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev` → open http://127.0.0.1:3000 — you'll be redirected to `/login`. Sign in with any seed user (see "Login" below), which lands on `/DEMO/dashboard` — the richly-seeded Demo Project.
+**Run locally:** `pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev` → open http://127.0.0.1:3000 — you'll be redirected to `/login`. Sign in with any seed user (see "Login" below), which lands on `/DP/dashboard` — the richly-seeded Demo Project (the real DB project; slug `dp`).
 
 ---
 

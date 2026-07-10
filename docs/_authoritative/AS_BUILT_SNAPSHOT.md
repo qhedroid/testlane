@@ -13,7 +13,7 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | UI | `apps/web/src/fresh/` |
-| State | React Context + `useReducer` in `FreshProvider`, **synced from the real API for real projects** (reducer-sync + optimistic write-through); localStorage key `relay-demo-v2` (`schemaVersion: 14`) acts as the offline cache + store for local-only fields |
+| State | React Context + `useReducer` in `FreshProvider`, **synced from the real API for real projects** (reducer-sync + wait-for-server writes; P/F/B/S recording optimistic with rollback); localStorage key `relay-demo-v2` (`schemaVersion: 14`) acts as the offline cache + store for local-only fields |
 | Backend | Drizzle ORM, MySQL 8, `@relay/db` (21 tables); OpenSearch container exists but client is a no-op stub |
 | IDs (backend) | ULID |
 | Auth | NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables). `apps/web/src/middleware.ts` gates every page route and API route except `/login`, `/api/auth/*`, `/api/health`, `/api/runs/*`. `/api/runs/*` uses session-first auth with an `x-relay-user-id` dev-header **fallback** (kept for `pnpm api:validate` + cookie-less scripting) |
@@ -24,9 +24,9 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 
 Screens do NOT fetch their own data. `FreshProvider`:
 
-1. Registers the real DB projects on mount (`GET /api/projects` → `REGISTER_REAL_PROJECTS`), dropping local-only projects when real ones exist. Default landing project: the seeded **Demo Project** (slug `demo`, key `DEMO`).
+1. Registers the real DB projects on mount (`GET /api/projects` → `REGISTER_REAL_PROJECTS`), dropping local-only projects when real ones exist. Default landing project: the seeded **Demo Project** (slug `dp`, key `DP` — a real DB project; there is no localStorage fallback project, and an unreachable/unseeded API shows a connect/retry gate instead).
 2. Syncs the active real project's folders/cases/plans/runs into reducer state (`SYNC_REAL_PROJECT_DATA`), and the real users table into the Admin mock roster (`SYNC_REAL_USERS`, global-admin sessions only).
-3. Write actions (`addCase`, `replaceCase`, `addPlan`, `updateExecution`, `sealRun`, …) dispatch locally first (optimistic) and call the real API in the background, reconciling temp ids → real ids/refs afterward (`RECONCILE_*` actions). **Optimistic writes are a demo-only decision — revisit before production.**
+3. Write actions (`addCase`, `replaceCase`, `addPlan`, `sealRun`, …) **wait for the server**: the local dispatch happens only after the API confirms, so ids/refs are always server-generated and no temp-id reconciliation exists. Failures surface as dismissible error toasts. The one optimistic exception is `updateExecution` (P/F/B/S recording), which rolls back to the previous execution state if the API rejects the write.
 4. **Hybrid rule:** fields with no DB tables stay localStorage-only and are merged across syncs: case comments, custom-field values, requirement links, references/template; plan `queries` (the authoring model — resolved case lists are pushed to `test_plan_cases`); run description, per-step results, execution log; Admin role definitions; "Demo User".
 
 Entity refs come from the server: cases `TC-<n>` (unpadded), plans `PLAN-<nnn>`, runs `RUN-<nnnn>`.
@@ -35,7 +35,7 @@ Entity refs come from the server: cases `TC-<n>` (unpadded), plans `PLAN-<nnn>`,
 
 ## Routes
 
-**Canonical pattern:** `/:projectKey/:module` — e.g. `/DEMO/dashboard`, `/CTMS/testruns`.
+**Canonical pattern:** `/:projectKey/:module` — e.g. `/DP/dashboard`, `/CTMS/testruns`.
 
 | Route | Data state | Component | Notes |
 |-------|------------|-----------|-------|
@@ -51,14 +51,14 @@ Entity refs come from the server: cases `TC-<n>` (unpadded), plans `PLAN-<nnn>`,
 | **`/admin/users`** | **real (admin session) + local fallback** | `AdminUsersPageContent` | List/invite/role/disable wired to `/api/users`; granular roles compress onto `globalRole` |
 | `/admin/*` (rest) | mock + localStorage | `Admin*PageContent` | Role definitions, custom fields, etc. stay local |
 
-**Seed projects (DB):** CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway, and **Demo Project** (`DEMO`) — richly seeded (4 folders, 14 cases, 2 plans, 4 runs at every lifecycle stage). "Create Demo Project" deep-clones it via `POST /api/projects/:id/clone`. The old localStorage-only `DP` project exists only as an offline fallback.
+**Seed projects (DB):** CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway, and **Demo Project** (`DP`, slug `dp`) — richly seeded (4 folders, 14 cases, 2 plans, 4 runs at every lifecycle stage). "Create Demo Project" deep-clones it via `POST /api/projects/:id/clone`. The old localStorage-only fallback project has been removed entirely.
 
 ---
 
 ## What works end-to-end (Docker + seed + login)
 
 1. `pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev`
-2. Log in (`ssevume@ti.com` / `relay-dev-2026` — see README "Local dev login") → `/DEMO/dashboard`.
+2. Log in (`ssevume@ti.com` / `relay-dev-2026` — see README "Local dev login") → `/DP/dashboard`.
 3. Cases: browse seeded cases, quick-add/edit/delete — persists to MySQL, audited.
 4. Plans: seeded plans with case lists; create/edit/duplicate/delete; query groups resolve locally and sync to `test_plan_cases`; spawn run creates a real snapshotted run.
 5. Runs: full three-pane execution UX over real runs; P/F/B/S results persist; seal/reopen/archive; duplicate.
@@ -80,7 +80,7 @@ Entity refs come from the server: cases `TC-<n>` (unpadded), plans `PLAN-<nnn>`,
 | GET/POST | `/api/projects/:projectId/cases[/:caseId GET/PATCH/DELETE]` | session |
 | GET/POST | `/api/projects/:projectId/folders` | session |
 | GET/POST | `/api/projects/:projectId/plans[/:planId GET/PATCH/DELETE]` · PUT `…/plans/:planId/cases` | session |
-| GET | `/api/projects/:projectId/dashboard` | session — **currently unused by the frontend** (Dashboard computes client-side) |
+| GET | `/api/projects/:projectId/dashboard` | session — feeds the Dashboard KPI strip + donut (richer widgets still compute client-side off synced state) |
 | GET | `/api/projects/:projectId/audit` | session |
 
 Contracts: [`FRONTEND_CONTRACTS.md`](FRONTEND_CONTRACTS.md).
@@ -89,7 +89,7 @@ Contracts: [`FRONTEND_CONTRACTS.md`](FRONTEND_CONTRACTS.md).
 
 ## Backend services
 
-`TestRunService` (create/updateRun + ref generation), `ExecutionService` (case results), run read paths (`listProjectRuns` incl. per-case results + defect refs, `getRunDetail`), `TestCaseService`, `TestPlanService`, `DashboardService` (unused by UI), `AuditService` (`recordAudit` called by every mutation + `listAuditLog`), `DefectService` (run defect links only), `UserService`, `ProjectService`, `ProjectCloneService`. RBAC via `assertMinProjectRole` / global-role checks throughout.
+`TestRunService` (create/updateRun + ref generation), `ExecutionService` (case results), run read paths (`listProjectRuns` incl. per-case results + defect refs, `getRunDetail`), `TestCaseService`, `TestPlanService`, `DashboardService` (feeds the Dashboard KPI strip/donut), `AuditService` (`recordAudit` called by every mutation + `listAuditLog`), `DefectService` (run defect links only), `UserService`, `ProjectService`, `ProjectCloneService`. RBAC via `assertMinProjectRole` / global-role checks throughout.
 
 ---
 
