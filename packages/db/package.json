@@ -18,6 +18,7 @@
     "./services/audit": "./services/AuditService.ts",
     "./services/defect": "./services/DefectService.ts",
     "./services/project-clone": "./services/ProjectCloneService.ts",
+    "./services/workspace-reset": "./services/WorkspaceResetService.ts",
     "./auth/verify-credentials": "./src/auth/verify-credentials.ts",
     "./rbac/assert-min-role": "./src/rbac/assert-min-role.ts"
   },

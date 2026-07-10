@@ -23,7 +23,7 @@ As of `mvp-backend`, the app runs on a **real MySQL backend**: login gates the a
 | Login/session (NextAuth, seed users), project list, project cloning | The "Demo User" admin actor and Admin role *definitions* |
 | Test cases + folders (full CRUD, `TC-<n>` refs, archived on delete) | Case comments, custom-field values, requirement links |
 | Test plans (`PLAN-<nnn>` refs) and their resolved case lists | Plan query groups (the authoring model — their *result* syncs to the server) |
-| Test runs: spawn-from-plan, results (P/F/B/S + notes), seal/reopen, archive, `RUN-<nnnn>` refs | Ad-hoc (plan-less) runs, per-step results, the per-transition execution log, run descriptions |
+| Test runs — plan-spawned AND ad-hoc — results (P/F/B/S + notes), seal/reopen, archive, `RUN-<nnnn>` refs | Per-step results, the per-transition execution log, run descriptions |
 | Audit log, Admin user list/invite/role/disable (global admins) | Defect entities (`DEF-*`), requirements, reports, custom fields admin |
 
 Writes **wait for the server**: creates/edits/deletes commit locally only after the API confirms (failures surface as error toasts). The one exception is P/F/B/S result recording, which is optimistic for keyboard speed and rolls back automatically if the server rejects it. There is no localStorage-only fallback project any more — if the API is unreachable, the app shows a connect/retry screen.

@@ -90,3 +90,19 @@ export async function cloneRealProject(sourceProjectId: string): Promise<RealPro
     }),
   )
 }
+
+/**
+ * "Reset workspace" — wipes ALL projects/data and re-inserts the default
+ * seed baseline (Demo Project fully seeded + CTMS/eTMF/IAM/eFeasibility/GL
+ * empty). Global admin+ only (server-enforced). Local-dev/demo tool.
+ */
+export async function resetRealWorkspace(): Promise<void> {
+  await parseResponse<{ ok: boolean }>(
+    await fetch('/api/admin/reset', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }),
+  )
+}

@@ -112,9 +112,24 @@ export async function cloneProject(input: CloneProjectInput): Promise<ProjectSum
   }
 
   const newProjectId = createId()
-  const suffix = createId().slice(-6).toLowerCase()
-  const slug = input.slug ?? `${source.slug}-${suffix}`
-  const name = input.name ?? `${source.name} (copy)`
+  // Sequential clone slugs: dp2, dp3, ... (keys DP2, DP3, ...) instead of a
+  // random suffix — matches the old local clones' DP1/DP2 naming.
+  let slug = input.slug
+  if (!slug) {
+    const existing = await db
+      .select({ slug: projects.slug })
+      .from(projects)
+      .where(eq(projects.orgId, source.orgId))
+    const taken = new Set(existing.map((p) => p.slug))
+    let n = 2
+    while (taken.has(`${source.slug}${n}`)) n += 1
+    slug = `${source.slug}${n}`
+  }
+  // "Demo Project 2" for slug dp2, etc.; generic "(copy)" when the slug was
+  // caller-supplied and doesn't follow the sequential pattern.
+  const seqMatch = slug.startsWith(source.slug) ? slug.slice(source.slug.length) : ''
+  const name =
+    input.name ?? (/^\d+$/.test(seqMatch) ? `${source.name} ${seqMatch}` : `${source.name} (copy)`)
 
   const sourceFolders = await db.select().from(folders).where(eq(folders.projectId, sourceProjectId))
   const sourceCases = await db.select().from(testCases).where(eq(testCases.projectId, sourceProjectId))

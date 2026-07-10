@@ -569,9 +569,10 @@ export function CasesScreen() {
       createRunModal.scope === 'folder'
         ? folderCases.map((c) => c.id)
         : undefined
-    const { runKey } = createRun({ name: createRunModal.name.trim(), caseIds })
+    void createRun({ name: createRunModal.name.trim(), caseIds }).then((result) => {
+      if (result) router.push(testRunPath(activeProject.key, result.runKey))
+    })
     setCreateRunModal(null)
-    router.push(testRunPath(activeProject.key, runKey))
   }
 
   return (

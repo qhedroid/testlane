@@ -27,6 +27,8 @@ export const ids = {
      * every lifecycle stage). See demo-project-seed.ts. Default landing project
      * for the fresh app and the "Create Demo Project" clone-source. */
     demo: '01SEED00000000000000000016',
+    efeasibility: '01SEED00000000000000000017',
+    gl: '01SEED00000000000000000018',
   },
 
   folders: {
@@ -77,6 +79,9 @@ export const ids = {
   plans: {
     ctmsRegression: '01SEED00000000000000000400',
     etmfSmoke: '01SEED00000000000000000401',
+    /** Demo Project plans — stable so validate scripts can target them. */
+    demoCriticalPath: '01SEED00000000000000000410',
+    demoFullRegression: '01SEED00000000000000000411',
   },
 
   planCases: {
@@ -97,7 +102,9 @@ export const ids = {
 
 /** Primary IDs for TestRunService.create() manual testing */
 export const seedRefs = {
-  projectId: ids.projects.ctms,
-  testPlanId: ids.plans.ctmsRegression,
+  // Default-roster change: only the Demo Project carries seeded plans/cases
+  // now, so validation scripts target it instead of CTMS.
+  projectId: ids.projects.demo,
+  testPlanId: ids.plans.demoCriticalPath,
   createdBy: ids.users.shaun,
 } as const

@@ -51,7 +51,7 @@ Entity refs come from the server: cases `TC-<n>` (unpadded), plans `PLAN-<nnn>`,
 | **`/admin/users`** | **real (admin session) + local fallback** | `AdminUsersPageContent` | List/invite/role/disable wired to `/api/users`; granular roles compress onto `globalRole` |
 | `/admin/*` (rest) | mock + localStorage | `Admin*PageContent` | Role definitions, custom fields, etc. stay local |
 
-**Seed projects (DB):** CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway, and **Demo Project** (`DP`, slug `dp`) — richly seeded (4 folders, 14 cases, 2 plans, 4 runs at every lifecycle stage). "Create Demo Project" deep-clones it via `POST /api/projects/:id/clone`. The old localStorage-only fallback project has been removed entirely.
+**Seed projects (DB):** **Demo Project** (`DP`, slug `dp`) plus five empty projects — CTMS, eTMF, IAM, eFeasibility, GL — richly seeded (4 folders, 14 cases, 2 plans, 4 runs at every lifecycle stage). "Create Demo Project" deep-clones it via `POST /api/projects/:id/clone` (sequential keys: DP2, DP3, …). "Reset workspace…" (project switcher, global admin+) wipes everything and restores this baseline via `POST /api/admin/reset`. The old localStorage-only fallback project has been removed entirely.
 
 ---
 
@@ -97,7 +97,6 @@ Contracts: [`FRONTEND_CONTRACTS.md`](FRONTEND_CONTRACTS.md).
 
 | Item | Status |
 |------|--------|
-| Ad-hoc (plan-less) run creation | Local-only — server `createRun` requires a test plan |
 | Per-step results + step comments in fresh UI | Local-only (`run_step_results` exist server-side but aren't wired) |
 | Execution log (per-transition history) | Local-only — no append-only table |
 | Defects as first-class entities | No `defects` table; only `run_defect_links` are real |

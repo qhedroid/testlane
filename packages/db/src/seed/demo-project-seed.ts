@@ -440,7 +440,7 @@ export async function insertDemoProjectSeed(
     .filter((d) => !d.isArchived)
     .map((d) => d.key) // condition: all non-archived cases
 
-  const planIds = { criticalPath: createId(), fullRegression: createId() }
+  const planIds = { criticalPath: ids.plans.demoCriticalPath, fullRegression: ids.plans.demoFullRegression }
 
   const planRows: NewTestPlan[] = [
     {

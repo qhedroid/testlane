@@ -1134,7 +1134,7 @@ interface FreshContextValue {
   sealRun: () => void
   unsealRun: () => void
   setCurrentRun: (runId: string) => void
-  createRun: (input: { name: string; description?: string; caseIds?: string[] }) => { runKey: string }
+  createRun: (input: { name: string; description?: string; caseIds?: string[] }) => Promise<{ runKey: string } | null>
   duplicateRun: (runId: string) => Promise<{ runKey: string } | null>
   archiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
@@ -1525,16 +1525,44 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const createRun = useCallback(
-    (input: { name: string; description?: string; caseIds?: string[] }) => {
-      const num = getActiveProjectNextRunNum(state)
-      const runKey = formatRunKey(num)
-      dispatch({ type: 'CREATE_RUN', name: input.name, description: input.description, caseIds: input.caseIds })
-      // Documented gap: the server's createRun requires a test plan to
-      // snapshot, so ad-hoc runs live in this browser only.
-      notifyError(
-        "Heads up: runs created without a test plan aren't saved to the server yet — this run is local to this browser.",
-      )
-      return { runKey }
+    async (input: {
+      name: string
+      description?: string
+      caseIds?: string[]
+    }): Promise<{ runKey: string } | null> => {
+      const projectId = state.activeProjectId
+      // Ad-hoc runs are real now: the server snapshots directly from the
+      // explicit case list (defaulting to every case in the project).
+      const caseIds = (
+        input.caseIds && input.caseIds.length > 0
+          ? input.caseIds
+          : listActiveProjectTestCases(state).map((c) => c.id)
+      ).filter((id) => isRealId(id))
+      if (caseIds.length === 0) {
+        notifyError('Add at least one test case before creating a run.')
+        return null
+      }
+      try {
+        const created = await createRealRun({
+          projectId,
+          ...(input.name.trim() ? { name: input.name } : {}),
+          caseIds,
+        })
+        const detail = await fetchRealRunDetail(created.id, projectId)
+        runCaseIdsRef.current.set(
+          created.id,
+          Object.fromEntries(detail.testRunCases.map((c) => [c.originalTestCaseId, c.testRunCaseId])),
+        )
+        const run = {
+          ...realCreatedRunToLocal(created, detail, undefined),
+          description: input.description?.trim() || undefined,
+        }
+        dispatch({ type: 'ADD_RUN', run })
+        return { runKey: created.runRef }
+      } catch (err) {
+        notifyError(`Couldn't create run: ${errMsg(err)}`)
+        return null
+      }
     },
     [state, notifyError],
   )
@@ -1544,21 +1572,16 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       const source = findRunById(state, runId)
       if (!source) return null
       const projectId = source.projectId
-      if (!source.planId || !isRealId(source.planId)) {
-        const num = state.nextRunNumByProject[projectId] ?? 1
-        const runKey = formatRunKey(num)
-        dispatch({ type: 'DUPLICATE_RUN', runId })
-        notifyError('Copy created locally only — the source run has no server-side test plan.')
-        return { runKey }
-      }
       try {
-        // Note: the server snapshots the plan's CURRENT case list, which can
-        // differ from the source run's frozen caseOrder — acceptable
-        // demo-scale divergence, documented in progress.md.
+        // Plan-backed copies snapshot the plan's CURRENT case list; plan-less
+        // copies snapshot the source run's frozen caseOrder directly.
+        const hasRealPlan = !!source.planId && isRealId(source.planId)
         const created = await createRealRun({
           projectId,
-          testPlanId: source.planId,
           name: `${source.name} (copy)`,
+          ...(hasRealPlan
+            ? { testPlanId: source.planId as string }
+            : { caseIds: source.caseOrder.filter((id) => isRealId(id)) }),
         })
         const detail = await fetchRealRunDetail(created.id, projectId)
         runCaseIdsRef.current.set(

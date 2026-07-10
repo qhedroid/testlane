@@ -945,7 +945,23 @@ as its own separate step — there's nothing backend-only to build or verify her
   `GET /api/projects/:id/dashboard` (new `dashboard-client.ts`; richer widgets still client-
   computed off synced state); sync gets a 30s freshness window per project (safe now that writes
   are server-confirmed); provider selector memos narrowed to their state slices for referential
-  stability. TanStack Query deliberately deferred (Shaun approved manual-in-provider now; the
+  stability.
+- **2026-07-10 (runs-for-all + clone keys + workspace reset — Shaun feedback):** (1) **Ad-hoc
+  runs are real now**: `TestRunService.createRun()` takes an optional `testPlanId` — without a
+  plan it snapshots directly from the supplied live case ids (`test_runs.test_plan_id` was
+  already nullable; no migration). Provider `createRun`/`duplicateRun` create server runs in
+  both flavors; the "local-only run" toast is gone; Dashboard/server summaries now count every
+  run. (2) **Sequential clone keys**: `ProjectCloneService` default slug is now `dp2`, `dp3`, …
+  (name "Demo Project 2", …) instead of a random suffix. (3) **Default workspace roster +
+  reset**: seed now creates Demo Project (DP, fully seeded) + CTMS, eTMF, IAM, eFeasibility, GL
+  — all EMPTY (Viewer/Reporting/API Gateway and their demo cases/plans removed); demo plan ids
+  are stable in `ids.ts` and `seedRefs` points at the Demo Project so `pnpm api:validate` keeps
+  working. New `WorkspaceResetService.resetWorkspace()` (global admin+) + `POST /api/admin/reset`
+  + a confirm-guarded "Reset workspace…" item in the project switcher — wipes everything and
+  restores the baseline (same as `pnpm db:seed`, but from the UI; also clears the local cache).
+  Sandbox-verified: tsc clean both packages, build clean. **Shaun: re-run `pnpm db:seed` once**
+  (new roster + stable demo plan ids), then ad-hoc run creation, DP2 clone keys, and the reset
+  button are all exercisable. TanStack Query deliberately deferred (Shaun approved manual-in-provider now; the
   removal of reconciliation makes a future Query migration simpler). Docs updated (user-guide
   Data sources, AS_BUILT data architecture + routes). Sandbox-verified: tsc + build clean per
   stage. **Needs Shaun-local re-verification**: reseed, `/DP/...` URLs, create flows now wait

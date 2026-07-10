@@ -50,8 +50,10 @@ import { recordAudit } from './AuditService'
 export interface CreateRunInput {
   /** ULID of the target project. */
   projectId: string
-  /** ULID of the source test plan. */
-  testPlanId: string
+  /** ULID of the source test plan. Optional since the ad-hoc-runs change:
+   * when omitted, `caseIds` is required and the run snapshots directly from
+   * the live test cases (same snapshot mechanics, different source). */
+  testPlanId?: string | null
   /** ULID of the user triggering the spawn. */
   createdBy: string
   /** Optional run title. Defaults to '{plan title} — {formatted date}'. */
@@ -76,7 +78,7 @@ export interface CreateRunResult {
   stepCount: number
   environment: string | null
   createdAt: Date
-  testPlanId: string
+  testPlanId: string | null
   projectId: string
 }
 
@@ -352,14 +354,13 @@ function buildAuditRow(
   runRef: string,
   projectId: string,
   actorId: string,
-  plan: PlanRow,
+  plan: PlanRow | null,
   resolvedTitle: string,
   resolvedEnvironment: string | null,
   orderedCases: CaseWithFolder[],
   totalStepCount: number,
   assigneeIds: string[],
-  allPlanCaseIds: string[],
-  selectedCaseIds: string[],
+  isPartialSelection: boolean,
 ): NewAuditLog {
   return {
     id: createId(),
@@ -372,7 +373,7 @@ function buildAuditRow(
     newValue: {
       runRef,
       title: resolvedTitle,
-      testPlanId: plan.id,
+      testPlanId: plan?.id ?? null,
       environment: resolvedEnvironment,
       caseCount: orderedCases.length,
       stepCount: totalStepCount,
@@ -380,10 +381,9 @@ function buildAuditRow(
       status: 'active',
     },
     metadata: {
-      planRef: plan.planRef,
-      planTitle: plan.title,
-      isPartialSelection:
-        selectedCaseIds.length < allPlanCaseIds.length,
+      planRef: plan?.planRef ?? null,
+      planTitle: plan?.title ?? null,
+      isPartialSelection,
       selectedCaseRefs: orderedCases.map((c) => c.caseRef),
     },
   }
@@ -405,17 +405,19 @@ async function indexRunDocument(
   title: string,
   environment: string | null,
   projectId: string,
-  testPlanId: string,
-  planTitle: string,
-  planRef: string,
+  testPlanId: string | null,
+  planTitle: string | null,
+  planRef: string | null,
   createdBy: string,
 ): Promise<void> {
   // Resolve denormalised names for the document.
-  const [projectRow] = await db
-    .select({ name: testPlans.title })
-    .from(testPlans)
-    .where(eq(testPlans.id, testPlanId))
-    .limit(1)
+  const [projectRow] = testPlanId
+    ? await db
+        .select({ name: testPlans.title })
+        .from(testPlans)
+        .where(eq(testPlans.id, testPlanId))
+        .limit(1)
+    : [undefined]
 
   const [projectMeta] = await db
     .select({ name: users.name })
@@ -430,8 +432,8 @@ async function indexRunDocument(
     status: 'active',
     environment: environment ?? null,
     project_id: projectId,
-    plan_title: planTitle,
-    plan_ref: planRef,
+    plan_title: planTitle ?? '',
+    plan_ref: planRef ?? '',
     created_by_name: projectMeta?.name ?? '',
     updated_at: new Date().toISOString(),
   }
@@ -577,77 +579,94 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
 
   await assertSpawnAccess(createdBy, projectId)
 
-  // ── 1b. Load and validate test plan ──────────────────────────────────────
+  // ── 1b. Load and validate test plan (skipped for ad-hoc runs) ────────────
+  // Ad-hoc runs change: `testPlanId` is optional. Without a plan, `caseIds`
+  // is required and the run snapshots directly from the live test cases —
+  // same snapshot mechanics, just a different source for the case list.
 
-  const [plan] = await db
-    .select({
-      id: testPlans.id,
-      planRef: testPlans.planRef,
-      title: testPlans.title,
-      status: testPlans.status,
-      environment: testPlans.environment,
-      projectId: testPlans.projectId,
-    })
-    .from(testPlans)
-    .where(
-      and(eq(testPlans.id, testPlanId), eq(testPlans.projectId, projectId)),
-    )
-    .limit(1)
-
-  if (!plan) {
-    throw new RunCreationError(
-      `Test plan not found: ${testPlanId}`,
-      'PLAN_NOT_FOUND',
-    )
-  }
-
-  if (plan.status === 'archived') {
-    throw new RunCreationError(
-      `Cannot spawn a run from an archived plan: ${plan.planRef}`,
-      'PLAN_ARCHIVED',
-    )
-  }
-
-  // Note: 'draft' plans CAN spawn runs. The plan status is not automatically
-  // promoted by this operation.
-
-  // ── 1c. Load plan case list and resolve selected cases ───────────────────
-
-  const planCaseRows = await db
-    .select({
-      testCaseId: testPlanCases.testCaseId,
-      position: testPlanCases.position,
-    })
-    .from(testPlanCases)
-    .where(eq(testPlanCases.testPlanId, testPlanId))
-    .orderBy(testPlanCases.position)
-
-  if (planCaseRows.length === 0) {
-    throw new RunCreationError(
-      `Test plan has no cases linked: ${plan.planRef}`,
-      'PLAN_EMPTY',
-    )
-  }
-
-  const allPlanCaseIds = planCaseRows.map((r) => r.testCaseId)
-
-  // Resolve which cases to include in the run.
+  let plan: PlanRow | null = null
   let selectedCaseIds: string[]
+  let wasPartialSelection = false
 
-  if (caseIds && caseIds.length > 0) {
-    // Validate every requested case ID is actually in the plan.
-    const planCaseSet = new Set(allPlanCaseIds)
-    const invalidIds = caseIds.filter((id) => !planCaseSet.has(id))
-    if (invalidIds.length > 0) {
+  if (testPlanId) {
+    const [planRow] = await db
+      .select({
+        id: testPlans.id,
+        planRef: testPlans.planRef,
+        title: testPlans.title,
+        status: testPlans.status,
+        environment: testPlans.environment,
+        projectId: testPlans.projectId,
+      })
+      .from(testPlans)
+      .where(
+        and(eq(testPlans.id, testPlanId), eq(testPlans.projectId, projectId)),
+      )
+      .limit(1)
+
+    if (!planRow) {
       throw new RunCreationError(
-        `Case IDs not in plan ${plan.planRef}: ${invalidIds.join(', ')}`,
-        'CASES_NOT_IN_PLAN',
+        `Test plan not found: ${testPlanId}`,
+        'PLAN_NOT_FOUND',
+      )
+    }
+
+    if (planRow.status === 'archived') {
+      throw new RunCreationError(
+        `Cannot spawn a run from an archived plan: ${planRow.planRef}`,
+        'PLAN_ARCHIVED',
+      )
+    }
+
+    // Note: 'draft' plans CAN spawn runs. The plan status is not
+    // automatically promoted by this operation.
+    plan = planRow
+
+    // ── 1c. Load plan case list and resolve selected cases ─────────────────
+
+    const planCaseRows = await db
+      .select({
+        testCaseId: testPlanCases.testCaseId,
+        position: testPlanCases.position,
+      })
+      .from(testPlanCases)
+      .where(eq(testPlanCases.testPlanId, testPlanId))
+      .orderBy(testPlanCases.position)
+
+    if (planCaseRows.length === 0) {
+      throw new RunCreationError(
+        `Test plan has no cases linked: ${planRow.planRef}`,
+        'PLAN_EMPTY',
+      )
+    }
+
+    const allPlanCaseIds = planCaseRows.map((r) => r.testCaseId)
+
+    if (caseIds && caseIds.length > 0) {
+      wasPartialSelection = caseIds.length < allPlanCaseIds.length
+      // Validate every requested case ID is actually in the plan.
+      const planCaseSet = new Set(allPlanCaseIds)
+      const invalidIds = caseIds.filter((id) => !planCaseSet.has(id))
+      if (invalidIds.length > 0) {
+        throw new RunCreationError(
+          `Case IDs not in plan ${planRow.planRef}: ${invalidIds.join(', ')}`,
+          'CASES_NOT_IN_PLAN',
+        )
+      }
+      selectedCaseIds = caseIds
+    } else {
+      // Include all plan cases.
+      selectedCaseIds = allPlanCaseIds
+    }
+  } else {
+    // Ad-hoc run — the explicit case list IS the run's contents.
+    if (!caseIds || caseIds.length === 0) {
+      throw new RunCreationError(
+        'An ad-hoc run (no test plan) requires a non-empty caseIds list.',
+        'PLAN_EMPTY',
       )
     }
     selectedCaseIds = caseIds
-  } else {
-    // Include all plan cases.
-    selectedCaseIds = allPlanCaseIds
   }
 
   // ── 1d. Load cases (with folder names) and steps ─────────────────────────
@@ -673,6 +692,7 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
     .where(
       and(
         inArray(testCases.id, selectedCaseIds),
+        eq(testCases.projectId, projectId),
         eq(testCases.isArchived, false),
       ),
     )
@@ -736,14 +756,17 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
 
   const resolvedTitle =
     input.name?.trim() ||
-    `${plan.title} — ${formatRunDate(spawnedAt)}`
+    (plan
+      ? `${plan.title} — ${formatRunDate(spawnedAt)}`
+      : `Ad-hoc run — ${formatRunDate(spawnedAt)}`)
 
   const resolvedEnvironment: string | null =
-    input.environment?.trim() || plan.environment || null
+    input.environment?.trim() || plan?.environment || null
 
-  // Sort cases by plan position. planPositionMap enables O(1) lookup.
+  // Sort cases by plan position (for ad-hoc runs, by the order the case ids
+  // were supplied — selectedCaseIds preserves both). O(1) lookup map.
   const planPositionMap = new Map(
-    planCaseRows.map((r) => [r.testCaseId, r.position]),
+    selectedCaseIds.map((id, i) => [id, i]),
   )
   const orderedCases: CaseWithFolder[] = [...(cases as CaseWithFolder[])].sort(
     (a, b) =>
@@ -780,7 +803,7 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
         id: newRunId,
         runRef,
         projectId,
-        testPlanId,
+        testPlanId: testPlanId ?? null,
         title: resolvedTitle,
         status: 'active',
         environment: resolvedEnvironment,
@@ -844,14 +867,13 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
         runRef,
         projectId,
         createdBy,
-        plan as PlanRow,
+        plan,
         resolvedTitle,
         resolvedEnvironment,
         orderedCases,
         stepSnapshotRows.length,
         assigneeIds,
-        allPlanCaseIds,
-        selectedCaseIds,
+        wasPartialSelection,
       )
 
       await tx.insert(auditLog).values(auditRow)
@@ -916,9 +938,9 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
     resolvedTitle,
     resolvedEnvironment,
     projectId,
-    testPlanId,
-    plan.title,
-    plan.planRef,
+    testPlanId ?? null,
+    plan?.title ?? null,
+    plan?.planRef ?? null,
     createdBy,
   ).catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err)
@@ -958,7 +980,7 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
     stepCount,
     environment: resolvedEnvironment,
     createdAt: spawnedAt,
-    testPlanId,
+    testPlanId: testPlanId ?? null,
     projectId,
   }
 }

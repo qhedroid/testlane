@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useFresh } from '../data/FreshProvider'
 import { CreateProjectModal } from './CreateProjectModal'
 import { DEFAULT_PROJECT_KEY, projectPath, switchProjectPath } from '../lib/project-routes'
-import { cloneRealProject, DEMO_PROJECT_SLUG, RelayApiError } from '@/lib/relay/project-client'
+import { cloneRealProject, DEMO_PROJECT_SLUG, RelayApiError, resetRealWorkspace } from '@/lib/relay/project-client'
 
 export function ProjectSwitcher() {
   const {
@@ -22,6 +22,7 @@ export function ProjectSwitcher() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const [cloning, setCloning] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -92,6 +93,30 @@ export function ProjectSwitcher() {
   // data-layer refactor removed `addDemoProject()`/the local fallback
   // entirely. "Create Demo Project" deep-clones the real seeded DP project
   // via POST /api/projects/:id/clone (see ProjectCloneService.ts).
+  async function handleResetWorkspace() {
+    if (resetting) return
+    const confirmed = window.confirm(
+      'Reset the workspace to its default state?\n\nThis permanently deletes ALL projects and their data (including clones and anything you created), then restores: Demo Project (with demo data) + CTMS, eTMF, IAM, eFeasibility, GL (empty).\n\nThis cannot be undone.',
+    )
+    if (!confirmed) return
+    setResetting(true)
+    close()
+    try {
+      await resetRealWorkspace()
+      // Clear the local cache too (local-only fields reference deleted rows),
+      // then reload from scratch.
+      try {
+        localStorage.removeItem('relay-demo-v2')
+      } catch {
+        /* ignore */
+      }
+      window.location.assign('/')
+    } catch (err) {
+      window.alert(err instanceof RelayApiError ? err.message : 'Failed to reset the workspace.')
+      setResetting(false)
+    }
+  }
+
   async function handleCloneDemoProject() {
     if (!demoProject || cloning) return
     setCloning(true)
@@ -193,6 +218,16 @@ export function ProjectSwitcher() {
             <button type="button" className="proj-action muted" disabled title="Coming soon">
               <i className="ti ti-settings" />
               Project settings
+            </button>
+            <button
+              type="button"
+              className="proj-action"
+              onClick={handleResetWorkspace}
+              disabled={resetting}
+              title="Delete ALL projects and restore the default workspace (Demo Project + empty CTMS/eTMF/IAM/eFeasibility/GL). Global admins only."
+            >
+              <i className="ti ti-restore" />
+              {resetting ? 'Resetting…' : 'Reset workspace…'}
             </button>
           </div>
         ) : null}

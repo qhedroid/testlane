@@ -107,7 +107,7 @@ export interface RealCreateRunResult {
   title: string
   status: 'active'
   caseCount: number
-  testPlanId: string
+  testPlanId: string | null
   projectId: string
   createdAt: string
 }
@@ -132,12 +132,11 @@ export async function fetchRealRunDetail(
   )
 }
 
-/** Server createRun REQUIRES a real test plan (snapshot transaction hangs off
- * test_plan_cases) — ad-hoc/no-plan runs cannot be created server-side and
- * stay local-only (documented Phase 4 gap). */
+/** Create a run from a plan (testPlanId) or ad-hoc from an explicit case
+ * list (caseIds, no plan) — the server snapshots either way. */
 export async function createRealRun(body: {
   projectId: string
-  testPlanId: string
+  testPlanId?: string
   name?: string
   caseIds?: string[]
 }): Promise<RealCreateRunResult> {
@@ -261,7 +260,7 @@ export function realCreatedRunToLocal(
     projectId: created.projectId,
     runKey: created.runRef,
     name: created.title,
-    planId: created.testPlanId,
+    planId: created.testPlanId ?? undefined,
     planName: planTitle,
     createdAt: created.createdAt,
     sealed: false,

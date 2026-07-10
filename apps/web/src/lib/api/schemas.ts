@@ -4,7 +4,9 @@ const ulid = z.string().length(26, 'Expected a 26-character ULID')
 
 export const createRunBodySchema = z.object({
   projectId: ulid,
-  testPlanId: ulid,
+  // Optional since the ad-hoc-runs change — without it, caseIds is required
+  // (enforced by the service with a 400 PLAN_EMPTY).
+  testPlanId: ulid.optional(),
   name: z.string().trim().min(1).max(500).optional(),
   environment: z.string().trim().min(1).max(100).optional(),
   assigneeIds: z.array(ulid).optional(),
