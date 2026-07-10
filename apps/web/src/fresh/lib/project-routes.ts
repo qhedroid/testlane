@@ -11,7 +11,7 @@ import { planKeyToSlug, slugToPlanKey } from '../data/demo-model'
 // see ProjectRouteSync.tsx and FreshProvider.tsx's REGISTER_REAL_PROJECTS
 // mount effect (which also actively prefers the Demo Project when choosing
 // the default active project, not just this string fallback).
-export const DEFAULT_PROJECT_KEY = 'DEMO'
+export const DEFAULT_PROJECT_KEY = 'DP'
 
 export const MODULE_SLUGS = {
   dashboard: 'dashboard',

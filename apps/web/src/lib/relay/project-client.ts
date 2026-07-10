@@ -72,7 +72,7 @@ export async function createRealProject(input: CreateRealProjectInput): Promise<
 }
 
 /** The seeded Demo Project's slug — see packages/db/src/seed/demo-project-seed.ts. */
-export const DEMO_PROJECT_SLUG = 'demo'
+export const DEMO_PROJECT_SLUG = 'dp'
 
 /**
  * "Create Demo Project" — deep-clones the seeded Demo Project (folders,

@@ -114,7 +114,7 @@ export async function insertDemoProjectSeed(
   await db.insert(projects).values({
     id: projectId,
     orgId: ids.org,
-    slug: 'demo',
+    slug: 'dp',
     name: 'Demo Project',
     description:
       'Explorable reference project — populated with sample folders, test cases of varying complexity, plans, and runs at every lifecycle stage. Use "Create Demo Project" in the project switcher to get your own fresh copy.',

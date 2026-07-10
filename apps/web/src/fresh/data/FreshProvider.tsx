@@ -35,8 +35,7 @@ import {
   listProjects,
 } from './project-selectors'
 import { findRunById } from './run-utils'
-import { DEFAULT_SEED_PROJECT_KEY, formatCaseKey, formatDefectKey, formatPlanKey, formatRequirementKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
-import { appendClonedDemoProject, buildClonedDemoProjectMeta } from './demo-project-utils'
+import { formatCaseKey, formatDefectKey, formatPlanKey, formatRequirementKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
 import { fetchRealProjects } from '@/lib/relay/project-client'
 import {
   archiveRealCase,
@@ -88,6 +87,72 @@ function isDemoResetRequested(): boolean {
   return new URLSearchParams(window.location.search).get(DEMO_RESET_PARAM) === '1'
 }
 
+/**
+ * Data-layer refactor: the localStorage-only fallback project ("DP",
+ * client-side) is gone — the backend is the only source of projects. Persisted
+ * state from older versions may still carry local projects; strip them (and
+ * their entities) on load so the cache only ever mirrors real data plus
+ * local-only fields.
+ */
+function dropLocalProjects(state: DemoState): DemoState {
+  const localIds = Object.values(state.projectsById)
+    .filter((p) => p.source !== 'real')
+    .map((p) => p.id)
+  if (localIds.length === 0) return state
+  const gone = new Set(localIds)
+  const projectsById = Object.fromEntries(
+    Object.entries(state.projectsById).filter(([id]) => !gone.has(id)),
+  )
+  const remaining = Object.keys(projectsById)
+  return {
+    ...state,
+    projectsById,
+    activeProjectId: gone.has(state.activeProjectId)
+      ? (remaining[0] ?? '')
+      : state.activeProjectId,
+    folders: state.folders.filter((f) => !gone.has(f.projectId)),
+    cases: state.cases.filter((c) => !gone.has(c.projectId)),
+    runs: state.runs.filter((r) => !gone.has(r.projectId)),
+    plansById: Object.fromEntries(
+      Object.entries(state.plansById).filter(([, pl]) => !gone.has(pl.projectId)),
+    ),
+    requirementsById: Object.fromEntries(
+      Object.entries(state.requirementsById ?? {}).filter(([, r]) => !gone.has(r.projectId)),
+    ),
+    defectsById: Object.fromEntries(
+      Object.entries(state.defectsById ?? {}).filter(([, d]) => !gone.has(d.projectId)),
+    ),
+  }
+}
+
+/** Full-screen boot gate shown while no projects exist in state: connecting
+ * spinner until the real-project fetch resolves, then an error/retry panel if
+ * it resolved with nothing (API down, not seeded, or session problem). */
+function BootGate({ resolved }: { resolved: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 12, fontFamily: 'inherit', color: 'var(--text2, #444)' }}>
+      {resolved ? (
+        <>
+          <i className="ti ti-plug-connected-x" style={{ fontSize: 28 }} aria-hidden />
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Can&apos;t load projects</div>
+          <div style={{ fontSize: 13, maxWidth: 380, textAlign: 'center' }}>
+            The Relay API returned no projects. Check that the server and database are running
+            and seeded (<code>pnpm db:seed</code>), then retry.
+          </div>
+          <button type="button" className="btn btn-p" onClick={() => window.location.reload()}>
+            Retry
+          </button>
+        </>
+      ) : (
+        <>
+          <i className="ti ti-loader-2" style={{ fontSize: 26 }} aria-hidden />
+          <div style={{ fontSize: 13 }}>Connecting to Relay…</div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function runIsMutable(state: DemoState, runId: string): boolean {
   const run = findRunById(state, runId)
   return !!run && !run.sealed
@@ -109,7 +174,9 @@ function loadState(): DemoState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const migrated = migrateDemoState(mergeSeedRuns(JSON.parse(raw) as DemoState))
+      const migrated = dropLocalProjects(
+        migrateDemoState(mergeSeedRuns(JSON.parse(raw) as DemoState)),
+      )
       try {
         const next = JSON.stringify(migrated)
         if (next !== raw) localStorage.setItem(STORAGE_KEY, next)
@@ -133,22 +200,8 @@ function persistState(state: DemoState) {
   }
 }
 
-function makeDefaultProject(): Project {
-  return {
-    id: newId('proj'),
-    name: 'Demo Project',
-    key: DEFAULT_SEED_PROJECT_KEY,
-    description: 'Default demo workspace with seed cases, folders, and runs.',
-    seedTemplate: 'demo',
-    activeCustomFieldIds: [],
-    createdAt: new Date().toISOString(),
-  }
-}
-
 export type FreshAction =
   | AdminAction
-  | { type: 'ADD_DEMO_PROJECT' }
-  | { type: 'CREATE_PROJECT'; name: string; key: string; description?: string }
   | {
       type: 'REGISTER_REAL_PROJECTS'
       projects: { id: string; slug: string; name: string; description?: string | null }[]
@@ -265,33 +318,6 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
   switch (action.type) {
     case 'HYDRATE':
       return action.state
-    case 'ADD_DEMO_PROJECT': {
-      const meta = buildClonedDemoProjectMeta(state)
-      next = appendClonedDemoProject(state, meta)
-      break
-    }
-    case 'CREATE_PROJECT': {
-      const project: Project = {
-        id: newId('proj'),
-        name: action.name.trim() || 'Untitled project',
-        key: action.key.toUpperCase(),
-        description: action.description?.trim() || undefined,
-        activeCustomFieldIds: [],
-        createdAt: new Date().toISOString(),
-      }
-      next = {
-        ...state,
-        projectsById: { ...state.projectsById, [project.id]: project },
-        activeProjectId: project.id,
-        currentRunIdByProject: { ...state.currentRunIdByProject, [project.id]: '' },
-        nextCaseNumByProject: { ...state.nextCaseNumByProject, [project.id]: 1 },
-        nextRunNumByProject: { ...state.nextRunNumByProject, [project.id]: 1 },
-        nextPlanNumByProject: { ...state.nextPlanNumByProject, [project.id]: 1 },
-        nextRequirementNumByProject: { ...state.nextRequirementNumByProject, [project.id]: 1 },
-        nextDefectNumByProject: { ...state.nextDefectNumByProject, [project.id]: 1 },
-      }
-      break
-    }
     case 'UPDATE_PROJECT': {
       const existing = state.projectsById[action.projectId]
       if (!existing) return state
@@ -371,11 +397,11 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const remainingProjectIds = new Set(Object.keys(projectsById))
       let activeProjectId = state.activeProjectId
       if (!remainingProjectIds.has(activeProjectId)) {
-        // Prefer the seeded Demo Project (slug 'demo') as the default landing
-        // project — it's the richly-populated, explorable one — falling back
-        // to whichever real project happens to come first if it's missing
-        // for some reason (e.g. local DB not yet seeded with it).
-        const demo = incoming.find((p) => p.slug === 'demo')
+        // Prefer the seeded Demo Project (slug 'dp' — the app's "DP" project)
+        // as the default landing project — it's the richly-populated,
+        // explorable one — falling back to whichever real project happens to
+        // come first if it's missing (e.g. local DB not yet seeded with it).
+        const demo = incoming.find((p) => p.slug === 'dp')
         activeProjectId = demo?.id ?? incoming[0]?.id ?? activeProjectId
       }
 
@@ -452,15 +478,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         if (remaining.length > 0) {
           activeProjectId = remaining[0]
         } else {
-          const fallback = makeDefaultProject()
-          projectsById = { [fallback.id]: fallback }
-          activeProjectId = fallback.id
-          currentRunIdByProject = { [fallback.id]: '' }
-          nextCaseNumByProject = { [fallback.id]: 1 }
-          nextRunNumByProject = { [fallback.id]: 1 }
-          nextPlanNumByProject = { [fallback.id]: 1 }
-          nextRequirementNumByProject = { [fallback.id]: 1 }
-          nextDefectNumByProject = { [fallback.id]: 1 }
+          // No local fallback project any more (data-layer refactor) — an
+          // empty project set makes FreshProvider render its connect gate.
+          activeProjectId = ''
         }
       }
 
@@ -1143,7 +1163,6 @@ interface FreshContextValue {
   listActiveProjectRuns: () => DemoRun[]
   getProjectByKey: (key: string) => Project | undefined
   isProjectKeyUnique: (key: string, excludeProjectId?: string) => boolean
-  addDemoProject: () => { key: string; name: string }
   adminSettings: DemoState['adminSettings']
   currentActor: DemoState['adminSettings']['users'][number]
   setCurrentActor: (userId: string) => void
@@ -1168,7 +1187,6 @@ interface FreshContextValue {
   deleteAdminAutomationSource: (id: string) => void
   updateAdminAutomationField: (field: DemoState['adminSettings']['automation']['fields'][number]) => void
   deleteAdminAutomationField: (id: string) => void
-  createProject: (input: { name: string; key: string; description?: string }) => void
   updateProject: (projectId: string, patch: Partial<Pick<Project, 'name' | 'key' | 'description'>>) => void
   updateActiveCustomFields: (projectId: string, activeCustomFieldIds: string[]) => void
   updateProjectSettings: (projectId: string, projectSettings: ProjectSettings) => void
@@ -1938,12 +1956,6 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     [state, resolveRealIdAsync],
   )
 
-  const addDemoProject = useCallback(() => {
-    const meta = buildClonedDemoProjectMeta(state)
-    dispatch({ type: 'ADD_DEMO_PROJECT' })
-    return { key: meta.key, name: meta.name }
-  }, [state])
-
   const getRequirement = useCallback(
     (requirementId: string) => state.requirementsById?.[requirementId],
     [state.requirementsById],
@@ -2003,10 +2015,6 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const linkDefectToExecution = useCallback((runId: string, caseId: string, defectId: string) => {
     dispatch({ type: 'LINK_DEFECT_TO_EXECUTION', runId, caseId, defectId })
-  }, [])
-
-  const createProject = useCallback((input: { name: string; key: string; description?: string }) => {
-    dispatch({ type: 'CREATE_PROJECT', ...input })
   }, [])
 
   const saveAdminProfile = useCallback((payload: Partial<DemoState['adminSettings']['profile']>) => {
@@ -2232,8 +2240,6 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       deleteAdminAutomationSource,
       updateAdminAutomationField,
       deleteAdminAutomationField,
-      createProject,
-      addDemoProject,
       updateProject,
       updateActiveCustomFields,
       updateProjectSettings,
@@ -2308,8 +2314,6 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       deleteAdminAutomationSource,
       updateAdminAutomationField,
       deleteAdminAutomationField,
-      createProject,
-      addDemoProject,
       updateProject,
       updateActiveCustomFields,
       updateProjectSettings,
@@ -2348,7 +2352,13 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     ],
   )
 
-  return <FreshContext.Provider value={value}>{children}</FreshContext.Provider>
+  const hasProjects = Object.keys(state.projectsById).length > 0
+
+  return (
+    <FreshContext.Provider value={value}>
+      {hasProjects ? children : <BootGate resolved={realProjectsLoaded} />}
+    </FreshContext.Provider>
+  )
 }
 
 export function useFresh() {

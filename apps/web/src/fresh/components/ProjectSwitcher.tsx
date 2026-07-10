@@ -88,11 +88,10 @@ export function ProjectSwitcher() {
   }
 
   // "Add demo project" (clone-current-project, client-only) is gone — real
-  // projects (mvp-backend "wire everything" session) replaced the old
-  // client-only demo-project model. `addDemoProject()` itself is left in
-  // FreshProvider unused rather than deleted, in case this needs reverting.
-  // Its replacement, "Create Demo Project", deep-clones the real seeded Demo
-  // Project via POST /api/projects/:id/clone (see ProjectCloneService.ts).
+  // projects replaced the old client-only demo-project model, and the
+  // data-layer refactor removed `addDemoProject()`/the local fallback
+  // entirely. "Create Demo Project" deep-clones the real seeded DP project
+  // via POST /api/projects/:id/clone (see ProjectCloneService.ts).
   async function handleCloneDemoProject() {
     if (!demoProject || cloning) return
     setCloning(true)
