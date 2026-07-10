@@ -68,6 +68,17 @@ import {
   updateRealUser,
   type RealUser,
 } from '@/lib/relay/user-client'
+import {
+  createRealRun,
+  fetchRealRunDetail,
+  fetchRealRuns,
+  realCreatedRunToLocal,
+  realRunToLocal,
+  recordRealCaseResult,
+  runCaseIdMap,
+  toRealResultStatus,
+  updateRealRun,
+} from '@/lib/relay/run-client'
 
 const STORAGE_KEY = 'relay-demo-v2'
 const DEMO_RESET_PARAM = 'relay-reset'
@@ -159,8 +170,8 @@ export type FreshAction =
   | { type: 'SEAL_RUN'; runId: string }
   | { type: 'UNSEAL_RUN'; runId: string }
   | { type: 'SET_CURRENT_RUN'; runId: string }
-  | { type: 'CREATE_RUN'; name: string; description?: string; caseIds?: string[]; planId?: string; planName?: string }
-  | { type: 'DUPLICATE_RUN'; runId: string }
+  | { type: 'CREATE_RUN'; id?: string; name: string; description?: string; caseIds?: string[]; planId?: string; planName?: string }
+  | { type: 'DUPLICATE_RUN'; runId: string; newRunId?: string }
   | { type: 'ARCHIVE_RUN'; runId: string }
   | { type: 'DELETE_RUN'; runId: string }
   | { type: 'ADD_PLAN'; plan: TestPlan }
@@ -173,10 +184,11 @@ export type FreshAction =
   | { type: 'CREATE_DEFECT_AND_LINK'; defect: Defect; runId: string; caseId: string }
   | { type: 'LINK_DEFECT_TO_EXECUTION'; runId: string; caseId: string; defectId: string }
   | { type: 'HYDRATE'; state: DemoState }
-  | { type: 'SYNC_REAL_PROJECT_DATA'; projectId: string; folders: Folder[]; cases: Case[]; plans: TestPlan[] }
+  | { type: 'SYNC_REAL_PROJECT_DATA'; projectId: string; folders: Folder[]; cases: Case[]; plans: TestPlan[]; runs: DemoRun[] }
   | { type: 'RECONCILE_CASE'; tempId: string; case: Case }
   | { type: 'RECONCILE_FOLDER'; tempId: string; folder: Folder }
   | { type: 'RECONCILE_PLAN'; tempId: string; plan: TestPlan }
+  | { type: 'RECONCILE_RUN'; tempId: string; run: DemoRun }
   | { type: 'SYNC_REAL_USERS'; users: RealUser[] }
   | { type: 'RECONCILE_ADMIN_USER'; email: string; user: RealUser }
 
@@ -219,6 +231,28 @@ function mergeLocalOnlyPlanFields(serverPlan: TestPlan, localPlan: TestPlan | un
   if (!localPlan) return serverPlan
   const hasAuthoredQueries = localPlan.queries.some((q) => !q.id.startsWith('q-server-'))
   return hasAuthoredQueries ? { ...serverPlan, queries: localPlan.queries } : serverPlan
+}
+
+/**
+ * The runs equivalent (Phase 4): description, per-case stepResults, and the
+ * executionLog have no server storage — keep them from the local copy. The
+ * server wins on per-case status/comment/defects (same accepted stale-fetch
+ * race as cases); local execution entries for cases the server hasn't seen
+ * yet are retained.
+ */
+function mergeLocalOnlyRunFields(serverRun: DemoRun, localRun: DemoRun | undefined): DemoRun {
+  if (!localRun) return serverRun
+  const executions: Record<string, CaseExecution> = { ...localRun.executions }
+  for (const [caseId, serverEx] of Object.entries(serverRun.executions)) {
+    const localEx = localRun.executions[caseId]
+    executions[caseId] = { ...serverEx, stepResults: localEx?.stepResults ?? {} }
+  }
+  return {
+    ...serverRun,
+    description: localRun.description,
+    executions,
+    executionLog: localRun.executionLog ?? [],
+  }
 }
 
 function reducer(state: DemoState, action: FreshAction): DemoState {
@@ -641,7 +675,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const projectId = state.activeProjectId
       const num = getActiveProjectNextRunNum(state)
       const runKey = formatRunKey(num)
-      const id = newId('run')
+      // Callers that need the id up-front (real-API write-through reconcile)
+      // pass their own; everyone else keeps the reducer-generated one.
+      const id = action.id ?? newId('run')
       const caseOrder = action.caseIds ?? listActiveProjectTestCases(state).map((c) => c.id)
       const run: DemoRun = {
         id,
@@ -670,7 +706,7 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       const projectId = source.projectId
       const num = state.nextRunNumByProject[projectId] ?? 1
       const runKey = formatRunKey(num)
-      const id = newId('run')
+      const id = action.newRunId ?? newId('run')
       const copy: DemoRun = {
         ...source,
         id,
@@ -868,6 +904,20 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         mergeLocalOnlyPlanFields(serverPlan, localPlanById.get(serverPlan.id)),
       )
       const pendingPlans = localProjectPlans.filter((p) => !isRealId(p.id))
+      const localProjectRuns = state.runs.filter((r) => r.projectId === projectId)
+      const localRunById = new Map(localProjectRuns.map((r) => [r.id, r]))
+      const mergedRuns = action.runs.map((serverRun) =>
+        mergeLocalOnlyRunFields(serverRun, localRunById.get(serverRun.id)),
+      )
+      const pendingRuns = localProjectRuns.filter((r) => !isRealId(r.id))
+      // Clear a dangling current-run selection (e.g. a stale local run the
+      // server replaced) so the screen falls back to its own picker logic.
+      const validRunIds = new Set([...mergedRuns, ...pendingRuns].map((r) => r.id))
+      const currentForProject = state.currentRunIdByProject[projectId]
+      const currentRunIdByProject =
+        currentForProject && !validRunIds.has(currentForProject)
+          ? { ...state.currentRunIdByProject, [projectId]: '' }
+          : state.currentRunIdByProject
       next = {
         ...state,
         cases: [
@@ -887,6 +937,12 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           ...Object.fromEntries(mergedPlans.map((p) => [p.id, p])),
           ...Object.fromEntries(pendingPlans.map((p) => [p.id, p])),
         },
+        runs: [
+          ...state.runs.filter((r) => r.projectId !== projectId),
+          ...mergedRuns,
+          ...pendingRuns,
+        ],
+        currentRunIdByProject,
       }
       break
     }
@@ -929,6 +985,25 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         // valid planId reference (runs are still local-only).
         runs: state.runs.map((r) =>
           r.planId === action.tempId ? { ...r, planId: reconciled.id } : r,
+        ),
+      }
+      break
+    }
+    case 'RECONCILE_RUN': {
+      // A spawned/duplicated run's create POST resolved — swap the temp id
+      // and local 5-digit runKey for the server's real ULID and RUN-<nnnn>
+      // ref, keeping local-only fields (description, log, step ticks).
+      const local = state.runs.find((r) => r.id === action.tempId)
+      if (!local) return state
+      const reconciled = mergeLocalOnlyRunFields(action.run, local)
+      next = {
+        ...state,
+        runs: state.runs.map((r) => (r.id === action.tempId ? reconciled : r)),
+        currentRunIdByProject: Object.fromEntries(
+          Object.entries(state.currentRunIdByProject).map(([pid, rid]) => [
+            pid,
+            rid === action.tempId ? reconciled.id : rid,
+          ]),
         ),
       }
       break
@@ -1221,6 +1296,10 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   // ---------------------------------------------------------------------
   const idRemapRef = useRef(new Map<string, string>())
   const pendingRealCreatesRef = useRef(new Map<string, Promise<string>>())
+  // real run id -> { live testCaseId -> testRunCaseId } (Phase 4). The result
+  // endpoint is addressed by test_run_cases id, but DemoRun.executions is
+  // keyed by live case id — this map bridges the two for result writes.
+  const runCaseIdsRef = useRef(new Map<string, Record<string, string>>())
 
   const resolveRealId = useCallback((id: string): string | undefined => {
     if (isRealId(id)) return id
@@ -1259,19 +1338,29 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     if (!realProjectsLoaded || activeProjectSource !== 'real') return
     const projectId = state.activeProjectId
     let cancelled = false
-    Promise.all([fetchRealFolders(projectId), fetchRealCases(projectId), fetchRealPlans(projectId)])
-      .then(([realFolders, realCases, realPlans]) => {
+    Promise.all([
+      fetchRealFolders(projectId),
+      fetchRealCases(projectId),
+      fetchRealPlans(projectId),
+      fetchRealRuns(projectId),
+    ])
+      .then(([realFolders, realCases, realPlans, realRuns]) => {
         if (cancelled) return
+        const planTitleById = new Map(realPlans.map((p) => [p.id, p.title]))
+        for (const r of realRuns) {
+          runCaseIdsRef.current.set(r.id, runCaseIdMap(r.cases))
+        }
         dispatch({
           type: 'SYNC_REAL_PROJECT_DATA',
           projectId,
           folders: realFolders.map(realFolderToLocal),
           cases: realCases.map(realCaseToLocal),
           plans: realPlans.map(realPlanToLocal),
+          runs: realRuns.map((r) => realRunToLocal(r, projectId, planTitleById)),
         })
       })
       .catch((err) => {
-        console.error('[relay] Failed to sync cases/folders/plans from the real API:', err)
+        console.error('[relay] Failed to sync cases/folders/plans/runs from the real API:', err)
       })
     return () => {
       cancelled = true
@@ -1423,13 +1512,55 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     [state, resolveRealIdAsync],
   )
 
+  // Push a run lifecycle change (seal/reopen/archive) to the real API.
+  // The frontend's "delete run" also lands here as 'archived' — the server
+  // never hard-deletes runs.
+  const pushRunStatus = useCallback(
+    (projectId: string, localRunId: string, status: 'active' | 'sealed' | 'archived') => {
+      if (state.projectsById[projectId]?.source !== 'real') return
+      void (async () => {
+        const realId = await resolveRealIdAsync(localRunId)
+        if (!realId) {
+          console.warn('[relay] run status update: no real id for', localRunId, '— kept locally only')
+          return
+        }
+        await updateRealRun(realId, { projectId, status })
+      })().catch((err) => console.error('[relay] run status update API call failed:', err))
+    },
+    [state, resolveRealIdAsync],
+  )
+
   const updateExecution = useCallback(
     (caseId: string, patch: Partial<CaseExecution>) => {
       const runId = getActiveProjectCurrentRunId(state)
       if (!runId || !runIsMutable(state, runId)) return
       dispatch({ type: 'UPDATE_RUN_EXECUTION', runId, caseId, patch })
+
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source !== 'real') return
+      // Only status/result-notes have server storage; assignee/stepResults/
+      // defect edits via this path stay local-only (stepResults + the
+      // append-only executionLog have no backing tables — documented gap).
+      if (patch.status === undefined && patch.resultNotes === undefined) return
+      void (async () => {
+        const realRunId = await resolveRealIdAsync(runId)
+        const realCaseId = resolveRealId(caseId)
+        const testRunCaseId = realRunId && realCaseId
+          ? runCaseIdsRef.current.get(realRunId)?.[realCaseId]
+          : undefined
+        if (!realRunId || !testRunCaseId) {
+          console.warn('[relay] updateExecution: no run-case mapping — result kept locally only')
+          return
+        }
+        const currentStatus =
+          patch.status ?? findRunById(state, runId)?.executions[caseId]?.status ?? 'Not run'
+        await recordRealCaseResult(realRunId, testRunCaseId, {
+          status: toRealResultStatus(currentStatus),
+          ...(patch.resultNotes !== undefined ? { comment: patch.resultNotes ?? null } : {}),
+        })
+      })().catch((err) => console.error('[relay] updateExecution API call failed:', err))
     },
-    [state],
+    [state, resolveRealId, resolveRealIdAsync],
   )
 
   const addStepComment = useCallback(
@@ -1454,13 +1585,15 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     const runId = getActiveProjectCurrentRunId(state)
     if (!runId) return
     dispatch({ type: 'SEAL_RUN', runId })
-  }, [state])
+    pushRunStatus(state.activeProjectId, runId, 'sealed')
+  }, [state, pushRunStatus])
 
   const unsealRun = useCallback(() => {
     const runId = getActiveProjectCurrentRunId(state)
     if (!runId) return
     dispatch({ type: 'UNSEAL_RUN', runId })
-  }, [state])
+    pushRunStatus(state.activeProjectId, runId, 'active')
+  }, [state, pushRunStatus])
 
   const setCurrentRun = useCallback((runId: string) => {
     dispatch({ type: 'SET_CURRENT_RUN', runId })
@@ -1471,6 +1604,14 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       const num = getActiveProjectNextRunNum(state)
       const runKey = formatRunKey(num)
       dispatch({ type: 'CREATE_RUN', name: input.name, description: input.description, caseIds: input.caseIds })
+      // Ad-hoc (plan-less) runs cannot be created server-side — the server's
+      // createRun snapshot transaction requires a real test plan. Documented
+      // Phase 4 gap: these runs stay local-only.
+      if (state.projectsById[state.activeProjectId]?.source === 'real') {
+        console.warn(
+          '[relay] createRun: ad-hoc runs (no plan) have no server support yet — run kept locally only',
+        )
+      }
       return { runKey }
     },
     [state],
@@ -1482,25 +1623,86 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       if (!source) return null
       const num = state.nextRunNumByProject[source.projectId] ?? 1
       const runKey = formatRunKey(num)
-      dispatch({ type: 'DUPLICATE_RUN', runId })
+      const newRunId = newId('run')
+      dispatch({ type: 'DUPLICATE_RUN', runId, newRunId })
+
+      const projectId = source.projectId
+      if (state.projectsById[projectId]?.source === 'real') {
+        if (!source.planId) {
+          console.warn('[relay] duplicateRun: source run has no plan — copy kept locally only')
+        } else {
+          const sourcePlanId = source.planId
+          const copyName = `${source.name} (copy)`
+          const createPromise = (async () => {
+            const realPlanId = await resolveRealIdAsync(sourcePlanId)
+            if (!realPlanId) throw new Error(`no real id for plan ${sourcePlanId}`)
+            // Note: the server snapshots the plan's CURRENT case list, which
+            // can differ from the source run's frozen caseOrder — acceptable
+            // demo-scale divergence, documented in progress.md.
+            const created = await createRealRun({ projectId, testPlanId: realPlanId, name: copyName })
+            const detail = await fetchRealRunDetail(created.id, projectId)
+            runCaseIdsRef.current.set(
+              created.id,
+              Object.fromEntries(detail.testRunCases.map((c) => [c.originalTestCaseId, c.testRunCaseId])),
+            )
+            idRemapRef.current.set(newRunId, created.id)
+            idRemapRef.current.set(runKey, created.runRef) // URL runKey follow (RunsScreen)
+            dispatch({
+              type: 'RECONCILE_RUN',
+              tempId: newRunId,
+              run: realCreatedRunToLocal(created, detail, source.planName),
+            })
+            return created.id
+          })()
+          pendingRealCreatesRef.current.set(newRunId, createPromise)
+          createPromise.catch((err) => {
+            console.error('[relay] duplicateRun API call failed — copy kept locally only:', err)
+          })
+        }
+      }
       return { runKey }
     },
-    [state],
+    [state, resolveRealIdAsync],
   )
 
-  const archiveRun = useCallback((runId: string) => {
-    dispatch({ type: 'ARCHIVE_RUN', runId })
-  }, [])
+  const archiveRun = useCallback(
+    (runId: string) => {
+      dispatch({ type: 'ARCHIVE_RUN', runId })
+      pushRunStatus(state.activeProjectId, runId, 'archived')
+    },
+    [state.activeProjectId, pushRunStatus],
+  )
 
-  const deleteRun = useCallback((runId: string) => {
-    dispatch({ type: 'DELETE_RUN', runId })
-  }, [])
+  const deleteRun = useCallback(
+    (runId: string) => {
+      dispatch({ type: 'DELETE_RUN', runId })
+      // Server-side "delete" = archive (runs are never hard-deleted) — the
+      // local remove + server archive divergence matches deleteCase's.
+      pushRunStatus(state.activeProjectId, runId, 'archived')
+    },
+    [state.activeProjectId, pushRunStatus],
+  )
 
   const editRun = useCallback(
     (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => {
       dispatch({ type: 'UPDATE_RUN', runId, patch })
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source !== 'real') return
+      // name -> title, due -> dueDate; description/planName are local-only.
+      const body: { projectId: string; title?: string; dueDate?: string | null } = { projectId }
+      if (patch.name !== undefined && patch.name.trim().length > 0) body.title = patch.name
+      if ('due' in patch) body.dueDate = patch.due ?? null
+      if (body.title === undefined && !('dueDate' in body)) return
+      void (async () => {
+        const realId = await resolveRealIdAsync(runId)
+        if (!realId) {
+          console.warn('[relay] editRun: no real id for', runId, '— change kept locally only')
+          return
+        }
+        await updateRealRun(realId, body)
+      })().catch((err) => console.error('[relay] editRun API call failed:', err))
     },
-    [],
+    [state, resolveRealIdAsync],
   )
 
   const addCasesToRun = useCallback(
@@ -1691,17 +1893,49 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       const caseIds = resolvePlanCases(plan, projectCases, projectFolders).map((c) => c.id)
       const num = state.nextRunNumByProject[state.activeProjectId] ?? 1
       const runKey = formatRunKey(num)
+      const id = newId('run')
       dispatch({
         type: 'CREATE_RUN',
+        id,
         name,
         description,
         caseIds,
         planId,
         planName: plan.title,
       })
+
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source === 'real') {
+        const createPromise = (async () => {
+          const realPlanId = await resolveRealIdAsync(planId)
+          if (!realPlanId) throw new Error(`no real id for plan ${planId}`)
+          // caseIds deliberately omitted: the server snapshots the plan's full
+          // test_plan_cases, which our plan write-through keeps in sync with
+          // the resolved queries — passing locally-resolved ids would just
+          // risk temp-id gaps.
+          const created = await createRealRun({ projectId, testPlanId: realPlanId, name })
+          const detail = await fetchRealRunDetail(created.id, projectId)
+          runCaseIdsRef.current.set(
+            created.id,
+            Object.fromEntries(detail.testRunCases.map((c) => [c.originalTestCaseId, c.testRunCaseId])),
+          )
+          idRemapRef.current.set(id, created.id)
+          idRemapRef.current.set(runKey, created.runRef) // URL runKey follow (RunsScreen)
+          dispatch({
+            type: 'RECONCILE_RUN',
+            tempId: id,
+            run: realCreatedRunToLocal(created, detail, plan.title),
+          })
+          return created.id
+        })()
+        pendingRealCreatesRef.current.set(id, createPromise)
+        createPromise.catch((err) => {
+          console.error('[relay] spawnRunFromPlan API call failed — run kept locally only:', err)
+        })
+      }
       return { runKey }
     },
-    [state],
+    [state, resolveRealIdAsync],
   )
 
   const addDemoProject = useCallback(() => {

@@ -22,6 +22,29 @@ Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin,
 
 ---
 
+## 2026-07-09 — `mvp-backend` Runs wired (Phase 4 — final screen) + Shaun feedback round
+
+Shaun feedback (committed `48d3f0e`): all user emails → `(initial)(surname)@ti.com` across
+seed/admin/mock/README; every remaining fake-user reference purged from code and demo data
+(LEGACY_ASSIGNEE_MAP kept as the legacy-name→roster conversion shim); Admin panel's stale
+fake users fixed (SYNC_REAL_USERS drops unmatched locals except Demo User + pending
+invites); prototype banners removed everywhere, component deleted.
+
+**Phase 4 (Runs) built** — every fresh screen is now wired to the real backend. Auth:
+`resolveActor()` is session-first with dev-header fallback (keeps `pnpm api:validate` +
+`/runs/api` working; header overridden by session when logged in). Backend: `listProjectRuns`
+returns per-case results + defect refs; new `updateRun()` + `PATCH /api/runs/[runId]`
+(seal/reopen/archive/title/dueDate, audited). Frontend: new `run-client.ts`; runs join the
+provider sync (`RUN-<nnnn>` refs as runKey); write-through on result recording,
+spawn-from-plan, duplicate, seal/unseal/archive/delete, edit. Documented local-only gaps:
+ad-hoc plan-less runs, per-step results, executionLog, run description. `RunsScreen.tsx`
+changed only for URL runKey reconcile-follow — execution UX untouched, but the **full
+protected-UX regression is part of Shaun's local verification checklist** in
+`docs/claude/mvp-backend/progress.md` § "Phase 4 screen-wiring (Runs)". Sandbox-verified
+(tsc + build). Next: Shaun-local verification of all wired screens, then Phase 8.
+
+---
+
 ## 2026-07-09 — `mvp-backend` all-at-once screen-wiring (Plans, Audit, Admin users + glitch fixes)
 
 Same session, after Cases landed (`644f959`): Shaun asked to fix the two create-path UX

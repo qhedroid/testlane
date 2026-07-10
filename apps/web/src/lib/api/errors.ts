@@ -1,7 +1,9 @@
 import { ZodError } from 'zod'
 import {
   RunCreationError,
+  RunUpdateError,
   type RunCreationErrorCode,
+  type RunUpdateErrorCode,
 } from '@relay/db/services/test-run'
 import {
   UpdateCaseResultError,
@@ -46,6 +48,11 @@ const RUN_CREATION_STATUS: Record<RunCreationErrorCode, number> = {
   INVALID_ASSIGNEES: 400,
   DUPLICATE_RUN_REF: 409,
   REF_COUNTER_TIMEOUT: 503,
+  TRANSACTION_FAILED: 500,
+}
+
+const RUN_UPDATE_STATUS: Record<RunUpdateErrorCode, number> = {
+  RUN_NOT_FOUND: 404,
   TRANSACTION_FAILED: 500,
 }
 
@@ -129,6 +136,11 @@ export function handleRouteError(err: unknown) {
 
   if (err instanceof RunCreationError) {
     const status = RUN_CREATION_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof RunUpdateError) {
+    const status = RUN_UPDATE_STATUS[err.code] ?? 500
     return jsonError(err.code, err.message, status)
   }
 

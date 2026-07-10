@@ -115,6 +115,7 @@ export function RunsScreen() {
     unsealRun,
     duplicateRun,
     deleteRun,
+    resolveEntityId,
   } = useFresh()
   const { openShortcuts } = useFreshUI()
   const projectHref = useProjectHref()
@@ -158,9 +159,18 @@ export function RunsScreen() {
   useEffect(() => {
     if (projectMismatch) return
     if (runKeyFromUrl && !currentRun) {
+      // Follow optimistic-create key reconciliation (real projects): the URL
+      // may still hold the temp 5-digit key of a run whose create just
+      // resolved to its real RUN-<nnnn> ref (FreshProvider's RECONCILE_RUN).
+      // Data-plumbing only — no execution-UX behaviour change.
+      const mapped = resolveEntityId(runKeyFromUrl)
+      if (mapped !== runKeyFromUrl && activeRuns.some((r) => r.runKey === mapped)) {
+        router.replace(testRunPath(activeProject.key, mapped))
+        return
+      }
       router.replace(testRunPath(activeProject.key))
     }
-  }, [projectMismatch, runKeyFromUrl, currentRun, activeProject.key, router])
+  }, [projectMismatch, runKeyFromUrl, currentRun, activeRuns, activeProject.key, router, resolveEntityId])
 
   useEffect(() => {
     if (projectMismatch) return

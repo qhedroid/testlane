@@ -4,10 +4,10 @@
  *
  * Responsible for:
  *   - Spawning test runs from test plans (createRun)
- *   - Run sealing and reopen (separate methods, not implemented here)
- *   - Run metadata updates (separate methods, not implemented here)
- *
- * Only createRun() is fully implemented in this phase.
+ *   - Run sealing / reopen / archive + metadata updates (updateRun — added
+ *     in Phase 4 screen-wiring; a deliberately small status/title/due patch,
+ *     not a general-purpose editor. Case membership is immutable after spawn
+ *     by design — see test_run_cases snapshot invariants in schema.ts.)
  *
  * Dependencies (monorepo @relay/db package):
  *   db             — packages/db/src/index.ts
@@ -39,7 +39,9 @@ import {
 import { db } from '../src/index'
 import { logger } from '../src/logger'
 import { opensearchClient } from '../src/opensearch/client'
+import { assertMinProjectRole } from '../src/rbac/assert-min-role'
 import { createId } from '../src/utils/id'
+import { recordAudit } from './AuditService'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -958,6 +960,172 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
     createdAt: spawnedAt,
     testPlanId,
     projectId,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// updateRun — run lifecycle (seal / reopen / archive) + small metadata patch
+// ---------------------------------------------------------------------------
+
+export type RunUpdateErrorCode = 'RUN_NOT_FOUND' | 'TRANSACTION_FAILED'
+
+export class RunUpdateError extends Error {
+  constructor(
+    message: string,
+    public readonly code: RunUpdateErrorCode,
+  ) {
+    super(message)
+    this.name = 'RunUpdateError'
+  }
+}
+
+export interface UpdateRunInput {
+  projectId: string
+  runId: string
+  actorId: string
+  /**
+   * Lifecycle transition. 'sealed' stamps sealedAt/sealedBy; 'active'
+   * clears them (reopen); 'archived' hides the run from default lists
+   * (the archive/"delete" path — runs are never hard-deleted, matching the
+   * schema's soft-delete invariants). No transition-graph validation beyond
+   * that: this is a demo-scale admin operation.
+   */
+  status?: 'active' | 'sealed' | 'archived'
+  title?: string
+  dueDate?: Date | null
+}
+
+export interface UpdateRunResult {
+  id: string
+  runRef: string
+  projectId: string
+  status: 'active' | 'stalled' | 'sealed' | 'archived'
+  title: string
+  dueDate: Date | null
+  sealedAt: Date | null
+  sealedBy: string | null
+}
+
+/**
+ * Patch a run's lifecycle status and/or small metadata fields.
+ *
+ * RBAC: admin or above (same level as spawning — run lifecycle management),
+ * via the shared assertMinProjectRole() (InsufficientPermissionsError is
+ * handled generically by the route error mapper). Audit action is
+ * 'run.sealed' / 'run.reopened' / 'run.archived' for transitions,
+ * 'run.updated' for metadata-only patches — recorded in the same
+ * transaction as the update.
+ */
+export async function updateRun(input: UpdateRunInput): Promise<UpdateRunResult> {
+  const { projectId, runId, actorId } = input
+
+  await assertMinProjectRole(actorId, projectId, 'admin')
+
+  const [run] = await db
+    .select({
+      id: testRuns.id,
+      runRef: testRuns.runRef,
+      status: testRuns.status,
+      title: testRuns.title,
+      dueDate: testRuns.dueDate,
+      sealedAt: testRuns.sealedAt,
+      sealedBy: testRuns.sealedBy,
+    })
+    .from(testRuns)
+    .where(and(eq(testRuns.id, runId), eq(testRuns.projectId, projectId)))
+    .limit(1)
+
+  if (!run) {
+    throw new RunUpdateError(`Test run not found: ${runId}`, 'RUN_NOT_FOUND')
+  }
+
+  const set: Partial<{
+    status: 'active' | 'stalled' | 'sealed' | 'archived'
+    title: string
+    dueDate: Date | null
+    sealedAt: Date | null
+    sealedBy: string | null
+  }> = {}
+
+  if (input.title !== undefined && input.title !== run.title) set.title = input.title
+  if (input.dueDate !== undefined) set.dueDate = input.dueDate
+
+  let auditAction = 'run.updated'
+  if (input.status !== undefined && input.status !== run.status) {
+    set.status = input.status
+    if (input.status === 'sealed') {
+      set.sealedAt = new Date()
+      set.sealedBy = actorId
+      auditAction = 'run.sealed'
+    } else if (input.status === 'active') {
+      set.sealedAt = null
+      set.sealedBy = null
+      auditAction = run.status === 'sealed' ? 'run.reopened' : 'run.updated'
+    } else {
+      auditAction = 'run.archived'
+    }
+  }
+
+  if (Object.keys(set).length === 0) {
+    // Nothing to change — return current state, no write, no audit noise.
+    return {
+      id: run.id,
+      runRef: run.runRef,
+      projectId,
+      status: run.status,
+      title: run.title,
+      dueDate: run.dueDate ?? null,
+      sealedAt: run.sealedAt ?? null,
+      sealedBy: run.sealedBy ?? null,
+    }
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx.update(testRuns).set(set).where(eq(testRuns.id, runId))
+
+      await recordAudit(
+        {
+          projectId,
+          entityType: 'test_run',
+          entityId: runId,
+          action: auditAction,
+          actorId,
+          oldValue: {
+            status: run.status,
+            title: run.title,
+            dueDate: run.dueDate ?? null,
+          },
+          newValue: {
+            status: set.status ?? run.status,
+            title: set.title ?? run.title,
+            dueDate: set.dueDate !== undefined ? set.dueDate : (run.dueDate ?? null),
+          },
+          metadata: { runRef: run.runRef },
+        },
+        tx,
+      )
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error('[TestRunService] updateRun transaction failed', {
+      projectId,
+      runId,
+      actorId,
+      error: message,
+    })
+    throw new RunUpdateError(`Run update transaction failed: ${message}`, 'TRANSACTION_FAILED')
+  }
+
+  return {
+    id: run.id,
+    runRef: run.runRef,
+    projectId,
+    status: set.status ?? run.status,
+    title: set.title ?? run.title,
+    dueDate: set.dueDate !== undefined ? set.dueDate : (run.dueDate ?? null),
+    sealedAt: set.sealedAt !== undefined ? set.sealedAt : (run.sealedAt ?? null),
+    sealedBy: set.sealedBy !== undefined ? set.sealedBy : (run.sealedBy ?? null),
   }
 }
 

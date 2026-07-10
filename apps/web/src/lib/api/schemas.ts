@@ -43,6 +43,18 @@ export const getRunDetailQuerySchema = z.object({
 
 export type GetRunDetailQuery = z.infer<typeof getRunDetailQuerySchema>
 
+// PATCH /api/runs/[runId] — Phase 4 (mvp-backend). projectId in the body per
+// the /api/runs/* family's flat convention (not a nested route segment).
+// 'stalled' is deliberately not settable from the UI.
+export const updateRunBodySchema = z.object({
+  projectId: ulid,
+  status: z.enum(['active', 'sealed', 'archived']).optional(),
+  title: z.string().trim().min(1).max(500).optional(),
+  dueDate: z.coerce.date().nullable().optional(),
+})
+
+export type UpdateRunBody = z.infer<typeof updateRunBodySchema>
+
 const globalRole = z.enum(['super_admin', 'admin', 'contributor', 'viewer'])
 const projectRoleValue = z.enum(['admin', 'contributor', 'viewer'])
 

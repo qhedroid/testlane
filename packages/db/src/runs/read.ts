@@ -1,5 +1,5 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
-import { testRunCases, testRuns, users, type TestRun } from '../../schema'
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { runDefectLinks, testRunCases, testRuns, users, type TestRun } from '../../schema'
 import {
   assertMinProjectRole,
   InsufficientPermissionsError,
@@ -28,14 +28,40 @@ export interface ListProjectRunsInput {
   limit?: number
 }
 
+/**
+ * Per-case result row included in run list responses (Phase 4 screen-wiring).
+ * Mirrors what the fresh RunsScreen needs to build its local `executions`
+ * map: live test case id, current result, and active defect refs. Snapshot
+ * display fields (title/priority/…) are deliberately NOT included here — the
+ * fresh screens render live case data from their own synced case list; the
+ * full snapshot remains available via getRunDetail().
+ */
+export interface RunCaseResultItem {
+  testRunCaseId: string
+  testCaseId: string
+  status: (typeof testRunCases.$inferSelect)['status']
+  comment: string | null
+  assignedTo: string | null
+  executedBy: string | null
+  executedAt: Date | null
+  position: number
+  /** Active (not-unlinked) external defect refs, e.g. "JIRA-4471". */
+  defectRefs: string[]
+}
+
 export interface RunListItem {
   id: string
   runRef: string
   title: string
   status: RunStatus
   environment: string | null
+  testPlanId: string | null
+  dueDate: Date | null
   createdAt: Date
+  updatedAt: Date
   caseCounts: CaseCountSummary
+  /** Ordered by position. Added Phase 4 (additive — pre-existing /runs/api consumers ignore it). */
+  cases: RunCaseResultItem[]
 }
 
 export interface RunDetailCaseItem {
@@ -113,58 +139,6 @@ async function assertViewerAccess(actorId: string, projectId: string): Promise<v
   }
 }
 
-function countsFromAggregate(row: {
-  total: number
-  passed: number
-  failed: number
-  blocked: number
-  skipped: number
-  notRun: number
-}): CaseCountSummary {
-  return {
-    total: row.total,
-    passed: row.passed,
-    failed: row.failed,
-    blocked: row.blocked,
-    skipped: row.skipped,
-    notRun: row.notRun,
-  }
-}
-
-async function loadCaseCountsByRunId(
-  runIds: string[],
-): Promise<Map<string, CaseCountSummary>> {
-  if (runIds.length === 0) return new Map()
-
-  const rows = await db
-    .select({
-      testRunId: testRunCases.testRunId,
-      total: sql<number>`count(*)`.mapWith(Number),
-      passed: sql<number>`coalesce(sum(case when ${testRunCases.status} = 'pass' then 1 else 0 end), 0)`.mapWith(
-        Number,
-      ),
-      failed: sql<number>`coalesce(sum(case when ${testRunCases.status} = 'fail' then 1 else 0 end), 0)`.mapWith(
-        Number,
-      ),
-      blocked: sql<number>`coalesce(sum(case when ${testRunCases.status} = 'blocked' then 1 else 0 end), 0)`.mapWith(
-        Number,
-      ),
-      skipped: sql<number>`coalesce(sum(case when ${testRunCases.status} = 'skip' then 1 else 0 end), 0)`.mapWith(
-        Number,
-      ),
-      notRun: sql<number>`coalesce(sum(case when ${testRunCases.status} = 'not_run' then 1 else 0 end), 0)`.mapWith(
-        Number,
-      ),
-    })
-    .from(testRunCases)
-    .where(inArray(testRunCases.testRunId, runIds))
-    .groupBy(testRunCases.testRunId)
-
-  return new Map(
-    rows.map((r) => [r.testRunId, countsFromAggregate(r)]),
-  )
-}
-
 function countsFromCaseRows(
   cases: Array<{ status: (typeof testRunCases.$inferSelect)['status'] }>,
 ): CaseCountSummary {
@@ -215,19 +189,90 @@ export async function listProjectRuns(
       title: testRuns.title,
       status: testRuns.status,
       environment: testRuns.environment,
+      testPlanId: testRuns.testPlanId,
+      dueDate: testRuns.dueDate,
       createdAt: testRuns.createdAt,
+      updatedAt: testRuns.updatedAt,
     })
     .from(testRuns)
     .where(and(...conditions))
     .orderBy(desc(testRuns.createdAt))
     .limit(limit)
 
-  const countMap = await loadCaseCountsByRunId(runs.map((r) => r.id))
+  const runIds = runs.map((r) => r.id)
 
-  return runs.map((run) => ({
-    ...run,
-    caseCounts: countMap.get(run.id) ?? { ...EMPTY_COUNTS },
-  }))
+  // Phase 4: one batch query for every listed run's case results (no N+1),
+  // plus one for active defect links. caseCounts are computed from the same
+  // rows (replaces the old aggregate-only query — same total query count).
+  const caseRows =
+    runIds.length === 0
+      ? []
+      : await db
+          .select({
+            testRunCaseId: testRunCases.id,
+            testRunId: testRunCases.testRunId,
+            testCaseId: testRunCases.testCaseId,
+            status: testRunCases.status,
+            comment: testRunCases.comment,
+            assignedTo: testRunCases.assignedTo,
+            executedBy: testRunCases.executedBy,
+            executedAt: testRunCases.executedAt,
+            position: testRunCases.position,
+          })
+          .from(testRunCases)
+          .where(inArray(testRunCases.testRunId, runIds))
+          .orderBy(testRunCases.testRunId, testRunCases.position)
+
+  const defectRefsByRunCaseId = new Map<string, string[]>()
+  if (caseRows.length > 0) {
+    const defectRows = await db
+      .select({
+        testRunCaseId: runDefectLinks.testRunCaseId,
+        defectRef: runDefectLinks.defectRef,
+      })
+      .from(runDefectLinks)
+      .where(
+        and(
+          inArray(
+            runDefectLinks.testRunCaseId,
+            caseRows.map((c) => c.testRunCaseId),
+          ),
+          isNull(runDefectLinks.unlinkedAt),
+        ),
+      )
+    for (const d of defectRows) {
+      const existing = defectRefsByRunCaseId.get(d.testRunCaseId)
+      if (existing) existing.push(d.defectRef)
+      else defectRefsByRunCaseId.set(d.testRunCaseId, [d.defectRef])
+    }
+  }
+
+  const casesByRunId = new Map<string, RunCaseResultItem[]>()
+  for (const c of caseRows) {
+    const item: RunCaseResultItem = {
+      testRunCaseId: c.testRunCaseId,
+      testCaseId: c.testCaseId,
+      status: c.status,
+      comment: c.comment,
+      assignedTo: c.assignedTo,
+      executedBy: c.executedBy,
+      executedAt: c.executedAt,
+      position: c.position,
+      defectRefs: defectRefsByRunCaseId.get(c.testRunCaseId) ?? [],
+    }
+    const existing = casesByRunId.get(c.testRunId)
+    if (existing) existing.push(item)
+    else casesByRunId.set(c.testRunId, [item])
+  }
+
+  return runs.map((run) => {
+    const cases = casesByRunId.get(run.id) ?? []
+    return {
+      ...run,
+      caseCounts: cases.length > 0 ? countsFromCaseRows(cases) : { ...EMPTY_COUNTS },
+      cases,
+    }
+  })
 }
 
 // ---------------------------------------------------------------------------

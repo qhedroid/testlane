@@ -217,7 +217,7 @@ against a live DB — needs `pnpm db:seed` run locally, see below):
 | 1 — Foundation (auth/RBAC/User+Project API) | **Code complete, committed (`b430e50`, `4e5ad45`).** Shaun-local verification (real DB, real login flow, QA report) still needed before treating the phase as fully done. |
 | 2 — Test Cases backend | **Backend complete AND screen-wiring complete, Claude-sandbox verified** (`TestCaseService.ts` + `/api/projects/[projectId]/cases/*` + `/api/projects/[projectId]/folders/*` committed in `7fc415e`; screen-wiring built this session via `case-client.ts` + `FreshProvider` sync/write-through — see "Phase 2 screen-wiring (Cases) — built" below, **not yet committed**). Shaun-local verification still needed (checklist in that section). |
 | 3 — Test Plans backend | **Backend AND screen-wiring complete, Claude-sandbox verified.** Backend committed in `7fc415e`; wiring built in the all-at-once pass (see section below): `plan-client.ts` + provider sync/write-through; GAP-01 resolved as "queries stay local-only, resolved case list pushed via `setPlanCases` on every queries change". Shaun-local verification still needed. |
-| 4 — Test Runs wiring | **Deliberately skipped this session, not just deferred like the others.** Unlike Phases 2/3/5/6 (new, currently-unused routes), `/api/runs/*` is already live and depended on by `/runs/api` + `pnpm api:validate` — swapping its auth source (dev header → real session) without also updating `RunsScreen.tsx`/`/runs/api`'s caller in the same atomic change would actively regress working, already-shipped functionality, not just leave something unwired. Needs to happen as one verified change together with the protected three-pane execution UX, not as a backend-only slice. **No code written for this phase.** |
+| 4 — Test Runs wiring | **BUILT (2026-07-09, final screen-wiring pass) — Claude-sandbox verified, not yet committed at time of writing.** Auth swap: `resolveActor()` now tries the real NextAuth session FIRST and falls back to the `x-relay-user-id` dev header (kept for `pnpm api:validate` + cookie-less scripting; `/api/runs/*` stays middleware-exempt). Backend: `listProjectRuns` returns per-case results + active defect refs per run (no N+1; caseCounts computed from the same rows); new `updateRun()` (seal/reopen/archive/title/dueDate, audited) + `PATCH /api/runs/[runId]`. Frontend: new `run-client.ts`; runs join the provider sync (server runs ↔ `DemoRun`, `RUN-<nnnn>` refs as runKey); write-through on `updateExecution` (result POST via a testCaseId→testRunCaseId map), `spawnRunFromPlan`/`duplicateRun` (real create + RECONCILE_RUN), seal/unseal/archive/delete (PATCH status; "delete" = server archive), `editRun` (title/dueDate). **Documented gaps (local-only):** ad-hoc plan-less runs (server createRun requires a plan), per-step results, executionLog/step comments/assignee-per-case edits, run description. `RunsScreen.tsx` changed only for the URL runKey reconcile-follow (data-plumbing; zero execution-UX change). Shaun-local verification + full protected-UX regression still needed — see the Phase 4 section below. |
 | 5 — Dashboard backend | **Backend committed (`7fc415e`); screen-wiring resolved as a deliberate NO-OP** (all-at-once pass): under the reducer-sync architecture, `DashboardScreen.tsx` computes everything client-side from `FreshProvider` state, which now syncs real cases/folders/plans — so Dashboard already shows real case data with zero changes. Its run-based widgets light up when Runs syncs (Phase 4). Consequence, flagged not hidden: `DashboardService.ts` + `/api/projects/[projectId]/dashboard` are currently **unused by the frontend** — kept as reference/future-API surface, or delete in a cleanup pass. |
 | 6 — Defects/Audit backend | **Backend committed (`7fc415e`). Audit screen-wiring complete** (all-at-once pass): `AuditScreen.tsx` fetches the real `/api/projects/[projectId]/audit` log for real projects via `audit-client.ts` (screen-level fetch — deliberate exception to reducer-sync, see that file's header), static demo events kept for local projects. **Defects screen-wiring deferred to the Runs pass (Phase 4), deliberately:** the only real defect data is `run_defect_links`, which hangs off `test_run_cases` — unusable until runs themselves sync; `DefectsScreen.tsx`'s local defect entities stay as-is until then. Shaun-local verification of Audit still needed. |
 | 7 — Admin panel unification | **Users wiring complete** (all-at-once pass): `user-client.ts` + provider `SYNC_REAL_USERS`/`RECONCILE_ADMIN_USER` + write-through on invite/update/role-change/disable/reactivate, with the granular Admin roles compressed onto `globalRole` (same mapping as the seed overhaul — the granular role itself stays local-only). `/admin/roles` role *definitions* stay entirely local — no backing table, same principle as every other exclusion. Requires a global-admin session for the user sync (server 403s otherwise; panel falls back to the local mock). Shaun-local verification still needed. |
@@ -606,6 +606,58 @@ clean (29/29 pages). Note: a full web `tsc --noEmit` run takes >45s cold in-sand
 - [ ] Dashboard: renders real case/folder-derived widgets for the Demo Project; run widgets
       still show local-run data only (expected until Phase 4).
 
+## Phase 4 screen-wiring (Runs) — built (2026-07-09, final pass)
+
+Started by a delegated agent (cut off mid-way by an org usage limit after completing the
+DB layer + auth swap), finished directly. Files:
+
+- `apps/web/src/lib/api/auth.ts` — session-first auth for `/api/runs/*` with dev-header
+  fallback (see file header for the precedence note re /runs/api in a logged-in browser).
+- `packages/db/src/runs/read.ts` — `listProjectRuns` now returns `cases: RunCaseResultItem[]`
+  per run (live testCaseId, testRunCaseId, status, comment, assignee/executor, active
+  defectRefs) — replaces the old aggregate-count query at the same total query count.
+- `packages/db/services/TestRunService.ts` — new `updateRun()` + `RunUpdateError`
+  (seal stamps sealedAt/By, reopen clears them, archive soft-hides; audited as
+  run.sealed/run.reopened/run.archived/run.updated).
+- `apps/web/src/app/api/runs/[runId]/route.ts` — new PATCH; `updateRunBodySchema` in
+  schemas.ts; `RunUpdateError` mapping in errors.ts.
+- `apps/web/src/lib/relay/run-client.ts` (new) — fetch/create/update/record-result +
+  `realRunToLocal`/`realCreatedRunToLocal` adapters (`RUN-<nnnn>` refs as runKey — run URLs
+  pass keys through verbatim, no slug fix needed; executions keyed by live case id).
+- `FreshProvider.tsx` — runs in SYNC_REAL_PROJECT_DATA (merge keeps local description/
+  executionLog/stepResults; dangling current-run selection cleared), `RECONCILE_RUN`,
+  `runCaseIdsRef` (testCaseId→testRunCaseId per run, for result writes), write-through on
+  updateExecution/spawnRunFromPlan/duplicateRun/seal/unseal/archive/delete/editRun;
+  CREATE_RUN/DUPLICATE_RUN accept caller-supplied ids for reconcile.
+- `RunsScreen.tsx` — ONE additive change: the not-found redirect follows runKey
+  reconciliation via `resolveEntityId` (mirrors PlansScreen). No execution-UX changes.
+
+**Documented gaps (all local-only, by design):** ad-hoc plan-less runs (server createRun
+hard-requires a test plan — CasesScreen's "create run from selection" stays local);
+per-step results + step comments; executionLog (no append-only transition table);
+per-case assignee edits; run description. Duplicate-run divergence: the server snapshots
+the plan's CURRENT case list, the local copy freezes the source's caseOrder.
+
+**Verification — Claude sandbox (done):** tsc clean both packages; build clean (29/29).
+
+**Verification — Shaun local (THE gate — includes the full protected-UX regression):**
+
+- [ ] `/DEMO/testruns`: all 4 seeded runs appear (2 sealed historical, 1 half-executed
+      active, 1 fresh) with real `RUN-<nnnn>` keys, statuses, result bars, defect chips.
+- [ ] **Protected UX regression (critical, run in full):** P/F/B/S keys, arrow-key nav,
+      auto-advance, detail open/close, status filter, run picker — all unchanged.
+- [ ] Record results (P/F/B/S) in the active run → hard reload → persisted (check
+      `test_run_cases.status`/`executed_by`/`executed_at` and audit rows).
+- [ ] Spawn a run from a plan → URL follows the RUN-<nnnn> key flip; run exists in DB
+      with snapshotted cases; execute a case in it.
+- [ ] Seal → reload → still sealed (DB `status='sealed'`); reopen works; archive/delete
+      → `status='archived'` in DB, gone from picker.
+- [ ] `/runs/api` workspace still works logged-in (session auth wins) — note its dev-actor
+      header picker is now overridden by the real session user when logged in.
+- [ ] `pnpm api:validate` still passes (header fallback).
+- [ ] Dashboard run widgets now show the seeded Demo runs' data.
+- [ ] Defect chips on the two seeded failing cases render (from run_defect_links).
+
 ## Phase 3 — Test Plans backend: detailed checklist
 
 Primary files per `plan.md`: `packages/db/services/TestPlanService.ts`,
@@ -774,9 +826,11 @@ phase is actually picked up, after screen-wiring.
   the hydration/double-redirect fixes are all committed (`7fc415e`, `2403930`, `119850a`,
   `4ca5bfa`, `47caed6`).
 - (Resolved) Cases screen-wiring committed (`644f959`).
-- **Remaining screen-wiring: Runs only** (protected UX, atomic `/api/runs/*` auth swap —
-  Phase 4), which also unlocks Defects and Dashboard's run-based widgets. Everything else
-  (Cases, Plans, Audit, Admin users, Dashboard-as-no-op) is wired as of the all-at-once pass.
+- (Resolved) Runs wired (Phase 4, final pass — see its section above). **Every screen is now
+  wired**; remaining branch work is Shaun-local verification of everything, then Phase 8
+  (seed check, regression sweep, PR description). DefectsScreen's first-class defect entities
+  remain local-only (no defects table — permanent branch exclusion), though run defect links
+  now sync into executions.
 - **Shaun-local verification of ALL wired screens is the immediate next gate** — combined
   checklist in "Screen-wiring: the all-at-once pass" above. Phases 1/2/3/6/7 all carry
   unchecked "Shaun local" lines until then.
@@ -847,3 +901,17 @@ phase is actually picked up, after screen-wiring.
   build clean. Runs (Phase 4) is now the only remaining screen-wiring. Git-lock note: the FUSE
   mount can't unlink `.git/HEAD.lock`/`tmp_obj_*` files during commits — clean them via the
   file-delete permission tool after committing, or the next commit fails.
+- **2026-07-09 (Shaun feedback + Runs, final pass):** Per Shaun's feedback: seed/admin/mock
+  emails → `(initial)(surname)@ti.com`; purged all remaining fake-user references from code
+  and demo data (team-users.ts's LEGACY_ASSIGNEE_MAP kept deliberately — it's the shim that
+  *converts* legacy names to the 8-name roster); SYNC_REAL_USERS now drops stale unmatched
+  local Admin users (fixes fake users lingering from old localStorage; Demo User + in-flight
+  invites survive); prototype banner removed from all 13 screens + component deleted
+  (committed `48d3f0e`). Assessments delivered in-chat: `?relay-reset=1` is localStorage-only
+  (no API reset endpoint exists) and stays useful as a local-cache reset; DP = offline-only
+  localStorage fallback project vs DEMO = the real seeded DB project (never coexist once the
+  backend registers; recommend retiring DP in a later cleanup); tab-load slowness = Next.js
+  dev-mode on-demand compilation + hydrate/sync waterfall (see chat/production-build advice).
+  Then **Phase 4 (Runs) built** — see its section above. An org usage limit cut off the
+  delegated agent mid-way (after read.ts/updateRun/auth.ts); finished directly in the main
+  session. Claude-sandbox verified: tsc clean both packages, build clean (29/29).
