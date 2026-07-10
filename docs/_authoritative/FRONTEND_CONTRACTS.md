@@ -210,7 +210,36 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 `ProjectSummary`: `{ id, slug, name, description, status }`. `super_admin`/`admin` (global) see every active project in the org; `contributor`/`viewer` see only projects they hold a `project_roles` row for.
 
-**Not yet wired to any fresh screen** — `ProjectSwitcher.tsx` still reads a static/local project list (deferred to a later phase, once there's more than one backend-wired module to switch between meaningfully).
+**Wired** — `FreshProvider` registers real projects on mount (`REGISTER_REAL_PROJECTS`); `ProjectSwitcher.tsx` shows them and offers "Create Demo Project" (`POST /api/projects/:id/clone`, any active user).
+
+---
+
+## Screen-wiring architecture + module APIs (`mvp-backend` Phases 2–7)
+
+Screens don't fetch data themselves. `FreshProvider` syncs the active real project's data into reducer state and write actions call the API optimistically (local dispatch first, background call, temp-id → real-id reconcile). Clients + adapters live in `apps/web/src/lib/relay/{case,plan,run,audit,user}-client.ts` — each file's header documents its adapter decisions. Fields with no DB tables stay localStorage-only per case/plan/run (the "hybrid rule" — see `AS_BUILT_SNAPSHOT.md`).
+
+**Cases + Folders** (session auth, nested routes):
+- `GET/POST /api/projects/:projectId/cases` — list returns full `CaseDetail[]` (steps/tags/preconditions/description; unpaginated, archived excluded); create generates `TC-<n>` refs.
+- `GET/PATCH/DELETE /api/projects/:projectId/cases/:caseId` — PATCH is whole-object-shaped (steps replaced wholesale); DELETE archives (`is_archived`), never hard-deletes.
+- `GET/POST /api/projects/:projectId/folders`.
+- Adapters: priority/type lowercase enums ↔ Capitalized UI strings; `assignee` display name ↔ `assignedTo` ULID via a static 8-seed-user map; server `caseRef` used directly as `caseKey`.
+
+**Plans** (session auth, nested routes):
+- `GET/POST /api/projects/:projectId/plans` — list excludes archived, includes ordered `caseIds`; refs `PLAN-<nnn>`.
+- `GET/PATCH/DELETE …/plans/:planId`; `PUT …/plans/:planId/cases` (`setPlanCases`, wholesale replace).
+- GAP-01 resolution: dynamic `queries` stay client-side; every queries change resolves locally (`resolvePlanCases`) and pushes the case list via `setPlanCases`, so `TestRunService.createRun()`'s dependency on `test_plan_cases` holds.
+
+**Runs** (session-first auth with `x-relay-user-id` fallback, flat routes):
+- `GET /api/runs?projectId=` — includes per-case results (`testCaseId`, `testRunCaseId`, status, comment, executor, active `defectRefs`); refs `RUN-<nnnn>`.
+- `POST /api/runs` — requires `testPlanId` (snapshot transaction); ad-hoc runs are local-only.
+- `PATCH /api/runs/:runId` — `{ projectId, status?: active|sealed|archived, title?, dueDate? }`; frontend "delete" = archive.
+- `POST /api/runs/:runId/cases/:runCaseId/result` — `runCaseId` is the `test_run_cases` id (FreshProvider bridges from live case ids).
+
+**Dashboard:** computed client-side off synced state; `GET /api/projects/:projectId/dashboard` exists but is unused by the UI.
+
+**Audit:** `GET /api/projects/:projectId/audit?limit=` — screen-level fetch in `AuditScreen` (deliberate exception: read-only feed). Every case/plan/run mutation writes `audit_log` rows.
+
+**Users (Admin panel):** `GET/POST /api/users`, `PATCH /api/users/:userId` — synced into the Admin roster by name-match (global-admin sessions only; 403 falls back to local mock). Granular Admin roles compress onto `globalRole` (Owner→super_admin, Administrator→admin, Editor/Run Manager/Run Executor/Project Administrator→contributor, Viewer→viewer); role *definitions* stay local. Invites are created with the shared dev password.
 
 ---
 
@@ -389,8 +418,4 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 ## UI labelling convention
 
-Mock and placeholder screens display a **source banner** (`PrototypeBanner` component):
-
-- **Frontend prototype** — yellow banner, mock data
-- **API-backed** — blue banner on `/runs/api`
-- **Planned module** — grey banner on reports/integrations
+The per-screen source banner (`PrototypeBanner`) was **removed** on `mvp-backend` — screens are backend-wired now, so the "frontend prototype" labelling no longer applied. Remaining visual-shell modules (Reports, My Work, Milestones, AI Studio, Integrations) are identifiable by their static content only.

@@ -1,8 +1,8 @@
 # As-built snapshot
 
-*Branch: `demo/contract-aware-prototype` · June 2026 · Repo wins over docs*
+*Branch: `mvp-backend` · July 2026 · Repo wins over docs*
 
-Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELINE.md`](ARCHITECTURE_BASELINE.md). Frontend phase boundaries: [`MVP_FRONTEND_ONLY_SCOPE.md`](MVP_FRONTEND_ONLY_SCOPE.md).
+Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELINE.md`](ARCHITECTURE_BASELINE.md).
 
 ---
 
@@ -12,151 +12,126 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 |-------|------------|
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
-| Prototype UI | `apps/web/src/fresh/` (FRESH mockup parity) |
-| State | React Context + `useReducer`; localStorage key `relay-demo-v2` (`schemaVersion: 14`, multi-project + admin access + actor + test plans + local requirements/defects) |
-| Backend (partial) | Drizzle ORM, MySQL 8, `@relay/db` |
+| UI | `apps/web/src/fresh/` |
+| State | React Context + `useReducer` in `FreshProvider`, **synced from the real API for real projects** (reducer-sync + optimistic write-through); localStorage key `relay-demo-v2` (`schemaVersion: 14`) acts as the offline cache + store for local-only fields |
+| Backend | Drizzle ORM, MySQL 8, `@relay/db` (21 tables); OpenSearch container exists but client is a no-op stub |
 | IDs (backend) | ULID |
-| Auth | Real: NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables) — gates all page routes + `/api/users/*`/`/api/projects/*` via `apps/web/src/middleware.ts`. `/api/runs/*` is the one exception, still on the dev `x-relay-user-id` header / `NEXT_PUBLIC_RELAY_USER_ID` pending a later wiring phase |
+| Auth | NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables). `apps/web/src/middleware.ts` gates every page route and API route except `/login`, `/api/auth/*`, `/api/health`, `/api/runs/*`. `/api/runs/*` uses session-first auth with an `x-relay-user-id` dev-header **fallback** (kept for `pnpm api:validate` + cookie-less scripting) |
+
+---
+
+## Data architecture (mvp-backend)
+
+Screens do NOT fetch their own data. `FreshProvider`:
+
+1. Registers the real DB projects on mount (`GET /api/projects` → `REGISTER_REAL_PROJECTS`), dropping local-only projects when real ones exist. Default landing project: the seeded **Demo Project** (slug `demo`, key `DEMO`).
+2. Syncs the active real project's folders/cases/plans/runs into reducer state (`SYNC_REAL_PROJECT_DATA`), and the real users table into the Admin mock roster (`SYNC_REAL_USERS`, global-admin sessions only).
+3. Write actions (`addCase`, `replaceCase`, `addPlan`, `updateExecution`, `sealRun`, …) dispatch locally first (optimistic) and call the real API in the background, reconciling temp ids → real ids/refs afterward (`RECONCILE_*` actions). **Optimistic writes are a demo-only decision — revisit before production.**
+4. **Hybrid rule:** fields with no DB tables stay localStorage-only and are merged across syncs: case comments, custom-field values, requirement links, references/template; plan `queries` (the authoring model — resolved case lists are pushed to `test_plan_cases`); run description, per-step results, execution log; Admin role definitions; "Demo User".
+
+Entity refs come from the server: cases `TC-<n>` (unpadded), plans `PLAN-<nnn>`, runs `RUN-<nnnn>`.
 
 ---
 
 ## Routes
 
-**Canonical pattern:** `/:projectKey/:module` — e.g. `/DP/dashboard`, `/CTMS/testruns`.
+**Canonical pattern:** `/:projectKey/:module` — e.g. `/DEMO/dashboard`, `/CTMS/testruns`.
 
 | Route | Data state | Component | Notes |
 |-------|------------|-----------|-------|
-| `/:projectKey/dashboard` | mock + localStorage | `DashboardScreen` | Live metrics for all projects; empty-cases onboarding state |
-| `/:projectKey/cases` | mock + localStorage | `CasesScreen` | Scoped to active project |
-| `/:projectKey/plans` | mock + localStorage | `PlansScreen` | Plan list + URL routing; CRUD modals; test case query groups; spawn run |
-| `/:projectKey/plans/tp/:planKey` | mock + localStorage | `PlansScreen` | Plan detail (Overview + Test cases tabs) |
-| **`/:projectKey/testruns`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — run list; no run selected |
-| **`/:projectKey/testruns/tr/:runKey`** | **mock + localStorage** | **`RunsScreen`** | **Primary demo** — full execution UX for selected run |
-| **`/runs/api`** | **api** | **`ApiRunsWorkspace`** | MySQL; not project-prefixed |
-| `/:projectKey/audit` | mock | `AuditScreen` | Static seed |
-| `/:projectKey/defects` | mock + localStorage | `DefectsScreen` | Static `MOCK_DEFECTS` + local `DEF-*` from executions |
-| `/:projectKey/settings` | mock | `SettingsScreen` | Read-only preview |
-| `/:projectKey/reports` | placeholder | `PlaceholderScreen` | |
-| `/:projectKey/integrations` | placeholder | `PlaceholderScreen` | |
-| **`/admin`** | **mock + localStorage** | **`AdminShell`** | Global settings — actor switcher, sidebar nav |
-| **`/admin/profile`** … **`/admin/audit-log`** | **mock + localStorage** | **`Admin*PageContent`** | Profile, org, projects, audit, etc. |
-| **`/admin/users`** | **mock + localStorage** | **`AdminUsersPageContent`** | User management — invite, silent invite, edit, disable |
-| **`/admin/roles`** | **mock + localStorage** | **`AdminRolesPageContent`** | Role management — built-in + custom, permission matrix |
+| `/login` | real | `LoginScreen` | NextAuth credentials; gates the app |
+| `/:projectKey/dashboard` | real (computed client-side) | `DashboardScreen` | Computes off synced reducer state |
+| `/:projectKey/cases` | real + local-only fields | `CasesScreen` | Full CRUD wired to `/api/projects/:id/cases|folders` |
+| `/:projectKey/plans`, `/plans/tp/:planKey` | real + local queries | `PlansScreen` | CRUD + spawn run wired; queries local, case lists pushed via `setPlanCases` |
+| **`/:projectKey/testruns[/tr/:runKey]`** | **real + local-only fields** | **`RunsScreen`** | **Protected execution UX** — results/seal/archive/spawn wired to `/api/runs/*` |
+| **`/runs/api`** | real | `ApiRunsWorkspace` | Legacy API workspace; session auth wins when logged in |
+| `/:projectKey/audit` | real (screen-level fetch) | `AuditScreen` | Live `audit_log` for real projects |
+| `/:projectKey/defects` | local + mock | `DefectsScreen` | No `defects` table — local entities; run defect links sync into executions |
+| `/:projectKey/requirements`, `/mywork`, `/milestones`, `/reports`, `/aistudio` | mock/static | various | Visual shells |
+| **`/admin/users`** | **real (admin session) + local fallback** | `AdminUsersPageContent` | List/invite/role/disable wired to `/api/users`; granular roles compress onto `globalRole` |
+| `/admin/*` (rest) | mock + localStorage | `Admin*PageContent` | Role definitions, custom fields, etc. stay local |
 
-**Legacy redirects** (client-side, via `LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/${activeProjectKey}/…`. Root `/` → `/DP/dashboard`.
-
-**Seed project:** Demo Project (`key: DP`, `seedTemplate: 'demo'`) holds default dummy data. Cloned demo projects use keys `DP1`, `DP2`, … via “Add demo project”.
-
-Aliases: `/test-cases` → cases module, `/test-plans` → plans module.
-
-Machine-readable contracts: `apps/web/src/lib/relay/prototype-contracts.ts`.
+**Seed projects (DB):** CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway, and **Demo Project** (`DEMO`) — richly seeded (4 folders, 14 cases, 2 plans, 4 runs at every lifecycle stage). "Create Demo Project" deep-clones it via `POST /api/projects/:id/clone`. The old localStorage-only `DP` project exists only as an offline fallback.
 
 ---
 
-## What works end-to-end
+## What works end-to-end (Docker + seed + login)
 
-### Demo path (no Docker)
-
-1. Open `http://localhost:3000` → `/DP/dashboard` (demo metrics).
-2. Browse/create test cases (`/DP/cases`) — persists in localStorage; isolated per project.
-3. Create/browse plans (`/DP/plans`) — full CRUD; test case query groups (condition/folder/static); spawn run modal pre-fills title and case count, creates run and navigates to `/DP/testruns`.
-4. Execute runs — open `/DP/testruns/tr/00001` (or pick a run); full execution UX; scoped to active project. Run keys are per-project (`00001` …).
-5. **Create / duplicate / delete runs** — modal create, More… menu duplicate/delete, topbar seal toggle.
-6. **Project switching** — switcher rewrites URL (`/DP/testruns/tr/00001` → `/CTMS/testruns`; run selection stripped); create via modal (name/key/description); **Add demo project** clones template as `DP1`, `DP2`, …
-7. Cmd+K search over active project's cases + runs.
-
-### API path (Docker + seed)
-
-1. `pnpm docker:up && pnpm db:migrate && pnpm db:seed`
-2. Open `/runs/api` — list runs, create run, record case-level Pass/Fail/Blocked/Skip + comment.
-3. `pnpm api:validate` — contract checks against live server.
+1. `pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev`
+2. Log in (`ssevume@ti.com` / `relay-dev-2026` — see README "Local dev login") → `/DEMO/dashboard`.
+3. Cases: browse seeded cases, quick-add/edit/delete — persists to MySQL, audited.
+4. Plans: seeded plans with case lists; create/edit/duplicate/delete; query groups resolve locally and sync to `test_plan_cases`; spawn run creates a real snapshotted run.
+5. Runs: full three-pane execution UX over real runs; P/F/B/S results persist; seal/reopen/archive; duplicate.
+6. Audit: live event log per project. Admin users: real roster, invite/role/disable (as global admin).
+7. `pnpm api:validate` — contract checks via the dev-header fallback.
 
 ---
 
-## HTTP API (backend slice — reference only for frontend phase)
+## HTTP API
 
-| Method | Path | Used by |
-|--------|------|---------|
-| GET | `/api/health` | Validation |
-| GET/POST | `/api/runs` | `/runs/api` |
-| GET | `/api/runs/:runId` | `/runs/api` |
-| POST | `/api/runs/:runId/cases/:runCaseId/result` | `/runs/api` |
-| GET/POST | `/api/auth/[...nextauth]` | NextAuth session/JWT endpoints |
-| GET/POST | `/api/users` | Real session auth + RBAC; not yet called by any fresh screen |
-| PATCH | `/api/users/:userId` | Real session auth + RBAC; not yet called by any fresh screen |
-| GET/POST | `/api/projects` | Real session auth + RBAC; not yet called by any fresh screen |
-| POST | `/api/projects/:projectId/roles` | Real session auth + RBAC; not yet called by any fresh screen |
+| Method | Path | Auth |
+|--------|------|------|
+| GET | `/api/health` | none |
+| GET/POST | `/api/auth/[...nextauth]` | — |
+| GET/POST | `/api/runs` · GET/PATCH `/api/runs/:runId` · POST `/api/runs/:runId/cases/:runCaseId/result` | session-first, dev-header fallback |
+| GET/POST/DELETE | `/api/runs/:runId/cases/:runCaseId/defects[/:linkId]` | session-first, dev-header fallback |
+| GET/POST | `/api/users` · PATCH `/api/users/:userId` | session (global admin) |
+| GET/POST | `/api/projects` · POST `/api/projects/:projectId/roles` · POST `/api/projects/:projectId/clone` | session |
+| GET/POST | `/api/projects/:projectId/cases[/:caseId GET/PATCH/DELETE]` | session |
+| GET/POST | `/api/projects/:projectId/folders` | session |
+| GET/POST | `/api/projects/:projectId/plans[/:planId GET/PATCH/DELETE]` · PUT `…/plans/:planId/cases` | session |
+| GET | `/api/projects/:projectId/dashboard` | session — **currently unused by the frontend** (Dashboard computes client-side) |
+| GET | `/api/projects/:projectId/audit` | session |
 
-Detail: [`docs/implementation/api-contracts.md`](../implementation/api-contracts.md) (backend-phase reference), [`FRONTEND_CONTRACTS.md`](FRONTEND_CONTRACTS.md).
-
----
-
-## Backend services (exist; mostly unwired to demo UI)
-
-- `TestRunService.create()` — spawn run from plan, snapshot cases/steps, audit write
-- `ExecutionService.updateCaseResult()` — case-level result + audit write
-- `listProjectRuns`, `getRunDetail` — read paths for `/runs/api`
-- RBAC in services (`assertMinProjectRole`); real login UI now exists (`/login`, NextAuth)
-- `UserService`/`ProjectService` — user + project CRUD, project-role assignment, both admin+ gated
-
-MySQL schema: 20 tables in `packages/db/schema.ts`. Detail: [`docs/database/schema-rationale.md`](../database/schema-rationale.md) (backend-phase reference).
+Contracts: [`FRONTEND_CONTRACTS.md`](FRONTEND_CONTRACTS.md).
 
 ---
 
-## Not built / prototype-only
+## Backend services
+
+`TestRunService` (create/updateRun + ref generation), `ExecutionService` (case results), run read paths (`listProjectRuns` incl. per-case results + defect refs, `getRunDetail`), `TestCaseService`, `TestPlanService`, `DashboardService` (unused by UI), `AuditService` (`recordAudit` called by every mutation + `listAuditLog`), `DefectService` (run defect links only), `UserService`, `ProjectService`, `ProjectCloneService`. RBAC via `assertMinProjectRole` / global-role checks throughout.
+
+---
+
+## Not built / local-only (documented gaps)
 
 | Item | Status |
 |------|--------|
-| Login / session | **Implemented** (`mvp-backend` Phase 1) — NextAuth Credentials, JWT session, real `/login` gate |
-| Demo `/runs` → API wiring | Not started |
-| Case/plan/project CRUD APIs | Not started |
-| Step-level results in `/runs/api` UI | Not exposed |
+| Ad-hoc (plan-less) run creation | Local-only — server `createRun` requires a test plan |
+| Per-step results + step comments in fresh UI | Local-only (`run_step_results` exist server-side but aren't wired) |
+| Execution log (per-transition history) | Local-only — no append-only table |
+| Defects as first-class entities | No `defects` table; only `run_defect_links` are real |
 | Requirements | Not modeled |
-| Export buttons | Visual only |
-| Reports / Integrations | Placeholder |
-| OpenSearch in app | No-op stub |
-| Audit read API | Writes only; UI is mock seed |
-| Defects screen create | Disabled |
-| Real multi-project switching | **Implemented** — key-prefixed URLs + `ProjectSwitcher` + create modal + add demo project |
-| Project settings screen | Disabled menu item only (coming soon) |
-| Admin panel (`/admin`) | **Implemented** — user/role management, demo actor RBAC on admin actions, silent invite, permission matrix |
+| Admin role definitions / custom fields / API keys / automation | Local mock (`AdminSettings`) |
+| Custom Fields backend | Separate branch (`mvp-custom-fields`) — untouched |
+| OpenSearch | No-op stub; search runs on client-side filtering |
+| Reports / Integrations / My Work / Milestones / AI Studio | Visual shells |
+| Optimistic writes | Demo-only; revisit before production |
 
 ---
 
 ## Local commands
 
 ```bash
-# UI demo only
-pnpm install && pnpm dev          # http://localhost:3000
-
-# API workspace
 pnpm docker:up && pnpm db:migrate && pnpm db:seed
-pnpm dev                          # then /runs/api
-
+pnpm dev                          # http://localhost:3000 → /login
 pnpm build
 pnpm api:validate                 # needs dev server + seeded DB
 ```
 
-Reset demo localStorage (browser console): `localStorage.removeItem('relay-demo-v2'); location.reload()`
-
-**Migration:** v1→v2 multi-project; v2→v3 adds `key`/`description`; v3→v4 adds `runKey`/URL run selection; v4→v5 adds `adminSettings`; v6–v11 case/run field additions; v12 user/role access (`currentActorUserId`, expanded admin models); v13 test plans (`plansById`, `nextPlanNumByProject`, seed plans). Failed migration resets to seed.
+Reset local cache: visit any page with `?relay-reset=1` (clears localStorage only — never the DB).
 
 ---
 
 ## Key paths
 
 ```
-apps/web/src/fresh/              # Demo UI (screens, seed, FreshProvider, ProjectSwitcher)
-apps/web/src/fresh/data/admin-initial-settings.ts  # AdminSettings seed data
-apps/web/src/fresh/data/admin-reducer.ts     # admin/* reducer actions
-apps/web/src/fresh/components/admin/  # Admin panel shell + page content components
-apps/web/src/app/admin/          # Global /admin route group (not project-prefixed)
-apps/web/src/fresh/lib/project-routes.ts  # Key-prefixed URL helpers
-apps/web/src/fresh/data/demo-template.ts   # Immutable demo template clone
-apps/web/src/fresh/data/demo-project-utils.ts  # Demo project clone helpers
-apps/web/src/app/(app)/[projectKey]/    # Canonical routed pages
-apps/web/src/components/api-runs/ # API workspace
-apps/web/src/lib/relay/          # contracts, mock-data, api-client, config
-packages/db/                     # schema, services, seed
-mockup/Relay Mockup FRESH.html   # UX reference for FRESH screens
+apps/web/src/fresh/data/FreshProvider.tsx   # reducer-sync + write-through core
+apps/web/src/lib/relay/                     # project/case/plan/run/audit/user clients + adapters
+apps/web/src/middleware.ts                  # session gate
+apps/web/src/lib/api/                       # route helpers: auth (session-first), schemas, errors
+apps/web/src/app/api/                       # all API routes
+apps/web/src/fresh/screens/                 # screens (RunsScreen = protected execution UX)
+packages/db/                                # schema, services, seed (incl. demo-project-seed.ts)
+docs/claude/mvp-backend/                    # branch plan + progress (session-resumable state)
 ```

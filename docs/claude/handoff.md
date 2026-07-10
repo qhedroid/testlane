@@ -16,9 +16,25 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-backend` — standing up the real backend. Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). **Phase 1 (Foundation: auth/RBAC/User+Project API) committed (`b430e50`, `4e5ad45`).** Shaun then asked to "run all the phases to completion" — Phases 2 (Test Cases), 3 (Test Plans), 5 (Dashboard), and 6 (Defects+Audit) backends are now code-complete and Claude-sandbox-verified (typecheck + `pnpm build`, no live DB), but **not yet committed** and their screens are **not yet wired**. Phase 4 (Test Runs auth wiring) deliberately skipped this pass — see the "Phases 2/3/5/6 backend built" entry below for why. Phase 7 needs no new backend. Phase 8 blocked on the rest. Claude implements this branch directly (Shaun's instruction) instead of drafting Cursor prompts. Live state tracked at `docs/claude/mvp-backend/progress.md` (read this first — has the full per-phase checklists) and `docs/claude/mvp-backend/plan.md`; the original `docs/cursor-prompts/mvp-backend/` files are kept as reference spec only. See "2026-07-09 — mvp-backend Phases 2/3/5/6 backend built (all-phases push)" (top of this section), and below it "2026-07-09 — mvp-backend Phase 1 (Foundation) implemented", "2026-07-09 — Phase 1 post-commit fixes + seed user/role overhaul", "2026-07-09 — mvp-backend scoping session", "2026-07-09 — mvp-backend sequencing session — task-01 drafted", and "2026-07-09 — pivot to direct Claude implementation" for full history.
+`mvp-backend` — **COMPLETE, ready for PR to `mvp-main`** (2026-07-10). Every fresh screen reads/writes the real MySQL backend, login gates the app, the seeded Demo Project (`DEMO`) is the default landing project, and Shaun verified everything locally (including the Runs protected-UX regression). PR description: `docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`. Live state: `docs/claude/mvp-backend/progress.md`. Original branch framing below.
+
+Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). **Phase 1 (Foundation: auth/RBAC/User+Project API) committed (`b430e50`, `4e5ad45`).** Shaun then asked to "run all the phases to completion" — Phases 2 (Test Cases), 3 (Test Plans), 5 (Dashboard), and 6 (Defects+Audit) backends are now code-complete and Claude-sandbox-verified (typecheck + `pnpm build`, no live DB), but **not yet committed** and their screens are **not yet wired**. Phase 4 (Test Runs auth wiring) deliberately skipped this pass — see the "Phases 2/3/5/6 backend built" entry below for why. Phase 7 needs no new backend. Phase 8 blocked on the rest. Claude implements this branch directly (Shaun's instruction) instead of drafting Cursor prompts. Live state tracked at `docs/claude/mvp-backend/progress.md` (read this first — has the full per-phase checklists) and `docs/claude/mvp-backend/plan.md`; the original `docs/cursor-prompts/mvp-backend/` files are kept as reference spec only. See "2026-07-09 — mvp-backend Phases 2/3/5/6 backend built (all-phases push)" (top of this section), and below it "2026-07-09 — mvp-backend Phase 1 (Foundation) implemented", "2026-07-09 — Phase 1 post-commit fixes + seed user/role overhaul", "2026-07-09 — mvp-backend scoping session", "2026-07-09 — mvp-backend sequencing session — task-01 drafted", and "2026-07-09 — pivot to direct Claude implementation" for full history.
 
 Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin, Phase 1 + Phase 2, **merged to `mvp-main`** via PR #19 (`0e8ec98`).
+
+---
+
+## 2026-07-10 — `mvp-backend` COMPLETE (verification + Phase 8)
+
+Shaun verified all wired screens locally against real Docker MySQL — no issues; his pass is the
+branch's regression evidence (sandbox has no browser/DB). Phase 8 done: living docs synced
+(`AS_BUILT_SNAPSHOT.md` rewritten; `FRONTEND_CONTRACTS.md` gained the "Screen-wiring
+architecture + module APIs" section; `user-guide.md`'s prototype caveat replaced with a real
+"Data sources" table; `feature-flow.md` routes/persistence/RBAC/feature-status all updated) and
+the PR description written at `docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`
+(13 code commits, grouped by feature area, with Caveats covering optimistic writes, the
+local-only gaps, GAP-01, the unused DashboardService, and the dev-header fallback). Branch
+definition of done met — awaiting PR to `mvp-main`.
 
 ---
 

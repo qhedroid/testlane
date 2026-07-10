@@ -14,28 +14,28 @@ Product and implementation flow map for the team. Complements authoritative cont
 
 | Module | Slug | Screen component | Route(s) | Data state |
 |--------|------|------------------|----------|------------|
-| Dashboard | `dashboard` | `DashboardScreen` | `/:key/dashboard` | Live FreshProvider data (all projects) |
+| Dashboard | `dashboard` | `DashboardScreen` | `/:key/dashboard` | Computed client-side from **API-synced** FreshProvider state |
 | My Work | `mywork` | `MyWorkScreen` | `/:key/mywork` | Static demo content |
-| Test cases | `testcases` | `CasesScreen` | `/:key/testcases`, `/:key/testcases/tc/:caseKey` | Mock + localStorage |
-| Test plans | `plans` | `PlansScreen` | `/:key/plans` | Mock seed |
-| Test runs | `testruns` | `RunsScreen` | `/:key/testruns`, `/:key/testruns/tr/:runKey`, `/:key/testruns/tr/:runKey/tc/:caseKey` | Mock + localStorage |
+| Test cases | `testcases` | `CasesScreen` | `/:key/testcases`, `/:key/testcases/tc/:caseKey` | **API / MySQL** (+ local-only: comments, custom fields, requirement links) |
+| Test plans | `plans` | `PlansScreen` | `/:key/plans` | **API / MySQL** (+ local-only: query groups) |
+| Test runs | `testruns` | `RunsScreen` | `/:key/testruns`, `/:key/testruns/tr/:runKey`, `/:key/testruns/tr/:runKey/tc/:caseKey` | **API / MySQL** (+ local-only: step results, execution log, ad-hoc runs) |
 | Milestones | `milestones` | `MilestonesScreen` | `/:key/milestones` | Static demo content |
 | Requirements | `requirements` | `RequirementsScreen` | `/:key/requirements` | Live `requirementsById` when present; static demo list fallback |
-| Defects | `defects` | `DefectsScreen` | `/:key/defects` | Mock + localStorage (local DEF-*) |
+| Defects | `defects` | `DefectsScreen` | `/:key/defects` | Local DEF-* entities + mock; run↔defect links are real |
 | Reports | `reports` | `ReportsScreen` | `/:key/reports` | Static demo content |
 | AI Studio | `aistudio` | `AiStudioScreen` | `/:key/aistudio` | Static demo content (no real AI) |
 | Settings | `settings` | redirect → `/admin` | `/:key/settings` | Redirect only (legacy route) |
 | Integrations | `integrations` | `PlaceholderScreen` | `/:key/integrations` | Placeholder |
-| Audit | `audit` | `AuditScreen` | `/:key/audit` | Static seed |
+| Audit | `audit` | `AuditScreen` | `/:key/audit` | **API / MySQL** for real projects (screen-level fetch); static seed for local |
 | Login | — | `LoginScreen` | `/login` (top-level; `/:key/login` redirects here) | **Real auth gate** — NextAuth Credentials, JWT session |
-| Admin | — | `AdminShell` + page content | `/admin`, `/admin/profile` … `/admin/audit-log` | Mock + localStorage |
+| Admin | — | `AdminShell` + page content | `/admin`, `/admin/profile` … `/admin/audit-log` | Users: **API / MySQL** (global-admin sessions); everything else mock + localStorage |
 | API runs | — | `ApiRunsWorkspace` | `/runs/api` | **API / MySQL** |
 
 **Legacy unprefixed redirects** (`LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/:activeProjectKey/<module>`.
 
 **Auth gate:** `apps/web/src/middleware.ts` requires a valid NextAuth session for every route except `/login`, `/api/auth/*`, `/api/runs/*`, `/api/health`, `/_next/*`, `/fonts/*`. Logged-out visits redirect to `/login?callbackUrl=<original path>`.
 
-**Root:** `/` → `/DP/dashboard`.
+**Root:** `/` → default project dashboard (`/DEMO/dashboard` once real projects register; the seeded Demo Project is the default landing project).
 
 **Exceptions:** `/runs/api`, `/api/*` — not project-prefixed.
 
@@ -107,15 +107,13 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 
 | Layer | Mechanism | Scope |
 |-------|-----------|-------|
-| Prototype UI | `FreshProvider` + `useReducer` | In-memory React state |
-| Browser persistence | `localStorage` key **`relay-demo-v2`** | Survives refresh; per browser |
-| Demo seed | `buildInitialDemoState()`, `demo-template.ts`, `seed.ts` | Initial load + “Add demo project” clone |
-| API workspace | MySQL via `/api/runs/*` | `/runs/api` only |
-| Static mock | `mock-data.ts`, seed arrays | Defects TI-* rows, plan list, project audit |
+| Source of truth | **MySQL via the real API** (`/api/projects/*`, `/api/runs/*`, `/api/users/*`) | Projects, folders, cases, plans + case lists, runs + results, audit log, users |
+| UI state | `FreshProvider` + `useReducer`, **synced from the API** for real projects (`SYNC_REAL_PROJECT_DATA` on project activation; optimistic write-through with temp-id reconciliation on mutations) | In-memory React state |
+| Browser persistence | `localStorage` key **`relay-demo-v2`** | Cache of synced data + store for **local-only fields** (comments, custom-field values, requirement links, plan queries, step results, execution log, defect/requirement entities, admin mock) |
+| DB seed | `packages/db/src/seed/` (`pnpm db:seed`) — 7 projects incl. the richly-seeded **Demo Project** | Real rows; full reset on re-run (wipes clones) |
+| Static mock | `mock-data.ts`, seed arrays | Defects TI-* rows, static shells (My Work, Milestones, Reports, AI Studio) |
 
-**Not persisted in prototype:** test plans (seed only), project-level audit timeline, defects module data, reports/integrations placeholders.
-
-**Active project sync:** `ProjectRouteSync` reads URL project key → `setActiveProject`. Switcher writes URL + state together.
+**Active project sync:** `ProjectRouteSync` reads URL project key → `setActiveProject` (held until real projects register, avoiding redirect flicker). Switcher writes URL + state together.
 
 ---
 
@@ -169,15 +167,15 @@ Project-level override: `MAX(global_role, project_role)`.
 
 Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHITECTURE_BASELINE.md) § RBAC.
 
-### Prototype today
+### Today (`mvp-backend`)
 
 | Area | Behaviour |
 |------|-----------|
-| Admin users/roles UI | Seed + CRUD in localStorage; audit log on mutations. Not yet wired to the real `/api/users/*`/`/api/projects/*` routes (later phase) |
-| Demo screens | **No role checks** — all actions available |
-| Seal / reopen run | UI toggle only; no admin gate |
-| `/runs/api` | Dev header `x-relay-user-id` / `NEXT_PUBLIC_RELAY_USER_ID`; service-layer RBAC on mutations |
-| `/api/users/*`, `/api/projects/*` | **Real session auth** (`resolveSessionActor`) + real RBAC — `assertMinProjectRole()`/global-admin check enforced server-side. Not called by any fresh screen yet (admin panel still reads localStorage) |
+| All `/api/projects/*`, `/api/users/*` routes | **Real session auth** (`resolveSessionActor`) + real RBAC (`assertMinProjectRole()` / global-admin checks) enforced server-side on every read and write |
+| `/api/runs/*` | **Session-first** auth with `x-relay-user-id` dev-header fallback (kept for `pnpm api:validate`); service-layer RBAC on mutations |
+| Admin users UI | Wired to `/api/users/*` for global-admin sessions (list/invite/role/disable); viewer sessions get a 403 and fall back to the local mock roster. Granular roles compress onto `globalRole` on writes |
+| Screens (UI layer) | No client-side role gates — the server rejects unauthorized writes (403), which the optimistic UI currently only surfaces in the console (see "optimistic writes" note) |
+| Seal / reopen run | UI toggle; server enforces contributor+ |
 
 ---
 
@@ -186,41 +184,32 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 | Module / feature | Status | Persistence | Notes |
 |------------------|--------|-------------|-------|
 | Login / session gate | **Implemented** | MySQL (`users.password_hash`) + JWT cookie | NextAuth Credentials provider, JWT session strategy; `middleware.ts` gates all pages/most API routes; sign-out via top-bar `UserMenu` |
-| User + Project API (`/api/users/*`, `/api/projects/*`) | **Implemented** (backend only) | MySQL | `UserService`/`ProjectService`; real RBAC; not called by any fresh screen yet |
-| Shell & navigation | **Implemented** | Client | Sidebar (Testing/Traceability groups), global top bar (New test case/run, AI Studio, Notifications, Help), Cmd+K; Pinned Modules and Integrations nav removed |
-| Project switcher & CRUD | **Implemented** | localStorage | URL sync; cascade delete |
-| Dashboard | **Implemented** | localStorage | Phase 2 layout: KPI strip, completion donut, results-over-time chart, assignee bars, open runs, milestones slice, needs attention; live selectors |
-| Test cases — tree & table | **Implemented** | localStorage | Filters, pagination, search |
-| Test cases — detail & CRUD | **Implemented** | localStorage | Tabs, custom fields, context menu |
+| User + Project API (`/api/users/*`, `/api/projects/*`) | **Implemented** | MySQL | `UserService`/`ProjectService`; real RBAC; called by the project picker + Admin users |
+| Shell & navigation | **Implemented** | Client | Sidebar (Testing/Traceability groups), global top bar (New test case/run, AI Studio, Notifications, Help), Cmd+K |
+| Project switcher | **Implemented** | MySQL | Real DB projects; "Create Demo Project" deep-clones the seeded Demo Project via API; rename/delete hidden for real projects |
+| Dashboard | **Implemented** | MySQL (computed client-side) | KPI strip, donut, trend chart, assignee bars, open runs, needs attention — off API-synced state |
+| Test cases — tree & table & CRUD | **Implemented** | MySQL | Full CRUD wired; `TC-<n>` refs; delete = archive; comments/custom fields/requirement links local-only |
 | Test cases — URL sync | **Implemented** | — | `/testcases/tc/:caseKey` |
-| Test plans — list & detail | **Implemented** | localStorage | URL routing; CRUD modals; Overview + Test cases tabs |
-| Test plans — test case query groups | **Implemented** | localStorage | Condition/folder/static; live resolved-case preview |
-| Test plans — spawn run | **Implemented** | localStorage | Modal pre-fills title + count; stamps planId on run |
-| Test runs — list & picker | **Implemented** | localStorage | Search, archive hide |
-| Test runs — create / edit / duplicate / delete | **Implemented** | localStorage | |
-| Test runs — add cases to run | **Implemented** | localStorage | `AddCasesToRunModal` |
-| Test runs — empty state | **Implemented** | — | Testiny-style |
-| Test runs — execution UX | **Implemented** | localStorage | Steps, results, shortcuts |
-| Test runs — seal / reopen | **Implemented** | localStorage | No RBAC gate |
+| Test plans — list & detail & CRUD | **Implemented** | MySQL | `PLAN-<nnn>` refs; delete = archive |
+| Test plans — query groups | **Implemented** | Queries local; resolved case list MySQL | Every queries change pushes the resolved list to `test_plan_cases` |
+| Test plans — spawn run | **Implemented** | MySQL | Creates a real snapshotted run via `POST /api/runs` |
+| Test runs — list & picker | **Implemented** | MySQL | `RUN-<nnnn>` refs; archived hidden |
+| Test runs — execution UX | **Implemented** | MySQL (case results); step results local | P/F/B/S + notes persist via the result endpoint |
+| Test runs — seal / reopen / archive / delete | **Implemented** | MySQL | `PATCH /api/runs/:runId`; delete = archive server-side |
+| Test runs — create (ad-hoc) / duplicate | **Partial** | Local-only (ad-hoc); MySQL (duplicate of plan-backed runs) | Server createRun requires a plan |
+| Test runs — add cases to run | **Partial** | Local-only | No server route for post-spawn case additions yet |
 | Test runs — URL sync | **Implemented** | — | `/tr/:runKey`, `/tc/:caseKey` |
-| Test cases — requirements create/link | **Implemented** | localStorage | Requirements tab; REQ-* keys |
-| Test cases — defects view-only | **Implemented** | localStorage | Derived from run execution links |
-| Test runs — requirements view-only | **Implemented** | localStorage | From linked case requirements |
-| Defects module screen | **Partial** | Mock + localStorage | Table toolbar + detail panel; static TI-* + local DEF-*; create disabled |
-| Defects in-run create/link | **Implemented** | localStorage | Failed/Blocked + unsealed only |
-| Reports | **Placeholder** | — | Static demo content |
-| Integrations (project) | **Placeholder** | — | Route exists; sidebar link removed |
-| Settings (project) | **Redirect** | — | `/:key/settings` → `/admin`; sidebar "Project Settings" entry |
-| Audit (project) | **Partial** | Static seed | Page header + filter chips + event rows |
-| Admin panel (all sections) | **Implemented** | localStorage | 11 routes under `/admin` |
-| Admin — user management | **Implemented** | localStorage | Invite, silent invite, edit, disable/reactivate, project access |
-| Admin — role management | **Implemented** | localStorage | Built-in + custom roles, permission matrix |
-| Admin — demo actor / RBAC | **Partial** | localStorage | Enforced on admin user/role actions only |
-| RBAC enforcement (project UI) | **Missing** | — | Test runs / cases not gated |
-| Demo UI → MySQL wiring | **Missing** | — | Use `/runs/api` separately |
+| Requirements create/link on cases | **Implemented** | localStorage | Local REQ-* only — no DB table |
+| Defects module screen | **Partial** | Local DEF-* + mock; links MySQL | Run↔defect links are real (`run_defect_links`); defect entities have no table |
+| Defects in-run create/link | **Implemented** | localStorage (entities) | Failed/Blocked + unsealed only |
+| Reports / Integrations / My Work / Milestones / AI Studio | **Placeholder** | — | Static shells |
+| Settings (project) | **Redirect** | — | `/:key/settings` → `/admin` |
+| Audit (project) | **Implemented** | MySQL | Live `audit_log` (screen-level fetch); every case/plan/run mutation audited |
+| Admin — user management | **Implemented** | MySQL (global-admin sessions) | List/invite/role/disable wired; role compression; viewer sessions fall back to mock |
+| Admin — everything else | **Implemented (local)** | localStorage | Role definitions, custom fields, API keys, automation |
+| RBAC enforcement | **Implemented (server-side)** | — | 403s on unauthorized writes; UI has no client-side gates (optimistic writes surface failures in console only) |
 | Global search (OpenSearch) | **Missing** | — | Cmd+K is in-memory |
 | Export PDF/CSV | **Missing** | — | Buttons are visual |
-| Requirements / traceability | **Partial** | localStorage | Local create/link on cases; no coverage dashboards |
 
 ---
 

@@ -2,7 +2,7 @@
 
 *Living document · Last verified: 9 July 2026 · Branch: `mvp-backend`*
 
-This guide explains how to use Relay from a user perspective. It describes the **frontend prototype** as it works today in the browser.
+This guide explains how to use Relay from a user perspective, as it works today in the browser against the real backend.
 
 **For developers and agents:** When user-visible behaviour changes, update this file together with [`feature-flow.md`](feature-flow.md).
 
@@ -12,28 +12,25 @@ This guide explains how to use Relay from a user perspective. It describes the *
 
 Relay is a QA test execution platform for clinical-trials-style workspaces. It helps teams organise **test cases**, group them into **test plans**, execute them in **test runs**, track results, and review activity across **projects**.
 
-The current app is a **frontend prototype**: most data lives in your browser (demo seed + localStorage). A separate API-backed workspace exists at `/runs/api` for backend validation but is not the primary demo experience.
+As of `mvp-backend`, the app runs on a **real MySQL backend**: login gates the app, projects come from the database, and cases, plans, runs, execution results, and the audit log all read and write real API routes. The browser's localStorage acts as a cache plus the store for a handful of fields the database doesn't model yet (see "Data sources" below).
 
 ---
 
-## Frontend prototype caveat
+## Data sources
 
-| What works | What is simulated |
+| Real (MySQL, via API) | Local-only (browser localStorage) |
 |------------|-------------------|
-| Real login/session gates the whole app (NextAuth, seed users) | No real SSO — the SSO button is a visual placeholder |
-| Create/edit cases and runs in the browser | Data is not shared across users or machines |
-| Step-level execution, sealing, project switching | Legacy seed TI-* defect refs on some runs; no real Jira sync |
-| Admin panel forms persist in localStorage | **Demo RBAC** on user/role admin screens via actor switcher (real RBAC now enforced on `/api/users/*` and `/api/projects/*`) |
-| `/runs/api` persists to MySQL when Docker is running | Demo test runs UI is not wired to MySQL; `/api/runs/*` still uses the legacy `x-relay-user-id` header (pending a later phase) |
+| Login/session (NextAuth, seed users), project list, project cloning | The "Demo User" admin actor and Admin role *definitions* |
+| Test cases + folders (full CRUD, `TC-<n>` refs, archived on delete) | Case comments, custom-field values, requirement links |
+| Test plans (`PLAN-<nnn>` refs) and their resolved case lists | Plan query groups (the authoring model — their *result* syncs to the server) |
+| Test runs: spawn-from-plan, results (P/F/B/S + notes), seal/reopen, archive, `RUN-<nnnn>` refs | Ad-hoc (plan-less) runs, per-step results, the per-transition execution log, run descriptions |
+| Audit log, Admin user list/invite/role/disable (global admins) | Defect entities (`DEF-*`), requirements, reports, custom fields admin |
 
-**Reset demo data** (browser console):
+Writes are **optimistic**: the UI updates instantly and the API call completes in the background (a demo-scale decision — a production build would wait for the server).
 
-```javascript
-localStorage.removeItem('relay-demo-v2')
-location.reload()
-```
+**Reset the local cache:** visit any page with `?relay-reset=1` (or `localStorage.removeItem('relay-demo-v2')` in the console). This never touches the database — server data re-syncs on next load.
 
-**Run locally:** `pnpm install && pnpm db:seed && pnpm dev` → open http://127.0.0.1:3000 — you'll be redirected to `/login`. Sign in with any seed user (see "Login" below), which then redirects to `/DP/dashboard`.
+**Run locally:** `pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev` → open http://127.0.0.1:3000 — you'll be redirected to `/login`. Sign in with any seed user (see "Login" below), which lands on `/DEMO/dashboard` — the richly-seeded Demo Project.
 
 ---
 
@@ -137,7 +134,7 @@ Three-pane layout: **folder tree** (left) → **case table** (centre) → **deta
 
 **Create test run from cases:** case-list toolbar *Create test run* ▾ — scope to current folder or all cases; name the run; navigates to Test Runs.
 
-User-created cases **persist** in localStorage per project.
+User-created cases **persist to MySQL** per project (real projects); comments, custom-field values, and requirement links stay browser-local.
 
 ---
 
@@ -263,7 +260,7 @@ Demo AI workspace: prompt input, quick-action cards, draft preview with Accept/E
 
 **Route:** `/login` (top-level, not project-prefixed)
 
-Real authentication gate (NextAuth Credentials provider, JWT session). Visiting any app route while logged out redirects here with a `callbackUrl` back to where you were headed. Sign in with a seed user's email and the shared local-dev password (`relay-dev-2026` — see `README.md`'s "Local dev login" section for all six accounts) to continue. The "Continue with TransPerfect SSO" button is a visual placeholder only.
+Real authentication gate (NextAuth Credentials provider, JWT session). Visiting any app route while logged out redirects here with a `callbackUrl` back to where you were headed. Sign in with a seed user's email and the shared local-dev password (`relay-dev-2026` — see `README.md`'s "Local dev login" section for all eight accounts, e.g. `ssevume@ti.com`) to continue. The "Continue with TransPerfect SSO" button is a visual placeholder only.
 
 The old project-prefixed `/:key/login` route now just redirects here — login has no project context until after you're signed in.
 
@@ -358,8 +355,7 @@ Neither connects to a read API yet. Backend writes audit rows on run create and 
 
 - Real login/session now gates the app (see "Login" above), but `/api/runs/*` still uses the legacy `x-relay-user-id` header pending a later wiring phase
 - No real SSO — the SSO button on `/login` is a visual placeholder
-- No multi-user collaboration or server sync for the prototype UI
-- Test plans are not editable and do not drive run creation automatically
+- Multi-user collaboration works at the database level (shared MySQL), but there is no live push — another user's changes appear after a reload/project switch
 - `/DP/cases` bookmark slug is obsolete (404)
 - `/:key/integrations` is a placeholder route only — not linked from the sidebar
 - Final Owner/Administrator cannot be disabled when they are the only effective admin remaining
@@ -372,27 +368,26 @@ See also [`docs/claude/known-bugs.md`](../claude/known-bugs.md) for active inves
 
 ---
 
-## Mock / frontend-only behaviours
+## Local-only behaviours (documented gaps)
 
-- All prototype modules show a **Frontend prototype** banner (yellow) except `/runs/api` (blue, API-backed)
-- Cmd+K search queries active project's cases and runs in-memory
-- Spawn-from-plan navigates only — no API call
-- Sealing does not check admin role
-- Duplicate run copies case order and resets executions; does not copy historical results
+- Cmd+K search queries the active project's cases and runs in-memory (no OpenSearch yet)
+- Ad-hoc (plan-less) run creation stays local-only — the server requires a plan to snapshot
+- Per-step results and the per-transition execution log are local-only
+- Duplicate run: the server copy snapshots the plan's *current* case list; the local copy freezes the source's case order — they can differ slightly
+- Defect entities (`DEF-*`) and requirements are local; only run↔defect *links* are real
+- Sealing does not check admin role in the UI (the API enforces contributor+)
 
 ---
 
 ## Future backend behaviours
 
-When the demo UI is wired to APIs (planned, not started for `/DP/testruns`):
+Remaining for later phases:
 
-- ~~Login and session~~ — done (NextAuth Credentials, JWT session); RBAC enforced per action via `assertMinProjectRole()` on the new `/api/users/*`/`/api/projects/*` routes; `/api/runs/*` still pending
-- Test cases, plans, runs, and results persisted in MySQL
-- Plan spawn creates a run via `POST /api/runs` with case snapshots
-- Audit log read API for project and admin views
-- Defects CRUD and external tracker integration
-- Reports and exports generated server-side
-- OpenSearch-backed global search
+- Real SSO (IAM) replacing the credentials provider
+- Defects CRUD and external tracker integration; requirements modeling
+- Custom fields backend (separate `mvp-custom-fields` branch)
+- Reports and exports generated server-side; OpenSearch-backed global search
+- Non-optimistic writes (wait-for-server) before production use
 
 Technical contracts: [`docs/_authoritative/FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACTS.md).
 

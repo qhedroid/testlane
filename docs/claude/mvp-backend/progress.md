@@ -5,14 +5,13 @@
 > which gets summarized/lost across sessions. Update it before ending any session that touched
 > this branch, even a short one that only got partway through a phase.
 
-Last updated: 2026-07-09 (same session, second pass: after Cases landed (`644f959`), Shaun asked
-to fix the two create-path UX glitches and wire **everything else at once** instead of stopping
-per screen. Now built: glitch fixes (Cases detail-panel/folder-selection follow id
-reconciliation), **Plans wired**, **Audit wired**, **Admin users wired**, and the
-Dashboard/Defects no-op decisions documented — see "Screen-wiring: the all-at-once pass" section
-below. Claude-sandbox verified (tsc both packages + `pnpm build`). **Runs remains the single
-deliberately-last piece** (protected UX + atomic `/api/runs/*` auth swap, per the standing Phase
-4 decision). Shaun-local verification of ALL wired screens is now the gate.)
+Last updated: 2026-07-10 — **BRANCH COMPLETE, READY FOR PR.** Every fresh screen is wired to the
+real backend, **Shaun verified everything locally against real Docker MySQL** (all module
+checklists including the Runs protected-UX regression — his 2026-07-10 confirmation stands as
+the branch's regression evidence), and Phase 8 (living docs + PR description) is done. PR
+description: `docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`. The per-phase
+"Verification — Shaun local" checklists below are retained for the historical record; treat
+them all as ✅ per the confirmation above.
 
 ## Backend-first, all phases — standing decision (read this before touching Phases 2–8)
 
@@ -795,17 +794,23 @@ reads/writes for calls to those existing APIs," i.e. 100% screen-wiring with zer
 surface. Folded into the same deferred screen-wiring pass as Phases 2/3/5/6 rather than treated
 as its own separate step — there's nothing backend-only to build or verify here.
 
-## Phase 8 — Seed finalization + regression sweep + PR: note
+## Phase 8 — Seed finalization + regression sweep + PR: DONE (2026-07-10)
 
-Not attempted beyond a brief review this session — this phase's actual work (full regression
-sweep across all fresh screens + `/admin/*`, PR description) fundamentally requires the screens to
-be wired first (Phases 2/3/5/6/7's deferred work) and a live browser + Docker MySQL Claude's
-sandbox doesn't have. Seed data check: `packages/db/src/seed/insert.ts` (pre-existing, Phase 0)
-already seeds test cases/folders/plans per project, so `TestCaseService`/`TestPlanService` have
-real rows to exercise via direct API calls today even before any screen is wired — no additions
-made this session since nothing new consumes seed data yet. Full write-up (seed extension
-decisions, regression checklist, PR description per `CLAUDE.md`'s MR format) deferred to when this
-phase is actually picked up, after screen-wiring.
+- **Seed:** no further additions needed — the Demo Project seed (`119850a`) plus the 6 original
+  projects give every wired module explorable real rows; Shaun re-ran `pnpm db:seed` after the
+  ti.com email change and verified.
+- **Regression:** Shaun's full local verification (all module checklists above, including the
+  Runs protected-UX regression) is the branch's regression evidence — the Cowork sandbox has no
+  browser/DB, so his pass replaces the usual Cursor QA-report sweep, per the verification
+  constraint documented in `plan.md`.
+- **Living docs synced:** `AS_BUILT_SNAPSHOT.md` (rewritten for the backend-backed reality),
+  `FRONTEND_CONTRACTS.md` (new "Screen-wiring architecture + module APIs" section; Project API
+  marked wired; banner convention updated), `user-guide.md` (intro/"Data sources" replaces the
+  prototype caveat; local-only gaps + future-backend sections rewritten), `feature-flow.md`
+  (routes data-state column, persistence model, RBAC table, feature status table).
+- **PR description:** `docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`, per
+  `CLAUDE.md`'s MR format (Summary / What's included by feature area with linked SHAs /
+  Caveats / Testing).
 
 ## Open questions / blockers
 
@@ -915,3 +920,11 @@ phase is actually picked up, after screen-wiring.
   Then **Phase 4 (Runs) built** — see its section above. An org usage limit cut off the
   delegated agent mid-way (after read.ts/updateRun/auth.ts); finished directly in the main
   session. Claude-sandbox verified: tsc clean both packages, build clean (29/29).
+- **2026-07-10 (verification + Phase 8 — branch complete):** Shaun verified everything locally
+  (all module checklists incl. the Runs protected-UX regression) — no issues reported. Phase 8
+  executed: living docs synced (`AS_BUILT_SNAPSHOT.md` rewritten, `FRONTEND_CONTRACTS.md`
+  module-API section, `user-guide.md`/`feature-flow.md` updated to the backend-backed reality),
+  PR description written at `docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`.
+  **Branch definition of done met: every fresh screen reads/writes the real API, login gates
+  the app, the seeded Demo Project is explorable without manual setup. Ready for PR to
+  `mvp-main`.**
