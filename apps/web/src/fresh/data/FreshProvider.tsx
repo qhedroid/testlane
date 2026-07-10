@@ -191,6 +191,10 @@ function loadState(): DemoState {
   return buildInitialDemoState()
 }
 
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : 'Unknown error'
+}
+
 function persistState(state: DemoState) {
   if (typeof window === 'undefined') return
   try {
@@ -232,16 +236,13 @@ export type FreshAction =
   | { type: 'DELETE_PLAN'; planId: string }
   | { type: 'DUPLICATE_PLAN'; newPlan: TestPlan }
   | { type: 'ADD_FOLDER'; folder: Folder }
+  | { type: 'ADD_RUN'; run: DemoRun }
   | { type: 'CREATE_REQUIREMENT'; requirement: Requirement }
   | { type: 'LINK_REQUIREMENT_TO_CASE'; caseId: string; requirementId: string }
   | { type: 'CREATE_DEFECT_AND_LINK'; defect: Defect; runId: string; caseId: string }
   | { type: 'LINK_DEFECT_TO_EXECUTION'; runId: string; caseId: string; defectId: string }
   | { type: 'HYDRATE'; state: DemoState }
   | { type: 'SYNC_REAL_PROJECT_DATA'; projectId: string; folders: Folder[]; cases: Case[]; plans: TestPlan[]; runs: DemoRun[] }
-  | { type: 'RECONCILE_CASE'; tempId: string; case: Case }
-  | { type: 'RECONCILE_FOLDER'; tempId: string; folder: Folder }
-  | { type: 'RECONCILE_PLAN'; tempId: string; plan: TestPlan }
-  | { type: 'RECONCILE_RUN'; tempId: string; run: DemoRun }
   | { type: 'SYNC_REAL_USERS'; users: RealUser[] }
   | { type: 'RECONCILE_ADMIN_USER'; email: string; user: RealUser }
 
@@ -532,7 +533,9 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
     case 'ADD_CASE': {
       const projectId = state.activeProjectId
       const num = getActiveProjectNextCaseNum(state)
-      const caseKey = formatCaseKey(num)
+      // Server-created cases arrive with their real caseKey already set;
+      // only local-only creations fall back to the client counter format.
+      const caseKey = action.case.caseKey ?? formatCaseKey(num)
       next = {
         ...state,
         cases: [...state.cases, { ...action.case, caseKey }],
@@ -895,6 +898,19 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       next = { ...state, runs }
       break
     }
+    case 'ADD_RUN': {
+      // Insert a server-created run (spawn-from-plan / duplicate) and make it
+      // the project's current run — wait-for-server world's CREATE_RUN.
+      next = {
+        ...state,
+        runs: [...state.runs, action.run],
+        currentRunIdByProject: {
+          ...state.currentRunIdByProject,
+          [action.run.projectId]: action.run.id,
+        },
+      }
+      break
+    }
     case 'SYNC_REAL_PROJECT_DATA': {
       // Server data replaces this project's cases/folders wholesale, with two
       // exceptions: (1) local-only fields are merged back in per case (see
@@ -963,68 +979,6 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           ...pendingRuns,
         ],
         currentRunIdByProject,
-      }
-      break
-    }
-    case 'RECONCILE_CASE': {
-      // An optimistic create's POST resolved — swap the temp local id/caseKey
-      // for the server's real ULID and TC-<n> ref. Run references to the temp
-      // id are remapped defensively (runs are still local-only, but a case
-      // added to a run in the reconcile window shouldn't dangle).
-      const local = state.cases.find((c) => c.id === action.tempId)
-      if (!local) return state
-      const reconciled = mergeLocalOnlyCaseFields(action.case, local)
-      next = {
-        ...state,
-        cases: state.cases.map((c) => (c.id === action.tempId ? reconciled : c)),
-        runs: state.runs.map((r) => {
-          if (!r.caseOrder.includes(action.tempId) && !(action.tempId in r.executions)) return r
-          return {
-            ...r,
-            caseOrder: r.caseOrder.map((id) => (id === action.tempId ? reconciled.id : id)),
-            executions: Object.fromEntries(
-              Object.entries(r.executions).map(([id, ex]) => [
-                id === action.tempId ? reconciled.id : id,
-                ex,
-              ]),
-            ),
-          }
-        }),
-      }
-      break
-    }
-    case 'RECONCILE_PLAN': {
-      const local = state.plansById[action.tempId]
-      if (!local) return state
-      const reconciled = mergeLocalOnlyPlanFields(action.plan, local)
-      const { [action.tempId]: _removed, ...rest } = state.plansById
-      next = {
-        ...state,
-        plansById: { ...rest, [reconciled.id]: reconciled },
-        // Local runs spawned from the plan in the reconcile window keep a
-        // valid planId reference (runs are still local-only).
-        runs: state.runs.map((r) =>
-          r.planId === action.tempId ? { ...r, planId: reconciled.id } : r,
-        ),
-      }
-      break
-    }
-    case 'RECONCILE_RUN': {
-      // A spawned/duplicated run's create POST resolved — swap the temp id
-      // and local 5-digit runKey for the server's real ULID and RUN-<nnnn>
-      // ref, keeping local-only fields (description, log, step ticks).
-      const local = state.runs.find((r) => r.id === action.tempId)
-      if (!local) return state
-      const reconciled = mergeLocalOnlyRunFields(action.run, local)
-      next = {
-        ...state,
-        runs: state.runs.map((r) => (r.id === action.tempId ? reconciled : r)),
-        currentRunIdByProject: Object.fromEntries(
-          Object.entries(state.currentRunIdByProject).map(([pid, rid]) => [
-            pid,
-            rid === action.tempId ? reconciled.id : rid,
-          ]),
-        ),
       }
       break
     }
@@ -1114,22 +1068,6 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     }
-    case 'RECONCILE_FOLDER': {
-      const exists = state.folders.some((f) => f.id === action.tempId)
-      if (!exists) return state
-      next = {
-        ...state,
-        folders: state.folders.map((f) => {
-          if (f.id === action.tempId) return action.folder
-          if (f.parentId === action.tempId) return { ...f, parentId: action.folder.id }
-          return f
-        }),
-        cases: state.cases.map((c) =>
-          c.folderId === action.tempId ? { ...c, folderId: action.folder.id } : c,
-        ),
-      }
-      break
-    }
     default:
       return state
   }
@@ -1142,13 +1080,6 @@ interface FreshContextValue {
   dispatch: React.Dispatch<FreshAction>
   /** Whether the real-project fetch has resolved at least once (success or failure). See ProjectRouteSync.tsx. */
   realProjectsLoaded: boolean
-  /**
-   * Map a possibly-stale optimistic-create temp id to its reconciled real id
-   * (or return the id unchanged). Screens that hold entity ids in local state
-   * (open detail panel, selected folder) use this to follow RECONCILE_CASE /
-   * RECONCILE_FOLDER id swaps instead of losing their selection.
-   */
-  resolveEntityId: (id: string) => string
   activeProject: Project
   projects: Project[]
   activeFolders: Folder[]
@@ -1193,7 +1124,7 @@ interface FreshContextValue {
   deleteProject: (projectId: string) => void
   setActiveProject: (projectId: string) => void
   getCase: (caseId: string) => Case | undefined
-  addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>) => string
+  addCase: (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>) => Promise<string | null>
   updateCase: (caseId: string, patch: Partial<Case>) => void
   replaceCase: (caseData: Case) => void
   deleteCase: (caseId: string) => void
@@ -1204,17 +1135,17 @@ interface FreshContextValue {
   unsealRun: () => void
   setCurrentRun: (runId: string) => void
   createRun: (input: { name: string; description?: string; caseIds?: string[] }) => { runKey: string }
-  duplicateRun: (runId: string) => { runKey: string } | null
+  duplicateRun: (runId: string) => Promise<{ runKey: string } | null>
   archiveRun: (runId: string) => void
   deleteRun: (runId: string) => void
   editRun: (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => void
   addCasesToRun: (runId: string, caseIds: string[]) => void
-  addPlan: (title: string, description?: string) => { planKey: string; planId: string }
+  addPlan: (title: string, description?: string) => Promise<{ planKey: string; planId: string } | null>
   updatePlan: (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>>) => void
   deletePlan: (planId: string) => void
-  duplicatePlan: (planId: string) => { planKey: string; planId: string } | null
-  spawnRunFromPlan: (planId: string, name: string, description?: string) => { runKey: string } | null
-  addFolder: (name: string, parentId?: string | null) => string
+  duplicatePlan: (planId: string) => Promise<{ planKey: string; planId: string } | null>
+  spawnRunFromPlan: (planId: string, name: string, description?: string) => Promise<{ runKey: string } | null>
+  addFolder: (name: string, parentId?: string | null) => Promise<string | null>
   isRunSealed: boolean
   activeRequirements: Requirement[]
   activeDefects: Defect[]
@@ -1298,53 +1229,28 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // ---------------------------------------------------------------------
-  // Real-project write-through plumbing (Cases screen-wiring pass)
-  //
-  // Optimistic writes: local dispatch fires first (today's exact feel), the
-  // real API call runs in the background and reconciles afterward. Demo-only
-  // decision — see "Optimistic writes" in docs/claude/mvp-backend/progress.md
-  // for the standing note to revisit before any real production use.
-  //
-  // idRemapRef: temp newId() id -> real server ULID, filled in as each
-  // optimistic create's POST resolves. pendingRealCreatesRef: temp id -> the
-  // in-flight create promise, so writes against a not-yet-reconciled entity
-  // (e.g. delete a case whose create POST is still in flight) can wait for
-  // the real id instead of silently missing the server.
-  // ---------------------------------------------------------------------
-  const idRemapRef = useRef(new Map<string, string>())
-  const pendingRealCreatesRef = useRef(new Map<string, Promise<string>>())
   // real run id -> { live testCaseId -> testRunCaseId } (Phase 4). The result
   // endpoint is addressed by test_run_cases id, but DemoRun.executions is
   // keyed by live case id — this map bridges the two for result writes.
   const runCaseIdsRef = useRef(new Map<string, Record<string, string>>())
 
-  const resolveRealId = useCallback((id: string): string | undefined => {
-    if (isRealId(id)) return id
-    return idRemapRef.current.get(id)
+  // -------------------------------------------------------------------
+  // Write semantics (data-layer refactor): writes WAIT FOR THE SERVER by
+  // default — the local dispatch happens only after the API confirms, so
+  // ids/refs are always server-generated and no temp-id reconciliation
+  // exists anywhere. The one exception is updateExecution (P/F/B/S
+  // recording), which stays optimistic for keyboard-speed execution and
+  // rolls back to the previous execution state if the API rejects the
+  // write. Failed writes surface as dismissible error toasts.
+  // -------------------------------------------------------------------
+  const [writeErrors, setWriteErrors] = useState<{ id: number; message: string }[]>([])
+  const notifyError = useCallback((message: string) => {
+    const id = Date.now() + Math.random()
+    setWriteErrors((prev) => [...prev.slice(-2), { id, message }])
+    setTimeout(() => {
+      setWriteErrors((prev) => prev.filter((e) => e.id !== id))
+    }, 6000)
   }, [])
-
-  // Public flavor of the remap for screens (see FreshContextValue doc). Reads
-  // the ref lazily, so callers get fresh mappings on the re-render the
-  // RECONCILE_* dispatch itself triggers.
-  const resolveEntityId = useCallback((id: string): string => {
-    return idRemapRef.current.get(id) ?? id
-  }, [])
-
-  const resolveRealIdAsync = useCallback(
-    async (id: string): Promise<string | undefined> => {
-      const direct = resolveRealId(id)
-      if (direct) return direct
-      const pending = pendingRealCreatesRef.current.get(id)
-      if (!pending) return undefined
-      try {
-        return await pending
-      } catch {
-        return undefined
-      }
-    },
-    [resolveRealId],
-  )
 
   // Sync the active real project's cases + folders from the real API into
   // reducer state (same pattern REGISTER_REAL_PROJECTS uses for the project
@@ -1437,148 +1343,137 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   )
 
   const addCase = useCallback(
-    (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>) => {
-      const id = newId('case')
-      const now = new Date().toISOString()
+    async (data: Omit<Case, 'id' | 'updatedAt' | 'createdAt' | 'projectId'>): Promise<string | null> => {
       const projectId = state.activeProjectId
-      const newCase: Case = {
-        ...data,
-        id,
-        projectId,
-        createdAt: now,
-        updatedAt: now,
-      }
-      dispatch({ type: 'ADD_CASE', case: newCase })
-
-      if (state.projectsById[projectId]?.source === 'real') {
-        const createPromise = (async () => {
-          // The case may target a folder whose own optimistic create is still
-          // in flight — wait for that folder's real id before building the body.
-          if (data.folderId && !resolveRealId(data.folderId)) {
-            await pendingRealCreatesRef.current.get(data.folderId)?.catch(() => undefined)
-          }
-          const real = await createRealCase(
-            projectId,
-            localCaseToCreateBody({ ...data, folderId: data.folderId ?? null }, resolveRealId),
-          )
-          idRemapRef.current.set(id, real.id)
-          dispatch({ type: 'RECONCILE_CASE', tempId: id, case: realCaseToLocal(real) })
-          return real.id
-        })()
-        pendingRealCreatesRef.current.set(id, createPromise)
-        createPromise.catch((err) => {
-          console.error('[relay] createCase API call failed — case kept locally only:', err)
+      try {
+        const real = await createRealCase(
+          projectId,
+          localCaseToCreateBody({ ...data, folderId: data.folderId ?? null }, (fid) =>
+            isRealId(fid) ? fid : undefined,
+          ),
+        )
+        const created = realCaseToLocal(real)
+        dispatch({
+          type: 'ADD_CASE',
+          case: {
+            ...created,
+            generalComments: data.generalComments ?? [],
+            customFieldValues: data.customFieldValues,
+            requirementIds: data.requirementIds,
+            references: data.references,
+            template: data.template,
+          },
         })
+        return created.id
+      } catch (err) {
+        notifyError(`Couldn't create test case: ${errMsg(err)}`)
+        return null
       }
-      return id
     },
-    [state, resolveRealId],
+    [state.activeProjectId, notifyError],
   )
 
   const updateCase = useCallback(
     (caseId: string, patch: Partial<Case>) => {
-      dispatch({ type: 'UPDATE_CASE', caseId, patch })
       const projectId = state.activeProjectId
-      if (state.projectsById[projectId]?.source !== 'real') return
-      const body = localCasePatchToUpdateBody(patch, resolveRealId)
-      if (!body) return // patch touched only local-only fields — nothing to send
+      const body = localCasePatchToUpdateBody(patch, (fid) => (isRealId(fid) ? fid : undefined))
+      if (!body) {
+        // Patch touches only local-only fields — nothing to persist remotely.
+        dispatch({ type: 'UPDATE_CASE', caseId, patch })
+        return
+      }
       void (async () => {
-        const realId = await resolveRealIdAsync(caseId)
-        if (!realId) {
-          console.warn('[relay] updateCase: no real id for', caseId, '— change kept locally only')
-          return
-        }
-        await updateRealCase(projectId, realId, body)
-      })().catch((err) => console.error('[relay] updateCase API call failed:', err))
+        await updateRealCase(projectId, caseId, body)
+        dispatch({ type: 'UPDATE_CASE', caseId, patch })
+      })().catch((err) => notifyError(`Couldn't save test case: ${errMsg(err)}`))
     },
-    [state, resolveRealId, resolveRealIdAsync],
+    [state.activeProjectId, notifyError],
   )
 
   const replaceCase = useCallback(
     (caseItem: Case) => {
-      dispatch({ type: 'REPLACE_CASE', case: caseItem })
       const projectId = state.activeProjectId
-      if (state.projectsById[projectId]?.source !== 'real') return
-      // A full Case is just a patch with every backend-supported key present.
-      const body = localCasePatchToUpdateBody(caseItem, resolveRealId)
-      if (!body) return
+      const body = localCasePatchToUpdateBody(caseItem, (fid) => (isRealId(fid) ? fid : undefined))
+      if (!body) {
+        dispatch({ type: 'REPLACE_CASE', case: caseItem })
+        return
+      }
       void (async () => {
-        const realId = await resolveRealIdAsync(caseItem.id)
-        if (!realId) {
-          console.warn('[relay] replaceCase: no real id for', caseItem.id, '— change kept locally only')
-          return
-        }
-        await updateRealCase(projectId, realId, body)
-      })().catch((err) => console.error('[relay] replaceCase API call failed:', err))
+        await updateRealCase(projectId, caseItem.id, body)
+        dispatch({ type: 'REPLACE_CASE', case: caseItem })
+      })().catch((err) => notifyError(`Couldn't save test case: ${errMsg(err)}`))
     },
-    [state, resolveRealId, resolveRealIdAsync],
+    [state.activeProjectId, notifyError],
   )
 
   const deleteCase = useCallback(
     (caseId: string) => {
-      dispatch({ type: 'DELETE_CASE', caseId })
       const projectId = state.activeProjectId
-      if (state.projectsById[projectId]?.source !== 'real') return
-      // Server-side this archives rather than hard-deletes — a documented
-      // behavior difference (see TestCaseService.ts's file header).
       void (async () => {
-        const realId = await resolveRealIdAsync(caseId)
-        if (!realId) return
-        await archiveRealCase(projectId, realId)
-      })().catch((err) => console.error('[relay] archiveCase API call failed:', err))
+        // Server-side this archives rather than hard-deletes (documented
+        // behavior difference — see TestCaseService.ts's file header).
+        await archiveRealCase(projectId, caseId)
+        dispatch({ type: 'DELETE_CASE', caseId })
+      })().catch((err) => notifyError(`Couldn't delete test case: ${errMsg(err)}`))
     },
-    [state, resolveRealIdAsync],
+    [state.activeProjectId, notifyError],
   )
 
   // Push a run lifecycle change (seal/reopen/archive) to the real API.
   // The frontend's "delete run" also lands here as 'archived' — the server
   // never hard-deletes runs.
   const pushRunStatus = useCallback(
-    (projectId: string, localRunId: string, status: 'active' | 'sealed' | 'archived') => {
-      if (state.projectsById[projectId]?.source !== 'real') return
+    (
+      projectId: string,
+      runId: string,
+      status: 'active' | 'sealed' | 'archived',
+      apply: () => void,
+    ) => {
+      if (!isRealId(runId)) {
+        // Local-only (ad-hoc) run — nothing to persist remotely.
+        apply()
+        return
+      }
       void (async () => {
-        const realId = await resolveRealIdAsync(localRunId)
-        if (!realId) {
-          console.warn('[relay] run status update: no real id for', localRunId, '— kept locally only')
-          return
-        }
-        await updateRealRun(realId, { projectId, status })
-      })().catch((err) => console.error('[relay] run status update API call failed:', err))
+        await updateRealRun(runId, { projectId, status })
+        apply()
+      })().catch((err) => notifyError(`Couldn't update run: ${errMsg(err)}`))
     },
-    [state, resolveRealIdAsync],
+    [notifyError],
   )
 
   const updateExecution = useCallback(
     (caseId: string, patch: Partial<CaseExecution>) => {
       const runId = getActiveProjectCurrentRunId(state)
       if (!runId || !runIsMutable(state, runId)) return
+      // OPTIMISTIC — the one exception to wait-for-server: P/F/B/S recording
+      // must keep its keyboard-speed feel. Rolls back to the previous
+      // execution state if the API rejects the write.
+      const prevExecution = findRunById(state, runId)?.executions[caseId]
       dispatch({ type: 'UPDATE_RUN_EXECUTION', runId, caseId, patch })
 
-      const projectId = state.activeProjectId
-      if (state.projectsById[projectId]?.source !== 'real') return
-      // Only status/result-notes have server storage; assignee/stepResults/
-      // defect edits via this path stay local-only (stepResults + the
-      // append-only executionLog have no backing tables — documented gap).
+      if (!isRealId(runId)) return // local-only ad-hoc run
       if (patch.status === undefined && patch.resultNotes === undefined) return
-      void (async () => {
-        const realRunId = await resolveRealIdAsync(runId)
-        const realCaseId = resolveRealId(caseId)
-        const testRunCaseId = realRunId && realCaseId
-          ? runCaseIdsRef.current.get(realRunId)?.[realCaseId]
-          : undefined
-        if (!realRunId || !testRunCaseId) {
-          console.warn('[relay] updateExecution: no run-case mapping — result kept locally only')
-          return
-        }
-        const currentStatus =
-          patch.status ?? findRunById(state, runId)?.executions[caseId]?.status ?? 'Not run'
-        await recordRealCaseResult(realRunId, testRunCaseId, {
-          status: toRealResultStatus(currentStatus),
-          ...(patch.resultNotes !== undefined ? { comment: patch.resultNotes ?? null } : {}),
+      const testRunCaseId = runCaseIdsRef.current.get(runId)?.[caseId]
+      if (!testRunCaseId) {
+        console.warn('[relay] updateExecution: no run-case mapping — result kept locally only')
+        return
+      }
+      const statusToSend = patch.status ?? prevExecution?.status ?? 'Not run'
+      recordRealCaseResult(runId, testRunCaseId, {
+        status: toRealResultStatus(statusToSend),
+        ...(patch.resultNotes !== undefined ? { comment: patch.resultNotes ?? null } : {}),
+      }).catch((err) => {
+        dispatch({
+          type: 'UPDATE_RUN_EXECUTION',
+          runId,
+          caseId,
+          patch: prevExecution ?? { status: 'Not run' as ExecStatus, stepResults: {} },
         })
-      })().catch((err) => console.error('[relay] updateExecution API call failed:', err))
+        notifyError(`Result not saved — rolled back: ${errMsg(err)}`)
+      })
     },
-    [state, resolveRealId, resolveRealIdAsync],
+    [state, notifyError],
   )
 
   const addStepComment = useCallback(
@@ -1602,15 +1497,13 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const sealRun = useCallback(() => {
     const runId = getActiveProjectCurrentRunId(state)
     if (!runId) return
-    dispatch({ type: 'SEAL_RUN', runId })
-    pushRunStatus(state.activeProjectId, runId, 'sealed')
+    pushRunStatus(state.activeProjectId, runId, 'sealed', () => dispatch({ type: 'SEAL_RUN', runId }))
   }, [state, pushRunStatus])
 
   const unsealRun = useCallback(() => {
     const runId = getActiveProjectCurrentRunId(state)
     if (!runId) return
-    dispatch({ type: 'UNSEAL_RUN', runId })
-    pushRunStatus(state.activeProjectId, runId, 'active')
+    pushRunStatus(state.activeProjectId, runId, 'active', () => dispatch({ type: 'UNSEAL_RUN', runId }))
   }, [state, pushRunStatus])
 
   const setCurrentRun = useCallback((runId: string) => {
@@ -1622,105 +1515,90 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       const num = getActiveProjectNextRunNum(state)
       const runKey = formatRunKey(num)
       dispatch({ type: 'CREATE_RUN', name: input.name, description: input.description, caseIds: input.caseIds })
-      // Ad-hoc (plan-less) runs cannot be created server-side — the server's
-      // createRun snapshot transaction requires a real test plan. Documented
-      // Phase 4 gap: these runs stay local-only.
-      if (state.projectsById[state.activeProjectId]?.source === 'real') {
-        console.warn(
-          '[relay] createRun: ad-hoc runs (no plan) have no server support yet — run kept locally only',
-        )
-      }
+      // Documented gap: the server's createRun requires a test plan to
+      // snapshot, so ad-hoc runs live in this browser only.
+      notifyError(
+        "Heads up: runs created without a test plan aren't saved to the server yet — this run is local to this browser.",
+      )
       return { runKey }
     },
-    [state],
+    [state, notifyError],
   )
 
   const duplicateRun = useCallback(
-    (runId: string) => {
+    async (runId: string): Promise<{ runKey: string } | null> => {
       const source = findRunById(state, runId)
       if (!source) return null
-      const num = state.nextRunNumByProject[source.projectId] ?? 1
-      const runKey = formatRunKey(num)
-      const newRunId = newId('run')
-      dispatch({ type: 'DUPLICATE_RUN', runId, newRunId })
-
       const projectId = source.projectId
-      if (state.projectsById[projectId]?.source === 'real') {
-        if (!source.planId) {
-          console.warn('[relay] duplicateRun: source run has no plan — copy kept locally only')
-        } else {
-          const sourcePlanId = source.planId
-          const copyName = `${source.name} (copy)`
-          const createPromise = (async () => {
-            const realPlanId = await resolveRealIdAsync(sourcePlanId)
-            if (!realPlanId) throw new Error(`no real id for plan ${sourcePlanId}`)
-            // Note: the server snapshots the plan's CURRENT case list, which
-            // can differ from the source run's frozen caseOrder — acceptable
-            // demo-scale divergence, documented in progress.md.
-            const created = await createRealRun({ projectId, testPlanId: realPlanId, name: copyName })
-            const detail = await fetchRealRunDetail(created.id, projectId)
-            runCaseIdsRef.current.set(
-              created.id,
-              Object.fromEntries(detail.testRunCases.map((c) => [c.originalTestCaseId, c.testRunCaseId])),
-            )
-            idRemapRef.current.set(newRunId, created.id)
-            idRemapRef.current.set(runKey, created.runRef) // URL runKey follow (RunsScreen)
-            dispatch({
-              type: 'RECONCILE_RUN',
-              tempId: newRunId,
-              run: realCreatedRunToLocal(created, detail, source.planName),
-            })
-            return created.id
-          })()
-          pendingRealCreatesRef.current.set(newRunId, createPromise)
-          createPromise.catch((err) => {
-            console.error('[relay] duplicateRun API call failed — copy kept locally only:', err)
-          })
-        }
+      if (!source.planId || !isRealId(source.planId)) {
+        const num = state.nextRunNumByProject[projectId] ?? 1
+        const runKey = formatRunKey(num)
+        dispatch({ type: 'DUPLICATE_RUN', runId })
+        notifyError('Copy created locally only — the source run has no server-side test plan.')
+        return { runKey }
       }
-      return { runKey }
+      try {
+        // Note: the server snapshots the plan's CURRENT case list, which can
+        // differ from the source run's frozen caseOrder — acceptable
+        // demo-scale divergence, documented in progress.md.
+        const created = await createRealRun({
+          projectId,
+          testPlanId: source.planId,
+          name: `${source.name} (copy)`,
+        })
+        const detail = await fetchRealRunDetail(created.id, projectId)
+        runCaseIdsRef.current.set(
+          created.id,
+          Object.fromEntries(detail.testRunCases.map((c) => [c.originalTestCaseId, c.testRunCaseId])),
+        )
+        dispatch({ type: 'ADD_RUN', run: realCreatedRunToLocal(created, detail, source.planName) })
+        return { runKey: created.runRef }
+      } catch (err) {
+        notifyError(`Couldn't duplicate run: ${errMsg(err)}`)
+        return null
+      }
     },
-    [state, resolveRealIdAsync],
+    [state, notifyError],
   )
 
   const archiveRun = useCallback(
     (runId: string) => {
-      dispatch({ type: 'ARCHIVE_RUN', runId })
-      pushRunStatus(state.activeProjectId, runId, 'archived')
+      pushRunStatus(state.activeProjectId, runId, 'archived', () =>
+        dispatch({ type: 'ARCHIVE_RUN', runId }),
+      )
     },
     [state.activeProjectId, pushRunStatus],
   )
 
   const deleteRun = useCallback(
     (runId: string) => {
-      dispatch({ type: 'DELETE_RUN', runId })
-      // Server-side "delete" = archive (runs are never hard-deleted) — the
-      // local remove + server archive divergence matches deleteCase's.
-      pushRunStatus(state.activeProjectId, runId, 'archived')
+      // Server-side "delete" = archive (runs are never hard-deleted); the
+      // local state removes the run entirely.
+      pushRunStatus(state.activeProjectId, runId, 'archived', () =>
+        dispatch({ type: 'DELETE_RUN', runId }),
+      )
     },
     [state.activeProjectId, pushRunStatus],
   )
 
   const editRun = useCallback(
     (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => {
-      dispatch({ type: 'UPDATE_RUN', runId, patch })
       const projectId = state.activeProjectId
-      if (state.projectsById[projectId]?.source !== 'real') return
-      // name -> title, due -> dueDate; description/planName are local-only.
       const body: { projectId: string; title?: string; dueDate?: string | null } = { projectId }
       if (patch.name !== undefined && patch.name.trim().length > 0) body.title = patch.name
       if ('due' in patch) body.dueDate = patch.due ?? null
-      if (body.title === undefined && !('dueDate' in body)) return
+      const hasRemoteFields = body.title !== undefined || 'dueDate' in body
+      if (!isRealId(runId) || !hasRemoteFields) {
+        // description/planName are local-only; ad-hoc runs are local-only.
+        dispatch({ type: 'UPDATE_RUN', runId, patch })
+        return
+      }
       void (async () => {
-        const realId = await resolveRealIdAsync(runId)
-        if (!realId) {
-          console.warn('[relay] editRun: no real id for', runId, '— change kept locally only')
-          return
-        }
-        await updateRealRun(realId, body)
-      })().catch((err) => console.error('[relay] editRun API call failed:', err))
+        await updateRealRun(runId, body)
+        dispatch({ type: 'UPDATE_RUN', runId, patch })
+      })().catch((err) => notifyError(`Couldn't save run: ${errMsg(err)}`))
     },
-    [state, resolveRealIdAsync],
+    [state.activeProjectId, notifyError],
   )
 
   const addCasesToRun = useCallback(
@@ -1731,38 +1609,21 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   )
 
   const addFolder = useCallback(
-    (name: string, parentId?: string | null) => {
-      const id = newId('folder')
+    async (name: string, parentId?: string | null): Promise<string | null> => {
       const projectId = state.activeProjectId
-      dispatch({
-        type: 'ADD_FOLDER',
-        folder: { id, projectId, name, parentId: parentId ?? null },
-      })
-
-      if (state.projectsById[projectId]?.source === 'real') {
-        const createPromise = (async () => {
-          // Parent may itself be an optimistic create still in flight.
-          let realParentId: string | null = parentId ? (resolveRealId(parentId) ?? null) : null
-          if (parentId && !realParentId) {
-            realParentId =
-              (await pendingRealCreatesRef.current.get(parentId)?.catch(() => undefined)) ?? null
-          }
-          const real = await createRealFolder(projectId, {
-            name,
-            ...(realParentId ? { parentId: realParentId } : {}),
-          })
-          idRemapRef.current.set(id, real.id)
-          dispatch({ type: 'RECONCILE_FOLDER', tempId: id, folder: realFolderToLocal(real) })
-          return real.id
-        })()
-        pendingRealCreatesRef.current.set(id, createPromise)
-        createPromise.catch((err) => {
-          console.error('[relay] createFolder API call failed — folder kept locally only:', err)
+      try {
+        const real = await createRealFolder(projectId, {
+          name,
+          ...(parentId && isRealId(parentId) ? { parentId } : {}),
         })
+        dispatch({ type: 'ADD_FOLDER', folder: realFolderToLocal(real) })
+        return real.id
+      } catch (err) {
+        notifyError(`Couldn't create folder: ${errMsg(err)}`)
+        return null
       }
-      return id
     },
-    [state, resolveRealId],
+    [state.activeProjectId, notifyError],
   )
 
   // Resolve a plan's queries to the real-ULID case ids the server should
@@ -1773,187 +1634,116 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       const projectCases = state.cases.filter((c) => c.projectId === plan.projectId)
       const projectFolders = state.folders.filter((f) => f.projectId === plan.projectId)
       return resolvePlanCases(plan, projectCases, projectFolders)
-        .map((c) => resolveRealId(c.id))
-        .filter((id): id is string => !!id)
-    },
-    [state, resolveRealId],
-  )
-
-  const addPlan = useCallback(
-    (title: string, description?: string) => {
-      const projectId = state.activeProjectId
-      const num = state.nextPlanNumByProject[projectId] ?? 1
-      const planKey = formatPlanKey(num)
-      const plan: TestPlan = {
-        id: newId('plan'),
-        planKey,
-        projectId,
-        title,
-        description,
-        createdAt: new Date().toISOString(),
-        queries: [],
-      }
-      dispatch({ type: 'ADD_PLAN', plan })
-
-      if (state.projectsById[projectId]?.source === 'real') {
-        const createPromise = (async () => {
-          const real = await createRealPlan(projectId, {
-            title,
-            ...(description?.trim() ? { description } : {}),
-          })
-          idRemapRef.current.set(plan.id, real.id)
-          // Also remap the temp planKey — PlansScreen's URL routing is keyed
-          // on planKey, not id, and follows this via resolveEntityId.
-          idRemapRef.current.set(planKey, real.planRef)
-          dispatch({ type: 'RECONCILE_PLAN', tempId: plan.id, plan: realPlanDetailToLocal(real) })
-          return real.id
-        })()
-        pendingRealCreatesRef.current.set(plan.id, createPromise)
-        createPromise.catch((err) => {
-          console.error('[relay] createPlan API call failed — plan kept locally only:', err)
-        })
-      }
-      return { planKey, planId: plan.id }
+        .map((c) => c.id)
+        .filter((id) => isRealId(id))
     },
     [state],
   )
 
+  const addPlan = useCallback(
+    async (title: string, description?: string): Promise<{ planKey: string; planId: string } | null> => {
+      const projectId = state.activeProjectId
+      try {
+        const real = await createRealPlan(projectId, {
+          title,
+          ...(description?.trim() ? { description } : {}),
+        })
+        dispatch({ type: 'ADD_PLAN', plan: realPlanDetailToLocal(real) })
+        return { planKey: real.planRef, planId: real.id }
+      } catch (err) {
+        notifyError(`Couldn't create test plan: ${errMsg(err)}`)
+        return null
+      }
+    },
+    [state.activeProjectId, notifyError],
+  )
+
   const updatePlan = useCallback(
     (planId: string, patch: Partial<Pick<TestPlan, 'title' | 'description' | 'queries'>>) => {
-      dispatch({ type: 'UPDATE_PLAN', planId, patch })
       const projectId = state.activeProjectId
-      if (state.projectsById[projectId]?.source !== 'real') return
       const plan = state.plansById[planId]
       if (!plan) return
       void (async () => {
-        const realId = await resolveRealIdAsync(planId)
-        if (!realId) {
-          console.warn('[relay] updatePlan: no real id for', planId, '— change kept locally only')
-          return
-        }
-        if (patch.title !== undefined || patch.description !== undefined) {
-          await updateRealPlan(projectId, realId, {
+        if (patch.title !== undefined || 'description' in patch) {
+          await updateRealPlan(projectId, planId, {
             ...(patch.title !== undefined ? { title: patch.title } : {}),
             ...('description' in patch ? { description: patch.description ?? null } : {}),
           })
         }
-        // Queries are local-only (GAP-01) — what the server tracks is the
-        // *resolved* case list, replaced wholesale on every queries change.
+        // Queries are local-only (GAP-01) — the server tracks the *resolved*
+        // case list, replaced wholesale on every queries change.
         if (patch.queries) {
-          const caseIds = resolveRealPlanCaseIds({ ...plan, ...patch })
-          await setRealPlanCases(projectId, realId, caseIds)
+          await setRealPlanCases(projectId, planId, resolveRealPlanCaseIds({ ...plan, ...patch }))
         }
-      })().catch((err) => console.error('[relay] updatePlan API call failed:', err))
+        dispatch({ type: 'UPDATE_PLAN', planId, patch })
+      })().catch((err) => notifyError(`Couldn't save test plan: ${errMsg(err)}`))
     },
-    [state, resolveRealIdAsync, resolveRealPlanCaseIds],
+    [state, resolveRealPlanCaseIds, notifyError],
   )
 
   const deletePlan = useCallback(
     (planId: string) => {
-      dispatch({ type: 'DELETE_PLAN', planId })
       const projectId = state.activeProjectId
-      if (state.projectsById[projectId]?.source !== 'real') return
-      // Server-side this archives (status = 'archived') rather than deleting.
       void (async () => {
-        const realId = await resolveRealIdAsync(planId)
-        if (!realId) return
-        await archiveRealPlan(projectId, realId)
-      })().catch((err) => console.error('[relay] archivePlan API call failed:', err))
+        await archiveRealPlan(projectId, planId)
+        dispatch({ type: 'DELETE_PLAN', planId })
+      })().catch((err) => notifyError(`Couldn't delete test plan: ${errMsg(err)}`))
     },
-    [state, resolveRealIdAsync],
+    [state.activeProjectId, notifyError],
   )
 
   const duplicatePlan = useCallback(
-    (planId: string) => {
+    async (planId: string): Promise<{ planKey: string; planId: string } | null> => {
       const original = state.plansById[planId]
       if (!original) return null
       const projectId = state.activeProjectId
-      const num = state.nextPlanNumByProject[projectId] ?? 1
-      const planKey = formatPlanKey(num)
-      const newPlan: TestPlan = {
-        ...original,
-        id: newId('plan'),
-        planKey,
-        title: `Copy of ${original.title}`,
-        createdAt: new Date().toISOString(),
-        queries: original.queries.map((q) => ({ ...q, id: newId('tq') })),
-      }
-      dispatch({ type: 'DUPLICATE_PLAN', newPlan })
-
-      if (state.projectsById[projectId]?.source === 'real') {
-        const createPromise = (async () => {
-          const real = await createRealPlan(projectId, {
-            title: newPlan.title,
-            ...(newPlan.description?.trim() ? { description: newPlan.description } : {}),
-            caseIds: resolveRealPlanCaseIds(newPlan),
-          })
-          idRemapRef.current.set(newPlan.id, real.id)
-          idRemapRef.current.set(planKey, real.planRef)
-          dispatch({ type: 'RECONCILE_PLAN', tempId: newPlan.id, plan: realPlanDetailToLocal(real) })
-          return real.id
-        })()
-        pendingRealCreatesRef.current.set(newPlan.id, createPromise)
-        createPromise.catch((err) => {
-          console.error('[relay] duplicatePlan API call failed — copy kept locally only:', err)
+      try {
+        const real = await createRealPlan(projectId, {
+          title: `Copy of ${original.title}`,
+          ...(original.description?.trim() ? { description: original.description } : {}),
+          caseIds: resolveRealPlanCaseIds(original),
         })
+        const newPlan: TestPlan = {
+          ...realPlanDetailToLocal(real),
+          queries: original.queries.map((q) => ({ ...q, id: newId('tq') })),
+        }
+        dispatch({ type: 'DUPLICATE_PLAN', newPlan })
+        return { planKey: real.planRef, planId: real.id }
+      } catch (err) {
+        notifyError(`Couldn't duplicate test plan: ${errMsg(err)}`)
+        return null
       }
-      return { planKey, planId: newPlan.id }
     },
-    [state, resolveRealPlanCaseIds],
+    [state, resolveRealPlanCaseIds, notifyError],
   )
 
   const spawnRunFromPlan = useCallback(
-    (planId: string, name: string, description?: string) => {
+    async (planId: string, name: string, description?: string): Promise<{ runKey: string } | null> => {
       const plan = state.plansById[planId]
       if (!plan) return null
-      const projectCases = listActiveProjectTestCases(state)
-      const projectFolders = listActiveProjectFolders(state)
-      const caseIds = resolvePlanCases(plan, projectCases, projectFolders).map((c) => c.id)
-      const num = state.nextRunNumByProject[state.activeProjectId] ?? 1
-      const runKey = formatRunKey(num)
-      const id = newId('run')
-      dispatch({
-        type: 'CREATE_RUN',
-        id,
-        name,
-        description,
-        caseIds,
-        planId,
-        planName: plan.title,
-      })
-
       const projectId = state.activeProjectId
-      if (state.projectsById[projectId]?.source === 'real') {
-        const createPromise = (async () => {
-          const realPlanId = await resolveRealIdAsync(planId)
-          if (!realPlanId) throw new Error(`no real id for plan ${planId}`)
-          // caseIds deliberately omitted: the server snapshots the plan's full
-          // test_plan_cases, which our plan write-through keeps in sync with
-          // the resolved queries — passing locally-resolved ids would just
-          // risk temp-id gaps.
-          const created = await createRealRun({ projectId, testPlanId: realPlanId, name })
-          const detail = await fetchRealRunDetail(created.id, projectId)
-          runCaseIdsRef.current.set(
-            created.id,
-            Object.fromEntries(detail.testRunCases.map((c) => [c.originalTestCaseId, c.testRunCaseId])),
-          )
-          idRemapRef.current.set(id, created.id)
-          idRemapRef.current.set(runKey, created.runRef) // URL runKey follow (RunsScreen)
-          dispatch({
-            type: 'RECONCILE_RUN',
-            tempId: id,
-            run: realCreatedRunToLocal(created, detail, plan.title),
-          })
-          return created.id
-        })()
-        pendingRealCreatesRef.current.set(id, createPromise)
-        createPromise.catch((err) => {
-          console.error('[relay] spawnRunFromPlan API call failed — run kept locally only:', err)
-        })
+      try {
+        // caseIds deliberately omitted: the server snapshots the plan's full
+        // test_plan_cases, which the plan write-through keeps in sync with
+        // the resolved queries.
+        const created = await createRealRun({ projectId, testPlanId: planId, name })
+        const detail = await fetchRealRunDetail(created.id, projectId)
+        runCaseIdsRef.current.set(
+          created.id,
+          Object.fromEntries(detail.testRunCases.map((c) => [c.originalTestCaseId, c.testRunCaseId])),
+        )
+        const run = {
+          ...realCreatedRunToLocal(created, detail, plan.title),
+          description: description?.trim() || undefined,
+        }
+        dispatch({ type: 'ADD_RUN', run })
+        return { runKey: created.runRef }
+      } catch (err) {
+        notifyError(`Couldn't start run: ${errMsg(err)}`)
+        return null
       }
-      return { runKey }
     },
-    [state, resolveRealIdAsync],
+    [state, notifyError],
   )
 
   const getRequirement = useCallback(
@@ -2046,66 +1836,78 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const inviteAdminUser = useCallback(
     (payload: InviteUserPayload) => {
-      dispatch({ type: 'admin/inviteUser', payload })
-      if (!hasRealBackend) return
       const name = `${payload.firstName.trim()} ${payload.lastName.trim()}`.trim()
-      createRealUser({ email: payload.email.trim(), name, role: payload.role })
-        .then((real) => {
-          dispatch({ type: 'RECONCILE_ADMIN_USER', email: payload.email, user: real })
-        })
-        .catch((err) => {
-          console.error('[relay] createUser API call failed — user kept locally only:', err)
-        })
+      void (async () => {
+        const real = await createRealUser({ email: payload.email.trim(), name, role: payload.role })
+        dispatch({ type: 'admin/inviteUser', payload })
+        // Adopt the server's user id (the admin reducer generates its own
+        // temp id internally, so match by email).
+        dispatch({ type: 'RECONCILE_ADMIN_USER', email: payload.email, user: real })
+      })().catch((err) => notifyError(`Couldn't invite user: ${errMsg(err)}`))
     },
-    [hasRealBackend],
+    [notifyError],
   )
 
   const updateAdminUser = useCallback(
     (payload: UpdateUserPayload) => {
-      dispatch({ type: 'admin/updateUser', payload })
-      if (!hasRealBackend || !isRealId(payload.id)) return
-      // Email edits stay local-only — the server's updateUser has no email
-      // field (deliberate Phase 1 scope). Granular role compresses onto
-      // globalRole, same mapping as the seed overhaul.
-      updateRealUser(payload.id, {
-        name: `${payload.firstName.trim()} ${payload.lastName.trim()}`.trim(),
-        globalRole: ADMIN_ROLE_TO_GLOBAL[payload.role],
-      }).catch((err) => console.error('[relay] updateUser API call failed:', err))
+      if (!isRealId(payload.id)) {
+        // Local-only rows ("Demo User") have no server counterpart.
+        dispatch({ type: 'admin/updateUser', payload })
+        return
+      }
+      void (async () => {
+        // Email edits stay local-only (server updateUser has no email field);
+        // the granular role compresses onto globalRole.
+        await updateRealUser(payload.id, {
+          name: `${payload.firstName.trim()} ${payload.lastName.trim()}`.trim(),
+          globalRole: ADMIN_ROLE_TO_GLOBAL[payload.role],
+        })
+        dispatch({ type: 'admin/updateUser', payload })
+      })().catch((err) => notifyError(`Couldn't update user: ${errMsg(err)}`))
     },
-    [hasRealBackend],
+    [notifyError],
   )
 
   const disableAdminUser = useCallback(
     (id: string) => {
-      dispatch({ type: 'admin/disableUser', payload: { id } })
-      if (!hasRealBackend || !isRealId(id)) return
-      updateRealUser(id, { isActive: false }).catch((err) =>
-        console.error('[relay] disableUser API call failed:', err),
-      )
+      if (!isRealId(id)) {
+        dispatch({ type: 'admin/disableUser', payload: { id } })
+        return
+      }
+      void (async () => {
+        await updateRealUser(id, { isActive: false })
+        dispatch({ type: 'admin/disableUser', payload: { id } })
+      })().catch((err) => notifyError(`Couldn't disable user: ${errMsg(err)}`))
     },
-    [hasRealBackend],
+    [notifyError],
   )
 
   const reactivateAdminUser = useCallback(
     (id: string) => {
-      dispatch({ type: 'admin/reactivateUser', payload: { id } })
-      if (!hasRealBackend || !isRealId(id)) return
-      updateRealUser(id, { isActive: true }).catch((err) =>
-        console.error('[relay] reactivateUser API call failed:', err),
-      )
+      if (!isRealId(id)) {
+        dispatch({ type: 'admin/reactivateUser', payload: { id } })
+        return
+      }
+      void (async () => {
+        await updateRealUser(id, { isActive: true })
+        dispatch({ type: 'admin/reactivateUser', payload: { id } })
+      })().catch((err) => notifyError(`Couldn't reactivate user: ${errMsg(err)}`))
     },
-    [hasRealBackend],
+    [notifyError],
   )
 
   const updateAdminUserRole = useCallback(
     (id: string, role: DemoState['adminSettings']['users'][number]['role']) => {
-      dispatch({ type: 'admin/updateUserRole', payload: { id, role } })
-      if (!hasRealBackend || !isRealId(id)) return
-      updateRealUser(id, { globalRole: ADMIN_ROLE_TO_GLOBAL[role] }).catch((err) =>
-        console.error('[relay] updateUserRole API call failed:', err),
-      )
+      if (!isRealId(id)) {
+        dispatch({ type: 'admin/updateUserRole', payload: { id, role } })
+        return
+      }
+      void (async () => {
+        await updateRealUser(id, { globalRole: ADMIN_ROLE_TO_GLOBAL[role] })
+        dispatch({ type: 'admin/updateUserRole', payload: { id, role } })
+      })().catch((err) => notifyError(`Couldn't change role: ${errMsg(err)}`))
     },
-    [hasRealBackend],
+    [notifyError],
   )
 
   const createAdminRole = useCallback(
@@ -2199,7 +2001,6 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       state,
       dispatch,
       realProjectsLoaded,
-      resolveEntityId,
       activeProject,
       projects,
       activeFolders,
@@ -2279,7 +2080,6 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     [
       state,
       realProjectsLoaded,
-      resolveEntityId,
       activeProject,
       projects,
       activeFolders,
@@ -2357,6 +2157,24 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   return (
     <FreshContext.Provider value={value}>
       {hasProjects ? children : <BootGate resolved={realProjectsLoaded} />}
+      {writeErrors.length > 0 ? (
+        <div style={{ position: 'fixed', bottom: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 4000, maxWidth: 380 }}>
+          {writeErrors.map((e) => (
+            <div key={e.id} role="alert" style={{ background: '#7f1d1d', color: '#fff', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,.25)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <i className="ti ti-alert-triangle" style={{ fontSize: 15, marginTop: 1 }} aria-hidden />
+              <span style={{ flex: 1 }}>{e.message}</span>
+              <button
+                type="button"
+                onClick={() => setWriteErrors((prev) => prev.filter((x) => x.id !== e.id))}
+                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}
+                aria-label="Dismiss"
+              >
+                <i className="ti ti-x" style={{ fontSize: 13 }} />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </FreshContext.Provider>
   )
 }

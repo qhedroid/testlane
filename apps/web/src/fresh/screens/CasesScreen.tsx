@@ -220,7 +220,7 @@ function FolderTreeNode({
 }
 
 export function CasesScreen() {
-  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement, resolveEntityId } = useFresh()
+  const { activeFolders, activeCases, activeRuns, activeProject, activeRequirements, adminSettings, addCase, replaceCase, deleteCase, addFolder, createRun, createRequirement, linkRequirementToCase, getDefect, getRequirement } = useFresh()
   const { openCreateCase } = useFreshUI()
   const projectHref = useProjectHref()
   const pathname = usePathname()
@@ -473,38 +473,6 @@ export function CasesScreen() {
     if (!detail) setDetailMaximized(false)
   }, [detail])
 
-  // Follow optimistic-create id reconciliation (real projects): when a case
-  // created/duplicated here gets its temp id swapped for the server's real
-  // ULID (FreshProvider's RECONCILE_CASE), re-point the open detail panel at
-  // the new id instead of letting it close on a dangling reference.
-  useEffect(() => {
-    if (!detailCaseId) return
-    if (activeCases.some((c) => c.id === detailCaseId)) return
-    const mapped = resolveEntityId(detailCaseId)
-    if (mapped !== detailCaseId && activeCases.some((c) => c.id === mapped)) {
-      setDetailCaseId(mapped)
-      if (pendingEditRef.current === detailCaseId) pendingEditRef.current = mapped
-    }
-  }, [detailCaseId, activeCases, resolveEntityId])
-
-  // Same for folders: keep the tree selection and expanded state on a folder
-  // whose temp id was just swapped by RECONCILE_FOLDER.
-  useEffect(() => {
-    if (selectedFolderId === '__unfiled__') return
-    if (activeFolders.some((f) => f.id === selectedFolderId)) return
-    const mapped = resolveEntityId(selectedFolderId)
-    if (mapped !== selectedFolderId && activeFolders.some((f) => f.id === mapped)) {
-      setSelectedFolderId(mapped)
-      setOpenFolders((prev) => {
-        if (!prev.has(selectedFolderId)) return prev
-        const next = new Set(prev)
-        next.delete(selectedFolderId)
-        next.add(mapped)
-        return next
-      })
-    }
-  }, [selectedFolderId, activeFolders, resolveEntityId])
-
   useEffect(() => {
     if (quickOpen) quickInputRef.current?.focus()
   }, [quickOpen])
@@ -514,7 +482,7 @@ export function CasesScreen() {
   function addQuickCase(title: string) {
     const trimmed = title.trim()
     if (!trimmed) return
-    addCase({
+    void addCase({
       title: trimmed,
       folderId: targetFolderId,
       priority: 'Medium',
@@ -564,7 +532,9 @@ export function CasesScreen() {
       return
     }
     const parentId = newFolderDraft.parentId
-    const id = addFolder(trimmed, parentId)
+    void addFolder(trimmed, parentId).then((id) => {
+      if (id) selectFolder(id)
+    })
     setNewFolderDraft(null)
     if (parentId) {
       const ancestors = folderAncestorIds(activeFolders, parentId)
@@ -575,7 +545,6 @@ export function CasesScreen() {
         return next
       })
     }
-    selectFolder(id)
   }
 
   function cancelNewFolder() {
@@ -1144,8 +1113,9 @@ export function CasesScreen() {
           >
             <button type="button" className="ctx-item" onClick={() => {
               const { id: _id, updatedAt: _updatedAt, projectId: _projectId, ...copyData } = menuCase
-              const copyId = addCase(copyData)
-              setDetailCaseId(copyId)
+              void addCase(copyData).then((copyId) => {
+                if (copyId) setDetailCaseId(copyId)
+              })
               setContextMenu(null)
             }}>
               <i className="ti ti-copy" /> Duplicate
