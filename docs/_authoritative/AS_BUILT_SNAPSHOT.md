@@ -51,7 +51,7 @@ Entity refs come from the server: cases `TC-<n>` (unpadded), plans `PLAN-<nnn>`,
 | **`/admin/users`** | **real (admin session) + local fallback** | `AdminUsersPageContent` | List/invite/role/disable wired to `/api/users`; granular roles compress onto `globalRole` |
 | `/admin/*` (rest) | mock + localStorage | `Admin*PageContent` | Role definitions, custom fields, etc. stay local |
 
-**Seed projects (DB):** **Demo Project** (`DP`, slug `dp`) plus five empty projects — CTMS, eTMF, IAM, eFeasibility, GL — richly seeded (4 folders, 14 cases, 2 plans, 4 runs at every lifecycle stage). "Create Demo Project" deep-clones it via `POST /api/projects/:id/clone` (sequential keys: DP2, DP3, …). "Reset workspace…" (project switcher, global admin+) wipes everything and restores this baseline via `POST /api/admin/reset`. The old localStorage-only fallback project has been removed entirely.
+**Seed projects (DB):** **Demo Project** (`DP`, slug `dp`) — richly seeded (4 folders, 14 cases, 2 plans, 4 runs at every lifecycle stage) — plus five EMPTY projects: CTMS, eTMF, IAM, eFeasibility, GL. "Create Demo Project" deep-clones it via `POST /api/projects/:id/clone` (sequential keys: DP2, DP3, …). "Reset workspace…" (project switcher, global admin+) wipes everything and restores this baseline via `POST /api/admin/reset`. The old localStorage-only fallback project has been removed entirely.
 
 ---
 

@@ -24,6 +24,29 @@ Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin,
 
 ---
 
+## 2026-07-10 — `mvp-backend` data-layer hardening + feedback fixes (post-completion work)
+
+After the Phase 8 wrap-up, Shaun requested a planned-vs-actual architecture review and then a
+hardening pass, all continued on this branch (his call: "count this as backend work; two PRs if
+needed"). Five commits since `62565a0`: **`64dc539`** DP = the real seeded project (slug
+`demo`→`dp`), localStorage fallback project removed entirely, BootGate connect/retry screen;
+**`8a5f9d7`** wait-for-server writes everywhere (temp-id reconciliation layer deleted, −226
+lines), P/F/B/S optimistic-with-rollback, error toasts; **`25c34f2`** Dashboard KPI/donut use the
+server summary endpoint, 30s sync freshness window, narrowed provider memos; **`48d3f0e`**(prior)
+ti.com emails; **`1aba200`** ad-hoc (plan-less) runs now create real server runs (createRun's
+testPlanId optional — column was already nullable), sequential clone keys (DP2, DP3…), and the
+default-roster reset: seed = Demo Project (DP, full data) + CTMS/eTMF/IAM/eFeasibility/GL all
+empty, with a global-admin "Reset workspace…" button (`POST /api/admin/reset`) in the project
+switcher. **Shaun must re-run `pnpm db:seed`** (roster + slug changes). TanStack Query migration
+deliberately deferred (approved decision). The PR description
+(`docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`) covers only up to `3cb0d27` —
+it needs the post-completion commits folded in before the PR opens. Next-pass candidates are
+listed in `docs/claude/mvp-backend/progress.md`'s final session-log entries: tables for step
+results/execution log/comments/defects/requirements/plan queries/admin settings, TanStack Query,
+retiring the legacy `?relay-reset=1` param, and infra (AWS) later.
+
+---
+
 ## 2026-07-10 — `mvp-backend` COMPLETE (verification + Phase 8)
 
 Shaun verified all wired screens locally against real Docker MySQL — no issues; his pass is the
