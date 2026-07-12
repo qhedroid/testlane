@@ -98,6 +98,31 @@ export const ids = {
     priyaCtms: '01SEED00000000000000000601',
     jamesEtmf: '01SEED00000000000000000602',
   },
+
+  /** Admin-panel built-in role definitions (Phase G). Matched to the frontend
+   * by NAME on sync, so these ids are internal-only; names must stay aligned
+   * with rbac.ts's ADMIN_USER_ROLES. */
+  roleDefinitions: {
+    owner: '01SEED00000000000000000700',
+    administrator: '01SEED00000000000000000701',
+    projectAdmin: '01SEED00000000000000000702',
+    editor: '01SEED00000000000000000703',
+    runManager: '01SEED00000000000000000704',
+    runExecutor: '01SEED00000000000000000705',
+    viewer: '01SEED00000000000000000706',
+  },
+
+  /** Admin-panel demo API keys (Phase G). */
+  apiKeys: {
+    myApiKey: '01SEED00000000000000000710',
+    ciKey: '01SEED00000000000000000711',
+    automationKey: '01SEED00000000000000000712',
+    noelDev: '01SEED00000000000000000713',
+    monicaCi: '01SEED00000000000000000714',
+    arvindhSync: '01SEED00000000000000000715',
+    stagingKey: '01SEED00000000000000000716',
+    syedExport: '01SEED00000000000000000717',
+  },
 } as const
 
 /** Primary IDs for TestRunService.create() manual testing */

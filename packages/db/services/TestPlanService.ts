@@ -43,6 +43,7 @@ import {
   testPlans,
   type NewTestPlan,
   type NewTestPlanCase,
+  type TestQueryDefinition,
 } from '../schema'
 import { db } from '../src/index'
 import { logger } from '../src/logger'
@@ -67,6 +68,12 @@ export interface PlanSummary {
   ownerId: string | null
   assigneeIds: string[]
   createdBy: string | null
+  /**
+   * The authored TestQuery[] definition (GAP-01 Option a). NULL when the plan
+   * has no stored definition — the frontend then synthesizes a static group
+   * from caseIds. Persisted verbatim, never interpreted server-side.
+   */
+  queryDefinition: TestQueryDefinition[] | null
   caseCount: number
   createdAt: Date
   updatedAt: Date
@@ -97,6 +104,7 @@ export interface CreatePlanInput {
   ownerId?: string
   assigneeIds?: string[]
   caseIds?: string[]
+  queryDefinition?: TestQueryDefinition[] | null
 }
 
 export interface UpdatePlanInput {
@@ -110,6 +118,7 @@ export interface UpdatePlanInput {
     environment: string | null
     ownerId: string | null
     assigneeIds: string[]
+    queryDefinition: TestQueryDefinition[] | null
   }>
 }
 
@@ -238,6 +247,7 @@ function toPlanSummary(row: typeof testPlans.$inferSelect, caseCount: number): P
     ownerId: row.ownerId,
     assigneeIds: (row.assigneeIds as string[]) ?? [],
     createdBy: row.createdBy,
+    queryDefinition: (row.queryDefinition as TestQueryDefinition[] | null) ?? null,
     caseCount,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -361,6 +371,7 @@ export async function createPlan(input: CreatePlanInput): Promise<PlanDetail> {
     ownerId,
     assigneeIds = [],
     caseIds = [],
+    queryDefinition,
   } = input
 
   await assertProjectExists(projectId)
@@ -396,6 +407,7 @@ export async function createPlan(input: CreatePlanInput): Promise<PlanDetail> {
         ownerId: ownerId ?? actorId,
         createdBy: actorId,
         assigneeIds,
+        queryDefinition: queryDefinition ?? null,
       }
       await tx.insert(testPlans).values(newPlan)
 

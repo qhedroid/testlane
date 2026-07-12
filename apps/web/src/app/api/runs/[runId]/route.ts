@@ -50,6 +50,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       actorId: actor.id,
       status: body.status,
       title: body.title,
+      description: body.description,
       dueDate: body.dueDate,
     })
 

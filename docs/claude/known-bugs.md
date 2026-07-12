@@ -8,6 +8,30 @@
 
 ## GAP-01 — Test Plans: dynamic queries have no server-side equivalent (mvp-backend Phase 3)
 
+**RESOLVED — 2026-07-11 (new-tables candidate Phase F, Option a).** Authored plan queries now
+have a durable, portable server home: a nullable `query_definition` JSON column on `test_plans`
+(migration `0007_plan_query_definition`) stores the frontend's `TestQuery[]` authoring model
+verbatim. `TestPlanService` create/update/list persist and return it; `plan-client.ts`'s
+adapter uses the stored definition as `TestPlan.queries` when present (falling back to the old
+synthesized `q-server-*` static group only when it's null, so legacy plans still render);
+`FreshProvider` sends `queryDefinition` on `updatePlan(queries)`/`duplicatePlan` in addition to
+the existing resolved-caseIds `setPlanCases` push, and `queries` was removed from
+`mergeLocalOnlyPlanFields` (server is now authoritative). The two seeded demo plans carry a
+definition (Full Regression as a genuine folder query; Critical Path as a faithful static
+snapshot — the frontend query model can't express its "priority AND folder" intent as one
+group), so they survive a reseed as real dynamic queries. A fresh browser/device now
+reconstructs the same `TestQuery[]` and resolves to the same cases.
+
+**Chosen Option (a), not (b):** query RESOLUTION stays client-side and continues pushing the
+resolved case list to `test_plan_cases` (the run-spawn source of truth — `createRun`/
+`spawnRunFromPlan` unchanged). **Residual (deliberate, was the (b) property):** plans do NOT
+auto-re-resolve server-side when the underlying cases change — the resolved `test_plan_cases`
+refreshes only when the plan is next edited in a browser, the same freeze-on-edit behavior
+`spawnRunFromPlan` already has. Re-homing resolution server-side would be a larger change to
+the protected run-spawn path and was not done.
+
+_Original investigation (kept for context):_
+
 Not a bug in shipped behavior (nothing is broken yet — `PlansScreen.tsx` hasn't been wired to
 the real API). Flagging now because it will bite whoever wires `PlansScreen.tsx` to
 `packages/db/services/TestPlanService.ts` next.

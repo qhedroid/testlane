@@ -1,7 +1,7 @@
-import { listPlans, createPlan } from '@relay/db/services/test-plan'
+import { listRequirements, createRequirement } from '@relay/db/services/requirement'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
-import { createPlanBodySchema } from '@/lib/api/schemas'
+import { createRequirementBodySchema } from '@/lib/api/schemas'
 import { jsonSuccess } from '@/lib/api/response'
 
 export const dynamic = 'force-dynamic'
@@ -10,38 +10,36 @@ type RouteContext = {
   params: Promise<{ projectId: string }>
 }
 
+/** GET — list the project's requirements (new-tables candidate, Phase D). */
 export async function GET(request: Request, context: RouteContext) {
   try {
     const actor = await resolveSessionActor(request)
     const { projectId } = await context.params
 
-    const plans = await listPlans(actor.id, projectId)
+    const requirements = await listRequirements({ actorId: actor.id, projectId })
 
-    return jsonSuccess({ plans })
+    return jsonSuccess({ requirements })
   } catch (err) {
     return handleRouteError(err)
   }
 }
 
+/** POST — create a requirement. Body: { title, description?, status? }. */
 export async function POST(request: Request, context: RouteContext) {
   try {
     const actor = await resolveSessionActor(request)
     const { projectId } = await context.params
-    const body = createPlanBodySchema.parse(await request.json())
+    const body = createRequirementBodySchema.parse(await request.json())
 
-    const plan = await createPlan({
+    const created = await createRequirement({
       actorId: actor.id,
       projectId,
       title: body.title,
       description: body.description,
-      environment: body.environment,
-      ownerId: body.ownerId,
-      assigneeIds: body.assigneeIds,
-      caseIds: body.caseIds,
-      queryDefinition: body.queryDefinition,
+      status: body.status,
     })
 
-    return jsonSuccess(plan, 201)
+    return jsonSuccess(created, 201)
   } catch (err) {
     return handleRouteError(err)
   }

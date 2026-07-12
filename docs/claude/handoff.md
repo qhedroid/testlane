@@ -24,6 +24,37 @@ Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin,
 
 ---
 
+## 2026-07-11 — `mvp-backend` Candidate 1: new DB tables for the remaining local-only data (Phases A–G)
+
+Shaun cleared the base gate (re-seeded + verified `62565a0..f053a85` locally), answered the design
+questions, and directed: implement Phase A, then run all phases continuously. **All seven phases are now
+code-complete + sandbox-verified (not committed).** Plan/decisions/sequencing:
+`docs/claude/mvp-backend/candidate-1-new-tables-plan.md`; full per-phase detail + Shaun-local checklists:
+`docs/claude/mvp-backend/progress.md` ("Candidate 1" section). Each phase = schema + hand-authored
+migration + service + routes + client adapters + FreshProvider sync/write-through, done by a dedicated
+implementation agent, verified (`tsc` both packages + `pnpm build`), checkpointed in progress.md.
+
+- **A — per-step results** (`run_step_results`, was unwired) + **run descriptions** (migration `0002`).
+- **B — execution log / trends**: new `run_case_events` (migration `0003`); makes dashboard
+  passed/failed-this-week + trends work for real synced runs (they were empty before); seed backfilled.
+- **C — case comments**: one `case_comments` table, nullable step FK (migration `0004`).
+- **D — requirements + case links**: `requirements` + `case_requirements` (migration `0005`); established
+  the narrow optimistic-create-then-link reconcile pattern reused by E.
+- **E — defect entities**: new `defects` table + nullable `defect_id` FK on `run_defect_links`
+  (migration `0006`); external free-text linking untouched.
+- **F — plan query definitions / GAP-01 RESOLVED (Option a)**: durable `query_definition` json on
+  `test_plans` (migration `0007`); client-side resolution + `test_plan_cases` (run-spawn path) untouched.
+- **G — admin roles + API keys**: `role_definitions` + `api_keys` org-scoped tables (migration `0008`);
+  automation deferred, custom fields excluded.
+
+**Next:** Shaun runs `pnpm db:seed` (applies migrations 0002–0008) and walks each phase's Shaun-local
+checklist incl. the protected-UX Runs regression. Then: fold `62565a0..f053a85` + Candidate 1 into the PR
+description, update living docs (deferred until verified, per the branch's pattern), and the deferred
+cleanup (clone `case_comments`/`case_requirements`/`defects`). **Nothing committed yet** — commit-identity
+confirmation required per CLAUDE.md before any commit.
+
+---
+
 ## 2026-07-10 — `mvp-backend` data-layer hardening + feedback fixes (post-completion work)
 
 After the Phase 8 wrap-up, Shaun requested a planned-vs-actual architecture review and then a

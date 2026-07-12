@@ -23,6 +23,7 @@ import {
   projectRoles,
   recentViews,
   runAssignees,
+  runCaseEvents,
   runCaseStepSnapshots,
   testCaseSteps,
   testCases,
@@ -33,6 +34,7 @@ import {
   users,
   type NewAuditLog,
   type NewRunAssignee,
+  type NewRunCaseEvent,
   type NewRunCaseStepSnapshot,
   type NewTestRunCase,
 } from '../schema'
@@ -60,6 +62,8 @@ export interface CreateRunInput {
   name?: string
   /** Optional environment override. Defaults to plan.environment. */
   environment?: string
+  /** Optional free-text run description (new-tables candidate, Phase A). */
+  description?: string | null
   /** Run-level assignee user IDs. Defaults to []. */
   assigneeIds?: string[]
   /**
@@ -763,6 +767,8 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
   const resolvedEnvironment: string | null =
     input.environment?.trim() || plan?.environment || null
 
+  const resolvedDescription: string | null = input.description?.trim() || null
+
   // Sort cases by plan position (for ad-hoc runs, by the order the case ids
   // were supplied — selectedCaseIds preserves both). O(1) lookup map.
   const planPositionMap = new Map(
@@ -805,6 +811,7 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
         projectId,
         testPlanId: testPlanId ?? null,
         title: resolvedTitle,
+        description: resolvedDescription,
         status: 'active',
         environment: resolvedEnvironment,
         isStalled: false,
@@ -827,6 +834,26 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
       const runCaseIdMap = new Map<string, string>(
         runCaseRows.map((r) => [r.testCaseId as string, r.id as string]),
       )
+
+      // ── 2c-bis. Insert run_case_events ('created' per case) ──────────────
+      //
+      // Append-only transition log (new-tables candidate, Phase B). One
+      // 'created' event per run case at spawn, mirroring the local prototype's
+      // ADD_CASES_TO_RUN log entries (from/to = 'not_run'). Result transitions
+      // are appended later by ExecutionService.updateCaseResult().
+      const runCaseEventRows: NewRunCaseEvent[] = runCaseRows.map((rc) => ({
+        id: createId(),
+        testRunCaseId: rc.id as string,
+        actorId: createdBy,
+        event: 'created' as const,
+        fromStatus: 'not_run' as const,
+        toStatus: 'not_run' as const,
+        at: spawnedAt,
+      }))
+
+      for (const chunk of chunkArray(runCaseEventRows, 100)) {
+        await tx.insert(runCaseEvents).values(chunk)
+      }
 
       // ── 2d. Insert run_case_step_snapshots ──────────────────────────────
 
@@ -1014,6 +1041,7 @@ export interface UpdateRunInput {
    */
   status?: 'active' | 'sealed' | 'archived'
   title?: string
+  description?: string | null
   dueDate?: Date | null
 }
 
@@ -1023,6 +1051,7 @@ export interface UpdateRunResult {
   projectId: string
   status: 'active' | 'stalled' | 'sealed' | 'archived'
   title: string
+  description: string | null
   dueDate: Date | null
   sealedAt: Date | null
   sealedBy: string | null
@@ -1049,6 +1078,7 @@ export async function updateRun(input: UpdateRunInput): Promise<UpdateRunResult>
       runRef: testRuns.runRef,
       status: testRuns.status,
       title: testRuns.title,
+      description: testRuns.description,
       dueDate: testRuns.dueDate,
       sealedAt: testRuns.sealedAt,
       sealedBy: testRuns.sealedBy,
@@ -1064,12 +1094,15 @@ export async function updateRun(input: UpdateRunInput): Promise<UpdateRunResult>
   const set: Partial<{
     status: 'active' | 'stalled' | 'sealed' | 'archived'
     title: string
+    description: string | null
     dueDate: Date | null
     sealedAt: Date | null
     sealedBy: string | null
   }> = {}
 
   if (input.title !== undefined && input.title !== run.title) set.title = input.title
+  if (input.description !== undefined && input.description !== run.description)
+    set.description = input.description
   if (input.dueDate !== undefined) set.dueDate = input.dueDate
 
   let auditAction = 'run.updated'
@@ -1096,6 +1129,7 @@ export async function updateRun(input: UpdateRunInput): Promise<UpdateRunResult>
       projectId,
       status: run.status,
       title: run.title,
+      description: run.description ?? null,
       dueDate: run.dueDate ?? null,
       sealedAt: run.sealedAt ?? null,
       sealedBy: run.sealedBy ?? null,
@@ -1145,6 +1179,8 @@ export async function updateRun(input: UpdateRunInput): Promise<UpdateRunResult>
     projectId,
     status: set.status ?? run.status,
     title: set.title ?? run.title,
+    description:
+      set.description !== undefined ? set.description : (run.description ?? null),
     dueDate: set.dueDate !== undefined ? set.dueDate : (run.dueDate ?? null),
     sealedAt: set.sealedAt !== undefined ? set.sealedAt : (run.sealedAt ?? null),
     sealedBy: set.sealedBy !== undefined ? set.sealedBy : (run.sealedBy ?? null),

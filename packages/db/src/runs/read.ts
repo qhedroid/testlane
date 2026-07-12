@@ -1,5 +1,14 @@
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
-import { runDefectLinks, testRunCases, testRuns, users, type TestRun } from '../../schema'
+import {
+  runCaseEvents,
+  runCaseStepSnapshots,
+  runDefectLinks,
+  runStepResults,
+  testRunCases,
+  testRuns,
+  users,
+  type TestRun,
+} from '../../schema'
 import {
   assertMinProjectRole,
   InsufficientPermissionsError,
@@ -36,6 +45,35 @@ export interface ListProjectRunsInput {
  * fresh screens render live case data from their own synced case list; the
  * full snapshot remains available via getRunDetail().
  */
+/**
+ * Per-step layer for a run case (new-tables candidate, Phase A). One entry per
+ * run_case_step_snapshots row, ordered by position, with the step's current
+ * run_step_results status (defaulting to 'not_run' when no result row exists).
+ * originalStepId is the live test_case_steps id the fresh screen keys
+ * CaseExecution.stepResults by; stepSnapshotId is what result writes address.
+ */
+export interface RunCaseStepItem {
+  stepSnapshotId: string
+  originalStepId: string | null
+  position: number
+  status: (typeof runStepResults.$inferSelect)['status']
+}
+
+/**
+ * One append-only execution event for a run (new-tables candidate, Phase B).
+ * Resolved from run_case_events joined to test_run_cases so the client can
+ * reconstruct DemoRun.executionLog keyed by live test case id. actorId (not a
+ * name) is returned — the client maps ids to names like it does for executedBy.
+ */
+export interface RunCaseEventItem {
+  testCaseId: string
+  at: Date
+  actorId: string | null
+  event: (typeof runCaseEvents.$inferSelect)['event']
+  fromStatus: (typeof runCaseEvents.$inferSelect)['fromStatus']
+  toStatus: (typeof runCaseEvents.$inferSelect)['toStatus']
+}
+
 export interface RunCaseResultItem {
   testRunCaseId: string
   testCaseId: string
@@ -47,12 +85,15 @@ export interface RunCaseResultItem {
   position: number
   /** Active (not-unlinked) external defect refs, e.g. "JIRA-4471". */
   defectRefs: string[]
+  /** Ordered step layer (snapshot id ↔ live step id ↔ step status). */
+  steps: RunCaseStepItem[]
 }
 
 export interface RunListItem {
   id: string
   runRef: string
   title: string
+  description: string | null
   status: RunStatus
   environment: string | null
   testPlanId: string | null
@@ -62,6 +103,8 @@ export interface RunListItem {
   caseCounts: CaseCountSummary
   /** Ordered by position. Added Phase 4 (additive — pre-existing /runs/api consumers ignore it). */
   cases: RunCaseResultItem[]
+  /** Chronological execution events (new-tables candidate, Phase B). Feeds the client's executionLog. */
+  events: RunCaseEventItem[]
 }
 
 export interface RunDetailCaseItem {
@@ -187,6 +230,7 @@ export async function listProjectRuns(
       id: testRuns.id,
       runRef: testRuns.runRef,
       title: testRuns.title,
+      description: testRuns.description,
       status: testRuns.status,
       environment: testRuns.environment,
       testPlanId: testRuns.testPlanId,
@@ -247,6 +291,89 @@ export async function listProjectRuns(
     }
   }
 
+  // Phase A (new-tables candidate): two more batch queries build the per-step
+  // layer — snapshots (ordered) and their results — for the page's run cases.
+  // Kept batched (no N+1): one query for all snapshots, one for all results.
+  const stepsByRunCaseId = new Map<string, RunCaseStepItem[]>()
+  if (caseRows.length > 0) {
+    const runCaseIds = caseRows.map((c) => c.testRunCaseId)
+
+    const snapshotRows = await db
+      .select({
+        id: runCaseStepSnapshots.id,
+        testRunCaseId: runCaseStepSnapshots.testRunCaseId,
+        originalStepId: runCaseStepSnapshots.originalStepId,
+        position: runCaseStepSnapshots.position,
+      })
+      .from(runCaseStepSnapshots)
+      .where(inArray(runCaseStepSnapshots.testRunCaseId, runCaseIds))
+      .orderBy(runCaseStepSnapshots.testRunCaseId, runCaseStepSnapshots.position)
+
+    const resultRows = await db
+      .select({
+        testRunCaseId: runStepResults.testRunCaseId,
+        stepSnapshotId: runStepResults.stepSnapshotId,
+        status: runStepResults.status,
+      })
+      .from(runStepResults)
+      .where(inArray(runStepResults.testRunCaseId, runCaseIds))
+
+    const statusBySnapshotId = new Map<
+      string,
+      (typeof runStepResults.$inferSelect)['status']
+    >()
+    for (const r of resultRows) {
+      statusBySnapshotId.set(r.stepSnapshotId, r.status)
+    }
+
+    for (const s of snapshotRows) {
+      const item: RunCaseStepItem = {
+        stepSnapshotId: s.id,
+        originalStepId: s.originalStepId,
+        position: s.position,
+        status: statusBySnapshotId.get(s.id) ?? 'not_run',
+      }
+      const existing = stepsByRunCaseId.get(s.testRunCaseId)
+      if (existing) existing.push(item)
+      else stepsByRunCaseId.set(s.testRunCaseId, [item])
+    }
+  }
+
+  // Phase B (new-tables candidate): one batch query for every listed run's
+  // execution events, joined to test_run_cases to resolve the live test case
+  // id, grouped per run and returned chronologically.
+  const eventsByRunId = new Map<string, RunCaseEventItem[]>()
+  if (runIds.length > 0) {
+    const eventRows = await db
+      .select({
+        testRunId: testRunCases.testRunId,
+        testCaseId: testRunCases.testCaseId,
+        at: runCaseEvents.at,
+        actorId: runCaseEvents.actorId,
+        event: runCaseEvents.event,
+        fromStatus: runCaseEvents.fromStatus,
+        toStatus: runCaseEvents.toStatus,
+      })
+      .from(runCaseEvents)
+      .innerJoin(testRunCases, eq(runCaseEvents.testRunCaseId, testRunCases.id))
+      .where(inArray(testRunCases.testRunId, runIds))
+      .orderBy(runCaseEvents.at)
+
+    for (const e of eventRows) {
+      const item: RunCaseEventItem = {
+        testCaseId: e.testCaseId,
+        at: e.at,
+        actorId: e.actorId,
+        event: e.event,
+        fromStatus: e.fromStatus,
+        toStatus: e.toStatus,
+      }
+      const existing = eventsByRunId.get(e.testRunId)
+      if (existing) existing.push(item)
+      else eventsByRunId.set(e.testRunId, [item])
+    }
+  }
+
   const casesByRunId = new Map<string, RunCaseResultItem[]>()
   for (const c of caseRows) {
     const item: RunCaseResultItem = {
@@ -259,6 +386,7 @@ export async function listProjectRuns(
       executedAt: c.executedAt,
       position: c.position,
       defectRefs: defectRefsByRunCaseId.get(c.testRunCaseId) ?? [],
+      steps: stepsByRunCaseId.get(c.testRunCaseId) ?? [],
     }
     const existing = casesByRunId.get(c.testRunId)
     if (existing) existing.push(item)
@@ -271,6 +399,7 @@ export async function listProjectRuns(
       ...run,
       caseCounts: cases.length > 0 ? countsFromCaseRows(cases) : { ...EMPTY_COUNTS },
       cases,
+      events: eventsByRunId.get(run.id) ?? [],
     }
   })
 }

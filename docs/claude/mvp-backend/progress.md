@@ -966,3 +966,265 @@ as its own separate step — there's nothing backend-only to build or verify her
   Data sources, AS_BUILT data architecture + routes). Sandbox-verified: tsc + build clean per
   stage. **Needs Shaun-local re-verification**: reseed, `/DP/...` URLs, create flows now wait
   for the server (brief pending feel), P/F/B/S unchanged, BootGate appears when DB is down.
+
+## Candidate 1 — new DB tables for remaining local-only data (2026-07-10, in progress)
+
+Plan + sequencing + resolved design decisions: `docs/claude/mvp-backend/candidate-1-new-tables-plan.md`.
+Base hardening commits (`62565a0..f053a85`) **re-seeded + verified locally by Shaun** — gate
+cleared. Shaun's directive: implement Phase A first, then run all phases (A→G) continuously,
+stopping only for genuine blockers. Each phase: Claude implements + sandbox-verifies (tsc both
+packages + `pnpm build`); **Shaun still owns all live-DB verification** (sandbox has no Docker),
+including the full protected-UX Runs regression for any runs-touching phase. Nothing committed yet.
+
+### Phase A — per-step results + run descriptions — **DONE (code + sandbox-verified), not committed**
+
+- **Per-step results** (`run_step_results` existed but was fully unwired): new
+  `ExecutionService.updateStepResult()` (contributor+ RBAC, validates the step snapshot belongs to
+  the run case, UPSERTs on the `(testRunCaseId, stepSnapshotId)` unique constraint, `step_result.updated`
+  audit row; `STEP_NOT_FOUND` added to `UpdateCaseResultErrorCode`). `listProjectRuns` now returns a
+  `steps: RunCaseStepItem[]` layer per run-case (two batch queries, no N+1; status defaults `not_run`).
+  New route `/api/runs/[runId]/cases/[runCaseId]/steps/[stepSnapshotId]/result` (POST, mirrors the
+  sibling case-result route). `run-client.ts`: `steps` on `RealRunCaseResult`, `realRunToLocal`
+  populates `stepResults` keyed by `originalStepId`, new `recordRealStepResult()`, exported
+  `runStepSnapshotMap()`. `FreshProvider`: `runStepSnapshotIdsRef` built in the runs sync effect;
+  `updateExecution` diffs `stepResults` and POSTs changed steps (fire-after-dispatch, skips unknown
+  snapshot ids — optimistic/unsynced runs); `stepResults` removed from `mergeLocalOnlyRunFields`
+  (server authoritative). Mapping seam: `originalStepId` (live step id, frontend key) ↔
+  `stepSnapshotId` (what `run_step_results` references).
+- **Run descriptions** (needed a migration — `test_runs` had no description column): added
+  `description text` to `testRuns`; **migration `packages/db/drizzle/0002_run_description.sql`**
+  (`ALTER TABLE test_runs ADD description text;`) + `_journal.json` entry, **hand-authored to match
+  the repo's existing convention** (the drizzle `meta/` only has `0000_snapshot.json`; `0001` was
+  also hand-authored with no per-migration snapshot, so `drizzle-kit generate` would emit a spurious
+  migration re-including `0001`'s RBAC changes — deliberate deviation from "run generate"). Threaded
+  `description` through `createRun`/`updateRun`, `listProjectRuns`/`RunListItem`, the create/update
+  run body schemas, both run route handlers, `run-client` (list item + create/update bodies +
+  `realRunToLocal`), and `FreshProvider` (`editRun`/create/duplicate/spawn write-through);
+  removed from `mergeLocalOnlyRunFields`. No `DEMO_SCHEMA_VERSION` bump (both `stepResults` and
+  `description` already existed on the persisted local shape).
+- **Sandbox verification (done):** `tsc --noEmit` clean for `@relay/db` and `@relay/web`;
+  `pnpm build` clean (29/29 pages), new step-result route present in the route table.
+- **Shaun-local verification (still needed):** reseed; step ticks in a run persist to `run_step_results`
+  and survive reload; a run description saved via edit persists; full protected-UX Runs regression
+  (P/F/B/S, nav, auto-advance, filters) unaffected.
+- **Sandbox note (new):** a prior session left `/tmp/relay-verify` + some `/tmp/*.log` owned by
+  `nobody` (unremovable) — use alternate paths (`/tmp/relay-verify2`, repo-local logs); pnpm's
+  global store is readonly here, so `pnpm install --store-dir /tmp/pnpm-store2` and invoke
+  `tsc`/`next build` via their `node_modules/.pnpm/.../` JS entry points with `node` (the `.bin`
+  shims hit "readonly database").
+
+### Phase B — execution log / trends — **DONE (code + sandbox-verified), not committed**
+
+Design decision (Shaun): (b) client-side aggregation from synced events FIRST; keep
+`project-selectors.ts` computing from `executionLog`, now populated from real server events; a
+later move to server-side aggregation is left easy but not done. **Why it mattered:** the
+dashboard's `passedThisWeek`/`failedThisWeek`, `hasAnyExecutionHistory`, and per-case history
+read `DemoRun.executionLog`, which came back EMPTY for synced runs — so those trends silently
+didn't work for real projects. Phase B makes them real.
+
+- New append-only table `run_case_events` (`id, testRunCaseId→test_run_cases cascade, actorId→users
+  set null, event enum('created','result'), fromStatus, toStatus, at datetime`, index on testRunCaseId)
+  + inferred types + relation. **Migration `packages/db/drizzle/0003_run_case_events.sql`** + journal
+  entry, hand-authored per the 0002 convention.
+- Events appended as side effects of existing writes (no new frontend write-through):
+  `ExecutionService.updateCaseResult` inserts a `result` event inside its tx only when status
+  changes; `TestRunService.createRun` batch-inserts a `created` event per run-case at spawn.
+- `listProjectRuns` returns `events: RunCaseEventItem[]` per run (one batch query joined to
+  `test_run_cases`, returns `actorId` not a name). `run-client.realRunToLocal` rebuilds
+  `executionLog` from them (actorId→`userIdToAssigneeName`, statuses→`toExecStatus`). `executionLog`
+  removed from `mergeLocalOnlyRunFields` (server authoritative).
+- **Seed + clone backfill (critical for the demo):** `demo-project-seed.ts` now inserts
+  `run_case_events` for the seeded runs — a `created` event per case + a backdated `result` event
+  per executed case (`at`=backdated executedAt, to=final status) — so the two sealed runs (~18d /
+  ~6d ago) produce a genuine 2-point week-over-week trend once synced. `ProjectCloneService` clones
+  `run_case_events` (remapped ids).
+- **Shape match confirmed** — the `ExecutionLogEntry` from `realRunToLocal` matches the selectors
+  exactly (field names, ISO `at`, `from`/`to` always non-null `ExecStatus`, `created` events guarded);
+  no `project-selectors.ts` change.
+- **Deviation flagged:** `created` events store `fromStatus/toStatus='not_run'` (not null/null) to
+  match the pre-existing `createRun` + local `ADD_CASES_TO_RUN` convention; selectors skip `created`
+  events so it's functionally invisible (adapter defends both null and 'not_run').
+- **Sandbox verification (done):** tsc clean both packages; `pnpm build` clean (29/29).
+- **Shaun-local verification (still needed):** reseed (materializes the events); dashboard
+  `passed/failed this week` + trend now reflect real synced runs; recording a result in a live run
+  appends an event that survives reload; protected-UX Runs regression unaffected.
+
+### Phase C — case comments (step + general) — **DONE (code + sandbox-verified), not committed**
+
+One table `case_comments` (Shaun's decision) — comments on the test-case DEFINITION, distinct from
+the still-untouched run-scoped `run_execution_comments`.
+
+- New table `case_comments` (`id, testCaseId→test_cases cascade, testCaseStepId→test_case_steps set
+  null NULLABLE [null ⇒ general, non-null ⇒ step comment], authorId→users set null, body text,
+  createdAt`) + indexes + relations + inferred types. **Migration
+  `packages/db/drizzle/0004_case_comments.sql`** + journal entry (hand-authored convention).
+- `TestCaseService`: `addCaseComment({actorId,projectId,caseId,stepId?,body})` — contributor+ RBAC,
+  asserts case/step belong to project, INSERT + `case_comment.created` audit in a tx, returns the
+  comment; `listCases()`/`getCase()` now attach comments via ONE extra batch query (no N+1),
+  splitting general (stepId null) onto the case and step-level onto the matching step. `CaseDetail`
+  gained `comments`. Reused `TestCaseServiceError` (+`STEP_NOT_FOUND`→404).
+- New route `/api/projects/[projectId]/cases/[caseId]/comments` (POST). `createCaseCommentBodySchema`
+  `{ stepId ulid nullable optional, body min 1 }`.
+- `case-client`: `RealCaseComment` DTO + `comments` on `RealCase`; `realCaseToLocal` splits them into
+  `Case.generalComments` + per-step `CaseStep.comments` (authorId→`userIdToAssigneeName`, body→text,
+  createdAt→timestamp, real id); new `addRealCaseComment(...)`.
+- `FreshProvider`: `addStepComment`/`addGeneralComment` are now write-through (wait-for-server for
+  real cases — mirrors `addCase`, avoids temp-id churn; session actor is the authoritative author,
+  client sends no authorId; local-only projects keep pure client behavior); `ADD_*_COMMENT` actions
+  accept a server id/createdAt; both comment arrays removed from `mergeLocalOnlyCaseFields`.
+- **Shape parity confirmed** — both local `StepComment` and `CaseComment` are `{id,author,createdAt,body}`,
+  every field maps from `(id, authorId→name, body, createdAt)`; no invented fields. Author outside the
+  8-seed-user map (or null FK) renders `'Unknown'` — same known limitation as `assignee`.
+- **Sandbox verification (done):** tsc clean both packages; `pnpm build` clean, new comments route present.
+- **Shaun-local verification (still needed):** add a general + a step comment on a Demo Project case →
+  survive reload (really in `case_comments`); author shows real name; `case_comment.created` audit rows;
+  RunsScreen comment authoring unaffected. No `DEMO_SCHEMA_VERSION` bump.
+
+### Phase D — requirements + case links — **DONE (code + sandbox-verified), not committed**
+
+Greenfield (no table to reconcile) — the clean template for the entity+ref-counter+link pattern
+Phase E reuses.
+
+- Two new tables: `requirements` (`id, projectId→projects restrict, requirementRef unique-in-project,
+  title, description, status enum(draft/approved/implemented/obsolete), createdBy, timestamps`) and
+  `case_requirements` link (`testCaseId→test_cases cascade, requirementId→requirements cascade`, unique).
+  **Migration `packages/db/drizzle/0005_requirements.sql`** + journal entry.
+- New `RequirementService` (`listRequirements` viewer+, `createRequirement` contributor+ minting
+  `REQ-<n>` via the `ref_counters` pattern copied from `generateCaseRef`, `linkRequirementToCase`
+  idempotent, both audited) + exported `loadRequirementIdsByCase`. `TestCaseService.listCases/getCase`
+  attach `requirementIds` via ONE batch query; `CaseDetail` gained `requirementIds`.
+- Routes: `/api/projects/[projectId]/requirements` (GET/POST), `/api/projects/[projectId]/cases/[caseId]/requirements`
+  (POST link — no unlink; UI has none). `requirement-client.ts` with status lowercase↔Capitalized
+  adapters, requirementRef→requirementKey, source `'Local'`.
+- `FreshProvider`: requirements folded into `SYNC_REAL_PROJECT_DATA`; `requirementIds` from synced case
+  data; `requirementIds` removed from `mergeLocalOnlyCaseFields` + `addCase` override.
+- **Deliberate narrow reconcile deviation:** the Cases/Requirements UI calls `createRequirement`
+  **synchronously** then immediately links using the returned id, so `createRequirement` keeps its sync
+  signature via a self-contained optimistic + `RECONCILE_REQUIREMENT` path (`pendingRequirementCreatesRef`
+  tempId→Promise<realId> lets the immediate link await the in-flight create). This is the one place the
+  temp-id/reconcile idea (removed in the hardening pass) is reintroduced, scoped to requirements. Phase E
+  reuses this exact shape.
+- **Known gaps (flagged, not blockers):** `ProjectCloneService` does NOT clone `case_requirements` (nor
+  `case_comments` from Phase C) — "Create Demo Project" clones won't carry them; the seed also creates no
+  requirements (RequirementsScreen falls back to its `STATIC_REQUIREMENTS`). Fold the clone gaps into the
+  final cleanup pass (Phase B did clone `run_case_events`, so cloning `case_comments`/`case_requirements`
+  for consistency is the tidy fix).
+- **Sandbox verification (done):** tsc clean both packages; `pnpm build` clean, both new routes present.
+- **Shaun-local verification (still needed):** create a requirement + link it to a case → survives reload
+  (in `requirements`/`case_requirements`), key flips REQ-… , status maps correctly; audit rows. No `DEMO_SCHEMA_VERSION` bump.
+
+### Phase E — defect entities — **DONE (code + sandbox-verified), not committed**
+
+Decision (Shaun): (b) nullable `defect_id` FK on `run_defect_links`; internal "Local" defects become
+first-class `defects` rows; EXTERNAL free-text `defect_ref` linking untouched. NO severity field
+(frontend `Defect` has status only).
+
+- New `defects` table (`id, projectId→projects restrict, defectRef unique-in-project, title,
+  description, status enum(open/in_progress/resolved/closed) default open, createdBy, timestamps`) +
+  a nullable `defect_id` FK added to `run_defect_links`. **Migration `packages/db/drizzle/0006_defects.sql`**
+  (CREATE defects + ALTER run_defect_links) + journal entry.
+- `DefectService` extended: `listDefects` (viewer+), `createDefect` (contributor+, `DEF-<n>` via
+  ref_counters, `defect.created` audit); `linkDefect` gained optional `defectId` (validated in-project;
+  internal links set BOTH `defectId` and `defectRef=DEF-<n>`; external path unchanged). New
+  `/api/projects/[projectId]/defects` (GET/POST); the run-case defects link route threads an additive
+  `defectId`. `defect-client.ts` with exact status map incl. `'In progress'`↔`'in_progress'`.
+- `FreshProvider`: defects synced via `SYNC_REAL_PROJECT_DATA`; `createDefectFromExecution` (kept
+  synchronous, returns `{defectKey}`) + `linkDefectToExecution` write-through reusing Phase D's
+  optimistic-create-then-link `RECONCILE_DEFECT`/`pendingDefectCreatesRef` pattern (link via `runCaseIdsRef`).
+- **Bonus fix:** `realRunToLocal` now maps internal defect refs → entity ids via a project ref-map, so
+  `execution.defects` stores ids consistently on fresh-create AND post-reload (fixes an already-linked
+  defect still showing in the Link-existing dropdown). No `read.ts` change needed.
+- **Known gaps (same as C/D):** seed creates no defect entities (DefectsScreen falls back to `MOCK_DEFECTS`
+  for real projects); `ProjectCloneService` doesn't deep-clone `defects` (defensively nulls `defect_id`
+  on cloned links) — clone-completeness folded into the final cleanup pass.
+- **Sandbox verification (done):** tsc clean both packages; `pnpm build` clean, new defects route present.
+- **Shaun-local verification (still needed):** create a defect from a run-case execution → appears in
+  DefectsScreen + on the execution, survives reload (in `defects` + `run_defect_links.defect_id`); external
+  Jira-style ref linking still works unchanged; status maps exactly. No `DEMO_SCHEMA_VERSION` bump.
+
+### Phase F — plan query definitions / GAP-01 — **DONE (code + sandbox-verified), not committed**
+
+Decision (Shaun): **Option (a)** — it resolves GAP-01. Persist authored query DEFINITIONS server-side;
+keep client-side resolution pushing the resolved case list to `test_plan_cases` (the run-spawn source of
+truth, untouched). Not (b) (server-side re-resolution) — that would touch the protected run-spawn path.
+
+- **Storage: single `query_definition json` (nullable) column on `test_plans`** (not a normalized
+  `test_plan_queries` table — resolution stays client-side, so normalization buys nothing and adds risk).
+  Server-side `TestQueryDefinition` types mirror the frontend `TestQuery` shape (documented deliberate
+  coupling — the accepted (a) tradeoff). **Migration `packages/db/drizzle/0007_plan_query_definition.sql`** + journal.
+- `TestPlanService` create/update persist `queryDefinition`; `listPlans`/`getPlan` return it; `setPlanCases`
+  untouched. Permissive zod schema (round-trips `__unfiled__` + non-ULID case ids). `plan-client`:
+  `realPlanToLocal` uses the stored definition as `queries` when present, falling back to the synthesized
+  `q-server-*` static group only when null (seeded/legacy plans still render). `FreshProvider`: `updatePlan`
+  (on queries change) + `duplicatePlan` send `queryDefinition` alongside the resolved-caseIds push;
+  `mergeLocalOnlyPlanFields` reduced to a documented no-op (server authoritative for queries) → a fresh
+  browser now gets real authored queries, not the synthesized group.
+- Seed: both demo plans carry a `queryDefinition` (Full Regression = genuine folder query; Critical Path =
+  faithful static snapshot — the frontend `TestQuery` model genuinely can't express its
+  "priority-in-(crit,high) AND folder-in-(Auth,Checkout)" as one group: `QueryField` has no folder field,
+  no multi-value operator, and groups UNION not AND — so a static snapshot is the faithful choice, NOT a
+  round-trip failure). `ProjectCloneService` remaps `queryDefinition` ids through the clone id maps.
+- **GAP-01 marked RESOLVED in `known-bugs.md`.** Residual (deliberate, the (b) property not done): plans
+  don't auto-re-resolve server-side when cases change; `test_plan_cases` refreshes when the plan is next
+  edited in a browser (same freeze-on-edit behavior as spawn).
+- **Sandbox verification (done):** tsc clean both packages; `pnpm build` clean (29/29). No `DEMO_SCHEMA_VERSION` bump.
+- **Shaun-local verification (still needed):** author a plan query in one browser → reload / different
+  browser shows the same queries (not a synthesized static group) and resolves to the same cases; reseed →
+  demo plans show real queries; run-spawn from a plan still works.
+
+### Phase G — admin settings (role definitions + API keys) — **DONE (code + sandbox-verified), not committed**
+
+Scope (Shaun): roles + API keys ONLY. Automation deferred (stays local). Custom fields excluded. Users +
+project_roles already backed (untouched).
+
+- Two org-scoped tables: `role_definitions` (`id, orgId→organisations cascade, name, description,
+  permissions json, isBuiltIn, timestamps`, unique(orgId,name)) and `api_keys` (`id, orgId cascade, name,
+  key_masked, created_by→users set null, plus project/permissions/expiration/lastUsed stored verbatim`).
+  Real API-key secret management (hashing/one-time reveal) OUT of scope — stores the same masked display
+  string the frontend shows. **Migration `packages/db/drizzle/0008_admin_roles_api_keys.sql`** + journal.
+- New `AdminSettingsService` (GLOBAL admin RBAC like UserService, not project-scoped): role
+  list/create/update/delete + api-key list/create/delete, all audited; built-in roles guarded from
+  update/delete. Global routes `/api/admin/roles[/[roleId]]` + `/api/admin/api-keys[/[keyId]]` (mirror
+  `/api/users/*`, sibling to `/api/admin/reset`). `admin-role-client.ts` + `admin-api-key-client.ts`.
+- Seed: `admin-seed.ts` inserts the 7 built-in roles (`isBuiltIn`, permissions mirrored from `rbac.ts`) +
+  8 demo API keys into the seed org (stable ids in `ids.ts`; `clear.ts` deletes them so reseed doesn't hit
+  the unique constraint). **NOTE:** built-in role names/permissions in `admin-seed.ts` are a deliberate
+  mirror of `apps/web`'s `rbac.ts` (can't import apps/web into @relay/db) — if `rbac.ts`'s built-in roster
+  changes, this seed must track it (flagged in the file header).
+- `FreshProvider`: `SYNC_REAL_ROLES`/`SYNC_REAL_API_KEYS` (merge into `adminSettings.roles`/`.apiKeys`,
+  roles matched by name, keys by id, unmatched local rows preserved), global-admin-gated fetch effect (403
+  → console.warn + mock fallback, same as users); write-through on role create/update/delete + api-key
+  create/delete (wait-for-server, server id adopted immediately; built-in roles skip the server call).
+  `admin-reducer` create actions accept a server override for id/maskedKey/createdAt/creator.
+- **Round-trip fidelity:** `RolePermissions` round-trips via `emptyPermissions()` coercion (full 16-key
+  shape); `userCount` is derived client-side (not stored), `isProjectLevel` IS stored. Every `AdminApiKey`
+  field has a server home. The one soft spot (same class as `assignee`): frontend admin-mock creator ids
+  (`admin-user-*`) aren't real `users` FKs — seeded keys map to real seed users where possible, else
+  `created_by=null` with the `SEED_ADMIN_USER_ID` display fallback; after the user sync, new keys carry a
+  resolvable real userId.
+- **Sandbox verification (done):** tsc clean both packages; `pnpm build` clean, all four new admin routes
+  present. (One typecheck bug caught + fixed mid-verify — an `isRealId` type-guard narrowing issue.)
+- **Shaun-local verification (still needed):** as global admin, Admin → Roles/API keys show real seeded
+  data; create/edit/delete a role + create/delete an API key survive reload (in `role_definitions`/`api_keys`);
+  as a non-admin session the panel falls back to the mock (console.warn, no crash). No `DEMO_SCHEMA_VERSION` bump.
+
+## Candidate 1 — overall status: ALL PHASES A–G CODE-COMPLETE + SANDBOX-VERIFIED, NOT COMMITTED
+
+Migrations `0002`–`0008` (hand-authored, journal in sync). Every phase built on the prior; the Phase G
+build (all phases present together) is the combined-verification evidence: `tsc --noEmit` clean for
+`@relay/db` + `@relay/web`, `pnpm build` clean. **Shaun still owns all live-DB verification** — reseed
+first (`pnpm db:seed`; migrations 0002–0008 must be applied), then walk each phase's Shaun-local checklist
+above, INCLUDING the full protected-UX Runs regression (Phases A/B touch the runs read/write path).
+
+**Deferred cleanup (not blockers — fold into a follow-up):**
+- `ProjectCloneService` does NOT deep-clone `case_comments` or `case_requirements` (Phase E nulls
+  `run_defect_links.defect_id`; Phase F DOES remap `queryDefinition`; Phase B DOES clone `run_case_events`).
+  So "Create Demo Project" clones lose case comments / requirement links / defect entities. Moot for the
+  default demo (the seed creates none of those on the source), but add for consistency when convenient.
+- Seed creates no requirements or defect entities (those screens fall back to their static/mock lists for
+  real projects) — add seeded examples if a richer demo is wanted.
+- Living docs (`AS_BUILT_SNAPSHOT.md`, `FRONTEND_CONTRACTS.md`, `user-guide.md`, `feature-flow.md`) + the PR
+  description are NOT yet updated for Candidate 1 — deliberately deferred until Shaun's live verification
+  confirms end-to-end behavior, matching this branch's established "docs reflect verified behavior" pattern
+  (see the Phase 2 Documentation checkbox note). Do this in the same pass that folds `62565a0..f053a85` +
+  Candidate 1 into the PR description.

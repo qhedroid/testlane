@@ -29,13 +29,14 @@
  *     non-archived-all for "Full Regression"), then persisting the *result*
  *     as static test_plan_cases rows, exactly like TestPlanService.setPlanCases()
  *     would if a screen called it with a client-resolved list.
- *   - Historical run data: real schema has no append-only per-case execution
- *     transition log (unlike the frontend prototype's `executionLog`) — only
- *     a final status + one `executed_at` timestamp per (run, case). The two
- *     sealed runs below use realistic backdated `executed_at`/`created_at`/
- *     `sealed_at` values so a real trend can be reconstructed as "one data
- *     point per run" rather than "one point per status transition" — a
- *     coarser but genuine trend, not fabricated.
+ *   - Historical run data: the schema now HAS an append-only per-case
+ *     execution transition log (`run_case_events`, new-tables candidate Phase
+ *     B). The two sealed runs below insert backdated 'created' + 'result'
+ *     events (at each case's `executed_at`) alongside the final status, so the
+ *     dashboard's week-over-week trend is genuine — one event per real
+ *     transition, matching the frontend prototype's `executionLog`, not
+ *     fabricated. `created_at`/`sealed_at`/`executed_at` remain realistically
+ *     backdated to line the events up on the trend timeline.
  *   - `run_case_step_snapshots` are generated from each case's live
  *     `test_case_steps` at the moment this seed runs (mirrors what
  *     TestRunService.createRun() does transactionally at real spawn time —
@@ -49,6 +50,7 @@ import {
   projectRoles,
   projects,
   runAssignees,
+  runCaseEvents,
   runCaseStepSnapshots,
   runDefectLinks,
   runStepResults,
@@ -61,6 +63,7 @@ import {
   type NewFolder,
   type NewProjectRole,
   type NewRunAssignee,
+  type NewRunCaseEvent,
   type NewRunCaseStepSnapshot,
   type NewRunDefectLink,
   type NewRunStepResult,
@@ -70,6 +73,7 @@ import {
   type NewTestPlanCase,
   type NewTestRun,
   type NewTestRunCase,
+  type TestQueryDefinition,
 } from '../../schema'
 import type * as schema from '../../schema'
 import { createId } from '../utils/id'
@@ -442,6 +446,43 @@ export async function insertDemoProjectSeed(
 
   const planIds = { criticalPath: ids.plans.demoCriticalPath, fullRegression: ids.plans.demoFullRegression }
 
+  // GAP-01 Option (a): store each plan's authored query DEFINITION so, after a
+  // reseed, they render as real dynamic queries instead of a synthesized static
+  // group — and so the new query_definition column is exercised end-to-end.
+  //
+  // Critical Path's conceptual condition is "priority in (critical,high) AND
+  // folder in (Auth*, Checkout)". The frontend TestQuery model can't express
+  // that faithfully as one group — QueryField has no 'folder' field and no
+  // multi-value ("in") operator, and separate query groups UNION (OR), not AND.
+  // So its definition is a faithful STATIC snapshot of the six resolved cases;
+  // its resolved list therefore matches test_plan_cases exactly.
+  //
+  // Full Regression IS faithfully expressible as a dynamic FOLDER query over
+  // every folder + unfiled, which resolves (client-side) to all non-archived
+  // cases — matching the persisted test_plan_cases list.
+  const criticalPathQueryDefinition: TestQueryDefinition[] = [
+    {
+      id: 'q-seed-critical-path',
+      title: 'Critical & high priority — Authentication & Checkout',
+      type: 'static',
+      caseIds: criticalPathCaseKeys.map((key) => caseIds[key]),
+    },
+  ]
+  const fullRegressionQueryDefinition: TestQueryDefinition[] = [
+    {
+      id: 'q-seed-full-regression',
+      title: 'All cases',
+      type: 'folder',
+      folderIds: [
+        folderIds.auth,
+        folderIds.authPwReset,
+        folderIds.checkout,
+        folderIds.search,
+        '__unfiled__',
+      ],
+    },
+  ]
+
   const planRows: NewTestPlan[] = [
     {
       id: planIds.criticalPath,
@@ -454,6 +495,7 @@ export async function insertDemoProjectSeed(
       ownerId: ids.users.shaun,
       createdBy: ids.users.shaun,
       assigneeIds: [ids.users.shaun, ids.users.james],
+      queryDefinition: criticalPathQueryDefinition,
     },
     {
       id: planIds.fullRegression,
@@ -466,6 +508,7 @@ export async function insertDemoProjectSeed(
       ownerId: ids.users.noel,
       createdBy: ids.users.noel,
       assigneeIds: [ids.users.noel, ids.users.marcus, ids.users.priya],
+      queryDefinition: fullRegressionQueryDefinition,
     },
   ]
   await db.insert(testPlans).values(planRows)
@@ -528,6 +571,7 @@ export async function insertDemoProjectSeed(
   const stepResultRows: NewRunStepResult[] = []
   const defectLinkRows: NewRunDefectLink[] = []
   const runAssigneeRows: NewRunAssignee[] = []
+  const runCaseEventRows: NewRunCaseEvent[] = []
 
   function buildRun(input: BuildRunInput): string {
     const runId = createId()
@@ -577,6 +621,33 @@ export async function insertDemoProjectSeed(
         createdAt: input.createdAt,
         updatedAt: isExecuted ? executedAt : input.createdAt,
       })
+
+      // run_case_events (new-tables candidate, Phase B): a 'created' event per
+      // case at run creation, plus one backdated 'result' event per executed
+      // case (from='not_run' → its final status, at = the case's executedAt).
+      // This makes the seeded sealed runs' trend genuine once synced — the
+      // dashboard's week-over-week counts read these, via listProjectRuns.events
+      // → executionLog.
+      runCaseEventRows.push({
+        id: createId(),
+        testRunCaseId: runCaseId,
+        actorId: input.createdBy,
+        event: 'created',
+        fromStatus: 'not_run',
+        toStatus: 'not_run',
+        at: input.createdAt,
+      })
+      if (isExecuted) {
+        runCaseEventRows.push({
+          id: createId(),
+          testRunCaseId: runCaseId,
+          actorId: result.testedBy ?? def.assignedTo,
+          event: 'result',
+          fromStatus: 'not_run',
+          toStatus: result.status,
+          at: executedAt,
+        })
+      }
 
       const snaps = stepsByCase[key].map((s, si) => {
         const snapId = createId()
@@ -737,6 +808,7 @@ export async function insertDemoProjectSeed(
   if (stepResultRows.length > 0) await db.insert(runStepResults).values(stepResultRows)
   if (defectLinkRows.length > 0) await db.insert(runDefectLinks).values(defectLinkRows)
   if (runAssigneeRows.length > 0) await db.insert(runAssignees).values(runAssigneeRows)
+  if (runCaseEventRows.length > 0) await db.insert(runCaseEvents).values(runCaseEventRows)
 }
 
 /** Ref-counter seed rows for the demo project — next case/run/plan number after everything above. */

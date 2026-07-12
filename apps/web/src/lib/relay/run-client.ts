@@ -17,20 +17,25 @@
  *     for result-recording writes is tracked separately by FreshProvider
  *     (runCaseIdsRef) — it is deliberately not stored in DemoRun, which
  *     screens treat as a purely-local shape.
- *   - stepResults: the server list response carries no per-step results
- *     (run_step_results stay server-side for now) — synced runs get an empty
- *     stepResults map, and any local step ticks are preserved across syncs by
- *     the provider's merge (local-only field, same hybrid rule as comments).
- *   - executionLog: no server equivalent exists (the schema stores one final
- *     status + executed_at per run case, not an append-only transition log) —
- *     synced runs come back with an empty log; local logs are preserved by
- *     the provider merge but do NOT survive a fresh browser. Documented gap.
+ *   - stepResults: now backed by run_step_results (new-tables candidate, Phase
+ *     A). The server list response carries a `steps` layer per run case (each
+ *     step snapshot's id, live originalStepId, position, and status), which
+ *     realRunToLocal folds into CaseExecution.stepResults keyed by the live
+ *     step id. Writes go through recordRealStepResult, addressed by step
+ *     snapshot id (runStepSnapshotMap bridges live step id → snapshot id).
+ *   - executionLog: now server-backed by run_case_events (new-tables candidate,
+ *     Phase B). The list response carries an `events` array (one 'created' per
+ *     case at spawn, one 'result' per status transition), which realRunToLocal
+ *     reconstructs into ExecutionLogEntry[] keyed by live test case id — so the
+ *     dashboard's week-over-week trend counts and per-case history work for
+ *     synced real runs, not just local ones. actorId → display name via the
+ *     same seed-user map as executedBy; a stable id is synthesized per event.
  *   - defects: active run_defect_links come back as external defect refs
  *     (strings) and map onto CaseExecution.defects, which the UI already
  *     renders as "legacy external keys".
  */
 
-import type { CaseExecution, DemoRun, ExecStatus } from '@/fresh/data/demo-model'
+import type { CaseExecution, DemoRun, ExecStatus, ExecutionLogEntry } from '@/fresh/data/demo-model'
 import { EXEC_TO_LEGACY, LEGACY_TO_EXEC, type ResultStatus } from '@/fresh/data/demo-model'
 import type { ApiErrorBody, ApiSuccessBody } from '@/lib/api/types'
 import { RelayApiError } from './project-client'
@@ -53,6 +58,13 @@ async function parseResponse<T>(res: Response): Promise<T> {
 export type RealRunStatus = 'active' | 'stalled' | 'sealed' | 'archived'
 export type RealCaseResultStatus = 'not_run' | 'pass' | 'fail' | 'blocked' | 'skip' | 'skipped'
 
+export interface RealRunStepResult {
+  stepSnapshotId: string
+  originalStepId: string | null
+  position: number
+  status: RealCaseResultStatus
+}
+
 export interface RealRunCaseResult {
   testRunCaseId: string
   testCaseId: string
@@ -63,12 +75,30 @@ export interface RealRunCaseResult {
   executedAt: string | null
   position: number
   defectRefs: string[]
+  steps: RealRunStepResult[]
+}
+
+/**
+ * One append-only execution event (new-tables candidate, Phase B), from
+ * packages/db/src/runs/read.ts RunCaseEventItem. `at` is JSON-serialised to an
+ * ISO string; from/to are the server's lowercase result enums (null for
+ * 'created' events, which carry no transition). testCaseId is the LIVE case id
+ * (resolved server-side from the run case), matching the local executionLog.
+ */
+export interface RealRunCaseEvent {
+  testCaseId: string
+  at: string
+  actorId: string | null
+  event: 'created' | 'result'
+  fromStatus: RealCaseResultStatus | null
+  toStatus: RealCaseResultStatus | null
 }
 
 export interface RealRunListItem {
   id: string
   runRef: string
   title: string
+  description: string | null
   status: RealRunStatus
   environment: string | null
   testPlanId: string | null
@@ -84,6 +114,8 @@ export interface RealRunListItem {
     notRun: number
   }
   cases: RealRunCaseResult[]
+  /** Chronological run_case_events (new-tables candidate, Phase B). Feeds executionLog. */
+  events: RealRunCaseEvent[]
 }
 
 export interface RealRunDetailCase {
@@ -138,6 +170,7 @@ export async function createRealRun(body: {
   projectId: string
   testPlanId?: string
   name?: string
+  description?: string | null
   caseIds?: string[]
 }): Promise<RealCreateRunResult> {
   return parseResponse<RealCreateRunResult>(
@@ -158,6 +191,7 @@ export async function updateRealRun(
     projectId: string
     status?: 'active' | 'sealed' | 'archived'
     title?: string
+    description?: string | null
     dueDate?: string | null
   },
 ): Promise<{ id: string; runRef: string; status: RealRunStatus }> {
@@ -186,6 +220,28 @@ export async function recordRealCaseResult(
   )
 }
 
+/** Record a per-step result (new-tables candidate, Phase A). Addressed by the
+ * step snapshot id — the caller resolves it from the live step id via
+ * runStepSnapshotMap / FreshProvider's runStepSnapshotIdsRef. */
+export async function recordRealStepResult(
+  runId: string,
+  testRunCaseId: string,
+  stepSnapshotId: string,
+  body: { status: RealCaseResultStatus; comment?: string | null },
+): Promise<void> {
+  await parseResponse(
+    await fetch(
+      `/api/runs/${runId}/cases/${testRunCaseId}/steps/${stepSnapshotId}/result`,
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    ),
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Adapters
 // ---------------------------------------------------------------------------
@@ -205,37 +261,98 @@ export function runCaseIdMap(cases: RealRunCaseResult[]): Record<string, string>
 }
 
 /**
+ * testCaseId -> (live originalStepId -> stepSnapshotId) for a fetched run
+ * (new-tables candidate, Phase A). The step-result endpoint is addressed by
+ * step snapshot id, but CaseExecution.stepResults is keyed by live step id —
+ * FreshProvider caches this map (runStepSnapshotIdsRef) to bridge step writes.
+ * Steps whose originalStepId is null (the live step was deleted after snapshot)
+ * are omitted — they can't be matched to a fresh-screen step id.
+ */
+export function runStepSnapshotMap(
+  cases: RealRunCaseResult[],
+): Record<string, Record<string, string>> {
+  const result: Record<string, Record<string, string>> = {}
+  for (const c of cases) {
+    const stepMap: Record<string, string> = {}
+    for (const s of c.steps) {
+      if (s.originalStepId) stepMap[s.originalStepId] = s.stepSnapshotId
+    }
+    result[c.testCaseId] = stepMap
+  }
+  return result
+}
+
+/**
  * Server run -> frontend DemoRun. `planTitleById` fills planName from the
- * already-synced plans; local-only fields (description, executionLog, step
- * results) come back empty and are preserved from any existing local copy by
- * FreshProvider's merge.
+ * already-synced plans. description, per-step results, and the executionLog are
+ * all server-backed now (new-tables candidate, Phases A + B): executionLog is
+ * rebuilt from the run's `events` (run_case_events), so the dashboard's
+ * week-over-week trend counts and per-case history work for synced real runs.
+ *
+ * `defectIdByRef` (new-tables candidate, Phase E) maps a defect_ref back to its
+ * internal defect entity id. Active defect refs on a run-case are INTERNAL when
+ * present in this map (rendered/linked by entity id, matching the local
+ * CREATE_DEFECT_AND_LINK model) and EXTERNAL otherwise (kept as the free-text
+ * ref string, exactly as before — unchanged behaviour).
  */
 export function realRunToLocal(
   r: RealRunListItem,
   projectId: string,
   planTitleById: Map<string, string>,
+  defectIdByRef?: Map<string, string>,
 ): DemoRun {
   const ordered = [...r.cases].sort((a, b) => a.position - b.position)
   const executions: Record<string, CaseExecution> = {}
   for (const c of ordered) {
+    // Step results keyed by the live step id (originalStepId). Steps with no
+    // result yet (not_run) or a deleted live step (null originalStepId) are
+    // omitted from the map.
+    const stepResults: Record<string, ExecStatus> = {}
+    for (const s of c.steps) {
+      if (!s.originalStepId || s.status === 'not_run') continue
+      stepResults[s.originalStepId] = toExecStatus(s.status)
+    }
+    const hasStepResults = Object.keys(stepResults).length > 0
     const hasAnything =
-      c.status !== 'not_run' || c.comment || c.defectRefs.length > 0 || c.assignedTo
+      c.status !== 'not_run' ||
+      c.comment ||
+      c.defectRefs.length > 0 ||
+      c.assignedTo ||
+      hasStepResults
     if (!hasAnything) continue
     executions[c.testCaseId] = {
       status: toExecStatus(c.status),
-      stepResults: {},
+      stepResults,
       ...(c.assignedTo ? { assignee: userIdToAssigneeName(c.assignedTo) } : {}),
       ...(c.comment ? { resultNotes: c.comment } : {}),
-      ...(c.defectRefs.length > 0 ? { defects: c.defectRefs } : {}),
+      ...(c.defectRefs.length > 0
+        ? { defects: c.defectRefs.map((ref) => defectIdByRef?.get(ref) ?? ref) }
+        : {}),
       ...(c.executedAt ? { testedAt: c.executedAt } : {}),
       ...(c.executedBy ? { testedBy: userIdToAssigneeName(c.executedBy) } : {}),
     }
   }
+  // executionLog from run_case_events (new-tables candidate, Phase B). The
+  // server orders events chronologically; from/to are null for 'created'
+  // events (which project-selectors skips) — default them to 'Not run' so the
+  // ExecutionLogEntry.from/to shape (non-null ExecStatus) always holds. The id
+  // is synthesized stably (server order + index) so collectHistoryEvents'
+  // dedup key `${run.id}:${entry.id}` stays unique across fetches.
+  const executionLog: ExecutionLogEntry[] = (r.events ?? []).map((e, i) => ({
+    id: `evt-${e.event}-${e.testCaseId}-${new Date(e.at).getTime()}-${i}`,
+    caseId: e.testCaseId,
+    at: new Date(e.at).toISOString(),
+    by: userIdToAssigneeName(e.actorId) ?? 'Unknown',
+    from: e.fromStatus ? toExecStatus(e.fromStatus) : 'Not run',
+    to: e.toStatus ? toExecStatus(e.toStatus) : 'Not run',
+    ...(e.event === 'created' ? { event: 'created' as const } : {}),
+  }))
   return {
     id: r.id,
     projectId,
     runKey: r.runRef,
     name: r.title,
+    description: r.description ?? undefined,
     planId: r.testPlanId ?? undefined,
     planName: r.testPlanId ? planTitleById.get(r.testPlanId) : undefined,
     due: r.dueDate ?? undefined,
@@ -244,7 +361,7 @@ export function realRunToLocal(
     ...(r.status === 'archived' ? { archivedAt: r.updatedAt } : {}),
     caseOrder: ordered.map((c) => c.testCaseId),
     executions,
-    executionLog: [],
+    executionLog,
   }
 }
 

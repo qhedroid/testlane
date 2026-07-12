@@ -15,6 +15,7 @@ import {
 import type * as schema from '../../schema'
 import { ids } from './ids'
 import { demoProjectRefCounterRows, insertDemoProjectSeed } from './demo-project-seed'
+import { insertAdminSeed } from './admin-seed'
 
 /** Shared local-dev password for all seed users. Documented in README.md. */
 export const SEED_DEV_PASSWORD = 'relay-dev-2026'
@@ -187,6 +188,9 @@ export async function insertSeedData(
   ])
 
   await insertDemoProjectSeed(db)
+
+  // Admin panel: built-in role definitions + demo API keys (Phase G).
+  await insertAdminSeed(db)
 
   await ensureRefCountersTable(db)
   await seedRefCounters(db)

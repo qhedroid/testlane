@@ -53,6 +53,9 @@ export async function POST(request: Request, context: RouteContext) {
       testRunCaseId: runCaseId,
       defectRef: body.defectRef,
       defectUrl: body.defectUrl,
+      // Internal defect (Phase E): additive, backward compatible — omitted for
+      // external free-text refs.
+      defectId: body.defectId,
     })
 
     return jsonSuccess(link, 201)

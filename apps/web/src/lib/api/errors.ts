@@ -20,6 +20,10 @@ import {
   type TestCaseServiceErrorCode,
 } from '@relay/db/services/test-case'
 import {
+  RequirementServiceError,
+  type RequirementServiceErrorCode,
+} from '@relay/db/services/requirement'
+import {
   TestPlanServiceError,
   type TestPlanServiceErrorCode,
 } from '@relay/db/services/test-plan'
@@ -35,6 +39,12 @@ import {
   ProjectCloneError,
   type ProjectCloneErrorCode,
 } from '@relay/db/services/project-clone'
+import {
+  AdminApiKeyServiceError,
+  AdminRoleServiceError,
+  type AdminApiKeyServiceErrorCode,
+  type AdminRoleServiceErrorCode,
+} from '@relay/db/services/admin-settings'
 import { InsufficientPermissionsError } from '@relay/db/rbac/assert-min-role'
 import { jsonError } from './response'
 
@@ -65,6 +75,7 @@ const UPDATE_RESULT_STATUS: Record<UpdateCaseResultErrorCode, number> = {
   INSUFFICIENT_PERMISSIONS: 403,
   RUN_NOT_FOUND: 404,
   CASE_NOT_FOUND: 404,
+  STEP_NOT_FOUND: 404,
   RUN_NOT_EXECUTABLE: 409,
   INVALID_STATUS: 400,
   TRANSACTION_FAILED: 500,
@@ -90,7 +101,20 @@ const TEST_CASE_SERVICE_STATUS: Record<TestCaseServiceErrorCode, number> = {
   PROJECT_NOT_FOUND: 404,
   FOLDER_NOT_FOUND: 404,
   CASE_NOT_FOUND: 404,
+  STEP_NOT_FOUND: 404,
   DUPLICATE_CASE_REF: 409,
+  REF_COUNTER_TIMEOUT: 503,
+  TRANSACTION_FAILED: 500,
+}
+
+// Note: RequirementService relies on the shared assertMinProjectRole() for RBAC
+// (throws InsufficientPermissionsError, handled generically below), same as
+// TestCaseService/TestPlanService.
+const REQUIREMENT_SERVICE_STATUS: Record<RequirementServiceErrorCode, number> = {
+  PROJECT_NOT_FOUND: 404,
+  CASE_NOT_FOUND: 404,
+  REQUIREMENT_NOT_FOUND: 404,
+  DUPLICATE_REQUIREMENT_REF: 409,
   REF_COUNTER_TIMEOUT: 503,
   TRANSACTION_FAILED: 500,
 }
@@ -112,16 +136,33 @@ const DASHBOARD_SERVICE_STATUS: Record<DashboardServiceErrorCode, number> = {
 // (throws InsufficientPermissionsError, handled generically below), same as
 // TestCaseService/TestPlanService.
 const DEFECT_SERVICE_STATUS: Record<DefectServiceErrorCode, number> = {
+  PROJECT_NOT_FOUND: 404,
   RUN_NOT_FOUND: 404,
   CASE_NOT_FOUND: 404,
   LINK_NOT_FOUND: 404,
   ALREADY_UNLINKED: 409,
+  DEFECT_NOT_FOUND: 404,
+  DUPLICATE_DEFECT_REF: 409,
+  REF_COUNTER_TIMEOUT: 503,
+  TRANSACTION_FAILED: 500,
 }
 
 const PROJECT_CLONE_STATUS: Record<ProjectCloneErrorCode, number> = {
   PROJECT_NOT_FOUND: 404,
   INSUFFICIENT_PERMISSIONS: 403,
   DUPLICATE_SLUG: 409,
+}
+
+const ADMIN_ROLE_SERVICE_STATUS: Record<AdminRoleServiceErrorCode, number> = {
+  INSUFFICIENT_PERMISSIONS: 403,
+  ROLE_NOT_FOUND: 404,
+  DUPLICATE_ROLE_NAME: 409,
+  BUILT_IN_IMMUTABLE: 409,
+}
+
+const ADMIN_API_KEY_SERVICE_STATUS: Record<AdminApiKeyServiceErrorCode, number> = {
+  INSUFFICIENT_PERMISSIONS: 403,
+  API_KEY_NOT_FOUND: 404,
 }
 
 export function handleRouteError(err: unknown) {
@@ -164,6 +205,11 @@ export function handleRouteError(err: unknown) {
     return jsonError(err.code, err.message, status)
   }
 
+  if (err instanceof RequirementServiceError) {
+    const status = REQUIREMENT_SERVICE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
   if (err instanceof TestPlanServiceError) {
     const status = TEST_PLAN_SERVICE_STATUS[err.code] ?? 500
     return jsonError(err.code, err.message, status)
@@ -181,6 +227,16 @@ export function handleRouteError(err: unknown) {
 
   if (err instanceof ProjectCloneError) {
     const status = PROJECT_CLONE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof AdminRoleServiceError) {
+    const status = ADMIN_ROLE_SERVICE_STATUS[err.code] ?? 500
+    return jsonError(err.code, err.message, status)
+  }
+
+  if (err instanceof AdminApiKeyServiceError) {
+    const status = ADMIN_API_KEY_SERVICE_STATUS[err.code] ?? 500
     return jsonError(err.code, err.message, status)
   }
 

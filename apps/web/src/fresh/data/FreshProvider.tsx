@@ -15,7 +15,8 @@ import { buildInitialDemoState, getCurrentRun, mergeSeedRuns } from './demo-seed
 import { migrateDemoState } from './migrate-demo-state'
 import type { AdminUser, Case, CaseExecution, Defect, DemoRun, DemoState, ExecStatus, ExecutionLogEntry, Folder, Project, ProjectSettings, Requirement, TestPlan } from './demo-model'
 import { isAdminAction, reduceAdminState, type AdminAction, type InviteUserPayload, type UpdateUserPayload } from './admin-reducer'
-import { SEED_ADMIN_USER_ID } from './admin-initial-settings'
+import { SEED_ADMIN_USER_ID, syncRoleUserCounts } from './admin-initial-settings'
+import { generateMaskedApiKey } from './admin-utils'
 import type { RolePermissions } from './rbac'
 import {
   getActiveProject,
@@ -38,6 +39,7 @@ import { findRunById } from './run-utils'
 import { formatCaseKey, formatDefectKey, formatPlanKey, formatRequirementKey, formatRunKey, newId, resolvePlanCases } from './demo-model'
 import { fetchRealProjects } from '@/lib/relay/project-client'
 import {
+  addRealCaseComment,
   archiveRealCase,
   createRealCase,
   createRealFolder,
@@ -49,6 +51,7 @@ import {
   realCaseToLocal,
   realFolderToLocal,
   updateRealCase,
+  userIdToAssigneeName,
 } from '@/lib/relay/case-client'
 import {
   archiveRealPlan,
@@ -60,6 +63,20 @@ import {
   updateRealPlan,
 } from '@/lib/relay/plan-client'
 import {
+  createRealRequirement,
+  fetchRealRequirements,
+  linkRealRequirementToCase,
+  localRequirementToCreateBody,
+  realRequirementToLocal,
+} from '@/lib/relay/requirement-client'
+import {
+  createRealDefect,
+  fetchRealDefects,
+  linkRealDefectToRunCase,
+  localDefectToCreateBody,
+  realDefectToLocal,
+} from '@/lib/relay/defect-client'
+import {
   ADMIN_ROLE_TO_GLOBAL,
   GLOBAL_TO_ADMIN_ROLE,
   createRealUser,
@@ -68,13 +85,30 @@ import {
   type RealUser,
 } from '@/lib/relay/user-client'
 import {
+  createRealRole,
+  deleteRealRole,
+  fetchRealRoles,
+  realRoleToLocal,
+  updateRealRole,
+  type RealRole,
+} from '@/lib/relay/admin-role-client'
+import {
+  createRealApiKey,
+  deleteRealApiKey,
+  fetchRealApiKeys,
+  realApiKeyToLocal,
+  type RealApiKey,
+} from '@/lib/relay/admin-api-key-client'
+import {
   createRealRun,
   fetchRealRunDetail,
   fetchRealRuns,
   realCreatedRunToLocal,
   realRunToLocal,
   recordRealCaseResult,
+  recordRealStepResult,
   runCaseIdMap,
+  runStepSnapshotMap,
   toRealResultStatus,
   updateRealRun,
 } from '@/lib/relay/run-client'
@@ -222,8 +256,8 @@ export type FreshAction =
   | { type: 'UPDATE_RUN_EXECUTION'; runId: string; caseId: string; patch: Partial<CaseExecution> }
   | { type: 'UPDATE_RUN'; runId: string; patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>> }
   | { type: 'ADD_CASES_TO_RUN'; runId: string; caseIds: string[] }
-  | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string }
-  | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string }
+  | { type: 'ADD_STEP_COMMENT'; caseId: string; stepId: string; author: string; body: string; id?: string; createdAt?: string }
+  | { type: 'ADD_GENERAL_COMMENT'; caseId: string; author: string; body: string; id?: string; createdAt?: string }
   | { type: 'SEAL_RUN'; runId: string }
   | { type: 'UNSEAL_RUN'; runId: string }
   | { type: 'SET_CURRENT_RUN'; runId: string }
@@ -238,74 +272,75 @@ export type FreshAction =
   | { type: 'ADD_FOLDER'; folder: Folder }
   | { type: 'ADD_RUN'; run: DemoRun }
   | { type: 'CREATE_REQUIREMENT'; requirement: Requirement }
+  | { type: 'RECONCILE_REQUIREMENT'; tempId: string; requirement: Requirement }
   | { type: 'LINK_REQUIREMENT_TO_CASE'; caseId: string; requirementId: string }
   | { type: 'CREATE_DEFECT_AND_LINK'; defect: Defect; runId: string; caseId: string }
+  | { type: 'RECONCILE_DEFECT'; tempId: string; defect: Defect }
   | { type: 'LINK_DEFECT_TO_EXECUTION'; runId: string; caseId: string; defectId: string }
   | { type: 'HYDRATE'; state: DemoState }
-  | { type: 'SYNC_REAL_PROJECT_DATA'; projectId: string; folders: Folder[]; cases: Case[]; plans: TestPlan[]; runs: DemoRun[] }
+  | { type: 'SYNC_REAL_PROJECT_DATA'; projectId: string; folders: Folder[]; cases: Case[]; plans: TestPlan[]; runs: DemoRun[]; requirements: Requirement[]; defects: Defect[] }
   | { type: 'SYNC_REAL_USERS'; users: RealUser[] }
   | { type: 'RECONCILE_ADMIN_USER'; email: string; user: RealUser }
+  | { type: 'SYNC_REAL_ROLES'; roles: RealRole[] }
+  | { type: 'SYNC_REAL_API_KEYS'; apiKeys: RealApiKey[] }
 
 /**
- * Merge fields the real backend has no tables for (comments, custom field
- * values, requirement links, references, template) from an existing local
- * copy of a case onto its server-fetched version. This is what makes
- * CasesScreen a *hybrid* screen for real projects — real data where the DB
- * backs it, localStorage data where it doesn't (per the Phase 2 screen-wiring
- * note in docs/claude/mvp-backend/progress.md).
+ * Merge fields the real backend has no tables for (custom field values,
+ * references, template) from an existing local copy of a case onto its
+ * server-fetched version. This is what makes CasesScreen a *hybrid* screen for
+ * real projects — real data where the DB backs it, localStorage data where it
+ * doesn't (per the Phase 2 screen-wiring note in
+ * docs/claude/mvp-backend/progress.md).
  *
- * Step comments are matched by step id first, falling back to position —
- * the server regenerates ULIDs for steps submitted with temp local ids, so
- * id-match alone would drop comments right after an optimistic create.
+ * Comments (general + per-step, Phase C) and requirement links (Phase D) are NO
+ * LONGER local-only — they're server-backed (case_comments / case_requirements
+ * tables) and mapped in realCaseToLocal, so the server value is authoritative
+ * and they are not merged back from the local copy here (that would resurrect
+ * stale/pre-sync links).
  */
 function mergeLocalOnlyCaseFields(serverCase: Case, localCase: Case | undefined): Case {
   if (!localCase) return serverCase
   return {
     ...serverCase,
-    generalComments: localCase.generalComments,
     customFieldValues: localCase.customFieldValues,
-    requirementIds: localCase.requirementIds,
     references: localCase.references,
     template: localCase.template,
-    steps: serverCase.steps.map((s, i) => {
-      const localStep = localCase.steps.find((ls) => ls.id === s.id) ?? localCase.steps[i]
-      return localStep && localStep.comments.length > 0 ? { ...s, comments: localStep.comments } : s
-    }),
   }
 }
 
 /**
- * The plans equivalent of mergeLocalOnlyCaseFields: `queries` are the
- * local-only authoring model (no server storage — GAP-01). If the local copy
- * has any *authored* query group (anything other than the `q-server-*`
- * static group synthesized by realPlanToLocal), it wins over the server's
- * synthesized static list; otherwise the fresh server list is taken.
+ * The plans equivalent of mergeLocalOnlyCaseFields. As of GAP-01 Option (a),
+ * `queries` are NO LONGER local-only: authored query definitions are persisted
+ * server-side (test_plans.query_definition) and rebuilt by realPlanToLocal, so
+ * the server is authoritative for a plan's queries. Every field on TestPlan is
+ * now server-backed, making this a documented no-op that simply takes the
+ * server plan — kept as the extension point mirroring the cases/runs merges,
+ * and so the sync call site doesn't need to change.
  */
-function mergeLocalOnlyPlanFields(serverPlan: TestPlan, localPlan: TestPlan | undefined): TestPlan {
-  if (!localPlan) return serverPlan
-  const hasAuthoredQueries = localPlan.queries.some((q) => !q.id.startsWith('q-server-'))
-  return hasAuthoredQueries ? { ...serverPlan, queries: localPlan.queries } : serverPlan
+function mergeLocalOnlyPlanFields(serverPlan: TestPlan, _localPlan: TestPlan | undefined): TestPlan {
+  return serverPlan
 }
 
 /**
- * The runs equivalent (Phase 4): description, per-case stepResults, and the
- * executionLog have no server storage — keep them from the local copy. The
- * server wins on per-case status/comment/defects (same accepted stale-fetch
- * race as cases); local execution entries for cases the server hasn't seen
- * yet are retained.
+ * The runs equivalent (Phase 4, updated new-tables candidate Phases A + B):
+ * description, per-step results, AND the executionLog are all server-backed now
+ * (executionLog was removed from this merge in Phase B — it's rebuilt from
+ * run_case_events in realRunToLocal, so the server value is authoritative). The
+ * server wins on per-case status/comment/defects/stepResults (same accepted
+ * stale-fetch race as cases); local execution entries for cases the server
+ * hasn't seen yet are retained. The optimistic executionLog append in
+ * UPDATE_RUN_EXECUTION still gives immediate feedback between a write and the
+ * next sync, then is replaced by the synced server events.
  */
 function mergeLocalOnlyRunFields(serverRun: DemoRun, localRun: DemoRun | undefined): DemoRun {
   if (!localRun) return serverRun
   const executions: Record<string, CaseExecution> = { ...localRun.executions }
   for (const [caseId, serverEx] of Object.entries(serverRun.executions)) {
-    const localEx = localRun.executions[caseId]
-    executions[caseId] = { ...serverEx, stepResults: localEx?.stepResults ?? {} }
+    executions[caseId] = serverEx
   }
   return {
     ...serverRun,
-    description: localRun.description,
     executions,
-    executionLog: localRun.executionLog ?? [],
   }
 }
 
@@ -657,7 +692,12 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
                   ...s,
                   comments: [
                     ...s.comments,
-                    { id: newId('cmt'), author: action.author, createdAt: new Date().toISOString(), body: action.body },
+                    {
+                      id: action.id ?? newId('cmt'),
+                      author: action.author,
+                      createdAt: action.createdAt ?? new Date().toISOString(),
+                      body: action.body,
+                    },
                   ],
                 }
               : s,
@@ -675,7 +715,12 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           updatedAt: new Date().toISOString(),
           generalComments: [
             ...c.generalComments,
-            { id: newId('gcmt'), author: action.author, createdAt: new Date().toISOString(), body: action.body },
+            {
+              id: action.id ?? newId('gcmt'),
+              author: action.author,
+              createdAt: action.createdAt ?? new Date().toISOString(),
+              body: action.body,
+            },
           ],
         }
       })
@@ -840,6 +885,24 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
       }
       break
     }
+    case 'RECONCILE_REQUIREMENT': {
+      // Swap an optimistic requirement's temp id/key (Phase D) for the server's
+      // real ULID + REQ-<n> ref once its POST resolves, remapping any
+      // case.requirementIds that already reference the temp id.
+      const { tempId, requirement } = action
+      const { [tempId]: _dropped, ...restReqs } = state.requirementsById ?? {}
+      next = {
+        ...state,
+        requirementsById: { ...restReqs, [requirement.id]: requirement },
+        cases: state.cases.map((c) => {
+          const links = c.requirementIds ?? []
+          if (!links.includes(tempId)) return c
+          const remapped = links.map((id) => (id === tempId ? requirement.id : id))
+          return { ...c, requirementIds: Array.from(new Set(remapped)) }
+        }),
+      }
+      break
+    }
     case 'LINK_REQUIREMENT_TO_CASE': {
       next = {
         ...state,
@@ -875,6 +938,32 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           ...(state.nextDefectNumByProject ?? {}),
           [action.defect.projectId]: (state.nextDefectNumByProject[action.defect.projectId] ?? 1) + 1,
         },
+      }
+      break
+    }
+    case 'RECONCILE_DEFECT': {
+      // Swap an optimistic defect's temp id/key (Phase E) for the server's real
+      // ULID + DEF-<n> ref once its POST resolves, remapping any run
+      // execution.defects that already reference the temp id. Mirrors
+      // RECONCILE_REQUIREMENT.
+      const { tempId, defect } = action
+      const { [tempId]: _dropped, ...restDefects } = state.defectsById ?? {}
+      next = {
+        ...state,
+        defectsById: { ...restDefects, [defect.id]: defect },
+        runs: state.runs.map((r) => {
+          let changed = false
+          const executions = Object.fromEntries(
+            Object.entries(r.executions).map(([caseId, ex]) => {
+              const defects = ex.defects
+              if (!defects || !defects.includes(tempId)) return [caseId, ex]
+              changed = true
+              const remapped = defects.map((d) => (d === tempId ? defect.id : d))
+              return [caseId, { ...ex, defects: Array.from(new Set(remapped)) }]
+            }),
+          )
+          return changed ? { ...r, executions } : r
+        }),
       }
       break
     }
@@ -946,6 +1035,18 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
         mergeLocalOnlyRunFields(serverRun, localRunById.get(serverRun.id)),
       )
       const pendingRuns = localProjectRuns.filter((r) => !isRealId(r.id))
+      // Requirements (Phase D): server data replaces this project's
+      // requirements wholesale, keeping only optimistic creates whose POST
+      // hasn't reconciled yet (still carrying temp non-ULID ids).
+      const pendingRequirements = Object.values(state.requirementsById ?? {}).filter(
+        (r) => r.projectId === projectId && !isRealId(r.id),
+      )
+      // Defects (Phase E): same shape as requirements — server data replaces
+      // this project's defects wholesale, keeping only optimistic creates whose
+      // POST hasn't reconciled yet (still carrying temp non-ULID ids).
+      const pendingDefects = Object.values(state.defectsById ?? {}).filter(
+        (d) => d.projectId === projectId && !isRealId(d.id),
+      )
       // Clear a dangling current-run selection (e.g. a stale local run the
       // server replaced) so the screen falls back to its own picker logic.
       const validRunIds = new Set([...mergedRuns, ...pendingRuns].map((r) => r.id))
@@ -978,6 +1079,24 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
           ...mergedRuns,
           ...pendingRuns,
         ],
+        requirementsById: {
+          ...Object.fromEntries(
+            Object.entries(state.requirementsById ?? {}).filter(
+              ([, r]) => r.projectId !== projectId,
+            ),
+          ),
+          ...Object.fromEntries(action.requirements.map((r) => [r.id, r])),
+          ...Object.fromEntries(pendingRequirements.map((r) => [r.id, r])),
+        },
+        defectsById: {
+          ...Object.fromEntries(
+            Object.entries(state.defectsById ?? {}).filter(
+              ([, d]) => d.projectId !== projectId,
+            ),
+          ),
+          ...Object.fromEntries(action.defects.map((d) => [d.id, d])),
+          ...Object.fromEntries(pendingDefects.map((d) => [d.id, d])),
+        },
         currentRunIdByProject,
       }
       break
@@ -1065,6 +1184,44 @@ function reducer(state: DemoState, action: FreshAction): DemoState {
             u.id === target.id ? { ...u, id: action.user.id, email: action.user.email } : u,
           ),
         },
+      }
+      break
+    }
+    case 'SYNC_REAL_ROLES': {
+      // Merge the real role_definitions into the Admin mock role list (Phase G).
+      // Matched by name (both sides share the built-in role roster); the server
+      // is the source of truth for matched rows. Unmatched local custom roles
+      // with a temp id (in-flight creates) are kept; stale local rows are
+      // dropped — same principle as SYNC_REAL_USERS. userCount is recomputed
+      // client-side from the current user list.
+      const serverNames = new Set(action.roles.map((r) => r.name.trim().toLowerCase()))
+      const merged = action.roles.map(realRoleToLocal)
+      const keptLocal = state.adminSettings.roles.filter(
+        (r) => !serverNames.has(r.name.trim().toLowerCase()) && !isRealId(r.id),
+      )
+      const roles = syncRoleUserCounts(state.adminSettings.users, [...merged, ...keptLocal])
+      next = {
+        ...state,
+        adminSettings: { ...state.adminSettings, roles },
+      }
+      break
+    }
+    case 'SYNC_REAL_API_KEYS': {
+      // Merge the real api_keys into the Admin mock key list (Phase G). Matched
+      // by id (server ULIDs); the server is the source of truth. Local seed keys
+      // and other non-real-id rows are dropped, except genuine in-flight temp
+      // creates (kept until their own create resolves).
+      const serverIds = new Set(action.apiKeys.map((k) => k.id))
+      const merged = action.apiKeys.map(realApiKeyToLocal)
+      const keptLocal = state.adminSettings.apiKeys.filter((k) => {
+        // Compute the seed-prefix check before isRealId() narrows k.id (its type
+        // guard narrows the false branch to `never`).
+        const isSeedKey = k.id.startsWith('admin-key-seed')
+        return !serverIds.has(k.id) && !isRealId(k.id) && !isSeedKey
+      })
+      next = {
+        ...state,
+        adminSettings: { ...state.adminSettings, apiKeys: [...merged, ...keptLocal] },
       }
       break
     }
@@ -1234,6 +1391,28 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   // keyed by live case id — this map bridges the two for result writes.
   const runCaseIdsRef = useRef(new Map<string, Record<string, string>>())
 
+  // real run id -> { live testCaseId -> { live stepId -> stepSnapshotId } }
+  // (new-tables candidate, Phase A). The step-result endpoint is addressed by
+  // step snapshot id, but CaseExecution.stepResults is keyed by live step id —
+  // this map bridges the two for per-step result writes. Populated in the same
+  // runs sync effect that builds runCaseIdsRef.
+  const runStepSnapshotIdsRef = useRef(
+    new Map<string, Record<string, Record<string, string>>>(),
+  )
+
+  // temp requirement id -> Promise resolving to its real ULID (Phase D). The
+  // Requirements UI creates a requirement and immediately links it in the same
+  // tick with the synchronously-returned temp id; if that link fires before the
+  // create's POST has reconciled, it awaits this promise to resolve the real id.
+  const pendingRequirementCreatesRef = useRef(new Map<string, Promise<string>>())
+
+  // temp defect id -> Promise resolving to its real ULID (Phase E). The Runs
+  // "Create defect" flow creates a defect and links it to the execution in the
+  // same tick with the synchronously-returned temp id; a subsequent link
+  // against that not-yet-reconciled defect awaits this promise. Mirrors
+  // pendingRequirementCreatesRef exactly.
+  const pendingDefectCreatesRef = useRef(new Map<string, Promise<string>>())
+
   // -------------------------------------------------------------------
   // Write semantics (data-layer refactor): writes WAIT FOR THE SERVER by
   // default — the local dispatch happens only after the API confirms, so
@@ -1275,13 +1454,20 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       fetchRealCases(projectId),
       fetchRealPlans(projectId),
       fetchRealRuns(projectId),
+      fetchRealRequirements(projectId),
+      fetchRealDefects(projectId),
     ])
-      .then(([realFolders, realCases, realPlans, realRuns]) => {
+      .then(([realFolders, realCases, realPlans, realRuns, realRequirements, realDefects]) => {
         if (cancelled) return
         lastSyncAtRef.current.set(projectId, Date.now())
         const planTitleById = new Map(realPlans.map((p) => [p.id, p.title]))
+        // Map internal defect refs (DEF-<n>) back to their entity id so
+        // realRunToLocal renders internal execution defects by id (matching the
+        // local CREATE_DEFECT_AND_LINK model); external refs stay ref strings.
+        const defectIdByRef = new Map(realDefects.map((d) => [d.defectRef, d.id]))
         for (const r of realRuns) {
           runCaseIdsRef.current.set(r.id, runCaseIdMap(r.cases))
+          runStepSnapshotIdsRef.current.set(r.id, runStepSnapshotMap(r.cases))
         }
         dispatch({
           type: 'SYNC_REAL_PROJECT_DATA',
@@ -1289,11 +1475,13 @@ export function FreshProvider({ children }: { children: ReactNode }) {
           folders: realFolders.map(realFolderToLocal),
           cases: realCases.map(realCaseToLocal),
           plans: realPlans.map(realPlanToLocal),
-          runs: realRuns.map((r) => realRunToLocal(r, projectId, planTitleById)),
+          runs: realRuns.map((r) => realRunToLocal(r, projectId, planTitleById, defectIdByRef)),
+          requirements: realRequirements.map(realRequirementToLocal),
+          defects: realDefects.map(realDefectToLocal),
         })
       })
       .catch((err) => {
-        console.error('[relay] Failed to sync cases/folders/plans/runs from the real API:', err)
+        console.error('[relay] Failed to sync cases/folders/plans/runs/requirements/defects from the real API:', err)
       })
     return () => {
       cancelled = true
@@ -1319,6 +1507,31 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       })
       .catch((err) => {
         console.warn('[relay] Could not sync real users (requires a global-admin session):', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [realProjectsLoaded, hasRealBackend])
+
+  // Sync the real role definitions + API keys into the Admin panel (Phase G).
+  // Same global-admin-session gate as the user sync — the server 403s otherwise
+  // and the panel keeps showing the local mock (console.warn, no crash).
+  useEffect(() => {
+    if (!realProjectsLoaded || !hasRealBackend) return
+    let cancelled = false
+    fetchRealRoles()
+      .then((roles) => {
+        if (!cancelled && roles.length > 0) dispatch({ type: 'SYNC_REAL_ROLES', roles })
+      })
+      .catch((err) => {
+        console.warn('[relay] Could not sync real roles (requires a global-admin session):', err)
+      })
+    fetchRealApiKeys()
+      .then((apiKeys) => {
+        if (!cancelled) dispatch({ type: 'SYNC_REAL_API_KEYS', apiKeys })
+      })
+      .catch((err) => {
+        console.warn('[relay] Could not sync real API keys (requires a global-admin session):', err)
       })
     return () => {
       cancelled = true
@@ -1373,7 +1586,8 @@ export function FreshProvider({ children }: { children: ReactNode }) {
             ...created,
             generalComments: data.generalComments ?? [],
             customFieldValues: data.customFieldValues,
-            requirementIds: data.requirementIds,
+            // requirementIds are server-owned (Phase D) — a fresh case has none;
+            // `created` already carries the server's (empty) list.
             references: data.references,
             template: data.template,
           },
@@ -1467,45 +1681,107 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'UPDATE_RUN_EXECUTION', runId, caseId, patch })
 
       if (!isRealId(runId)) return // local-only ad-hoc run
-      if (patch.status === undefined && patch.resultNotes === undefined) return
       const testRunCaseId = runCaseIdsRef.current.get(runId)?.[caseId]
-      if (!testRunCaseId) {
-        console.warn('[relay] updateExecution: no run-case mapping — result kept locally only')
-        return
+
+      // Case-level result write (status/comment) — optimistic with rollback.
+      if (patch.status !== undefined || patch.resultNotes !== undefined) {
+        if (!testRunCaseId) {
+          console.warn('[relay] updateExecution: no run-case mapping — result kept locally only')
+        } else {
+          const statusToSend = patch.status ?? prevExecution?.status ?? 'Not run'
+          recordRealCaseResult(runId, testRunCaseId, {
+            status: toRealResultStatus(statusToSend),
+            ...(patch.resultNotes !== undefined ? { comment: patch.resultNotes ?? null } : {}),
+          }).catch((err) => {
+            dispatch({
+              type: 'UPDATE_RUN_EXECUTION',
+              runId,
+              caseId,
+              patch: prevExecution ?? { status: 'Not run' as ExecStatus, stepResults: {} },
+            })
+            notifyError(`Result not saved — rolled back: ${errMsg(err)}`)
+          })
+        }
       }
-      const statusToSend = patch.status ?? prevExecution?.status ?? 'Not run'
-      recordRealCaseResult(runId, testRunCaseId, {
-        status: toRealResultStatus(statusToSend),
-        ...(patch.resultNotes !== undefined ? { comment: patch.resultNotes ?? null } : {}),
-      }).catch((err) => {
-        dispatch({
-          type: 'UPDATE_RUN_EXECUTION',
-          runId,
-          caseId,
-          patch: prevExecution ?? { status: 'Not run' as ExecStatus, stepResults: {} },
-        })
-        notifyError(`Result not saved — rolled back: ${errMsg(err)}`)
-      })
+
+      // Step-level result writes (new-tables candidate, Phase A). Diff the new
+      // stepResults against the previous execution's and POST each changed step
+      // by its snapshot id. Fire-after-dispatch (no rollback), like the case
+      // write's happy path. Skipped when no snapshot id is known (e.g. a
+      // freshly-created run not yet re-synced, or a live step deleted after
+      // snapshot).
+      if (patch.stepResults !== undefined && testRunCaseId) {
+        const snapByStepId = runStepSnapshotIdsRef.current.get(runId)?.[caseId]
+        if (snapByStepId) {
+          const prevSteps = prevExecution?.stepResults ?? {}
+          for (const [stepId, stepStatus] of Object.entries(patch.stepResults)) {
+            if (prevSteps[stepId] === stepStatus) continue
+            const stepSnapshotId = snapByStepId[stepId]
+            if (!stepSnapshotId) continue
+            recordRealStepResult(runId, testRunCaseId, stepSnapshotId, {
+              status: toRealResultStatus(stepStatus),
+            }).catch((err) => {
+              notifyError(`Step result not saved: ${errMsg(err)}`)
+            })
+          }
+        }
+      }
     },
     [state, notifyError],
   )
 
+  // Case comments (step-level + general) are server-backed as of the
+  // new-tables candidate Phase C. For a real case we wait for the POST so the
+  // comment lands with its real id/author/createdAt (mirrors addCase — the
+  // server uses the SESSION actor as author, so the client sends none); for a
+  // local-only project case it stays pure client-side, exactly as before.
   const addStepComment = useCallback(
     (caseId: string, stepId: string, body: string, author = 'Shaun Sevume') => {
       const runId = getActiveProjectCurrentRunId(state)
       if (!runId || !runIsMutable(state, runId)) return
+      if (isRealId(caseId)) {
+        const projectId = state.activeProjectId
+        void (async () => {
+          const created = await addRealCaseComment(projectId, caseId, { stepId, body })
+          dispatch({
+            type: 'ADD_STEP_COMMENT',
+            caseId,
+            stepId,
+            author: userIdToAssigneeName(created.authorId) ?? author,
+            body: created.body,
+            id: created.id,
+            createdAt: created.createdAt,
+          })
+        })().catch((err) => notifyError(`Couldn't add comment: ${errMsg(err)}`))
+        return
+      }
       dispatch({ type: 'ADD_STEP_COMMENT', caseId, stepId, author, body })
     },
-    [state],
+    [state, notifyError],
   )
 
   const addGeneralComment = useCallback(
     (caseId: string, body: string, author = 'Shaun Sevume') => {
       const runId = getActiveProjectCurrentRunId(state)
       if (!runId || !runIsMutable(state, runId)) return
+      if (isRealId(caseId)) {
+        const projectId = state.activeProjectId
+        void (async () => {
+          const created = await addRealCaseComment(projectId, caseId, { stepId: null, body })
+          dispatch({
+            type: 'ADD_GENERAL_COMMENT',
+            caseId,
+            author: userIdToAssigneeName(created.authorId) ?? author,
+            body: created.body,
+            id: created.id,
+            createdAt: created.createdAt,
+          })
+        })().catch((err) => notifyError(`Couldn't add comment: ${errMsg(err)}`))
+        return
+      }
       dispatch({ type: 'ADD_GENERAL_COMMENT', caseId, author, body })
     },
-    [state],
+    [state, notifyError],
   )
 
   const sealRun = useCallback(() => {
@@ -1546,6 +1822,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
         const created = await createRealRun({
           projectId,
           ...(input.name.trim() ? { name: input.name } : {}),
+          ...(input.description?.trim() ? { description: input.description } : {}),
           caseIds,
         })
         const detail = await fetchRealRunDetail(created.id, projectId)
@@ -1579,6 +1856,7 @@ export function FreshProvider({ children }: { children: ReactNode }) {
         const created = await createRealRun({
           projectId,
           name: `${source.name} (copy)`,
+          ...(source.description ? { description: source.description } : {}),
           ...(hasRealPlan
             ? { testPlanId: source.planId as string }
             : { caseIds: source.caseOrder.filter((id) => isRealId(id)) }),
@@ -1588,7 +1866,13 @@ export function FreshProvider({ children }: { children: ReactNode }) {
           created.id,
           Object.fromEntries(detail.testRunCases.map((c) => [c.originalTestCaseId, c.testRunCaseId])),
         )
-        dispatch({ type: 'ADD_RUN', run: realCreatedRunToLocal(created, detail, source.planName) })
+        dispatch({
+          type: 'ADD_RUN',
+          run: {
+            ...realCreatedRunToLocal(created, detail, source.planName),
+            description: source.description,
+          },
+        })
         return { runKey: created.runRef }
       } catch (err) {
         notifyError(`Couldn't duplicate run: ${errMsg(err)}`)
@@ -1621,12 +1905,20 @@ export function FreshProvider({ children }: { children: ReactNode }) {
   const editRun = useCallback(
     (runId: string, patch: Partial<Pick<DemoRun, 'name' | 'description' | 'due' | 'planName'>>) => {
       const projectId = state.activeProjectId
-      const body: { projectId: string; title?: string; dueDate?: string | null } = { projectId }
+      const body: {
+        projectId: string
+        title?: string
+        description?: string | null
+        dueDate?: string | null
+      } = { projectId }
       if (patch.name !== undefined && patch.name.trim().length > 0) body.title = patch.name
+      if ('description' in patch) body.description = patch.description ?? null
       if ('due' in patch) body.dueDate = patch.due ?? null
-      const hasRemoteFields = body.title !== undefined || 'dueDate' in body
+      const hasRemoteFields =
+        body.title !== undefined || 'description' in body || 'dueDate' in body
       if (!isRealId(runId) || !hasRemoteFields) {
-        // description/planName are local-only; ad-hoc runs are local-only.
+        // planName is local-only; ad-hoc runs are local-only. description is
+        // now server-backed (Phase A) and travels in body when the run is real.
         dispatch({ type: 'UPDATE_RUN', runId, patch })
         return
       }
@@ -1701,14 +1993,19 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       const plan = state.plansById[planId]
       if (!plan) return
       void (async () => {
-        if (patch.title !== undefined || 'description' in patch) {
+        if (patch.title !== undefined || 'description' in patch || patch.queries) {
           await updateRealPlan(projectId, planId, {
             ...(patch.title !== undefined ? { title: patch.title } : {}),
             ...('description' in patch ? { description: patch.description ?? null } : {}),
+            // GAP-01 Option (a): persist the authored query DEFINITIONS so they
+            // survive a fresh browser/device and a reseed.
+            ...(patch.queries ? { queryDefinition: patch.queries } : {}),
           })
         }
-        // Queries are local-only (GAP-01) — the server tracks the *resolved*
-        // case list, replaced wholesale on every queries change.
+        // GAP-01 Option (a): resolution stays client-side — on every queries
+        // change also push the *resolved* case list to test_plan_cases (the
+        // run-spawn source of truth), replaced wholesale. Both are sent:
+        // definitions for durability, the resolved list for run-spawn.
         if (patch.queries) {
           await setRealPlanCases(projectId, planId, resolveRealPlanCaseIds({ ...plan, ...patch }))
         }
@@ -1735,14 +2032,19 @@ export function FreshProvider({ children }: { children: ReactNode }) {
       if (!original) return null
       const projectId = state.activeProjectId
       try {
+        // Fresh query-group ids for the copy, persisted as the new plan's
+        // durable queryDefinition (GAP-01 Option a) in addition to the resolved
+        // caseIds pushed for run-spawn.
+        const duplicatedQueries = original.queries.map((q) => ({ ...q, id: newId('tq') }))
         const real = await createRealPlan(projectId, {
           title: `Copy of ${original.title}`,
           ...(original.description?.trim() ? { description: original.description } : {}),
           caseIds: resolveRealPlanCaseIds(original),
+          queryDefinition: duplicatedQueries,
         })
         const newPlan: TestPlan = {
           ...realPlanDetailToLocal(real),
-          queries: original.queries.map((q) => ({ ...q, id: newId('tq') })),
+          queries: duplicatedQueries,
         }
         dispatch({ type: 'DUPLICATE_PLAN', newPlan })
         return { planKey: real.planRef, planId: real.id }
@@ -1763,7 +2065,12 @@ export function FreshProvider({ children }: { children: ReactNode }) {
         // caseIds deliberately omitted: the server snapshots the plan's full
         // test_plan_cases, which the plan write-through keeps in sync with
         // the resolved queries.
-        const created = await createRealRun({ projectId, testPlanId: planId, name })
+        const created = await createRealRun({
+          projectId,
+          testPlanId: planId,
+          name,
+          ...(description?.trim() ? { description } : {}),
+        })
         const detail = await fetchRealRunDetail(created.id, projectId)
         runCaseIdsRef.current.set(
           created.id,
@@ -1793,13 +2100,21 @@ export function FreshProvider({ children }: { children: ReactNode }) {
     [state.defectsById],
   )
 
+  // Requirements are server-backed as of the new-tables candidate Phase D. The
+  // Requirements/Cases UI creates a requirement and links it in the same tick
+  // using the synchronously-returned id, so (unlike the async addCase) this
+  // keeps an optimistic create + reconcile path: dispatch locally with a temp
+  // id/key immediately, POST in the background, then RECONCILE_REQUIREMENT swaps
+  // the temp id for the server's real ULID + REQ-<n> ref (remapping any case
+  // links). Local-only projects stay pure client-side, exactly as before.
   const createRequirement = useCallback(
     (input: { title: string; description?: string; status?: Requirement['status'] }) => {
       const projectId = state.activeProjectId
       const num = getActiveProjectNextRequirementNum(state)
       const requirementKey = formatRequirementKey(num)
+      const tempId = newId('req')
       const requirement: Requirement = {
-        id: newId('req'),
+        id: tempId,
         requirementKey,
         projectId,
         title: input.title.trim() || 'Untitled requirement',
@@ -1809,23 +2124,63 @@ export function FreshProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
       }
       dispatch({ type: 'CREATE_REQUIREMENT', requirement })
-      return { requirementKey, requirementId: requirement.id }
+
+      if (state.projectsById[projectId]?.source === 'real') {
+        const promise = (async () => {
+          const real = await createRealRequirement(projectId, localRequirementToCreateBody(input))
+          const reconciled = realRequirementToLocal(real)
+          dispatch({ type: 'RECONCILE_REQUIREMENT', tempId, requirement: reconciled })
+          return reconciled.id
+        })()
+        pendingRequirementCreatesRef.current.set(tempId, promise)
+        promise
+          .catch((err) => notifyError(`Couldn't create requirement: ${errMsg(err)}`))
+          .finally(() => pendingRequirementCreatesRef.current.delete(tempId))
+      }
+
+      return { requirementKey, requirementId: tempId }
     },
-    [state],
+    [state, notifyError],
   )
 
-  const linkRequirementToCase = useCallback((caseId: string, requirementId: string) => {
-    dispatch({ type: 'LINK_REQUIREMENT_TO_CASE', caseId, requirementId })
-  }, [])
+  const linkRequirementToCase = useCallback(
+    (caseId: string, requirementId: string) => {
+      const projectId = state.activeProjectId
+      dispatch({ type: 'LINK_REQUIREMENT_TO_CASE', caseId, requirementId })
+      if (state.projectsById[projectId]?.source !== 'real') return
+      void (async () => {
+        // Resolve a possibly-temp requirement id to its real ULID (waiting on
+        // the in-flight create if necessary). Skip the POST if the case itself
+        // isn't real yet (an as-yet-unsynced optimistic case); it heals on the
+        // next full save/sync of that case.
+        const realRequirementId = isRealId(requirementId)
+          ? requirementId
+          : await pendingRequirementCreatesRef.current.get(requirementId)
+        if (!realRequirementId || !isRealId(caseId)) return
+        await linkRealRequirementToCase(projectId, caseId, realRequirementId)
+      })().catch((err) => notifyError(`Couldn't link requirement: ${errMsg(err)}`))
+    },
+    [state, notifyError],
+  )
 
+  // Defects are server-backed as of the new-tables candidate Phase E. Like
+  // requirements (Phase D), the Runs UI creates a defect and links it in the
+  // same tick using the synchronously-returned temp id, so this keeps the
+  // optimistic create + reconcile shape: dispatch locally with a temp id/key
+  // (CREATE_DEFECT_AND_LINK also links it to the execution), POST in the
+  // background, RECONCILE_DEFECT swaps the temp id for the server's real ULID +
+  // DEF-<n> ref (remapping execution.defects), then link the internal defect to
+  // the run case (defectId + defectRef=DEF-<n>). External defect refs are a
+  // different, untouched path. Local-only projects stay pure client-side.
   const createDefectFromExecution = useCallback(
     (runId: string, caseId: string, input: { title: string; description?: string }) => {
       if (!runIsMutable(state, runId)) return null
       const projectId = state.activeProjectId
       const num = getActiveProjectNextDefectNum(state)
       const defectKey = formatDefectKey(num)
+      const tempId = newId('defect')
       const defect: Defect = {
-        id: newId('defect'),
+        id: tempId,
         defectKey,
         projectId,
         title: input.title.trim() || 'Untitled defect',
@@ -1835,14 +2190,65 @@ export function FreshProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
       }
       dispatch({ type: 'CREATE_DEFECT_AND_LINK', defect, runId, caseId })
+
+      if (state.projectsById[projectId]?.source === 'real') {
+        const promise = (async () => {
+          const real = await createRealDefect(projectId, localDefectToCreateBody(input))
+          const reconciled = realDefectToLocal(real)
+          dispatch({ type: 'RECONCILE_DEFECT', tempId, defect: reconciled })
+          // Link the internal defect to the run case. Skipped if the run isn't
+          // real yet (optimistic/ad-hoc) or its case mapping isn't known — the
+          // link heals on the next result write/sync.
+          if (isRealId(runId)) {
+            const testRunCaseId = runCaseIdsRef.current.get(runId)?.[caseId]
+            if (testRunCaseId) {
+              await linkRealDefectToRunCase(runId, testRunCaseId, {
+                projectId,
+                defectId: real.id,
+                defectRef: real.defectRef,
+              })
+            }
+          }
+          return reconciled.id
+        })()
+        pendingDefectCreatesRef.current.set(tempId, promise)
+        promise
+          .catch((err) => notifyError(`Couldn't create defect: ${errMsg(err)}`))
+          .finally(() => pendingDefectCreatesRef.current.delete(tempId))
+      }
+
       return { defectKey }
     },
-    [state],
+    [state, notifyError],
   )
 
-  const linkDefectToExecution = useCallback((runId: string, caseId: string, defectId: string) => {
-    dispatch({ type: 'LINK_DEFECT_TO_EXECUTION', runId, caseId, defectId })
-  }, [])
+  const linkDefectToExecution = useCallback(
+    (runId: string, caseId: string, defectId: string) => {
+      dispatch({ type: 'LINK_DEFECT_TO_EXECUTION', runId, caseId, defectId })
+      const projectId = state.activeProjectId
+      if (state.projectsById[projectId]?.source !== 'real') return
+      void (async () => {
+        // Resolve a possibly-temp defect id to its real ULID (waiting on the
+        // in-flight create if necessary). Skip if the run isn't real or its case
+        // mapping isn't known yet.
+        const realDefectId = isRealId(defectId)
+          ? defectId
+          : await pendingDefectCreatesRef.current.get(defectId)
+        if (!realDefectId || !isRealId(runId)) return
+        const testRunCaseId = runCaseIdsRef.current.get(runId)?.[caseId]
+        if (!testRunCaseId) return
+        const defect = state.defectsById?.[realDefectId] ?? state.defectsById?.[defectId]
+        const defectRef = defect?.defectKey
+        if (!defectRef) return
+        await linkRealDefectToRunCase(runId, testRunCaseId, {
+          projectId,
+          defectId: realDefectId,
+          defectRef,
+        })
+      })().catch((err) => notifyError(`Couldn't link defect: ${errMsg(err)}`))
+    },
+    [state, notifyError],
+  )
 
   const saveAdminProfile = useCallback((payload: Partial<DemoState['adminSettings']['profile']>) => {
     dispatch({ type: 'admin/saveProfile', payload })
@@ -1862,14 +2268,55 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const createAdminApiKey = useCallback(
     (payload: Omit<DemoState['adminSettings']['apiKeys'][number], 'id' | 'createdAt' | 'maskedKey' | 'userId'>) => {
-      dispatch({ type: 'admin/createApiKey', payload })
+      if (!hasRealBackend) {
+        dispatch({ type: 'admin/createApiKey', payload })
+        return
+      }
+      // Real-backend (global admin): generate the masked display value client-
+      // side (secret management is out of scope — see admin-api-key-client.ts),
+      // POST it, then dispatch with the server-authoritative id/maskedKey/
+      // createdAt/creator so local and server never diverge (Phase G).
+      void (async () => {
+        const maskedKey = generateMaskedApiKey()
+        const actorId = state.currentActorUserId
+        const createdBy = actorId && isRealId(actorId) ? actorId : undefined
+        const real = await createRealApiKey({
+          name: payload.name,
+          keyMasked: maskedKey,
+          project: payload.project,
+          permissions: payload.permissions,
+          expiration: payload.expiration,
+          createdBy,
+        })
+        dispatch({
+          type: 'admin/createApiKey',
+          payload,
+          server: {
+            id: real.id,
+            maskedKey: real.keyMasked,
+            createdAt: new Date(real.createdAt).getTime(),
+            userId: real.createdBy ?? SEED_ADMIN_USER_ID,
+          },
+        })
+      })().catch((err) => notifyError(`Couldn't create API key: ${errMsg(err)}`))
     },
-    [],
+    [hasRealBackend, state.currentActorUserId, notifyError],
   )
 
-  const deleteAdminApiKey = useCallback((id: string) => {
-    dispatch({ type: 'admin/deleteApiKey', payload: { id } })
-  }, [])
+  const deleteAdminApiKey = useCallback(
+    (id: string) => {
+      if (!isRealId(id)) {
+        // Local-only keys (fallback mock rows) have no server counterpart.
+        dispatch({ type: 'admin/deleteApiKey', payload: { id } })
+        return
+      }
+      void (async () => {
+        await deleteRealApiKey(id)
+        dispatch({ type: 'admin/deleteApiKey', payload: { id } })
+      })().catch((err) => notifyError(`Couldn't delete API key: ${errMsg(err)}`))
+    },
+    [notifyError],
+  )
 
   const inviteAdminUser = useCallback(
     (payload: InviteUserPayload) => {
@@ -1949,21 +2396,62 @@ export function FreshProvider({ children }: { children: ReactNode }) {
 
   const createAdminRole = useCallback(
     (payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }) => {
-      dispatch({ type: 'admin/createRole', payload })
+      if (!hasRealBackend) {
+        dispatch({ type: 'admin/createRole', payload })
+        return
+      }
+      // Real-backend (global admin): POST, then dispatch with the server id so
+      // the created row is immediately real (Phase G). description is optional
+      // server-side; '' round-trips as null.
+      void (async () => {
+        const real = await createRealRole({
+          name: payload.name,
+          description: payload.description || null,
+          isProjectLevel: payload.isProjectLevel,
+          permissions: payload.permissions,
+        })
+        dispatch({ type: 'admin/createRole', payload, server: { id: real.id } })
+      })().catch((err) => notifyError(`Couldn't create role: ${errMsg(err)}`))
     },
-    [],
+    [hasRealBackend, notifyError],
   )
 
   const updateAdminRole = useCallback(
     (payload: { id: string; name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }) => {
-      dispatch({ type: 'admin/updateRole', payload })
+      // Built-in roles are immutable (the reducer no-ops them, the server 409s).
+      // Skip the server call for them and for local-only rows.
+      const existing = state.adminSettings.roles.find((r) => r.id === payload.id)
+      if (!isRealId(payload.id) || existing?.isBuiltIn) {
+        dispatch({ type: 'admin/updateRole', payload })
+        return
+      }
+      void (async () => {
+        await updateRealRole(payload.id, {
+          name: payload.name,
+          description: payload.description || null,
+          isProjectLevel: payload.isProjectLevel,
+          permissions: payload.permissions,
+        })
+        dispatch({ type: 'admin/updateRole', payload })
+      })().catch((err) => notifyError(`Couldn't update role: ${errMsg(err)}`))
     },
-    [],
+    [state.adminSettings.roles, notifyError],
   )
 
-  const deleteAdminRole = useCallback((id: string) => {
-    dispatch({ type: 'admin/deleteRole', payload: { id } })
-  }, [])
+  const deleteAdminRole = useCallback(
+    (id: string) => {
+      const existing = state.adminSettings.roles.find((r) => r.id === id)
+      if (!isRealId(id) || existing?.isBuiltIn) {
+        dispatch({ type: 'admin/deleteRole', payload: { id } })
+        return
+      }
+      void (async () => {
+        await deleteRealRole(id)
+        dispatch({ type: 'admin/deleteRole', payload: { id } })
+      })().catch((err) => notifyError(`Couldn't delete role: ${errMsg(err)}`))
+    },
+    [state.adminSettings.roles, notifyError],
+  )
 
   const addAdminCustomField = useCallback(
     (payload: Omit<DemoState['adminSettings']['customFields'][number], 'id'>) => {

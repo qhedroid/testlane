@@ -39,10 +39,12 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import {
+  caseComments,
   folders,
   projects,
   testCaseSteps,
   testCases,
+  type NewCaseComment,
   type NewFolder,
   type NewTestCase,
   type NewTestCaseStep,
@@ -52,6 +54,7 @@ import { logger } from '../src/logger'
 import { assertMinProjectRole } from '../src/rbac/assert-min-role'
 import { createId } from '../src/utils/id'
 import { recordAudit } from './AuditService'
+import { loadRequirementIdsByCase } from './RequirementService'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -91,6 +94,21 @@ export interface CaseSummary {
   updatedAt: Date
 }
 
+/**
+ * A comment on a test-case definition (new-tables candidate, Phase C).
+ * `testCaseStepId` null => general/case-level comment; non-null => step comment
+ * (the single-table-with-nullable-step-FK design). The client
+ * (case-client.ts realCaseToLocal) splits these into Case.generalComments and
+ * per-step CaseStep.comments, resolving authorId -> display name.
+ */
+export interface CaseCommentIO {
+  id: string
+  testCaseStepId: string | null
+  authorId: string | null
+  body: string
+  createdAt: Date
+}
+
 export interface CaseDetail extends CaseSummary {
   preconditions: string | null
   description: string | null
@@ -98,6 +116,9 @@ export interface CaseDetail extends CaseSummary {
   tags: string[]
   createdBy: string | null
   steps: Array<{ id: string; position: number; action: string; expectedResult: string | null }>
+  comments: CaseCommentIO[]
+  /** Linked requirement ids (new-tables candidate, Phase D). */
+  requirementIds: string[]
 }
 
 export interface CreateFolderInput {
@@ -153,6 +174,15 @@ export interface ArchiveCaseInput {
   caseId: string
 }
 
+export interface AddCaseCommentInput {
+  actorId: string
+  projectId: string
+  caseId: string
+  /** null/undefined => a general (case-level) comment; a step id => step comment. */
+  stepId?: string | null
+  body: string
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
@@ -161,6 +191,7 @@ export type TestCaseServiceErrorCode =
   | 'PROJECT_NOT_FOUND'
   | 'FOLDER_NOT_FOUND'
   | 'CASE_NOT_FOUND'
+  | 'STEP_NOT_FOUND'
   | 'DUPLICATE_CASE_REF'
   | 'REF_COUNTER_TIMEOUT'
   | 'TRANSACTION_FAILED'
@@ -270,6 +301,40 @@ function toCaseSummary(row: typeof testCases.$inferSelect, stepCount: number): C
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
+}
+
+/**
+ * Batch-load case comments for a set of case ids, grouped by case id and
+ * ordered oldest-first. One query for the whole set (no N+1) — the sync path
+ * from listCases uses this to attach comments to each returned CaseDetail.
+ */
+async function loadCaseComments(caseIds: string[]): Promise<Map<string, CaseCommentIO[]>> {
+  const byCase = new Map<string, CaseCommentIO[]>()
+  if (caseIds.length === 0) return byCase
+  const rows = await db
+    .select({
+      id: caseComments.id,
+      testCaseId: caseComments.testCaseId,
+      testCaseStepId: caseComments.testCaseStepId,
+      authorId: caseComments.authorId,
+      body: caseComments.body,
+      createdAt: caseComments.createdAt,
+    })
+    .from(caseComments)
+    .where(inArray(caseComments.testCaseId, caseIds))
+    .orderBy(caseComments.createdAt)
+  for (const r of rows) {
+    const list = byCase.get(r.testCaseId) ?? []
+    list.push({
+      id: r.id,
+      testCaseStepId: r.testCaseStepId,
+      authorId: r.authorId,
+      body: r.body,
+      createdAt: r.createdAt,
+    })
+    byCase.set(r.testCaseId, list)
+  }
+  return byCase
 }
 
 // ---------------------------------------------------------------------------
@@ -436,6 +501,15 @@ export async function listCases(input: ListCasesInput): Promise<CaseDetail[]> {
     stepsByCase.set(s.testCaseId, list)
   }
 
+  // Attach case comments in one extra batch query (no N+1) — same reasoning as
+  // the step-rows batch above. General (step id null) + step comments come back
+  // together; the client splits them per the single-table design.
+  const commentsByCase = await loadCaseComments(rows.map((r) => r.id))
+
+  // Attach linked requirement ids in one extra batch query (no N+1) — same
+  // reasoning as the step-rows / comments batches above.
+  const requirementIdsByCase = await loadRequirementIdsByCase(rows.map((r) => r.id))
+
   return rows.map((row) => {
     const steps = stepsByCase.get(row.id) ?? []
     return {
@@ -451,6 +525,8 @@ export async function listCases(input: ListCasesInput): Promise<CaseDetail[]> {
         action: s.action,
         expectedResult: s.expectedResult,
       })),
+      comments: commentsByCase.get(row.id) ?? [],
+      requirementIds: requirementIdsByCase.get(row.id) ?? [],
     }
   })
 }
@@ -479,6 +555,9 @@ export async function getCase(
     .where(eq(testCaseSteps.testCaseId, caseId))
     .orderBy(testCaseSteps.position)
 
+  const commentsByCase = await loadCaseComments([caseId])
+  const requirementIdsByCase = await loadRequirementIdsByCase([caseId])
+
   return {
     ...toCaseSummary(row, stepRows.length),
     preconditions: row.preconditions,
@@ -492,6 +571,8 @@ export async function getCase(
       action: s.action,
       expectedResult: s.expectedResult,
     })),
+    comments: commentsByCase.get(caseId) ?? [],
+    requirementIds: requirementIdsByCase.get(caseId) ?? [],
   }
 }
 
@@ -698,4 +779,84 @@ export async function archiveCase(input: ArchiveCaseInput): Promise<void> {
     action: 'case.archived',
     actorId,
   })
+}
+
+// ---------------------------------------------------------------------------
+// Case comments (new-tables candidate, Phase C)
+// ---------------------------------------------------------------------------
+
+/**
+ * Add a comment to a test-case definition. `stepId` null/undefined creates a
+ * general (case-level) comment; a step id creates a comment on that step (the
+ * single-table-with-nullable-step-FK design). Author is the session actor —
+ * callers do not pass an author id. Contributor+ (same RBAC as every case
+ * write). Writes a `case_comment.created` audit row inside the tx.
+ */
+export async function addCaseComment(input: AddCaseCommentInput): Promise<CaseCommentIO> {
+  const { actorId, projectId, caseId, stepId, body } = input
+  await assertProjectExists(projectId)
+  await assertMinProjectRole(actorId, projectId, 'contributor')
+
+  const [existingCase] = await db
+    .select({ id: testCases.id })
+    .from(testCases)
+    .where(and(eq(testCases.id, caseId), eq(testCases.projectId, projectId)))
+    .limit(1)
+  if (!existingCase) {
+    throw new TestCaseServiceError('Test case not found.', 'CASE_NOT_FOUND')
+  }
+
+  if (stepId) {
+    const [step] = await db
+      .select({ id: testCaseSteps.id })
+      .from(testCaseSteps)
+      .where(and(eq(testCaseSteps.id, stepId), eq(testCaseSteps.testCaseId, caseId)))
+      .limit(1)
+    if (!step) {
+      throw new TestCaseServiceError('Test case step not found.', 'STEP_NOT_FOUND')
+    }
+  }
+
+  const newCommentId = createId()
+  const createdAt = new Date()
+
+  try {
+    await db.transaction(async (tx) => {
+      const row: NewCaseComment = {
+        id: newCommentId,
+        testCaseId: caseId,
+        testCaseStepId: stepId ?? null,
+        authorId: actorId,
+        body,
+        createdAt,
+      }
+      await tx.insert(caseComments).values(row)
+
+      await recordAudit(
+        {
+          projectId,
+          entityType: 'test_case',
+          entityId: caseId,
+          action: 'case_comment.created',
+          actorId,
+          newValue: { commentId: newCommentId, testCaseStepId: stepId ?? null, body },
+        },
+        tx,
+      )
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error('[TestCaseService] addCaseComment transaction failed', { caseId, error: message })
+    throw new TestCaseServiceError(`Case comment creation failed: ${message}`, 'TRANSACTION_FAILED')
+  }
+
+  logger.info('[TestCaseService] case comment created', { commentId: newCommentId, caseId, projectId })
+
+  return {
+    id: newCommentId,
+    testCaseStepId: stepId ?? null,
+    authorId: actorId,
+    body,
+    createdAt,
+  }
 }

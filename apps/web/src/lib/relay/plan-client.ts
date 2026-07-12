@@ -7,20 +7,24 @@
  *
  * The big adapter decision here is GAP-01 (docs/claude/known-bugs.md): the
  * frontend's TestPlan is dynamic/query-based (`queries: TestQuery[]`,
- * resolved live via resolvePlanCases()), while the server only stores a
- * static case list (test_plan_cases). Resolution, decided in this pass:
+ * resolved live via resolvePlanCases()), while the server relates plans to
+ * cases only via a static list (test_plan_cases). Resolution — GAP-01
+ * Option (a), implemented in the new-tables candidate Phase F:
  *
- *   - Queries stay a LOCAL-ONLY field (localStorage-backed), like case
- *     comments/custom fields — they're the authoring model.
- *   - Every time a plan's queries change, FreshProvider resolves them
- *     client-side against current cases/folders and pushes the resulting
- *     case-id list to the server via PUT .../plans/[planId]/cases
- *     (setPlanCases) — so the server's static list tracks the queries, and
+ *   - The authored query DEFINITIONS are now DURABLE server-side: they're
+ *     persisted verbatim on test_plans.query_definition and returned as
+ *     `queryDefinition` here. A fresh browser/device (or a reseed) gets the
+ *     real authored queries back, not a lossy static snapshot.
+ *   - Query RESOLUTION stays client-side. Every time a plan's queries change,
+ *     FreshProvider resolves them against current cases/folders and pushes the
+ *     resulting case-id list to PUT .../plans/[planId]/cases (setPlanCases) —
+ *     so the server's static list still tracks the queries and
  *     TestRunService.createRun()'s hard dependency on test_plan_cases keeps
- *     working.
- *   - A server plan with no local counterpart (fresh browser, seeded plans)
- *     gets a synthesized `static` query group from its server case list, so
- *     resolvePlanCases() and the whole Plans UI work on it unchanged.
+ *     working (unchanged). Both are sent: definitions for durability, the
+ *     resolved list for run-spawn.
+ *   - A server plan with NO stored definition (queryDefinition === null —
+ *     e.g. a legacy plan) still falls back to a synthesized `static` query
+ *     group from its server case list, so the Plans UI works on it unchanged.
  *
  * planKey: the server's `PLAN-<nnn>` ref is used directly (slugToPlanKey in
  * demo-model.ts was taught to recognise it) — not reformatted to the local
@@ -58,6 +62,12 @@ export interface RealPlanSummary {
   ownerId: string | null
   assigneeIds: string[]
   createdBy: string | null
+  /**
+   * The authored TestQuery[] definition (GAP-01 Option a), or null when the
+   * plan has no stored definition (fall back to a synthesized static group).
+   * Structurally identical to the frontend TestQuery, so typed as such.
+   */
+  queryDefinition: TestQuery[] | null
   caseCount: number
   createdAt: string
   updatedAt: string
@@ -86,7 +96,7 @@ export async function fetchRealPlans(projectId: string): Promise<RealPlanListIte
 
 export async function createRealPlan(
   projectId: string,
-  body: { title: string; description?: string; caseIds?: string[] },
+  body: { title: string; description?: string; caseIds?: string[]; queryDefinition?: TestQuery[] | null },
 ): Promise<RealPlanDetail> {
   return parseResponse<RealPlanDetail>(
     await fetch(`/api/projects/${projectId}/plans`, {
@@ -101,7 +111,7 @@ export async function createRealPlan(
 export async function updateRealPlan(
   projectId: string,
   planId: string,
-  body: { title?: string; description?: string | null },
+  body: { title?: string; description?: string | null; queryDefinition?: TestQuery[] | null },
 ): Promise<RealPlanDetail> {
   return parseResponse<RealPlanDetail>(
     await fetch(`/api/projects/${projectId}/plans/${planId}`, {
@@ -144,18 +154,25 @@ export async function archiveRealPlan(projectId: string, planId: string): Promis
 // ---------------------------------------------------------------------------
 
 /**
- * Server plan -> frontend TestPlan. The synthesized static query group makes
- * resolvePlanCases() return exactly the server's case list; FreshProvider's
- * sync merge replaces it with the local plan's own (richer) queries when a
- * local copy exists.
+ * Server plan -> frontend TestPlan. GAP-01 Option (a): when the server has a
+ * stored `queryDefinition`, it IS the plan's queries (authored dynamic queries
+ * survive a fresh browser/reseed — the whole point). Only when it's null (a
+ * legacy plan with no stored definition) do we fall back to the synthesized
+ * static query group built from the server's resolved case list, so the Plans
+ * UI still works on it unchanged.
  */
 export function realPlanToLocal(p: RealPlanListItem): TestPlan {
-  const staticQuery: TestQuery = {
-    id: `q-server-${p.id}`,
-    title: 'Cases',
-    type: 'static',
-    caseIds: p.caseIds,
-  }
+  const queries: TestQuery[] =
+    p.queryDefinition && p.queryDefinition.length > 0
+      ? p.queryDefinition
+      : [
+          {
+            id: `q-server-${p.id}`,
+            title: 'Cases',
+            type: 'static',
+            caseIds: p.caseIds,
+          },
+        ]
   return {
     id: p.id,
     planKey: p.planRef,
@@ -163,7 +180,7 @@ export function realPlanToLocal(p: RealPlanListItem): TestPlan {
     title: p.title,
     description: p.description ?? undefined,
     createdAt: p.createdAt,
-    queries: [staticQuery],
+    queries,
   }
 }
 

@@ -66,6 +66,19 @@ export interface RealCaseStep {
   expectedResult: string | null
 }
 
+/**
+ * A comment on a case definition (new-tables candidate, Phase C — JSON-
+ * serialised CaseCommentIO from TestCaseService.ts; createdAt is an ISO string).
+ * testCaseStepId null => general/case-level comment; non-null => step comment.
+ */
+export interface RealCaseComment {
+  id: string
+  testCaseStepId: string | null
+  authorId: string | null
+  body: string
+  createdAt: string
+}
+
 export interface RealCase {
   id: string
   caseRef: string
@@ -86,6 +99,9 @@ export interface RealCase {
   tags: string[]
   createdBy: string | null
   steps: RealCaseStep[]
+  comments: RealCaseComment[]
+  /** Linked requirement ids (new-tables candidate, Phase D). */
+  requirementIds: string[]
 }
 
 export interface CreateRealCaseBody {
@@ -184,6 +200,27 @@ export async function createRealFolder(
   )
 }
 
+/**
+ * Add a comment to a case definition (new-tables candidate, Phase C).
+ * `stepId` null/omitted => a general/case-level comment; a step id => a step
+ * comment. The author is the session actor server-side — never sent here.
+ * Returns the created RealCaseComment (real id + resolved createdAt/authorId).
+ */
+export async function addRealCaseComment(
+  projectId: string,
+  caseId: string,
+  body: { stepId?: string | null; body: string },
+): Promise<RealCaseComment> {
+  return parseResponse<RealCaseComment>(
+    await fetch(`/api/projects/${projectId}/cases/${caseId}/comments`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Seed user id <-> display name map
 //
@@ -272,11 +309,36 @@ export function realFolderToLocal(f: RealFolder): Folder {
   }
 }
 
-/** Server CaseDetail -> frontend Case. Local-only fields (comments, custom
- * field values, requirement links, references, template) come back empty —
- * FreshProvider's sync/reconcile reducer cases are responsible for merging
- * those in from any existing local copy of the same case. */
+/** Map a server case comment onto the local StepComment/CaseComment shape
+ * (identical structure). authorId -> display name via the seed-user map;
+ * an author outside the seeded roster (or a null FK after user deletion)
+ * falls back to 'Unknown'. */
+function realCommentToLocal(cm: RealCaseComment): { id: string; author: string; createdAt: string; body: string } {
+  return {
+    id: cm.id,
+    author: userIdToAssigneeName(cm.authorId) ?? 'Unknown',
+    createdAt: cm.createdAt,
+    body: cm.body,
+  }
+}
+
+/** Server CaseDetail -> frontend Case. Comments (general + per-step, Phase C)
+ * and requirement links (Phase D) are now server-backed and mapped here. The
+ * remaining local-only fields (custom field values, references, template) come
+ * back empty — FreshProvider's sync reducer merges those in from any existing
+ * local copy of the same case. */
 export function realCaseToLocal(c: RealCase): Case {
+  const commentsByStep = new Map<string, ReturnType<typeof realCommentToLocal>[]>()
+  const generalComments: ReturnType<typeof realCommentToLocal>[] = []
+  for (const cm of c.comments) {
+    if (cm.testCaseStepId == null) {
+      generalComments.push(realCommentToLocal(cm))
+    } else {
+      const list = commentsByStep.get(cm.testCaseStepId) ?? []
+      list.push(realCommentToLocal(cm))
+      commentsByStep.set(cm.testCaseStepId, list)
+    }
+  }
   return {
     id: c.id,
     caseKey: c.caseRef,
@@ -292,14 +354,15 @@ export function realCaseToLocal(c: RealCase): Case {
         id: s.id,
         action: s.action,
         expected: s.expectedResult ?? '',
-        comments: [],
+        comments: commentsByStep.get(s.id) ?? [],
       }),
     ),
-    generalComments: [],
+    generalComments,
     tags: c.tags,
     updatedAt: c.updatedAt,
     createdAt: c.createdAt,
     assignee: userIdToAssigneeName(c.assignedTo),
+    requirementIds: c.requirementIds ?? [],
   }
 }
 

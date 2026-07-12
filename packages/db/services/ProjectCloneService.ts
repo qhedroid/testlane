@@ -3,8 +3,8 @@
  * Relay — Service layer
  *
  * Deep-clones a project's folders/cases/steps/plans/plan-cases/runs/run-cases/
- * step-snapshots/step-results/defect-links/run-assignees into a brand new
- * project row, with fresh IDs throughout (mvp-backend "wire everything"
+ * step-snapshots/step-results/defect-links/run-assignees/run-case-events into a
+ * brand new project row, with fresh IDs throughout (mvp-backend "wire everything"
  * session — backs the "Create Demo Project" button in ProjectSwitcher.tsx,
  * Shaun's ask for an on-demand fresh copy of the seeded Demo Project).
  *
@@ -38,6 +38,7 @@ import {
   projectRoles,
   projects,
   runAssignees,
+  runCaseEvents,
   runCaseStepSnapshots,
   runDefectLinks,
   runStepResults,
@@ -51,6 +52,7 @@ import {
   type NewFolder,
   type NewProjectRole,
   type NewRunAssignee,
+  type NewRunCaseEvent,
   type NewRunCaseStepSnapshot,
   type NewRunDefectLink,
   type NewRunStepResult,
@@ -161,6 +163,9 @@ export async function cloneProject(input: CloneProjectInput): Promise<ProjectSum
   const sourceDefectLinks = sourceRunCaseIds.length
     ? await db.select().from(runDefectLinks).where(inArray(runDefectLinks.testRunCaseId, sourceRunCaseIds))
     : []
+  const sourceRunCaseEvents = sourceRunCaseIds.length
+    ? await db.select().from(runCaseEvents).where(inArray(runCaseEvents.testRunCaseId, sourceRunCaseIds))
+    : []
   const sourceRunAssignees = sourceRunIds.length
     ? await db.select().from(runAssignees).where(inArray(runAssignees.testRunId, sourceRunIds))
     : []
@@ -197,6 +202,25 @@ export async function cloneProject(input: CloneProjectInput): Promise<ProjectSum
     ...p,
     id: planIdMap.get(p.id)!,
     projectId: newProjectId,
+    // GAP-01 Option (a): the query definition references source case/folder ids
+    // (static caseIds / folder folderIds); remap them to the clone's fresh ids
+    // so the copied plan resolves to the same cases. The '__unfiled__' sentinel
+    // and condition groups (field/operator/value, no ids) pass through as-is.
+    queryDefinition: p.queryDefinition
+      ? p.queryDefinition.map((q) => ({
+          ...q,
+          ...(q.caseIds
+            ? { caseIds: q.caseIds.map((id) => caseIdMap.get(id) ?? id) }
+            : {}),
+          ...(q.folderIds
+            ? {
+                folderIds: q.folderIds.map((id) =>
+                  id === '__unfiled__' ? id : folderIdMap.get(id) ?? id,
+                ),
+              }
+            : {}),
+        }))
+      : null,
   }))
 
   const newPlanCases: NewTestPlanCase[] = sourcePlanCases.map((pc) => ({
@@ -238,6 +262,18 @@ export async function cloneProject(input: CloneProjectInput): Promise<ProjectSum
     ...d,
     id: createId(),
     testRunCaseId: runCaseIdMap.get(d.testRunCaseId)!,
+    // Phase E: `defects` entities are not cloned (same deferred clone gap as
+    // case_requirements/case_comments), so drop any internal FK to avoid the
+    // clone referencing the SOURCE project's defect row. defect_ref (the DEF-<n>
+    // key) is preserved, so the chip still renders as a plain ref. Proper fix
+    // (clone defects + remap) is a later cleanup-pass item.
+    defectId: null,
+  }))
+
+  const newRunCaseEvents: NewRunCaseEvent[] = sourceRunCaseEvents.map((e) => ({
+    ...e,
+    id: createId(),
+    testRunCaseId: runCaseIdMap.get(e.testRunCaseId)!,
   }))
 
   const newRunAssignees: NewRunAssignee[] = sourceRunAssignees.map((a) => ({
@@ -293,6 +329,7 @@ export async function cloneProject(input: CloneProjectInput): Promise<ProjectSum
       if (newStepResults.length) await tx.insert(runStepResults).values(newStepResults)
       if (newDefectLinks.length) await tx.insert(runDefectLinks).values(newDefectLinks)
       if (newRunAssignees.length) await tx.insert(runAssignees).values(newRunAssignees)
+      if (newRunCaseEvents.length) await tx.insert(runCaseEvents).values(newRunCaseEvents)
 
       await tx.execute(sql`
         INSERT INTO ref_counters (project_id, entity_type, next_value)
