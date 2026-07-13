@@ -1208,13 +1208,27 @@ project_roles already backed (untouched).
   data; create/edit/delete a role + create/delete an API key survive reload (in `role_definitions`/`api_keys`);
   as a non-admin session the panel falls back to the mock (console.warn, no crash). No `DEMO_SCHEMA_VERSION` bump.
 
-## Candidate 1 — overall status: ALL PHASES A–G CODE-COMPLETE + SANDBOX-VERIFIED, NOT COMMITTED
+## Candidate 1 — overall status: DONE, COMMITTED, SHAUN-VERIFIED, DOCS SYNCED (2026-07-13)
 
-Migrations `0002`–`0008` (hand-authored, journal in sync). Every phase built on the prior; the Phase G
-build (all phases present together) is the combined-verification evidence: `tsc --noEmit` clean for
-`@relay/db` + `@relay/web`, `pnpm build` clean. **Shaun still owns all live-DB verification** — reseed
-first (`pnpm db:seed`; migrations 0002–0008 must be applied), then walk each phase's Shaun-local checklist
-above, INCLUDING the full protected-UX Runs regression (Phases A/B touch the runs read/write path).
+Migrations `0002`–`0008` (hand-authored, journal in sync). Committed as **`9e5ed55`** ("persist remaining
+local-only data on the real backend", 52 files, authored CrimsonDelta + Co-authored-by Claude). Follow-up
+infra fix committed as **`1f1faae`** ("make the mysql pool HMR-safe") — the module-level mysql2 pool leaked
+a new pool per Next.js HMR reload and exhausted `max_connections` ("Too many connections"); now stashed on
+`globalThis`. **Shaun verified the whole candidate locally against real Docker MySQL (2026-07-13) — "all
+seems good in accordance with the work done"** — including the protected-UX Runs regression; his pass is the
+regression evidence. Combined build evidence: the Phase G build (all phases present) was `tsc`+`pnpm build`
+clean.
+
+Gotcha surfaced during Shaun's verification (now documented for future sessions): `pnpm db:seed` does NOT
+apply migrations — run **`pnpm db:migrate` first** (applies `0002`–`0008` via `drizzle-kit migrate`), THEN
+`pnpm db:seed`. Seeding before migrating fails with "Unknown column 'query_definition'".
+
+**Living docs synced (2026-07-13):** `AS_BUILT_SNAPSHOT.md` (new tables/routes/services; table count
+corrected to 27; now-real vs still-local), `FRONTEND_CONTRACTS.md` (contract sections for every new
+endpoint; GAP-01 resolved), `user-guide.md` + `feature-flow.md` (Data sources / feature status flipped to
+real; stale Audit "no read API" line fixed), `known-bugs.md` (GAP-01 resolved). PR description rewritten to
+cover all 21 branch commits (original scope + hardening + Candidate 1 + pool fix):
+`docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`.
 
 **Deferred cleanup (not blockers — fold into a follow-up):**
 - `ProjectCloneService` does NOT deep-clone `case_comments` or `case_requirements` (Phase E nulls

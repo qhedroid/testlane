@@ -47,11 +47,18 @@ implementation agent, verified (`tsc` both packages + `pnpm build`), checkpointe
 - **G — admin roles + API keys**: `role_definitions` + `api_keys` org-scoped tables (migration `0008`);
   automation deferred, custom fields excluded.
 
-**Next:** Shaun runs `pnpm db:seed` (applies migrations 0002–0008) and walks each phase's Shaun-local
-checklist incl. the protected-UX Runs regression. Then: fold `62565a0..f053a85` + Candidate 1 into the PR
-description, update living docs (deferred until verified, per the branch's pattern), and the deferred
-cleanup (clone `case_comments`/`case_requirements`/`defects`). **Nothing committed yet** — commit-identity
-confirmation required per CLAUDE.md before any commit.
+**DONE + VERIFIED (2026-07-13):** committed as `9e5ed55` (Candidate 1) + `1f1faae` (mysql pool HMR-safe
+fix — a leaked-pool "Too many connections" bug surfaced during verification). **Shaun verified the whole
+candidate locally against real Docker MySQL** ("all seems good") incl. the protected-UX Runs regression.
+Living docs all synced (`AS_BUILT_SNAPSHOT`, `FRONTEND_CONTRACTS`, `user-guide`, `feature-flow`,
+`known-bugs` GAP-01 resolved) and the PR description rewritten to cover all 21 branch commits
+(`docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`). **Verification gotcha now documented:**
+run `pnpm db:migrate` (applies 0002–0008) BEFORE `pnpm db:seed` — seeding first fails on the new columns.
+
+**Branch is ready to open the PR to `mvp-main`.** Remaining deferred cleanup (non-blocking, tracked in
+`progress.md`): `ProjectCloneService` doesn't deep-clone `case_comments`/`case_requirements`/`defects`;
+seed creates no requirements/defect entities; retire `?relay-reset=1` + the `x-relay-user-id` header
+fallback once `pnpm api:validate` moves to token auth. Later phases: real OpenSearch, AWS infra, IAM SSO.
 
 ---
 
