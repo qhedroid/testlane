@@ -103,3 +103,7 @@ Solutions Engineer, Cloud & DevOps, London, UK.
 
 [LinkedIn](https://www.linkedin.com/in/noelquadri2001) ·
 [GitHub](https://github.com/qhedroid)
+
+## License
+
+[MIT](./LICENSE) © 2026 Noel Quadri
