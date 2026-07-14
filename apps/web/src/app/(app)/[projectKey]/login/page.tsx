@@ -1,5 +1,5 @@
-import { LoginScreen } from '@/fresh/screens/LoginScreen'
+import { redirect } from 'next/navigation'
 
 export default function ProjectLoginPage() {
-  return <LoginScreen />
+  redirect('/login')
 }

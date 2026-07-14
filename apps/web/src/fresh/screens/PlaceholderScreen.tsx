@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { useProjectHref } from '../hooks/useProjectHref'
 
@@ -27,7 +26,6 @@ export function PlaceholderScreen({
         ]}
         showSearch={false}
       />
-      <PrototypeBanner kind="placeholder" />
 
       <div className="placeholder-wrap">
         <div className="placeholder-card">

@@ -162,6 +162,155 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 ---
 
+## Login & Authentication (`mvp-backend` Phase 1)
+
+**Route:** `/login` (top-level; `/:projectKey/login` redirects here).
+
+**Current state:** **Real, API-backed.** NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables — session state lives in an encrypted cookie, not `sessions`/`accounts`/`verification_tokens` tables).
+
+**Auth gate:** `apps/web/src/middleware.ts` requires a valid session for every route except `/login`, `/api/auth/*`, `/api/runs/*` (still on the legacy header), `/api/health`, `/_next/*`, `/fonts/*`. Logged-out visits redirect to `/login?callbackUrl=<original path>`.
+
+**Endpoints:**
+
+| Method | Path | Body | Response | Notes |
+|--------|------|------|----------|-------|
+| GET/POST | `/api/auth/[...nextauth]` | NextAuth-managed | NextAuth-managed | Sign-in/sign-out/session/CSRF endpoints, standard NextAuth v4 surface |
+
+**Client usage:** `signIn('credentials', { email, password, redirect: false })` / `signOut({ callbackUrl: '/login' })` from `next-auth/react`; `useSession()` for the top-bar `UserMenu`.
+
+**Seed credentials:** all six seed users share one local-dev password, `relay-dev-2026` (see `README.md` "Local dev login"). Hashed with `bcryptjs`, cost factor 12, stored in `users.password_hash`.
+
+---
+
+## User API (`mvp-backend` Phase 1)
+
+**Real, API-backed.** Gated by `resolveSessionActor()` (real session) + an admin-or-above global-role check in `UserService.ts` — not `assertMinProjectRole()`, since there's no project scope for a user list.
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| GET | `/api/users` | — | `{ data: { users: UserSummary[] } }` | `INSUFFICIENT_PERMISSIONS` (403) |
+| POST | `/api/users` | `{ orgId, email, name, globalRole, password }` | `{ data: UserSummary }` (201) | `INSUFFICIENT_PERMISSIONS` (403), `EMAIL_TAKEN` (409), `VALIDATION_ERROR` (400) |
+| PATCH | `/api/users/:userId` | `{ name?, globalRole?, isActive? }` | `{ data: UserSummary }` | `INSUFFICIENT_PERMISSIONS` (403), `USER_NOT_FOUND` (404), `LAST_ADMIN` (409), `VALIDATION_ERROR` (400) |
+
+`UserSummary`: `{ id, name, email, globalRole, isActive, lastLoginAt }`.
+
+**Not yet wired to any fresh screen** — `/admin/users` still reads/writes the localStorage `AdminSettings` blob (unification is a later phase).
+
+---
+
+## Project API (`mvp-backend` Phase 1)
+
+**Real, API-backed.** `listProjects`/`createProject` gated by a global admin-or-above check; `assignProjectRole` gated by `assertMinProjectRole(actorId, projectId, 'admin')` (reused from `packages/db/src/rbac/assert-min-role.ts`).
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| GET | `/api/projects` | — | `{ data: { projects: ProjectSummary[] } }` | `INSUFFICIENT_PERMISSIONS` (403) |
+| POST | `/api/projects` | `{ orgId, slug, name, description? }` | `{ data: ProjectSummary }` (201) | `INSUFFICIENT_PERMISSIONS` (403), `DUPLICATE_SLUG` (409), `VALIDATION_ERROR` (400) |
+| POST | `/api/projects/:projectId/roles` | `{ userId, role }` | `{ data: { ok: true } }` | `INSUFFICIENT_PERMISSIONS` (403), `PROJECT_NOT_FOUND` (404), `VALIDATION_ERROR` (400) |
+
+`ProjectSummary`: `{ id, slug, name, description, status }`. `super_admin`/`admin` (global) see every active project in the org; `contributor`/`viewer` see only projects they hold a `project_roles` row for.
+
+**Wired** — `FreshProvider` registers real projects on mount (`REGISTER_REAL_PROJECTS`); `ProjectSwitcher.tsx` shows them and offers "Create Demo Project" (`POST /api/projects/:id/clone`, any active user).
+
+---
+
+## Screen-wiring architecture + module APIs (`mvp-backend` Phases 2–7)
+
+Screens don't fetch data themselves. `FreshProvider` syncs the active real project's data into reducer state and write actions call the API optimistically (local dispatch first, background call, temp-id → real-id reconcile). Clients + adapters live in `apps/web/src/lib/relay/{case,plan,run,audit,user}-client.ts` — each file's header documents its adapter decisions. Fields with no DB tables stay localStorage-only per case/plan/run (the "hybrid rule" — see `AS_BUILT_SNAPSHOT.md`).
+
+**Cases + Folders** (session auth, nested routes):
+- `GET/POST /api/projects/:projectId/cases` — list returns full `CaseDetail[]` (steps/tags/preconditions/description; also `comments` and `requirementIds`, Candidate 1 Phases C/D; unpaginated, archived excluded); create generates `TC-<n>` refs.
+- `GET/PATCH/DELETE /api/projects/:projectId/cases/:caseId` — PATCH is whole-object-shaped (steps replaced wholesale); DELETE archives (`is_archived`), never hard-deletes.
+- `POST /api/projects/:projectId/cases/:caseId/comments` — case comments (general + per-step); `POST /api/projects/:projectId/cases/:caseId/requirements` — link a requirement. See the new-endpoints section below.
+- `GET/POST /api/projects/:projectId/folders`.
+- Adapters: priority/type lowercase enums ↔ Capitalized UI strings; `assignee` display name ↔ `assignedTo` ULID via a static 8-seed-user map; server `caseRef` used directly as `caseKey`.
+
+**Plans** (session auth, nested routes):
+- `GET/POST /api/projects/:projectId/plans` — list excludes archived, includes ordered `caseIds`; refs `PLAN-<nnn>`.
+- `GET/PATCH/DELETE …/plans/:planId`; `PUT …/plans/:planId/cases` (`setPlanCases`, wholesale replace).
+- **GAP-01 RESOLVED** (Candidate 1, Phase F): the authored `queries` are now persisted server-side as `test_plans.query_definition` (json) and returned on list/detail — a fresh browser gets the real authored queries, not a synthesized static group. Resolution stays **client-side** (deliberate Option-a tradeoff): every queries change resolves locally (`resolvePlanCases`) and pushes the resolved case list via `setPlanCases`, so `TestRunService.createRun()`'s dependency on `test_plan_cases` (the run-spawn source of truth) is untouched. Residual: plans don't auto-re-resolve server-side when cases change — `test_plan_cases` refreshes when the plan is next edited (same freeze-on-edit behaviour as spawn). See the new-endpoints section below for the `queryDefinition` request/response shape.
+
+**Runs** (session-first auth with `x-relay-user-id` fallback, flat routes):
+- `GET /api/runs?projectId=` — includes `description`, per-case results (`testCaseId`, `testRunCaseId`, status, comment, executor, active `defectRefs`), a `steps: RunCaseStepItem[]` layer (per-step results, Candidate 1 Phase A), and `events: RunCaseEventItem[]` (per-case execution log, Phase B); refs `RUN-<nnnn>`.
+- `POST /api/runs` — `testPlanId` is now **optional**: with it the run snapshots the plan; without it, `caseIds` is required and the run snapshots directly from those live case ids (real ad-hoc runs — `test_runs.test_plan_id` is nullable). Accepts an optional `description`.
+- `PATCH /api/runs/:runId` — `{ projectId, status?: active|sealed|archived, title?, description?, dueDate? }`; frontend "delete" = archive.
+- `POST /api/runs/:runId/cases/:runCaseId/result` — `runCaseId` is the `test_run_cases` id (FreshProvider bridges from live case ids).
+- `POST /api/runs/:runId/cases/:runCaseId/steps/:stepSnapshotId/result` — per-step result (Phase A); `stepSnapshotId` is the `run_case_step_snapshots` id. See the new-endpoints section below.
+
+**Dashboard:** computed client-side off synced state; `GET /api/projects/:projectId/dashboard` exists but is unused by the UI.
+
+**Audit:** `GET /api/projects/:projectId/audit?limit=` — screen-level fetch in `AuditScreen` (deliberate exception: read-only feed). Every case/plan/run mutation writes `audit_log` rows.
+
+**Users (Admin panel):** `GET/POST /api/users`, `PATCH /api/users/:userId` — synced into the Admin roster by name-match (global-admin sessions only; 403 falls back to local mock). Granular Admin roles compress onto `globalRole` (Owner→super_admin, Administrator→admin, Editor/Run Manager/Run Executor/Project Administrator→contributor, Viewer→viewer). Invites are created with the shared dev password. Role *definitions* + API keys now have real tables — see the section below.
+
+---
+
+## New backend endpoints (`mvp-backend` — data-layer hardening + Candidate 1)
+
+Contracts for the endpoints added when the remaining local-only data areas got real DB tables (migrations `0002`–`0008`). All responses use the shared `{ data: … }` success envelope and the standard `{ error: { code, message } }` shape on failure (`VALIDATION_ERROR` 400 for a zod parse failure everywhere; `INSUFFICIENT_PERMISSIONS` 403 is thrown by the shared `assertMinProjectRole()` for the project-scoped services). All response `Date` fields serialize as ISO strings.
+
+### Per-step results (Phase A)
+
+Session-first auth with the `x-relay-user-id` dev-header fallback (same as the rest of `/api/runs/*`). `stepSnapshotId` is the `run_case_step_snapshots.id`.
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| POST | `/api/runs/:runId/cases/:runCaseId/steps/:stepSnapshotId/result` | `{ status, comment? }` | `{ data: StepResult }` | `RUN_NOT_FOUND` (404), `CASE_NOT_FOUND` (404), `STEP_NOT_FOUND` (404), `RUN_NOT_EXECUTABLE` (409), `INVALID_STATUS` (400), `INSUFFICIENT_PERMISSIONS` (403), `TRANSACTION_FAILED` (500), `VALIDATION_ERROR` (400) |
+
+`status`: `not_run | pass | fail | blocked | skip | skipped` (same enum + `skipped` alias as the case-level result). `comment` optional string or `null` (omit to leave unchanged, `null` to clear). UPSERTs on the `(test_run_case_id, step_snapshot_id)` unique constraint; contributor+ RBAC. `StepResult`: `{ id, testRunCaseId, stepSnapshotId, status, comment, executedBy, executedAt, updatedAt }`.
+
+### Case comments (Phase C)
+
+Session auth (nested route). The author is the session actor, resolved server-side — never sent by the client.
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| POST | `/api/projects/:projectId/cases/:caseId/comments` | `{ stepId?, body }` | `{ data: CaseComment }` (201) | `PROJECT_NOT_FOUND` (404), `CASE_NOT_FOUND` (404), `STEP_NOT_FOUND` (404), `INSUFFICIENT_PERMISSIONS` (403), `TRANSACTION_FAILED` (500), `VALIDATION_ERROR` (400) |
+
+`stepId` (ULID, nullable/optional): omitted/`null` → a general/case-level comment; a step id → a step comment. `body`: non-empty string. Contributor+ RBAC. `CaseComment`: `{ id, testCaseStepId, authorId, body, createdAt }`. `listCases`/`getCase` return the case's comments inline on `CaseDetail.comments` (same shape). Comments are on the test-case *definition* — distinct from run-scoped `run_execution_comments`.
+
+### Requirements + case links (Phase D)
+
+Session auth. Viewer to read, contributor to write. Status enum is lowercase in the API; `requirement-client.ts` maps it to/from the Capitalized frontend `RequirementStatus`.
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| GET | `/api/projects/:projectId/requirements` | — | `{ data: { requirements: Requirement[] } }` | `PROJECT_NOT_FOUND` (404), `INSUFFICIENT_PERMISSIONS` (403) |
+| POST | `/api/projects/:projectId/requirements` | `{ title, description?, status? }` | `{ data: Requirement }` (201) | `PROJECT_NOT_FOUND` (404), `DUPLICATE_REQUIREMENT_REF` (409), `REF_COUNTER_TIMEOUT` (503), `TRANSACTION_FAILED` (500), `INSUFFICIENT_PERMISSIONS` (403), `VALIDATION_ERROR` (400) |
+| POST | `/api/projects/:projectId/cases/:caseId/requirements` | `{ requirementId }` | `{ data: { testCaseId, requirementId, created } }` (201) | `PROJECT_NOT_FOUND` (404), `CASE_NOT_FOUND` (404), `REQUIREMENT_NOT_FOUND` (404), `INSUFFICIENT_PERMISSIONS` (403), `TRANSACTION_FAILED` (500), `VALIDATION_ERROR` (400) |
+
+`status`: `draft | approved | implemented | obsolete` (default `draft`). `Requirement`: `{ id, requirementRef, projectId, title, description, status, createdBy, createdAt, updatedAt }`; `requirementRef` is `REQ-<n>` (unpadded, minted via `ref_counters`). The link POST is **idempotent** — re-linking an existing `(case, requirement)` pair returns `created: false` rather than erroring. There is **no unlink** endpoint (the UI has no unlink action). Linked ids also come back on `CaseDetail.requirementIds`.
+
+### Defect entities + internal link (Phase E)
+
+Defect entities use the nested `/api/projects/:projectId/defects` convention (session auth, viewer/contributor RBAC). The link route stays under `/api/runs/*` (dev-header fallback auth) and gains an additive internal `defectId`. Status enum is lowercase; `defect-client.ts` maps it to/from the Capitalized frontend `DefectStatus` (note `in_progress` ↔ `In progress`). **No severity field** — deliberately (the frontend `Defect` has status only).
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| GET | `/api/projects/:projectId/defects` | — | `{ data: { defects: Defect[] } }` | `PROJECT_NOT_FOUND` (404), `INSUFFICIENT_PERMISSIONS` (403) |
+| POST | `/api/projects/:projectId/defects` | `{ title, description?, status? }` | `{ data: Defect }` (201) | `PROJECT_NOT_FOUND` (404), `DUPLICATE_DEFECT_REF` (409), `REF_COUNTER_TIMEOUT` (503), `TRANSACTION_FAILED` (500), `INSUFFICIENT_PERMISSIONS` (403), `VALIDATION_ERROR` (400) |
+| POST | `/api/runs/:runId/cases/:runCaseId/defects` | `{ projectId, defectRef, defectUrl?, defectId? }` | `{ data: DefectLink }` (201) | `PROJECT_NOT_FOUND` (404), `RUN_NOT_FOUND` (404), `CASE_NOT_FOUND` (404), `DEFECT_NOT_FOUND` (404), `INSUFFICIENT_PERMISSIONS` (403), `VALIDATION_ERROR` (400) |
+
+`status`: `open | in_progress | resolved | closed` (default `open`). `Defect`: `{ id, defectRef, projectId, title, description, status, createdBy, createdAt, updatedAt }`; `defectRef` is `DEF-<n>`. On the link route, the new **optional** `defectId` (ULID) is additive/backward-compatible: when present the link points at a real `defects` row (validated in-project) and `defectRef` should be that defect's `DEF-<n>` key; when absent, `defectRef` is a free-text external ref (unchanged path). `DefectLink`: `{ id, testRunCaseId, defectRef, defectId, defectUrl, linkedBy, linkedAt, unlinkedAt, unlinkedBy }` — `defectId` is `null` for external refs.
+
+### Admin role definitions + API keys (Phase G)
+
+Global/org-scoped (the Admin panel is not project-scoped). Session auth gated by a global-admin-or-above check (`super_admin`/`admin`); the actor's `orgId` is derived server-side (never taken from the body). Built-in roles (`isBuiltIn: true`) are guarded against update/delete.
+
+| Method | Path | Body | Success | Error codes |
+|--------|------|------|---------|-------------|
+| GET | `/api/admin/roles` | — | `{ data: { roles: RoleDefinition[] } }` | `INSUFFICIENT_PERMISSIONS` (403) |
+| POST | `/api/admin/roles` | `{ name, description?, isProjectLevel, permissions }` | `{ data: RoleDefinition }` (201) | `INSUFFICIENT_PERMISSIONS` (403), `DUPLICATE_ROLE_NAME` (409), `VALIDATION_ERROR` (400) |
+| PATCH | `/api/admin/roles/:roleId` | partial `{ name?, description?, isProjectLevel?, permissions? }` | `{ data: RoleDefinition }` | `INSUFFICIENT_PERMISSIONS` (403), `ROLE_NOT_FOUND` (404), `DUPLICATE_ROLE_NAME` (409), `BUILT_IN_IMMUTABLE` (409), `VALIDATION_ERROR` (400) |
+| DELETE | `/api/admin/roles/:roleId` | — | `{ data: { id } }` | `INSUFFICIENT_PERMISSIONS` (403), `ROLE_NOT_FOUND` (404), `BUILT_IN_IMMUTABLE` (409) |
+| GET | `/api/admin/api-keys` | — | `{ data: { apiKeys: ApiKey[] } }` | `INSUFFICIENT_PERMISSIONS` (403) |
+| POST | `/api/admin/api-keys` | `{ name, keyMasked, project, permissions, expiration, createdBy? }` | `{ data: ApiKey }` (201) | `INSUFFICIENT_PERMISSIONS` (403), `VALIDATION_ERROR` (400) |
+| DELETE | `/api/admin/api-keys/:keyId` | — | `{ data: { id } }` | `INSUFFICIENT_PERMISSIONS` (403), `API_KEY_NOT_FOUND` (404) |
+
+`RoleDefinition`: `{ id, name, description, isProjectLevel, isBuiltIn, permissions, createdAt, updatedAt }`; `permissions` is a boolean map (the frontend `RolePermissions` 16-key shape from `rbac.ts`, round-tripped verbatim) or `null`. `ApiKey`: `{ id, name, keyMasked, project, permissions, expiration, createdBy, createdAt }`. `keyMasked` is the **already-masked display value**, not a real secret — real API-key secret management (hashing / one-time reveal) is out of scope. `createdBy` is only persisted if it resolves to a real `users` row in the org, else stored as `null`.
+
+---
+
 ## Audit History
 
 **Route:** `/audit`
@@ -199,7 +348,7 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 **User actions:** Search; filter by status/severity; select row for detail; new defect button disabled — create from Test Runs instead.
 
-**Notes:** In-run defect create/link persists to localStorage and surfaces here for the active project. No Jira sync.
+**Notes:** This section describes the pre-`mvp-backend` prototype behaviour. **Current (`mvp-backend`, Candidate 1):** internal defects are now first-class DB entities (`defects` table, `DEF-<n>`), with a nullable `defect_id` FK on `run_defect_links`; the seed creates none yet, so real projects still fall back to `MOCK_DEFECTS` until defects are created. See "New backend endpoints → Defect entities" above for the contract. No Jira sync.
 
 ---
 
@@ -222,7 +371,7 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 - `GET /api/users`
 - `PATCH /api/workspace/settings`
 
-**Known backend dependency:** Seed users/projects exist; no settings API; no real auth.
+**Known backend dependency:** Seed users/projects exist; no settings API yet. Real login/session now exists (`/login`, NextAuth) but this screen is not yet wired to the real `/api/users`/`/api/projects` routes.
 
 **Out of scope:** SSO configuration, API keys, billing.
 
@@ -337,8 +486,4 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 ## UI labelling convention
 
-Mock and placeholder screens display a **source banner** (`PrototypeBanner` component):
-
-- **Frontend prototype** — yellow banner, mock data
-- **API-backed** — blue banner on `/runs/api`
-- **Planned module** — grey banner on reports/integrations
+The per-screen source banner (`PrototypeBanner`) was **removed** on `mvp-backend` — screens are backend-wired now, so the "frontend prototype" labelling no longer applied. Remaining visual-shell modules (Reports, My Work, Milestones, AI Studio, Integrations) are identifiable by their static content only.

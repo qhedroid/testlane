@@ -6,6 +6,59 @@
 
 ---
 
+## GAP-01 — Test Plans: dynamic queries have no server-side equivalent (mvp-backend Phase 3)
+
+**RESOLVED — 2026-07-11 (new-tables candidate Phase F, Option a).** Authored plan queries now
+have a durable, portable server home: a nullable `query_definition` JSON column on `test_plans`
+(migration `0007_plan_query_definition`) stores the frontend's `TestQuery[]` authoring model
+verbatim. `TestPlanService` create/update/list persist and return it; `plan-client.ts`'s
+adapter uses the stored definition as `TestPlan.queries` when present (falling back to the old
+synthesized `q-server-*` static group only when it's null, so legacy plans still render);
+`FreshProvider` sends `queryDefinition` on `updatePlan(queries)`/`duplicatePlan` in addition to
+the existing resolved-caseIds `setPlanCases` push, and `queries` was removed from
+`mergeLocalOnlyPlanFields` (server is now authoritative). The two seeded demo plans carry a
+definition (Full Regression as a genuine folder query; Critical Path as a faithful static
+snapshot — the frontend query model can't express its "priority AND folder" intent as one
+group), so they survive a reseed as real dynamic queries. A fresh browser/device now
+reconstructs the same `TestQuery[]` and resolves to the same cases.
+
+**Chosen Option (a), not (b):** query RESOLUTION stays client-side and continues pushing the
+resolved case list to `test_plan_cases` (the run-spawn source of truth — `createRun`/
+`spawnRunFromPlan` unchanged). **Residual (deliberate, was the (b) property):** plans do NOT
+auto-re-resolve server-side when the underlying cases change — the resolved `test_plan_cases`
+refreshes only when the plan is next edited in a browser, the same freeze-on-edit behavior
+`spawnRunFromPlan` already has. Re-homing resolution server-side would be a larger change to
+the protected run-spawn path and was not done.
+
+_Original investigation (kept for context):_
+
+Not a bug in shipped behavior (nothing is broken yet — `PlansScreen.tsx` hasn't been wired to
+the real API). Flagging now because it will bite whoever wires `PlansScreen.tsx` to
+`packages/db/services/TestPlanService.ts` next.
+
+**The mismatch:** the frontend prototype's `TestPlan` (`apps/web/src/fresh/data/demo-model.ts`)
+stores `queries: TestQuery[]` — condition/folder/static groups — and recomputes the case list
+live via `resolvePlanCases()` every time it's needed. The real DB schema (`packages/db/schema.ts`)
+has no column anywhere for `TestQuery`/`QueryCondition` data; `test_plans` only relates to cases
+via `test_plan_cases`, a plain static join table. This isn't an oversight introduced by
+`TestPlanService` — `TestRunService.createRun()` (implemented well before `mvp-backend`) already
+hard-depends on `test_plan_cases` being pre-populated at spawn time, with zero query awareness.
+
+**What `TestPlanService.ts` does about it:** only supports the static-list model.
+`setPlanCases(planId, caseIds)` replaces a plan's case membership wholesale — the caller (not the
+server) is responsible for resolving whatever criteria produced that list.
+
+**Open question for whoever wires the screen:** either (a) keep `queries` as client-side-only
+metadata, resolve them locally exactly like today, and push the resolved `caseIds` to
+`setPlanCases()` whenever they change (no server schema change, plans just look "static" from
+the API's point of view), or (b) add real server-side query storage (new
+`test_plan_queries`/similar table + resolution logic) so plans stay genuinely dynamic even via
+the API. Option (a) is the lower-effort, lower-risk choice and matches how `spawnRunFromPlan()`
+already behaves today (it resolves once, at spawn time, then the run's case list is frozen) — but
+it's a real product call, not just an implementation detail, so flag it rather than assume.
+
+---
+
 ## BUG-01 — Project switch: first attempt fails, second succeeds
 
 ### Symptom

@@ -324,25 +324,14 @@ function buildAllRuns(projectId: string): DemoRun[] {
   })
 }
 
+/**
+ * Data-layer refactor: previously re-injected the localStorage demo project's
+ * seed runs on every load. The local fallback project is gone — real runs
+ * come from the backend — so this is now a passthrough, kept only so
+ * loadState()'s call-site shape is unchanged.
+ */
 export function mergeSeedRuns(state: DemoState): DemoState {
-  const seedRuns = buildAllRuns(DEFAULT_SEED_PROJECT_ID)
-  const projectRuns = state.runs.filter((r) => r.projectId === DEFAULT_SEED_PROJECT_ID)
-  const otherRuns = state.runs.filter((r) => r.projectId !== DEFAULT_SEED_PROJECT_ID)
-  const byId = new Map(projectRuns.map((r) => [r.id, r]))
-  for (const run of seedRuns) {
-    if (!byId.has(run.id)) byId.set(run.id, run)
-  }
-  const mergedProjectRuns = Array.from(byId.values())
-  const prevRunId = state.currentRunIdByProject[DEFAULT_SEED_PROJECT_ID] ?? ''
-  const nextRunId = byId.has(prevRunId) ? prevRunId : seedRuns[0]?.id ?? prevRunId
-  return {
-    ...state,
-    runs: [...otherRuns, ...mergedProjectRuns],
-    currentRunIdByProject: {
-      ...state.currentRunIdByProject,
-      [DEFAULT_SEED_PROJECT_ID]: nextRunId,
-    },
-  }
+  return state
 }
 
 export function buildDemoProjectEntities(projectId: string): {
@@ -411,28 +400,35 @@ export function buildDemoProjectEntities(projectId: string): {
   }
 }
 
+/**
+ * Initial (empty) app state — data-layer refactor: the app no longer seeds a
+ * localStorage-only fallback project. Real projects arrive from the backend
+ * via REGISTER_REAL_PROJECTS; until then FreshProvider renders a connecting /
+ * error gate instead of children. Only the Admin mock settings and the demo
+ * actor are seeded locally (they have no backing tables yet).
+ *
+ * The demo entity builders above are retained for reference/tests but are no
+ * longer part of the boot path.
+ */
 export function buildInitialDemoState(): DemoState {
-  const { folders, cases, runs, defaultRunId, nextCaseNum, nextRunNum } =
-    buildDemoProjectEntities(DEFAULT_SEED_PROJECT_ID)
-
   return {
     schemaVersion: DEMO_SCHEMA_VERSION,
-    projectsById: { [DEFAULT_SEED_PROJECT_ID]: SEED_PROJECT },
-    activeProjectId: DEFAULT_SEED_PROJECT_ID,
-    folders,
-    cases,
-    runs,
-    currentRunIdByProject: { [DEFAULT_SEED_PROJECT_ID]: defaultRunId },
-    nextCaseNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextCaseNum },
-    nextRunNumByProject: { [DEFAULT_SEED_PROJECT_ID]: nextRunNum },
+    projectsById: {},
+    activeProjectId: '',
+    folders: [],
+    cases: [],
+    runs: [],
+    currentRunIdByProject: {},
+    nextCaseNumByProject: {},
+    nextRunNumByProject: {},
     adminSettings: initialAdminSettings,
     currentActorUserId: SEED_ADMIN_USER_ID,
-    plansById: Object.fromEntries(SEED_PLANS.map((p) => [p.id, p])),
-    nextPlanNumByProject: { [DEFAULT_SEED_PROJECT_ID]: SEED_PLANS.length + 1 },
+    plansById: {},
+    nextPlanNumByProject: {},
     requirementsById: {},
     defectsById: {},
-    nextRequirementNumByProject: { [DEFAULT_SEED_PROJECT_ID]: 1 },
-    nextDefectNumByProject: { [DEFAULT_SEED_PROJECT_ID]: 1 },
+    nextRequirementNumByProject: {},
+    nextDefectNumByProject: {},
   }
 }
 

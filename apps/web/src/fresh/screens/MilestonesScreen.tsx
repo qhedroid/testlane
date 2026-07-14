@@ -1,7 +1,6 @@
 'use client'
 
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 
 const MILESTONES = [
   {
@@ -70,7 +69,6 @@ export function MilestonesScreen() {
   return (
     <div className="view">
       <FreshTopbar breadcrumbs={[{ label: 'Milestones' }]} showSearch={false} />
-      <PrototypeBanner />
 
       <div className="screen-wrap">
         <div className="page-head">

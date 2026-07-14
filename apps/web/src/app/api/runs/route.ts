@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       testPlanId: body.testPlanId,
       createdBy: actor.id,
       name: body.name,
+      description: body.description,
       environment: body.environment,
       assigneeIds: body.assigneeIds,
       caseIds: body.caseIds,

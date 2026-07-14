@@ -17,7 +17,6 @@ import { DEFECT_NAMES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, normalizeAssigneeName, TEAM_USERS } from '../data/team-users'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
 import { parseTestRunCaseKey, parseTestRunKey, slugToCaseKey, testCasePath, testRunCasePath, testRunPath } from '../lib/project-routes'
@@ -188,8 +187,9 @@ export function RunsScreen() {
 
   const handleDuplicate = useCallback(() => {
     if (!currentRun) return
-    const result = duplicateRun(currentRun.id)
-    if (result) router.push(testRunPath(activeProject.key, result.runKey))
+    void duplicateRun(currentRun.id).then((result) => {
+      if (result) router.push(testRunPath(activeProject.key, result.runKey))
+    })
   }, [currentRun, duplicateRun, activeProject.key, router])
 
   const handleDelete = useCallback(() => {
@@ -486,14 +486,6 @@ export function RunsScreen() {
     return () => window.removeEventListener('keydown', onKey)
   }, [navCase, openShortcuts, setResult, isRunSealed, canMutateDefects])
 
-  const prototypeBanner = (
-    <PrototypeBanner>
-      <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
-      (resets on reload). MySQL-backed workspace:{' '}
-      <Link href="/runs/api" className="bc-link">/runs/api</Link>.
-    </PrototypeBanner>
-  )
-
   const runsSubline = `${activeProject.name} · ${activeRuns.length} test run${activeRuns.length === 1 ? '' : 's'}${
     currentRun ? ` · ${currentRun.runKey}` : ''
   }`
@@ -578,7 +570,6 @@ export function RunsScreen() {
     return (
       <div className="view runs-v12">
         {runsFreshTopbar}
-        {prototypeBanner}
         <div className="screen-wrap tr-screen-wrap">
           {runsPageHead}
           <div className="empty-state on">
@@ -608,7 +599,6 @@ export function RunsScreen() {
     return (
       <div className="view runs-v12">
         {runsFreshTopbar}
-        {prototypeBanner}
         <div className="screen-wrap tr-screen-wrap">
           {runsPageHead}
           <div className="tr-workspace">
@@ -645,7 +635,6 @@ export function RunsScreen() {
     return (
       <div className="view runs-v12">
         {runsFreshTopbar}
-        {prototypeBanner}
         <div className="screen-wrap tr-screen-wrap">
           {runsPageHead}
           <div className="tr-workspace">
@@ -688,7 +677,6 @@ export function RunsScreen() {
   return (
     <div className="view runs-v12">
       {runsFreshTopbar}
-      {prototypeBanner}
       <div className="screen-wrap tr-screen-wrap">
         {runsPageHead}
         <div className="tr-workspace">

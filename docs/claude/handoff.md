@@ -16,9 +16,354 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 ---
 
 ## Active branch
-`mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin. **Phase 1 (tasks 01–06) and Phase 2 (tasks 07–13) both complete.** Schema stays v14. **Ready for PR** — see `docs/cursor-prompts/mvp-visual-overhaul/pr-description-mvp-visual-overhaul.md` for the combined Phase 1 + Phase 2 MR description.
+`mvp-backend` — **COMPLETE, ready for PR to `mvp-main`** (2026-07-10). Every fresh screen reads/writes the real MySQL backend, login gates the app, the seeded Demo Project (`DEMO`) is the default landing project, and Shaun verified everything locally (including the Runs protected-UX regression). PR description: `docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`. Live state: `docs/claude/mvp-backend/progress.md`. Original branch framing below.
 
-Previously: `mvp-dashboard-metrics` — all work committed (`5544fc0`, `1352efe`, `323ce6f`); ready for PR description / review before merge to `mvp-main`.
+Created 2026-07-09 off `mvp-main` (confirmed `mvp-visual-overhaul` merged via PR #19, `0e8ec98`). **Phase 1 (Foundation: auth/RBAC/User+Project API) committed (`b430e50`, `4e5ad45`).** Shaun then asked to "run all the phases to completion" — Phases 2 (Test Cases), 3 (Test Plans), 5 (Dashboard), and 6 (Defects+Audit) backends are now code-complete and Claude-sandbox-verified (typecheck + `pnpm build`, no live DB), but **not yet committed** and their screens are **not yet wired**. Phase 4 (Test Runs auth wiring) deliberately skipped this pass — see the "Phases 2/3/5/6 backend built" entry below for why. Phase 7 needs no new backend. Phase 8 blocked on the rest. Claude implements this branch directly (Shaun's instruction) instead of drafting Cursor prompts. Live state tracked at `docs/claude/mvp-backend/progress.md` (read this first — has the full per-phase checklists) and `docs/claude/mvp-backend/plan.md`; the original `docs/cursor-prompts/mvp-backend/` files are kept as reference spec only. See "2026-07-09 — mvp-backend Phases 2/3/5/6 backend built (all-phases push)" (top of this section), and below it "2026-07-09 — mvp-backend Phase 1 (Foundation) implemented", "2026-07-09 — Phase 1 post-commit fixes + seed user/role overhaul", "2026-07-09 — mvp-backend scoping session", "2026-07-09 — mvp-backend sequencing session — task-01 drafted", and "2026-07-09 — pivot to direct Claude implementation" for full history.
+
+Previously: `mvp-visual-overhaul` — full-app Compass (TransPerfect) UI reskin, Phase 1 + Phase 2, **merged to `mvp-main`** via PR #19 (`0e8ec98`).
+
+---
+
+## 2026-07-11 — `mvp-backend` Candidate 1: new DB tables for the remaining local-only data (Phases A–G)
+
+Shaun cleared the base gate (re-seeded + verified `62565a0..f053a85` locally), answered the design
+questions, and directed: implement Phase A, then run all phases continuously. **All seven phases are now
+code-complete + sandbox-verified (not committed).** Plan/decisions/sequencing:
+`docs/claude/mvp-backend/candidate-1-new-tables-plan.md`; full per-phase detail + Shaun-local checklists:
+`docs/claude/mvp-backend/progress.md` ("Candidate 1" section). Each phase = schema + hand-authored
+migration + service + routes + client adapters + FreshProvider sync/write-through, done by a dedicated
+implementation agent, verified (`tsc` both packages + `pnpm build`), checkpointed in progress.md.
+
+- **A — per-step results** (`run_step_results`, was unwired) + **run descriptions** (migration `0002`).
+- **B — execution log / trends**: new `run_case_events` (migration `0003`); makes dashboard
+  passed/failed-this-week + trends work for real synced runs (they were empty before); seed backfilled.
+- **C — case comments**: one `case_comments` table, nullable step FK (migration `0004`).
+- **D — requirements + case links**: `requirements` + `case_requirements` (migration `0005`); established
+  the narrow optimistic-create-then-link reconcile pattern reused by E.
+- **E — defect entities**: new `defects` table + nullable `defect_id` FK on `run_defect_links`
+  (migration `0006`); external free-text linking untouched.
+- **F — plan query definitions / GAP-01 RESOLVED (Option a)**: durable `query_definition` json on
+  `test_plans` (migration `0007`); client-side resolution + `test_plan_cases` (run-spawn path) untouched.
+- **G — admin roles + API keys**: `role_definitions` + `api_keys` org-scoped tables (migration `0008`);
+  automation deferred, custom fields excluded.
+
+**DONE + VERIFIED (2026-07-13):** committed as `9e5ed55` (Candidate 1) + `1f1faae` (mysql pool HMR-safe
+fix — a leaked-pool "Too many connections" bug surfaced during verification). **Shaun verified the whole
+candidate locally against real Docker MySQL** ("all seems good") incl. the protected-UX Runs regression.
+Living docs all synced (`AS_BUILT_SNAPSHOT`, `FRONTEND_CONTRACTS`, `user-guide`, `feature-flow`,
+`known-bugs` GAP-01 resolved) and the PR description rewritten to cover all 21 branch commits
+(`docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`). **Verification gotcha now documented:**
+run `pnpm db:migrate` (applies 0002–0008) BEFORE `pnpm db:seed` — seeding first fails on the new columns.
+
+**Branch is ready to open the PR to `mvp-main`.** Remaining deferred cleanup (non-blocking, tracked in
+`progress.md`): `ProjectCloneService` doesn't deep-clone `case_comments`/`case_requirements`/`defects`;
+seed creates no requirements/defect entities; retire `?relay-reset=1` + the `x-relay-user-id` header
+fallback once `pnpm api:validate` moves to token auth. Later phases: real OpenSearch, AWS infra, IAM SSO.
+
+---
+
+## 2026-07-10 — `mvp-backend` data-layer hardening + feedback fixes (post-completion work)
+
+After the Phase 8 wrap-up, Shaun requested a planned-vs-actual architecture review and then a
+hardening pass, all continued on this branch (his call: "count this as backend work; two PRs if
+needed"). Five commits since `62565a0`: **`64dc539`** DP = the real seeded project (slug
+`demo`→`dp`), localStorage fallback project removed entirely, BootGate connect/retry screen;
+**`8a5f9d7`** wait-for-server writes everywhere (temp-id reconciliation layer deleted, −226
+lines), P/F/B/S optimistic-with-rollback, error toasts; **`25c34f2`** Dashboard KPI/donut use the
+server summary endpoint, 30s sync freshness window, narrowed provider memos; **`48d3f0e`**(prior)
+ti.com emails; **`1aba200`** ad-hoc (plan-less) runs now create real server runs (createRun's
+testPlanId optional — column was already nullable), sequential clone keys (DP2, DP3…), and the
+default-roster reset: seed = Demo Project (DP, full data) + CTMS/eTMF/IAM/eFeasibility/GL all
+empty, with a global-admin "Reset workspace…" button (`POST /api/admin/reset`) in the project
+switcher. **Shaun must re-run `pnpm db:seed`** (roster + slug changes). TanStack Query migration
+deliberately deferred (approved decision). The PR description
+(`docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`) covers only up to `3cb0d27` —
+it needs the post-completion commits folded in before the PR opens. Next-pass candidates are
+listed in `docs/claude/mvp-backend/progress.md`'s final session-log entries: tables for step
+results/execution log/comments/defects/requirements/plan queries/admin settings, TanStack Query,
+retiring the legacy `?relay-reset=1` param, and infra (AWS) later.
+
+---
+
+## 2026-07-10 — `mvp-backend` COMPLETE (verification + Phase 8)
+
+Shaun verified all wired screens locally against real Docker MySQL — no issues; his pass is the
+branch's regression evidence (sandbox has no browser/DB). Phase 8 done: living docs synced
+(`AS_BUILT_SNAPSHOT.md` rewritten; `FRONTEND_CONTRACTS.md` gained the "Screen-wiring
+architecture + module APIs" section; `user-guide.md`'s prototype caveat replaced with a real
+"Data sources" table; `feature-flow.md` routes/persistence/RBAC/feature-status all updated) and
+the PR description written at `docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`
+(13 code commits, grouped by feature area, with Caveats covering optimistic writes, the
+local-only gaps, GAP-01, the unused DashboardService, and the dev-header fallback). Branch
+definition of done met — awaiting PR to `mvp-main`.
+
+---
+
+## 2026-07-09 — `mvp-backend` Runs wired (Phase 4 — final screen) + Shaun feedback round
+
+Shaun feedback (committed `48d3f0e`): all user emails → `(initial)(surname)@ti.com` across
+seed/admin/mock/README; every remaining fake-user reference purged from code and demo data
+(LEGACY_ASSIGNEE_MAP kept as the legacy-name→roster conversion shim); Admin panel's stale
+fake users fixed (SYNC_REAL_USERS drops unmatched locals except Demo User + pending
+invites); prototype banners removed everywhere, component deleted.
+
+**Phase 4 (Runs) built** — every fresh screen is now wired to the real backend. Auth:
+`resolveActor()` is session-first with dev-header fallback (keeps `pnpm api:validate` +
+`/runs/api` working; header overridden by session when logged in). Backend: `listProjectRuns`
+returns per-case results + defect refs; new `updateRun()` + `PATCH /api/runs/[runId]`
+(seal/reopen/archive/title/dueDate, audited). Frontend: new `run-client.ts`; runs join the
+provider sync (`RUN-<nnnn>` refs as runKey); write-through on result recording,
+spawn-from-plan, duplicate, seal/unseal/archive/delete, edit. Documented local-only gaps:
+ad-hoc plan-less runs, per-step results, executionLog, run description. `RunsScreen.tsx`
+changed only for URL runKey reconcile-follow — execution UX untouched, but the **full
+protected-UX regression is part of Shaun's local verification checklist** in
+`docs/claude/mvp-backend/progress.md` § "Phase 4 screen-wiring (Runs)". Sandbox-verified
+(tsc + build). Next: Shaun-local verification of all wired screens, then Phase 8.
+
+---
+
+## 2026-07-09 — `mvp-backend` all-at-once screen-wiring (Plans, Audit, Admin users + glitch fixes)
+
+Same session, after Cases landed (`644f959`): Shaun asked to fix the two create-path UX
+glitches and wire everything else in one pass. Done: glitch fixes (provider `resolveEntityId`
++ CasesScreen/PlansScreen follow-reconcile effects), **Plans** (new `plan-client.ts`; GAP-01
+resolved — queries stay local-only, resolved case lists pushed via `setPlanCases`; server
+`PLAN-<nnn>` refs as planKey with `slugToPlanKey` taught the prefix), **Audit** (new
+`audit-client.ts`, screen-level fetch of the real audit log with an HTML-escaped display
+adapter), **Admin users** (new `user-client.ts`; real users synced into the Admin mock by
+name-match; invite/role/disable write-through with granular→globalRole compression; role
+definitions stay local). **Dashboard: deliberate no-op** (computes off synced reducer state;
+`DashboardService`/route currently unused by the frontend). **Defects: deferred to the Runs
+pass** (run_defect_links unusable until runs sync). Claude-sandbox verified (tsc + build).
+**Runs (Phase 4) is now the only remaining screen-wiring.** Full detail + Shaun's combined
+local verification checklist: `docs/claude/mvp-backend/progress.md`, "Screen-wiring: the
+all-at-once pass".
+
+---
+
+## 2026-07-09 — `mvp-backend` Cases screen-wiring built (first screen on the real API)
+
+Wired `CasesScreen.tsx` (+ folders) to the real backend — the first screen through the
+reducer-sync/write-through architecture decided in the "wire everything" session. The screen
+file itself is unchanged: a new `apps/web/src/lib/relay/case-client.ts` owns fetch functions
+and all frontend↔backend adapters (priority/type casing, `assignee` name ↔ `assignedTo` ULID
+via a static 8-seed-user map, unpadded server `TC-<n>` refs as caseKey), and
+`FreshProvider.tsx` gained a real-project sync effect plus optimistic write-through on
+`addCase`/`updateCase`/`replaceCase`/`deleteCase`/`addFolder` with temp-id→real-id
+reconciliation. `TestCaseService.listCases()` now returns full `CaseDetail[]` (steps/tags/
+preconditions) to avoid N+1 fetches. Custom fields/comments/requirement links stay
+localStorage-backed (hybrid screen, by design). Claude-sandbox verified (typecheck + build);
+**not yet committed**; Shaun-local verification is the next gate. Full detail, known UX
+trade-offs, and the verification checklist: `docs/claude/mvp-backend/progress.md`, section
+"Phase 2 screen-wiring (Cases) — built". Next screens: Plans → Dashboard → Defects/Audit →
+Admin → Runs last.
+
+---
+
+## 2026-07-09 — `mvp-backend` Phases 2/3/5/6 backend built (all-phases push)
+
+Shaun: "Can you run all the phases to completion?" — referring to the remaining 7 phases (2–8) in
+`docs/claude/mvp-backend/plan.md`. Agreed approach given this sandbox has no Docker/browser:
+**backend-first** — build and Claude-sandbox-verify every phase's *backend* (services + API
+routes) this session, defer every screen's actual localStorage→API cutover to a later pass, so
+all affected screens (Cases/Plans/Runs/Dashboard/Defects/Audit/Admin) get wired and regression-
+tested together against Shaun's real Docker MySQL in one sweep instead of piecemeal/unverified.
+Full per-phase detail (files, decisions, verification) is in `docs/claude/mvp-backend/progress.md`
+— this entry is the short version.
+
+**Phase 2 (Test Cases)** and **Phase 3 (Test Plans)** backends were already built earlier in this
+session (see progress.md) — `TestCaseService.ts`/`TestPlanService.ts` + their nested
+`/api/projects/[projectId]/{cases,folders,plans}/**` routes.
+
+**Phase 4 (Test Runs wiring) deliberately skipped, not just deferred like the others:** unlike
+Phases 2/3/5/6 (new, currently-unused routes — low-risk to add without a live DB to test against),
+`/api/runs/*` is already live and depended on by `/runs/api` + `pnpm api:validate`. Swapping its
+auth source (the dev `x-relay-user-id` header → real session) without also updating
+`RunsScreen.tsx`'s caller in the same atomic, verified change would actively regress shipped,
+working functionality — not just leave something unwired. This has to happen as one change
+together with the protected three-pane execution UX, not as a backend-only slice.
+
+**Phase 5 (Dashboard)** — new `DashboardService.ts` (`getDashboardSummary`) aggregating from real
+tables (`test_runs`/`test_run_cases`/`run_defect_links`/`test_cases`) exactly what
+`project-selectors.ts` currently computes client-side: active run count, pass rate, open/unlinked
+failure counts, run coverage %, result breakdown. Deliberately excludes widgets with no backing
+data yet (Requirements coverage, Milestones, historical trend charts) — same "match what's
+actually backed today" principle as Phases 2/3. New route: `/api/projects/[projectId]/dashboard`.
+
+**Phase 6 (Defects + Audit)** — new `AuditService.ts` (`recordAudit()` reusable insert helper +
+`listAuditLog()` project-scoped read), retrofitted into every Phase 2/3 mutation
+(`createCase`/`updateCase`/`archiveCase`, `createPlan`/`updatePlan`/`setPlanCases`/`archivePlan`)
+since those didn't write audit rows when first built. New `DefectService.ts` manages
+`run_defect_links` only (`listDefectLinks`/`linkDefect`/`unlinkDefect`) — **no new standalone
+`defects` table added**; the frontend's richer defect model (severity/status/etc.) has zero
+backing table today and stays out of scope, consistent with every other phase's exclusions.
+Defect-link routes live under `/api/runs/[runId]/cases/[runCaseId]/defects/**` (matching the
+existing sibling `/result` route's flat, dev-header-auth convention, since it's the same
+`/api/runs/*` family — safe to add without touching Phase 4's live routes). Audit read lives at
+`/api/projects/[projectId]/audit` (nested, real-session auth, matching Phases 2/3/5's convention).
+
+**Phase 7 (Admin panel unification)** — confirmed to need **zero new backend**: Phase 1 already
+built everything `/admin/users`/`/admin/roles` need. 100% screen-wiring, folded into the same
+deferred pass as the others.
+
+**Phase 8 (seed finalization + regression + PR)** — confirmed blocked on the rest; a real
+regression sweep and PR description can't be produced before screens are wired and Shaun can click
+through them locally. Reviewed existing seed data (already sufficient for the new backends to be
+exercised via direct API calls); nothing added since no screen consumes it yet.
+
+**Verified in-sandbox (all four phases together):** `tsc --noEmit` clean for both `@relay/db` and
+`@relay/web`; `pnpm build` succeeded — every new route present in the route table
+(`/api/projects/[projectId]/{cases,folders,plans,dashboard,audit}/**`,
+`/api/runs/[runId]/cases/[runCaseId]/defects/**`), no live DB needed for any of it.
+
+**Sandbox quirk hit this session:** `pnpm` wasn't on `PATH` (unlike prior sessions) — `corepack
+enable`/`prepare` both failed with `EACCES` trying to symlink into `/usr/bin`. Found and reused a
+leftover global pnpm install from a prior session
+(`/sessions/trusting-awesome-bell/.npm-global/lib/node_modules/pnpm/bin/pnpm.cjs`, invoked via
+`node <path> ...`) rather than fighting the install. Noted in `progress.md` for future sessions.
+
+**Not yet done:** none of Phases 2/3/5/6's code is committed yet (still sitting as working-tree
+changes alongside this session's documentation updates) — needs a commit before this branch's
+state is durable. No screen has been wired to any of these new routes yet — that's the single
+remaining body of work before `mvp-backend`'s branch-level definition of done is met, and the
+recommendation (not yet acted on) is to do it one screen at a time with Shaun verifying each
+locally, given the real frontend/backend model mismatches Phase 2/3's research already surfaced
+(case ref format, priority/type casing, assignee-vs-assignedTo, the Test Plans dynamic-query gap).
+
+---
+
+## 2026-07-09 — `mvp-backend` scoping session
+
+Shaun's ask: stand up the real backend and convert the fresh UI's localStorage-driven functionality onto it — not a single vertical-slice validation, but full conversion ("Everything. Right now we have a lot of frontend functionality. We're aiming to convert it all to backend functionality at once.").
+
+**`CLAUDE.md` updated:** the "Phase: Frontend-only prototype" rule now scopes explicitly to "all branches except `mvp-backend`"; a new "Phase: Backend build (`mvp-backend` branch only)" section lists what's in/out of scope for this branch (see file). Claude's planning-only role is unchanged even for backend work.
+
+**Branch state confirmed:** `mvp-visual-overhaul` merged (`0e8ec98`). Branches already merged into `mvp-main`: `mvp-dashboard-metrics`, `mvp-test-plans`, `mvp-requirements-defects-slice`, `rel-001-manual-runs-audit`, `mvp-further-planning`. Only `mvp-custom-fields` remains open/unmerged (schema v14→v15) — explicitly **ignored for this branch** per Shaun ("Forgot mvp-custom-fields for now").
+
+**Prior art found in `/runs/api` — more built out than the docs implied, reuse rather than rebuild:**
+- `packages/db/schema.ts` (1,381 lines) — 21 Drizzle MySQL tables, already close to `ARCHITECTURE_BASELINE.md`'s 20-table target (organisations, users, projects, projectRoles, folders, testCases, testCaseSteps, testPlans, testPlanCases, testRuns, testRunCases, runCaseStepSnapshots, runStepResults, runAssignees, runDefectLinks, runExecutionComments, auditLog, recentViews, savedFilters, attachmentsMetadata).
+- `packages/db/src/rbac/assert-min-role.ts` — `assertMinProjectRole()` already implements the full role hierarchy + project-level override exactly per spec (`super_admin > admin > contributor > viewer`, effective role = max(global, project)).
+- `packages/db/services/TestRunService.ts` (992 lines) and `ExecutionService.ts` (270 lines) — real run-spawn snapshot transaction and case-result recording, both audited.
+- `packages/db/src/seed/index.ts` — seeds 6 real named users (Noel, Shaun, Monica, Nasir, Jamil, Arvindh — overlaps with the roadmap's "User Management" real-names ask) across 6 projects (CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway); CTMS has a plan (PLAN-001) with 4 cases.
+- `docker-compose.yml` already runs both `mysql` and `opensearch` containers locally.
+- `packages/db/src/opensearch/client.ts` — no-op stub only; no NextAuth dependency installed anywhere yet (checked `package.json` — auth is genuinely greenfield).
+
+**Missing (build order, roughly dependency-ordered):** auth/session (no NextAuth, no login wiring — current dev-only header hack `x-relay-user-id`) → `ProjectService`/`TestCaseService`/`TestPlanService`/`UserService`/`DashboardService`/`AuditService` (only Test Run/Execution services exist today) → API routes for every module beyond `/api/runs/*` → wiring each fresh screen off localStorage onto the real API, module by module → a seeded, explorable "live" demo project backed by real DB rows (not a template clone) → Admin panel wired to real `users`/`project_roles`.
+
+**Scope decisions locked in with Shaun:**
+- **Infra:** local only. Docker MySQL/OpenSearch, real API, auth. No AWS/Terraform/ECS/Aurora on this branch — that's a distinct later phase.
+- **Search:** defer real OpenSearch. Cmd+K and list search run on plain MySQL queries for now; the container + client stub stay as-is until a dedicated search-wiring pass.
+- **Admin panel:** in scope. Unify Users/Roles management onto the real `users`/`project_roles` tables — this also resolves two known roadmap issues (`mvp-role-management`'s disconnected static/dynamic role systems; `mvp-user-management`'s fake admin-panel names) as a side effect, worth flagging when that work is actually scoped.
+- **Custom Fields:** out of scope, don't touch.
+- **Demo data:** the "live demo project" roadmap item (`mvp-live-demo-project`, previously `[~draft]`) is effectively subsumed by this branch's own end-state requirement — a seeded, explorable demo project backed by real data. Don't run that draft separately; fold it into `mvp-backend`'s seeding work.
+- **Definition of done for this branch:** every fresh screen (Dashboard/Cases/Plans/Runs/Defects/Audit/Admin) reads/writes the real API; login/session gates the app; a seeded demo project is explorable without manual setup.
+
+**Not yet decided / next session:** how to break "convert everything at once" into actual numbered Cursor tasks (sequencing within the branch, checkpoint cadence, first task's exact boundary). No `docs/cursor-prompts/mvp-backend/` files exist yet — next planning session should turn this into `task-01...` following the project's normal pattern, likely starting from auth/session per `ARCHITECTURE_BASELINE.md` §10's own "Phase 1 — Foundation, do not skip or reorder."
+
+---
+
+## 2026-07-09 — `mvp-backend` sequencing session — task-01 drafted
+
+Turned last session's locked scope into an actual 8-task sequence and drafted task-01 in full. Prompts now live at `docs/cursor-prompts/mvp-backend/` (`_kickoff.md` + `task-01-foundation-auth-rbac.md`).
+
+**Sequencing confirmed with Shaun before drafting:** task-01 boundary = auth/session + RBAC middleware + User/Project API, exactly the `ARCHITECTURE_BASELINE.md` §10 Phase 1 boundary — locked in as originally proposed, no change.
+
+**Checkpoint cadence decided:** unlike `mvp-visual-overhaul` (always one task per Cursor session), this branch bundles small/low-risk tasks and keeps risky ones solo. task-01 (foundation), task-04 (Test Runs wiring — this branch's protected-UX-equivalent screen), task-07 (Admin RBAC unification), and task-08 (seeding + full regression + PR description) run solo. task-02+03 (Test Cases + Test Plans backend) and task-05+06 (Dashboard + Defects/Audit backend) are bundling candidates, same principle as the visual-overhaul task-03+05 experiment — actual bundling is a live per-session call, not locked upfront.
+
+**Full 8-task sequence** (table + detail in `_kickoff.md`): task-01 Foundation (auth/RBAC/User+Project API) → task-02 Test Cases backend → task-03 Test Plans backend → task-04 Test Runs wiring (protected) → task-05 Dashboard backend → task-06 Defects/Audit backend → task-07 Admin panel unification → task-08 seeded demo project + full regression sweep + PR description.
+
+**Auth approach decided with Shaun:** NextAuth.js + Credentials provider (per `ARCHITECTURE_BASELINE.md`'s primary recommendation) — Shaun noted IAM is the eventual real auth provider, this is an interim step. Given that, task-01 uses NextAuth's **JWT session strategy, not a DB adapter** — avoids standing up 3 new adapter-managed tables (`sessions`/`accounts`/`verification_tokens`) that would just get thrown away once IAM lands. This is a documented judgment call in task-01's Background, not silently assumed.
+
+**Seeding timing decided:** deferred to a later task (task-08), not bundled into task-01 — task-01 stays focused on the auth/RBAC/API plumbing; the explorable seeded demo project lands once Test Cases/Plans/Runs services+routes actually exist to act on it, so seeded data isn't stubbed and un-usable in the interim.
+
+**Task-01 concrete scope (full detail in the task file):**
+- `next-auth` (v4, Credentials provider) + `bcryptjs` (not native `bcrypt` — avoids native-module build issues across the Docker/local split) added as new deps; neither existed anywhere in the repo before this (confirmed via `pnpm-lock.yaml` grep).
+- Seed users (`packages/db/src/seed/insert.ts`) get real `passwordHash` values — all six share one local-dev password (`relay-dev-2026`), documented in a new README section.
+- New: `packages/db/src/auth/verify-credentials.ts`, `apps/web/src/lib/auth/auth-options.ts`, `apps/web/src/app/api/auth/[...nextauth]/route.ts`, `apps/web/src/lib/api/session.ts` (`resolveSessionActor` — a **new, separate** helper from the existing header-based `resolveActor()` in `auth.ts`, which this task does not touch), `apps/web/src/middleware.ts` (route-level session gate, explicitly excludes `/api/runs/*` and `/api/health`).
+- New services: `packages/db/services/UserService.ts`, `packages/db/services/ProjectService.ts`, both built directly on the existing `assertMinProjectRole()` in `packages/db/src/rbac/assert-min-role.ts` (reused, not reimplemented) — plus `/api/users/*` and `/api/projects/*` routes following the exact `/api/runs/*` route-handler shape (`resolveActor` → zod parse → service call → `jsonSuccess`/`handleRouteError`).
+- `LoginScreen.tsx` (already built presentationally on `mvp-visual-overhaul` Phase 2, never wired) gets a real submit handler calling NextAuth's `signIn('credentials', …)`; new top-level `/login` route; `/[projectKey]/login` now redirects to it (mirrors the existing `/[projectKey]/settings` → `/admin` redirect precedent from task-07 on the visual-overhaul branch); minimal sign-out affordance added to `FreshTopbar.tsx` (none existed anywhere before).
+
+**Deliberately supersedes a prior decision, flagged explicitly in the task file:** `mvp-visual-overhaul` Phase 2 decided the login page should be "a reachable route only… not a gate on app load." `mvp-backend`'s own definition of done requires login/session to gate the app, so task-01 reverses that specific call on purpose — the task's Documentation/QA-report instructions both call this out so it doesn't read as an accidental regression later.
+
+**`/api/runs/*` explicitly untouched in task-01** — stays on the `x-relay-user-id` header hack until task-04, which is scoped separately specifically because it's the branch's one protected-UX screen and deserves its own regression pass when its auth source changes.
+
+**Not yet drafted:** task-02 through task-08 remain at the `_kickoff.md` table level (scope + primary files only) — full per-file detail gets drafted when each is picked up, same pattern as `mvp-custom-fields`'s task-02/03 not yet being fleshed out beyond task-01.
+
+---
+
+## 2026-07-09 — Phase 1 post-commit fixes + seed user/role overhaul
+
+**Committed:** Phase 1 landed as `b430e50` (authored/committed as Shaun Sevume — confirmed this session's git config already matched his identity, so no override needed; see commit-identity rule in `CLAUDE.md`).
+
+**Bug found + fixed after commit:** Shaun reported `/login` CSS looked completely broken after getting the dev server running (separately, `next-auth/react` module-not-found was just a stale `pnpm install`, not a real bug). Root cause: `fresh.css` — a single global stylesheet, not scoped per-component — is only imported by `(app)/layout.tsx` and `admin/layout.tsx`. The new top-level `apps/web/src/app/login/page.tsx` (added in Phase 1, deliberately outside the `(app)` group since login has no project context) never imported it, so every `.login-*`/`.btn`/`.inp`/`.form-error` class rendered unstyled. Fixed by adding `import '@/fresh/styles/fresh.css'` directly to `login/page.tsx` — same pattern `admin/layout.tsx` already uses independently. Rebuilt clean.
+
+**Seed user/role overhaul (Shaun's ask, same session):** Asked to rename/expand seed users and assign Admin-panel roles (Owner/Administrator/Run Manager/Run Executor/Editor/Viewer). Two ambiguities surfaced and were resolved via clarifying questions:
+1. Those granular role names only exist in the frontend Admin mock model (`apps/web/src/fresh/data/rbac.ts`'s `AdminUserRole`) — the DB's `users.globalRole` enum only has 4 values (super_admin/admin/contributor/viewer). Shaun confirmed: update **both**.
+2. Arvindh Chandran was named but not assigned a role in the initial ask — confirmed **Editor**.
+
+**Discovered mid-task:** `apps/web/src/fresh/data/team-users.ts` already canonicalizes the exact 8-name roster (Noel Quadri, Shaun Sevume, Nasir Dipto, Monica Dayalani, Jamil Khan, Arvindh Chandran, Nadim Sharif, Syed Ahmed) as "the single source of truth for assignee/person names in the UI," with a `LEGACY_ASSIGNEE_MAP` already mapping old placeholder names (Marcus Webb, Priya Nair, James O'Sullivan, Aisha Rahman, Fatima Al-Amin, Alex Viewer) onto it — and `apps/web/src/fresh/data/seed.ts`'s demo case/run/defect/audit data already uses these 8 names throughout. This predates this session; it confirms the two systems that were *not* yet aligned were specifically the DB seed and the Admin mock panel, not the main fresh app.
+
+**DB seed (`packages/db/src/seed/`):** Added Nadim Sharif (`nadim.sharif@relay-dev.local`) and Syed Ahmed (`syed.ahmed@relay-dev.local`) as two new seed users (`ids.ts` gets `users.nadim`/`users.syed`). Changed Nasir Dipto's `globalRole` from `admin` → `contributor` (Run Executor) and Arvindh Chandran's from `viewer` → `contributor` (Editor) — both are real permission changes, not cosmetic, flagged here so they're not mistaken for a bug later. Full compression mapping (DB has no 1:1 equivalent for the 6 granular roles):
+
+| Person | Admin role | DB globalRole |
+|---|---|---|
+| Noel Quadri | Administrator | `super_admin` (unchanged — already satisfies "Administrator or above") |
+| Shaun Sevume | Administrator | `admin` (unchanged) |
+| Monica Dayalani | Editor | `contributor` (unchanged) |
+| Nasir Dipto | Run Executor | `contributor` (changed from `admin`) |
+| Jamil Khan | Run Executor | `contributor` (unchanged) |
+| Arvindh Chandran | Editor | `contributor` (changed from `viewer`) |
+| Nadim Sharif | Viewer | `viewer` (new) |
+| Syed Ahmed | Run Manager | `contributor` (new) |
+
+`README.md`'s "Local dev login" table updated with both columns side by side; `packages/db/src/seed/index.ts`'s console output updated to print both role systems per user.
+
+**Frontend Admin mock (`apps/web/src/fresh/data/admin-initial-settings.ts`):** Replaced all 9 non-"Demo User" fake mock identities (Alice Chen, Bob Smith, Carol Jones, David Park, Eva Martinez, Frank Liu, Grace Kim, Jordan Lee, "Internal Bot") with the 8 real team members and their assigned roles; "Demo User" (Owner) left untouched per Shaun's "keep as Demo User" instruction. Reassigned the 4 mock API keys that referenced the removed fake user IDs (`alice-dev`→`noel-dev`, `bob-ci`→`monica-ci`, `carol-sync`→`arvindh-sync`, `eva-export`→`syed-export`) rather than leaving them dangling. Renamed the 3 stale `byUser` references in the mock audit log (Alice Chen→Noel Quadri, Bob Smith→Monica Dayalani, Carol Jones→Arvindh Chandran) so the audit trail doesn't reference nonexistent users. Side effect worth flagging: the removed fake users demonstrated "Pending invite"/"Silent created"/"Disabled" statuses in the Admin Users screen — all 8 real people are now "Active," so that status-variety demo is gone unless restored separately later. `Project Administrator` (a 7th built-in role, project-scoped) has 0 assigned users now — still a valid selectable role, just unused in this mapping.
+
+Verified: `tsc --noEmit` clean for both packages, `pnpm build` succeeded (via the `/tmp/relay-verify` workaround) after this change too.
+
+---
+
+## 2026-07-09 — `mvp-backend` Phase 1 (Foundation) implemented ✅ — pending Shaun-local verification
+
+Implemented Phase 1 (auth/RBAC/User+Project API) in full per `docs/cursor-prompts/mvp-backend/task-01-foundation-auth-rbac.md`'s Parts A–F, directly (per the pivot below). Full file-level detail and exact state is in `docs/claude/mvp-backend/progress.md` — this entry is the short version.
+
+**What landed:**
+- Real login: NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables). All six seed users get a `passwordHash` (bcryptjs, cost 12), shared local-dev password `relay-dev-2026` (see `README.md`'s new "Local dev login" section).
+- `apps/web/src/middleware.ts` — new route-level session gate. Every page route and most API routes now require a valid session; `/login`, `/api/auth/*`, `/api/health`, and `/api/runs/*` (explicitly, deliberately) stay exempt. `/api/runs/*` still uses the legacy `x-relay-user-id` header — untouched, as scoped, pending a later phase.
+- `UserService`/`ProjectService` (`packages/db/services/`) + their routes (`/api/users/*`, `/api/projects/*`, `/api/projects/:id/roles`) — real session auth (`resolveSessionActor`, a new helper separate from the existing header-based `resolveActor()`) + real RBAC (global admin-or-above check for users; `assertMinProjectRole()` reused for project-role assignment). Not yet called by any fresh screen — that's later phase work (Admin panel unification, `ProjectSwitcher` wiring).
+- `LoginScreen.tsx` wired to real `signIn()`; new top-level `/login` route; `/:projectKey/login` now redirects there (mirrors the `/:projectKey/settings` → `/admin` precedent); new `UserMenu.tsx` top-bar sign-out affordance.
+- **Deliberately supersedes** `mvp-visual-overhaul` Phase 2's "login is a reachable route only, not a gate" decision — `mvp-backend`'s own definition of done requires this reversal; called out explicitly so it doesn't read as an accidental regression.
+
+**Documentation updated:** `README.md`, `docs/product/user-guide.md`, `docs/product/feature-flow.md`, `docs/_authoritative/AS_BUILT_SNAPSHOT.md`, `docs/_authoritative/FRONTEND_CONTRACTS.md` (new Login/User-API/Project-API contract sections) — all per the task spec's Documentation section.
+
+**Sandbox constraint discovered this session (documented in `progress.md` for future phases):** `pnpm install`/`build` cannot run directly against the mounted `Relay/` workspace folder — it's a FUSE mount with write-once-per-file semantics, and pnpm's temp-file churn hits `EPERM`. Worked around by `rsync`-ing to a `/tmp` scratch copy for verification only (real source edits still go through Edit/Write on the real path as normal). A related but separate constraint: the sandbox's network egress blocks `fonts.googleapis.com`, which fails `pnpm build` on `next/font/google` unless `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` is set for the verification build — confirmed via direct `curl` that this is a pre-existing sandbox limitation, unrelated to this diff.
+
+**Verified in-sandbox:** `tsc --noEmit` clean for `@relay/db` and `@relay/web`; full `pnpm build` succeeded (29 app routes + 9 API routes compiled and statically generated, 55.2 kB middleware chunk).
+
+**Not yet verified (needs Shaun, locally, against real Docker MySQL):** `pnpm db:seed` prints the new credential block; logged-out redirect works; login as `shaun.sevume@relay-dev.local` / `relay-dev-2026` lands on `/DP/dashboard`; sign-out works; `GET /api/users` 403s as viewer / 200s as super_admin; `POST /api/projects` 403s as contributor / 201s as admin; `/api/runs`/`/DP/testruns` unaffected.
+
+**Not yet committed** — waiting on the above local verification, then a commit-identity confirmation per `CLAUDE.md`'s commit-identity rule, before this lands as a real commit.
+
+**Next:** Shaun runs the local verification above and reports back; once confirmed, commit Phase 1 and move to Phase 2 (Test Cases backend) per `docs/claude/mvp-backend/plan.md`.
+
+---
+
+## 2026-07-09 — pivot to direct Claude implementation
+
+Shaun: "For this task of backend work, I want you (Claude) to do it, not Cursor... plan accordingly and write to files such that this can be worked on across multiple Claude chats if required."
+
+This reverses the project's global "Claude is a planning/prompt-drafting assistant, not an implementer" rule — but only for `mvp-backend`, and only because Shaun explicitly asked, which `CLAUDE.md`'s own role section already carves out as the one legitimate exception. Every other branch keeps the default Cursor-prompt-drafting role unchanged.
+
+**What changed:**
+- `CLAUDE.md`'s "Phase: Backend build" section rewritten: Claude implements this branch directly now, not Cursor. Added a pointer to `docs/claude/mvp-backend/` as the new session-continuity mechanism, and a new bullet in "Claude-specific files" pointing there. Added a bullet to "Cursor prompt organisation" flagging `mvp-backend` as the one exception to that whole section.
+- `docs/claude/mvp-backend/plan.md` (new) — durable plan: same 8-phase sequence as `docs/cursor-prompts/mvp-backend/_kickoff.md`, reframed for Claude-executed multi-session pacing instead of Cursor's per-session bundling model. Phase dependency column added (wasn't needed for the Cursor version since Cursor ran phases back-to-back in order anyway; matters more now that any phase could start in a fresh chat with only this file for context).
+- `docs/claude/mvp-backend/progress.md` (new) — the actual live-state file. Per-phase status table + Phase 1's Parts A–F broken into a checkbox checklist (all unchecked — no implementation code written yet) + a running session log. **This is the file to read first** on any future `mvp-backend` session; it's designed so a fresh Claude chat with zero memory of this conversation can see exactly what's done, what's next, and any open blocker, without re-deriving anything from chat history.
+- `docs/cursor-prompts/mvp-backend/_kickoff.md` and `task-01-foundation-auth-rbac.md` — both got a short banner marking them superseded *as Cursor prompts*. Their technical content (the phase table, and task-01's full Background/Parts A-F/Verification/Documentation/Out-of-scope spec) is unchanged and still the real spec Claude works from — not duplicated into the new files, just pointed to, to avoid maintaining two copies of a 25KB spec.
+
+**New constraint surfaced and documented (in `CLAUDE.md` and `plan.md`):** Claude's Cowork sandbox has Node but no Docker and no `pnpm` pre-installed — it cannot reach the local MySQL/OpenSearch containers `docker-compose.yml` defines. Split going forward: Claude verifies what it can in-sandbox (installs, `pnpm build`/typecheck without a live DB); anything needing a real DB connection (`pnpm dev`, login flow, seed script, API responses, the mandatory QA smoke test) needs Shaun to run locally and report back. `progress.md`'s checklist has separate "Claude sandbox" and "Shaun local" verification lines per phase for exactly this reason — don't mark a phase done with only one of the two checked, unless Shaun explicitly waives the local check.
+
+**Not yet done:** no implementation code written. Next session starts Phase 1 (auth/RBAC/User+Project API), Part A (dependencies/env vars) — see `docs/claude/mvp-backend/progress.md`'s checklist for the exact starting point.
 
 ---
 

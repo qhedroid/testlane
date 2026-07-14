@@ -33,13 +33,14 @@ export function CreateRunModal({ open, onClose }: CreateRunModalProps) {
 
   function handleSubmit() {
     if (!canSubmit) return
-    const { runKey } = createRun({
+    void createRun({
       name: name.trim(),
       description: description.trim() || undefined,
       caseIds: [],
+    }).then((result) => {
+      if (result) router.push(testRunPath(activeProject.key, result.runKey))
     })
     handleClose()
-    router.push(testRunPath(activeProject.key, runKey))
   }
 
   return (

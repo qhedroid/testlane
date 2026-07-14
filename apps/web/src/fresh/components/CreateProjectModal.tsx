@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useFresh } from '../data/FreshProvider'
 import { normalizeProjectKeyInput, validateProjectKey } from '../lib/project-keys'
 import { projectPath } from '../lib/project-routes'
+import { createRealProject, RelayApiError } from '@/lib/relay/project-client'
 
 interface CreateProjectModalProps {
   open: boolean
@@ -12,12 +13,19 @@ interface CreateProjectModalProps {
   redirectOnCreate?: boolean
 }
 
+// Calls the real POST /api/projects (mvp-backend "wire everything" session —
+// replaces the old local-only createProject() dispatch). The Key field here
+// doubles as the real project's `slug` (lowercased) and, uppercased, as the
+// fresh app's routing key — same value, two representations, per
+// project-routes.ts's convention.
 export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: CreateProjectModalProps) {
   const router = useRouter()
-  const { createProject, isProjectKeyUnique } = useFresh()
+  const { isProjectKeyUnique } = useFresh()
   const [name, setName] = useState('')
   const [key, setKey] = useState('')
   const [description, setDescription] = useState('')
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const keyError = useMemo(() => {
     const formatError = validateProjectKey(key)
@@ -27,7 +35,7 @@ export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: C
   }, [key, isProjectKeyUnique])
 
   const nameError = !name.trim() ? 'Name is required' : null
-  const canSubmit = !nameError && !keyError && !!name.trim() && !!key.trim()
+  const canSubmit = !nameError && !keyError && !!name.trim() && !!key.trim() && !submitting
 
   if (!open) return null
 
@@ -35,6 +43,8 @@ export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: C
     setName('')
     setKey('')
     setDescription('')
+    setSubmitError(null)
+    setSubmitting(false)
   }
 
   function handleClose() {
@@ -42,19 +52,27 @@ export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: C
     onClose()
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!canSubmit) return
     const trimmedName = name.trim()
     const trimmedKey = key.trim().toUpperCase()
     const trimmedDescription = description.trim()
-    createProject({
-      name: trimmedName,
-      key: trimmedKey,
-      description: trimmedDescription || undefined,
-    })
-    handleClose()
-    if (redirectOnCreate) {
-      router.push(projectPath(trimmedKey, 'dashboard'))
+    setSubmitError(null)
+    setSubmitting(true)
+    try {
+      await createRealProject({
+        slug: trimmedKey.toLowerCase(),
+        name: trimmedName,
+        description: trimmedDescription || undefined,
+      })
+      // Full reload (not router.push) so FreshProvider remounts and its
+      // REGISTER_REAL_PROJECTS effect re-fetches /api/projects, picking up
+      // the project we just created.
+      const target = redirectOnCreate ? projectPath(trimmedKey, 'dashboard') : window.location.pathname
+      window.location.assign(target)
+    } catch (err) {
+      setSubmitError(err instanceof RelayApiError ? err.message : 'Failed to create project.')
+      setSubmitting(false)
     }
   }
 
@@ -99,11 +117,12 @@ export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: C
               placeholder="Optional workspace description"
             />
           </div>
+          {submitError ? <span className="form-error">{submitError}</span> : null}
         </div>
         <div className="create-foot">
           <button type="button" className="btn" onClick={handleClose}>Cancel</button>
           <button type="button" className="btn btn-p" disabled={!canSubmit} onClick={handleSubmit}>
-            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create project
+            <i className="ti ti-plus" style={{ fontSize: 12 }} /> {submitting ? 'Creating…' : 'Create project'}
           </button>
         </div>
       </div>

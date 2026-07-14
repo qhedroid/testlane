@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
 import type { AdminCustomField, Case, CaseExecution, CasePriority, CaseStep, DemoRun, ExecStatus, Folder } from '../data/demo-model'
 import {
@@ -483,7 +482,7 @@ export function CasesScreen() {
   function addQuickCase(title: string) {
     const trimmed = title.trim()
     if (!trimmed) return
-    addCase({
+    void addCase({
       title: trimmed,
       folderId: targetFolderId,
       priority: 'Medium',
@@ -533,7 +532,9 @@ export function CasesScreen() {
       return
     }
     const parentId = newFolderDraft.parentId
-    const id = addFolder(trimmed, parentId)
+    void addFolder(trimmed, parentId).then((id) => {
+      if (id) selectFolder(id)
+    })
     setNewFolderDraft(null)
     if (parentId) {
       const ancestors = folderAncestorIds(activeFolders, parentId)
@@ -544,7 +545,6 @@ export function CasesScreen() {
         return next
       })
     }
-    selectFolder(id)
   }
 
   function cancelNewFolder() {
@@ -569,9 +569,10 @@ export function CasesScreen() {
       createRunModal.scope === 'folder'
         ? folderCases.map((c) => c.id)
         : undefined
-    const { runKey } = createRun({ name: createRunModal.name.trim(), caseIds })
+    void createRun({ name: createRunModal.name.trim(), caseIds }).then((result) => {
+      if (result) router.push(testRunPath(activeProject.key, result.runKey))
+    })
     setCreateRunModal(null)
-    router.push(testRunPath(activeProject.key, runKey))
   }
 
   return (
@@ -583,7 +584,6 @@ export function CasesScreen() {
           { label: 'Test cases' },
         ]}
       />
-      <PrototypeBanner />
       <div className={`tc-lay${detailMaximized ? ' dp-maximized' : ''}`}>
         <div className="suite-tree">
           <div className="st-hd">
@@ -1114,8 +1114,9 @@ export function CasesScreen() {
           >
             <button type="button" className="ctx-item" onClick={() => {
               const { id: _id, updatedAt: _updatedAt, projectId: _projectId, ...copyData } = menuCase
-              const copyId = addCase(copyData)
-              setDetailCaseId(copyId)
+              void addCase(copyData).then((copyId) => {
+                if (copyId) setDetailCaseId(copyId)
+              })
               setContextMenu(null)
             }}>
               <i className="ti ti-copy" /> Duplicate

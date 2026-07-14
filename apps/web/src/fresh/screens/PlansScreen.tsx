@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { RunDonut } from '../components/RunDonut'
 import { RunStatusInfographic } from '../components/RunStatusInfographic'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
 import type {
@@ -518,8 +517,9 @@ export function PlansScreen() {
 
   const handleDuplicatePlan = useCallback(
     (planId: string) => {
-      const result = duplicatePlan(planId)
-      if (result) router.push(planPath(activeProject.key, result.planKey))
+      void duplicatePlan(planId).then((result) => {
+        if (result) router.push(planPath(activeProject.key, result.planKey))
+      })
     },
     [duplicatePlan, router, activeProject.key],
   )
@@ -547,11 +547,13 @@ export function PlansScreen() {
   const handleCreatePlan = useCallback(() => {
     const title = createPlanTitle.trim()
     if (!title) return
-    const { planKey } = addPlan(title, createPlanDesc.trim() || undefined)
-    setCreatePlanTitle('')
-    setCreatePlanDesc('')
-    setCreatePlanOpen(false)
-    router.push(planPath(activeProject.key, planKey))
+    void addPlan(title, createPlanDesc.trim() || undefined).then((result) => {
+      if (!result) return
+      setCreatePlanTitle('')
+      setCreatePlanDesc('')
+      setCreatePlanOpen(false)
+      router.push(planPath(activeProject.key, result.planKey))
+    })
   }, [createPlanTitle, createPlanDesc, addPlan, router, activeProject.key])
 
   const handleEditPlan = useCallback(() => {
@@ -565,15 +567,16 @@ export function PlansScreen() {
 
   const handleSpawnRun = useCallback(() => {
     if (!selectedPlan || !spawnRunName.trim()) return
-    const result = spawnRunFromPlan(
+    void spawnRunFromPlan(
       selectedPlan.id,
       spawnRunName.trim(),
       spawnRunDesc.trim() || undefined,
-    )
-    if (result) {
-      setSpawnRunOpen(false)
-      router.push(testRunPath(activeProject.key, result.runKey))
-    }
+    ).then((result) => {
+      if (result) {
+        setSpawnRunOpen(false)
+        router.push(testRunPath(activeProject.key, result.runKey))
+      }
+    })
   }, [selectedPlan, spawnRunName, spawnRunDesc, spawnRunFromPlan, router, activeProject.key])
 
   return (
@@ -587,7 +590,6 @@ export function PlansScreen() {
         searchPlaceholder="Search plans…"
         searchWidth={200}
       />
-      <PrototypeBanner />
 
       <div className={`pl-lay${planMaximized ? ' pl-maximized' : ''}`}>
         <div className="pl-list-pane">

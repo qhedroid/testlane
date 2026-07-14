@@ -5,6 +5,7 @@ import { type ReactNode } from 'react'
 import { useFreshUI } from '../hooks/useFreshUI'
 import { ProjectSwitcher } from './ProjectSwitcher'
 import { TopbarGlobalActions } from './TopbarGlobalActions'
+import { UserMenu } from './UserMenu'
 
 export interface Breadcrumb {
   label: string
@@ -67,6 +68,7 @@ export function FreshTopbar({
           </button>
         ) : null}
         <TopbarGlobalActions />
+        <UserMenu />
         {actions}
       </div>
     </div>

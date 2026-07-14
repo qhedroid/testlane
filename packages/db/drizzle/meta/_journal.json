@@ -15,6 +15,55 @@
       "when": 1779390000000,
       "tag": "0001_capability_rbac_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1783900000000,
+      "tag": "0002_run_description",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1783900100000,
+      "tag": "0003_run_case_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1783900200000,
+      "tag": "0004_case_comments",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1783900300000,
+      "tag": "0005_requirements",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1783900400000,
+      "tag": "0006_defects",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1783900500000,
+      "tag": "0007_plan_query_definition",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1783900600000,
+      "tag": "0008_admin_roles_api_keys",
+      "breakpoints": true
     }
   ]
 }
