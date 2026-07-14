@@ -1,7 +1,7 @@
 import {
   deleteRoleDefinition,
   updateRoleDefinition,
-} from '@relay/db/services/admin-settings'
+} from '@testlane/db/services/admin-settings'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { updateRoleDefinitionBodySchema } from '@/lib/api/schemas'

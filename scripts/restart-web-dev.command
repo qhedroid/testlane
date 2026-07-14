@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Double-click in Finder to restart the Relay web dev server.
+# Double-click in Finder to restart the Testlane web dev server.
 # Stops anything on :3000, clears .next, runs pnpm dev, then opens Chrome with a
-# fresh demo state (?relay-reset=1 clears relay-demo-v2 localStorage).
+# fresh demo state (?relay-reset=1 clears testlane-demo-v2 localStorage).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,7 +21,7 @@ fi
 
 cd "${ROOT}"
 
-echo "Relay dev restart — ${ROOT}"
+echo "Testlane dev restart — ${ROOT}"
 bash "${ROOT}/scripts/reset-web-dev.sh"
 echo ""
 echo "Starting dev server…"

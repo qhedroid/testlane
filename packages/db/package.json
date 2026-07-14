@@ -1,5 +1,5 @@
 {
-  "name": "@relay/db",
+  "name": "@testlane/db",
   "version": "0.0.0",
   "private": true,
   "type": "module",

@@ -1,4 +1,4 @@
-import { getCase, updateCase, archiveCase } from '@relay/db/services/test-case'
+import { getCase, updateCase, archiveCase } from '@testlane/db/services/test-case'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { updateCaseBodySchema } from '@/lib/api/schemas'

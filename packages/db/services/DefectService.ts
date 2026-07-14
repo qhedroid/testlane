@@ -1,6 +1,6 @@
 /**
  * DefectService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Defect links (Phase 6 of mvp-backend) + defect entities (new-tables
  * candidate, Phase E). Two concerns live here:

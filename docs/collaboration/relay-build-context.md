@@ -1,22 +1,22 @@
 > **STALE / SUPERSEDED** — This document is no longer maintained. Use [`docs/_authoritative/AS_BUILT_SNAPSHOT.md`](../_authoritative/AS_BUILT_SNAPSHOT.md) and [`docs/_authoritative/PROJECT_CONTEXT.md`](../_authoritative/PROJECT_CONTEXT.md) instead.
 
-# Relay — build context (forward to AI / collaborators)
+# Testlane — build context (forward to AI / collaborators)
 
-**Purpose:** Single reference for continuing Relay development without verbal handover. Paste or attach this file when working with ChatGPT, Cursor, or a new collaborator.
+**Purpose:** Single reference for continuing Testlane development without verbal handover. Paste or attach this file when working with ChatGPT, Cursor, or a new collaborator.
 
-**Last updated:** May 2026  
-**Repo:** https://github.com/qhedroid/Relay.git (private)  
+**Last updated:** May 2026
+**Repo:** https://github.com/qhedroid/testlane
 **Owner:** qhedroid
 
 ---
 
-## 1. What Relay is
+## 1. What Testlane is
 
-Relay is a **QA test execution platform** focused on Test Runs and execution workflows. It is intended to replace generic tools (TestRail/Testiny) for teams working across enterprise product modules (CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway).
+Testlane is a **QA test execution platform** focused on Test Runs and execution workflows. It is intended to replace generic tools (TestRail/Testiny) for teams working across enterprise product modules (CTMS, eTMF, Viewer, SSO/IAM, Reporting, API Gateway).
 
 **Current reality:** Local-dev MVP only. Not production-ready. No real login. MySQL is real. OpenSearch container runs but the app does not use it yet.
 
-**UX source of truth:** `mockup/Relay_Prototype_v1.2.html` (open in browser, no build). The running Next.js app is the implementation truth for what actually exists today.
+**UX source of truth:** `mockup/Testlane_Prototype_v1.2.html` (open in browser, no build). The running Next.js app is the implementation truth for what actually exists today.
 
 ---
 
@@ -65,7 +65,7 @@ relay/
 │   ├── product/              # UX philosophy, design system
 │   ├── implementation/     # current-state.md, api-contracts.md
 │   └── collaboration/      # onboarding, working agreement, this file
-├── mockup/Relay_Prototype_v1.2.html
+├── mockup/Testlane_Prototype_v1.2.html
 └── docker-compose.yml
 ```
 
@@ -119,7 +119,7 @@ Full contract: `docs/implementation/api-contracts.md`
 - Client-side filters: All, Not run, Passed, Failed, Blocked, Skipped
 - Client-side search: case ref, title, assignee name, suite/folder
 - Viewer read-only when `NEXT_PUBLIC_RELAY_USER_ID` = seed viewer ULID
-- Relay shell: navy sidebar, topbar, placeholder nav links
+- Testlane shell: navy sidebar, topbar, placeholder nav links
 
 **Key components:** `RunsScreen.tsx`, `CaseListPane.tsx`, `CaseDetailPanel.tsx`, `RunsAppShell.tsx`, `run-case-utils.ts`
 
@@ -146,8 +146,8 @@ Header for API calls: `x-relay-user-id: <ULID>`
 ## 8. Local setup and validation
 
 ```bash
-git clone https://github.com/qhedroid/Relay.git
-cd Relay
+git clone https://github.com/qhedroid/testlane.git
+cd Testlane
 pnpm install
 cp .env.example .env
 pnpm docker:up
@@ -192,7 +192,7 @@ pnpm db:validate-update-case-result
 - Run seal/archive from UI
 - Keyboard shortcuts, resizable panes
 - Production deployment, workers, notifications
-- Do not edit `mockup/Relay_Prototype_v1.2.html` unless explicitly asked
+- Do not edit `mockup/Testlane_Prototype_v1.2.html` unless explicitly asked
 
 ---
 
@@ -200,13 +200,13 @@ pnpm db:validate-update-case-result
 
 | Issue | Title | Priority | Status |
 |-------|-------|----------|--------|
-| [#1](https://github.com/qhedroid/Relay/issues/1) | REL-001 Manual UX audit of /runs | p0 | Open |
-| [#2](https://github.com/qhedroid/Relay/issues/2) | REL-002 Resolve duplicate result controls | p0 | Open |
-| [#3](https://github.com/qhedroid/Relay/issues/3) | REL-003 Improve loading, empty, and error states | p0 | Open |
-| [#4](https://github.com/qhedroid/Relay/issues/4) | REL-004 Confirm RBAC/viewer mode UX | p0 | Open |
-| [#5](https://github.com/qhedroid/Relay/issues/5) | REL-005 README and collaborator setup | p1 | **Closed** (done in `ae9c068`) |
-| [#6](https://github.com/qhedroid/Relay/issues/6) | REL-006 Add v0.1 readiness checklist | p1 | Open |
-| [#7](https://github.com/qhedroid/Relay/issues/7) | REL-007 Tag execution checkpoint | p1 | Open |
+| [#1](https://github.com/qhedroid/testlane/issues/1) | REL-001 Manual UX audit of /runs | p0 | Open |
+| [#2](https://github.com/qhedroid/testlane/issues/2) | REL-002 Resolve duplicate result controls | p0 | Open |
+| [#3](https://github.com/qhedroid/testlane/issues/3) | REL-003 Improve loading, empty, and error states | p0 | Open |
+| [#4](https://github.com/qhedroid/testlane/issues/4) | REL-004 Confirm RBAC/viewer mode UX | p0 | Open |
+| [#5](https://github.com/qhedroid/testlane/issues/5) | REL-005 README and collaborator setup | p1 | **Closed** (done in `ae9c068`) |
+| [#6](https://github.com/qhedroid/testlane/issues/6) | REL-006 Add v0.1 readiness checklist | p1 | Open |
+| [#7](https://github.com/qhedroid/testlane/issues/7) | REL-007 Tag execution checkpoint | p1 | Open |
 
 **Labels:** `p0`, `p1`, `p2`, `bug`, `feature`, `ux`, `docs`, `chore`, `v0.1`
 
@@ -236,16 +236,16 @@ pnpm db:validate-update-case-result
 | `docs/collaboration/getting-started.md` | Troubleshooting |
 | `docs/collaboration/working-agreement.md` | Branches and PRs |
 | `docs/architecture/relay-architecture-baseline.md` | Full architecture |
-| `mockup/Relay_Prototype_v1.2.html` | UX reference |
+| `mockup/Testlane_Prototype_v1.2.html` | UX reference |
 
 ---
 
 ## 13. ChatGPT / AI assistant prompt (copy-paste)
 
 ```
-You are helping build Relay, a local-dev QA execution platform (Next.js 15 + Drizzle + MySQL).
+You are helping build Testlane, a local-dev QA execution platform (Next.js 15 + Drizzle + MySQL).
 
-Repo: https://github.com/qhedroid/Relay
+Repo: https://github.com/qhedroid/testlane
 Current focus: v0.1 Execution Readiness — polish /runs, not new product surfaces.
 
 Rules:
@@ -258,7 +258,7 @@ Rules:
 What exists: three-pane /runs (run list | case list with filters | case detail with status + comments).
 Latest commits: 8f84e3a (execution workspace), ae9c068 (onboarding docs).
 
-Open tickets: GitHub issues REL-001 through REL-007 on qhedroid/Relay.
+Open tickets: GitHub issues REL-001 through REL-007 on qhedroid/testlane.
 Refer to docs/collaboration/relay-build-context.md and docs/implementation/api-contracts.md for detail.
 ```
 

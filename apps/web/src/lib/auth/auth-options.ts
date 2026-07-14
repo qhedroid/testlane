@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { verifyCredentials } from '@relay/db/auth/verify-credentials'
+import { verifyCredentials } from '@testlane/db/auth/verify-credentials'
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },

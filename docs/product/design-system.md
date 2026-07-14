@@ -1,10 +1,10 @@
-# Design system — Relay (Compass reskin)
+# Design system — Testlane (Compass reskin)
 
-Relay uses the **Compass (TransPerfect)** visual system. Tokens live in `apps/web/src/fresh/styles/fresh.css` (`:root`). The app is **light-mode only** (`color-scheme: light`).
+Testlane uses the **Compass (TransPerfect)** visual system. Tokens live in `apps/web/src/fresh/styles/fresh.css` (`:root`). The app is **light-mode only** (`color-scheme: light`).
 
 ## Brand
 
-**Name:** Relay (unchanged — product name is not rebranded)
+**Name:** Testlane (unchanged — product name is not rebranded)
 
 **Mark:** Two staggered chevrons with a filled dot (execution handoff). Sidebar wordmark sits on TransPerfect Dark Blue.
 

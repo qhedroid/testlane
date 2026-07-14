@@ -1,14 +1,14 @@
 # Getting started (collaborators)
 
-Practical steps to clone Relay, run it locally, and confirm everything works before you change anything.
+Practical steps to clone Testlane, run it locally, and confirm everything works before you change anything.
 
 ---
 
 ## 1. Clone and install
 
 ```bash
-git clone https://github.com/qhedroid/Relay.git
-cd Relay
+git clone https://github.com/qhedroid/testlane.git
+cd Testlane
 pnpm install
 ```
 

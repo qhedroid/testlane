@@ -1,5 +1,5 @@
 /**
- * Relay — Drizzle ORM schema (MySQL dialect)
+ * Testlane — Drizzle ORM schema (MySQL dialect)
  * Canonical 20-table model v1.0
  *
  * Dependencies:
@@ -1003,7 +1003,7 @@ export const runAssignees = mysqlTable(
 // 15. run_defect_links
 //     External defect IDs linked to a specific case execution within a run.
 //     defect_ref stores the external ID as-is (e.g. "TI-4419", "JIRA-123").
-//     Relay does not manage the defect lifecycle — it stores the reference only.
+//     Testlane does not manage the defect lifecycle — it stores the reference only.
 //
 //     Soft-delete: unlinked_at is set when a defect is unlinked.
 //     Hard-delete is not used so the link history is preserved in audit_log.
@@ -1337,7 +1337,7 @@ export const attachmentsMetadata = mysqlTable(
 //
 //     `permissions` is a JSON boolean map keyed by the frontend's PermissionKey
 //     union (apps/web/src/fresh/data/rbac.ts — 16 keys like 'viewTestCases').
-//     Stored as Record<string, boolean> here to avoid coupling @relay/db to the
+//     Stored as Record<string, boolean> here to avoid coupling @testlane/db to the
 //     web package's type; admin-role-client.ts casts it back to RolePermissions.
 //     This is the same accepted frontend-shape coupling tradeoff as Phase F's
 //     test_plans.query_definition. AdminRole.userCount is intentionally NOT

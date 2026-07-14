@@ -1,6 +1,6 @@
 /**
  * TestPlanService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Test Plans (Phase 3 of mvp-backend). Modeled on TestCaseService.ts's shape
  * (assertMinProjectRole() for RBAC, a typed XxxServiceError, ref_counters-based

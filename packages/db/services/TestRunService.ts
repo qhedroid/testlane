@@ -1,6 +1,6 @@
 /**
  * TestRunService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Responsible for:
  *   - Spawning test runs from test plans (createRun)
@@ -9,7 +9,7 @@
  *     not a general-purpose editor. Case membership is immutable after spawn
  *     by design — see test_run_cases snapshot invariants in schema.ts.)
  *
- * Dependencies (monorepo @relay/db package):
+ * Dependencies (monorepo @testlane/db package):
  *   db             — packages/db/src/index.ts
  *   opensearch     — packages/db/src/opensearch/client.ts (stub locally)
  *   createId       — packages/db/src/utils/id.ts
@@ -547,7 +547,7 @@ type StepRow = {
 /**
  * Spawn a new test run from a test plan.
  *
- * This is the most complex write operation in Relay. It runs in three phases:
+ * This is the most complex write operation in Testlane. It runs in three phases:
  *
  * PHASE 1 — Pre-validation (reads only, no transaction):
  *   RBAC check, plan load, case resolution, case + step load, assignee check.

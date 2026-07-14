@@ -1,4 +1,4 @@
-import { linkDefect, listDefectLinks } from '@relay/db/services/defect'
+import { linkDefect, listDefectLinks } from '@testlane/db/services/defect'
 import { resolveActor } from '@/lib/api/auth'
 import { handleRouteError } from '@/lib/api/errors'
 import { linkDefectBodySchema, listDefectLinksQuerySchema } from '@/lib/api/schemas'

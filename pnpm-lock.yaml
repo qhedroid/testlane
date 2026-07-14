@@ -13,7 +13,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@relay/db':
+      '@testlane/db':
         specifier: workspace:*
         version: link:../../packages/db
       bcryptjs:

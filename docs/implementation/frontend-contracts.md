@@ -1,4 +1,4 @@
-# Relay — Frontend screen contracts
+# Testlane — Frontend screen contracts
 
 *Branch: `demo/prototype-parity`. Companion: `docs/collaboration/relay-agent-context.md`.*
 

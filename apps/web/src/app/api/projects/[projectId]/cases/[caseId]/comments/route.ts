@@ -1,4 +1,4 @@
-import { addCaseComment } from '@relay/db/services/test-case'
+import { addCaseComment } from '@testlane/db/services/test-case'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { createCaseCommentBodySchema } from '@/lib/api/schemas'

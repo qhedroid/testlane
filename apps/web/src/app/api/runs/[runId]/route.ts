@@ -1,5 +1,5 @@
-import { getRunDetail } from '@relay/db/services/run-read'
-import { updateRun } from '@relay/db/services/test-run'
+import { getRunDetail } from '@testlane/db/services/run-read'
+import { updateRun } from '@testlane/db/services/test-run'
 import { resolveActor } from '@/lib/api/auth'
 import { handleRouteError } from '@/lib/api/errors'
 import { getRunDetailQuerySchema, updateRunBodySchema } from '@/lib/api/schemas'

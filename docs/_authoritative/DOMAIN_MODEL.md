@@ -2,7 +2,7 @@
 
 *Branch: `demo/contract-aware-prototype` · June 2026*
 
-Relay is **multi-project**: a **project** is the workspace boundary. Folders, test cases, plans, and runs belong to exactly one project. The UI may say "module" (CTMS, eTMF) but the canonical term is **project**.
+Testlane is **multi-project**: a **project** is the workspace boundary. Folders, test cases, plans, and runs belong to exactly one project. The UI may say "module" (CTMS, eTMF) but the canonical term is **project**.
 
 This doc covers:
 1. **Target invariants** (backend schema — backend-phase reference)
@@ -67,7 +67,7 @@ Roles (capability, not job title): `super_admin` > `admin` > `contributor` > `vi
 
 ## Prototype model (FRESH / localStorage)
 
-State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`relay-demo-v2`, `schemaVersion: 14`).
+State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`testlane-demo-v2`, `schemaVersion: 14`).
 
 | Entity | Prototype type | Notes |
 |--------|----------------|-------|
@@ -79,7 +79,7 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 | **Execution** | `CaseExecution { status, stepResults, defects[], assignee, resultNotes?, testedAt?, testedBy? }` | `defects[]` holds local defect entity ids or legacy external keys (e.g. `TI-4419`). |
 | **Requirement** | `Requirement { id, requirementKey, projectId, title, description?, status, source: 'Local', createdAt }` in `requirementsById` | Linked to cases via `Case.requirementIds[]`. Create/link on Test Cases; view-only on Test Runs. |
 | **Defect** | `Defect { id, defectKey, projectId, title, description?, status, source: 'Local', createdAt }` in `defectsById` | Create/link on Test Runs (Failed/Blocked, unsealed); view-only on Test Cases; listed in Defects module. |
-| **AdminSettings** | `AdminSettings` on `DemoState.adminSettings` | Global org admin panel state (profile, account, organization, API keys, users, roles, custom fields, automation, audit log). Persisted in `relay-demo-v2`. Seed: `admin-initial-settings.ts`. Mutations via `admin/*` actions in `FreshProvider`; audit log auto-appended on data mutations. |
+| **AdminSettings** | `AdminSettings` on `DemoState.adminSettings` | Global org admin panel state (profile, account, organization, API keys, users, roles, custom fields, automation, audit log). Persisted in `testlane-demo-v2`. Seed: `admin-initial-settings.ts`. Mutations via `admin/*` actions in `FreshProvider`; audit log auto-appended on data mutations. |
 
 ### AdminSettings structure (prototype)
 
@@ -99,7 +99,7 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 
 1. **Multi-project isolation** — folders, cases, and runs carry `projectId`. Selectors (`listActiveProject*`) and `FreshProvider` scope `/cases` and `/testruns` to `activeProjectId`.
 2. **Key-based routing** — canonical URLs are `/:projectKey/:module` (e.g. `/DP/dashboard`, `/CTMS/testruns`). `ProjectRouteSync` sets `activeProjectId` from URL key; switcher navigates to same module under new key. Legacy unprefixed paths (`/runs`, `/cases`, …) redirect client-side to active project's prefixed path.
-3. **Active project persistence** — `activeProjectId`, `currentRunIdByProject`, `nextRunNumByProject`, and `nextCaseNumByProject` survive reload via `relay-demo-v2`. `nextCaseNumByProject` increments on each `ADD_CASE` (mirrors `nextRunNumByProject` for runs).
+3. **Active project persistence** — `activeProjectId`, `currentRunIdByProject`, `nextRunNumByProject`, and `nextCaseNumByProject` survive reload via `testlane-demo-v2`. `nextCaseNumByProject` increments on each `ADD_CASE` (mirrors `nextRunNumByProject` for runs).
 4. **Run URL routing** — selected run reflected at `/:projectKey/testruns/tr/:runKey` (5-digit `runKey`). No segment when no run selected. Invalid key → redirect to `/:projectKey/testruns`.
 5. **Project keys** — unique across `projectsById`; stored uppercase; validated on create (`[A-Z0-9_-]`).
 6. **Project delete** — **cascade delete**: removing a project deletes its folders, cases, and runs. If the active project is deleted, the store activates another project or creates `"Demo Project"` / `DP` when none remain.

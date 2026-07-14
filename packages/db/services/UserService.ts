@@ -1,6 +1,6 @@
 /**
  * UserService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * User listing/creation/update, gated at the global-role level (admin+).
  * There is no per-project scope for a user list — that's ProjectService's

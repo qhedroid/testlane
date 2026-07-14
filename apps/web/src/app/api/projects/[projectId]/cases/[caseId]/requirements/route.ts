@@ -1,4 +1,4 @@
-import { linkRequirementToCase } from '@relay/db/services/requirement'
+import { linkRequirementToCase } from '@testlane/db/services/requirement'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { linkRequirementBodySchema } from '@/lib/api/schemas'

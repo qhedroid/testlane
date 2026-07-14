@@ -1,7 +1,7 @@
-# Relay — Architecture Consolidation Baseline
+# Testlane — Architecture Consolidation Baseline
 **Version 1.0 · May 2026 · Implementation Planning**
 
-This document is the canonical architecture baseline for Relay v1. It supersedes all prior partial specs, notes, and prototype assumptions. All implementation work should treat this as the single source of truth for scope, infrastructure, schema, and service design.
+This document is the canonical architecture baseline for Testlane v1. It supersedes all prior partial specs, notes, and prototype assumptions. All implementation work should treat this as the single source of truth for scope, infrastructure, schema, and service design.
 
 ---
 
@@ -15,7 +15,7 @@ All five source files were read in full:
 | `changelog.md` | Aligned. v1.2 correctly removed PostgreSQL and Meilisearch references. All docs now consistent. |
 | `ux-philosophy.md` | Aligned with one discrepancy (see below). Retained in full. |
 | `design-system.md` | Aligned. All tokens and component patterns confirmed. |
-| `Relay_Prototype_v1_2.html` | Primary source of truth for UX behaviour. One discrepancy with ux-philosophy.md confirmed and resolved. |
+| `Testlane_Prototype_v1_2.html` | Primary source of truth for UX behaviour. One discrepancy with ux-philosophy.md confirmed and resolved. |
 
 ### Discrepancies Resolved
 
@@ -35,7 +35,7 @@ All five source files were read in full:
 
 ## 2. Final MVP Scope
 
-Relay v1 MVP covers exactly the following. Nothing else.
+Testlane v1 MVP covers exactly the following. Nothing else.
 
 ### In Scope
 
@@ -125,7 +125,7 @@ The following is the canonical UX philosophy. It is preserved in full from `ux-p
 - **Audit by default.** No opt-in. Every mutation is logged.
 - **Execution ordering.** Cases in runs ordered by severity first (CRIT → HIGH → MED → LOW), then by status (Fail → Blocked → Not run → Pass). Surfaces highest-priority work at top.
 
-### What Relay Is Not
+### What Testlane Is Not
 
 - Not a project management tool
 - Not a defect lifecycle tracker
@@ -632,7 +632,7 @@ Use `relay_standard` at index time, `relay_search` at query time (no stop word r
 
 ## 8. RBAC Structure
 
-Relay uses **platform-level capability roles only**. Business or job titles (e.g. QA Lead, QA Manager, Automation Engineer) must not appear as RBAC enums. Those belong in user profile metadata, organisational hierarchy, or team structures.
+Testlane uses **platform-level capability roles only**. Business or job titles (e.g. QA Lead, QA Manager, Automation Engineer) must not appear as RBAC enums. Those belong in user profile metadata, organisational hierarchy, or team structures.
 
 ### Approved System Roles
 
@@ -777,7 +777,7 @@ relay/
 │       └── ADR-003-opensearch-sync-strategy.md
 │
 ├── mockup/
-│   └── Relay_Prototype_v1_2.html         ← reference only, not deployed
+│   └── Testlane_Prototype_v1_2.html         ← reference only, not deployed
 │
 ├── migrations/                           ← Drizzle migration files
 │   └── 0001_initial_schema.sql
@@ -971,4 +971,4 @@ relay/
 
 ---
 
-*End of Relay Architecture Consolidation Baseline v1.0*
+*End of Testlane Architecture Consolidation Baseline v1.0*

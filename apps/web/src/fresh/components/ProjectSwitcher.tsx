@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useFresh } from '../data/FreshProvider'
 import { CreateProjectModal } from './CreateProjectModal'
 import { DEFAULT_PROJECT_KEY, projectPath, switchProjectPath } from '../lib/project-routes'
-import { cloneRealProject, DEMO_PROJECT_SLUG, RelayApiError, resetRealWorkspace } from '@/lib/relay/project-client'
+import { cloneRealProject, DEMO_PROJECT_SLUG, TestlaneApiError, resetRealWorkspace } from '@/lib/relay/project-client'
 
 export function ProjectSwitcher() {
   const {
@@ -106,13 +106,13 @@ export function ProjectSwitcher() {
       // Clear the local cache too (local-only fields reference deleted rows),
       // then reload from scratch.
       try {
-        localStorage.removeItem('relay-demo-v2')
+        localStorage.removeItem('testlane-demo-v2')
       } catch {
         /* ignore */
       }
       window.location.assign('/')
     } catch (err) {
-      window.alert(err instanceof RelayApiError ? err.message : 'Failed to reset the workspace.')
+      window.alert(err instanceof TestlaneApiError ? err.message : 'Failed to reset the workspace.')
       setResetting(false)
     }
   }
@@ -125,7 +125,7 @@ export function ProjectSwitcher() {
       const cloned = await cloneRealProject(demoProject.id)
       window.location.assign(projectPath(cloned.slug.toUpperCase(), 'dashboard'))
     } catch (err) {
-      window.alert(err instanceof RelayApiError ? err.message : 'Failed to create demo project copy.')
+      window.alert(err instanceof TestlaneApiError ? err.message : 'Failed to create demo project copy.')
       setCloning(false)
     }
   }

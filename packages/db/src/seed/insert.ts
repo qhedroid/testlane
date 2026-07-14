@@ -26,7 +26,7 @@ export async function insertSeedData(
   await db.insert(organisations).values({
     id: ids.org,
     slug: 'relay-dev',
-    name: 'Relay Development Organisation',
+    name: 'Testlane Development Organisation',
     isActive: true,
   })
 

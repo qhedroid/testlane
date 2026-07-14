@@ -1,4 +1,4 @@
-import { getPlan, updatePlan, archivePlan } from '@relay/db/services/test-plan'
+import { getPlan, updatePlan, archivePlan } from '@testlane/db/services/test-plan'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { updatePlanBodySchema } from '@/lib/api/schemas'

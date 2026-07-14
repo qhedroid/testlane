@@ -1,4 +1,4 @@
-# Relay — Frontend screen contracts
+# Testlane — Frontend screen contracts
 
 *Branch: `demo/contract-aware-prototype`. Companion: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).*
 
@@ -41,7 +41,7 @@ This document defines what each visible screen shows, what data powers it today,
 
 **Real/API-backed, mock-backed, or placeholder:** Mock-backed (`localStorage` for user-created cases).
 
-**Data source:** `fresh/data/seed.ts` + `FreshProvider` + localStorage key `relay-demo-v2`. Cases and folders are filtered to **active project** via `listActiveProjectTestCases()` / `listActiveProjectFolders()`.
+**Data source:** `fresh/data/seed.ts` + `FreshProvider` + localStorage key `testlane-demo-v2`. Cases and folders are filtered to **active project** via `listActiveProjectTestCases()` / `listActiveProjectFolders()`.
 
 **Data shown:** Suite/folder tree, case table (ref, title, priority, type, last result, owner, steps), detail panel (details/attachments/**requirements create+link**/**defects view-only**/runs/history/activity), bulk selection bar. Breadcrumb uses active project name.
 
@@ -473,7 +473,7 @@ Global/org-scoped (the Admin panel is not project-scoped). Session auth gated by
 | `apps/web/src/fresh/data/seed.ts` | Legacy dashboard seed arrays (unused by `DashboardScreen`; retained for reference) |
 | `apps/web/src/fresh/data/demo-template.ts` | Immutable demo template + clone helpers |
 | `apps/web/src/fresh/data/demo-project-utils.ts` | Demo project clone helpers |
-| `apps/web/src/fresh/data/FreshProvider.tsx` | In-memory state (`relay-demo-v2`, schema v4) |
+| `apps/web/src/fresh/data/FreshProvider.tsx` | In-memory state (`testlane-demo-v2`, schema v4) |
 | `apps/web/src/fresh/data/run-utils.ts` | Run key helpers, v4 migration |
 | `apps/web/src/fresh/components/TestRunsTopbar.tsx` | Seal, edit, report, More… menu |
 | `apps/web/src/fresh/components/CreateRunModal.tsx` | Create run form |

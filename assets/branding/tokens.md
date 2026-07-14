@@ -1,4 +1,4 @@
-# Relay Colour Tokens
+# Testlane Colour Tokens
 
 Navy: #042C53
 Accent Blue: #185FA5

@@ -2,7 +2,7 @@
 
 *Branch: `mvp-backend` · July 2026 · Repo wins over docs*
 
-Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELINE.md`](ARCHITECTURE_BASELINE.md).
+Concise record of **what Testlane does today**. Target scope: [`ARCHITECTURE_BASELINE.md`](ARCHITECTURE_BASELINE.md).
 
 ---
 
@@ -13,8 +13,8 @@ Concise record of **what Relay does today**. Target scope: [`ARCHITECTURE_BASELI
 | App | Next.js 15 App Router, React 19 (`apps/web`) |
 | Workspace | pnpm monorepo |
 | UI | `apps/web/src/fresh/` |
-| State | React Context + `useReducer` in `FreshProvider`, **synced from the real API for real projects** (reducer-sync + wait-for-server writes; P/F/B/S recording optimistic with rollback); localStorage key `relay-demo-v2` (`schemaVersion: 14`) acts as the offline cache + store for local-only fields |
-| Backend | Drizzle ORM, MySQL 8, `@relay/db` (27 tables; migrations through `0008`); OpenSearch container exists but client is a no-op stub |
+| State | React Context + `useReducer` in `FreshProvider`, **synced from the real API for real projects** (reducer-sync + wait-for-server writes; P/F/B/S recording optimistic with rollback); localStorage key `testlane-demo-v2` (`schemaVersion: 14`) acts as the offline cache + store for local-only fields |
+| Backend | Drizzle ORM, MySQL 8, `@testlane/db` (27 tables; migrations through `0008`); OpenSearch container exists but client is a no-op stub |
 | IDs (backend) | ULID |
 | Auth | NextAuth.js Credentials provider, JWT session strategy (no DB adapter tables). `apps/web/src/middleware.ts` gates every page route and API route except `/login`, `/api/auth/*`, `/api/health`, `/api/runs/*`. `/api/runs/*` uses session-first auth with an `x-relay-user-id` dev-header **fallback** (kept for `pnpm api:validate` + cookie-less scripting) |
 

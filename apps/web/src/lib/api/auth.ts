@@ -1,4 +1,4 @@
-import { resolveUserById } from '@relay/db'
+import { resolveUserById } from '@testlane/db'
 import { getToken } from 'next-auth/jwt'
 
 export const RELAY_USER_HEADER = 'x-relay-user-id'

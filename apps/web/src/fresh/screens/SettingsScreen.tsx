@@ -30,11 +30,11 @@ export function SettingsScreen() {
           <div className="pnl-body settings-status">
             <p>
               Manage users, roles, organisation profile, and audit log in the{' '}
-              <Link href="/admin/profile" className="admin-link">Relay settings area</Link>.
+              <Link href="/admin/profile" className="admin-link">Testlane settings area</Link>.
             </p>
             <p>
               <strong>{adminSettings.organization.fullName}</strong> — frontend prototype; changes persist in{' '}
-              <code>relay-demo-v2</code> localStorage.
+              <code>testlane-demo-v2</code> localStorage.
             </p>
           </div>
         </section>

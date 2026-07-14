@@ -1,11 +1,11 @@
-# Relay Demo — FRESH Mockup Parity
+# Testlane Demo — FRESH Mockup Parity
 
-Demo-ready frontend rebuilt from **`mockup/Relay Mockup FRESH.html`** only. No MySQL/Docker required for the UI walkthrough.
+Demo-ready frontend rebuilt from **`mockup/Testlane Mockup FRESH.html`** only. No MySQL/Docker required for the UI walkthrough.
 
 ## How to run locally
 
 ```bash
-cd Relay
+cd Testlane
 pnpm install
 pnpm dev
 ```
@@ -31,7 +31,7 @@ This clears user-created test cases added during the demo. Execution results and
 |-------|------|-------|
 | **Active UI** | `apps/web/src/fresh/**` | Mockup class names + `fresh.css` |
 | **Quarantined** | `apps/web/src/legacy/**` | Prior implementation — not imported |
-| **Source of truth** | `mockup/Relay Mockup FRESH.html` | CSS, layout, demo behaviors |
+| **Source of truth** | `mockup/Testlane Mockup FRESH.html` | CSS, layout, demo behaviors |
 
 Global styles: only `fresh/styles/fresh.css` (+ empty `globals.css` reset).
 
@@ -77,7 +77,7 @@ Global styles: only `fresh/styles/fresh.css` (+ empty `globals.css` reset).
 
 ## Parity Notes
 
-Unavoidable or intentional deviations from `Relay Mockup FRESH.html`:
+Unavoidable or intentional deviations from `Testlane Mockup FRESH.html`:
 
 | Item | Mockup | App | Why |
 |------|--------|-----|-----|
@@ -94,4 +94,4 @@ Unavoidable or intentional deviations from `Relay Mockup FRESH.html`:
 
 ## Branding
 
-All UI uses **Relay** branding (sidebar mark + “Relay — QA Workspace”). No BetterTestiny/BT references in the active `fresh/` layer.
+All UI uses **Testlane** branding (sidebar mark + “Testlane — QA Workspace”). No BetterTestiny/BT references in the active `fresh/` layer.

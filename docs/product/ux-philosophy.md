@@ -1,8 +1,8 @@
-# UX philosophy — Relay
+# UX philosophy — Testlane
 
 ## The core principle
 
-Relay is an execution workspace. The moment a QA engineer opens it, they should be able to find their assigned cases, see what is failing, and start marking results — without navigating through menus, configuring views, or translating between the tool's model and their actual workflow.
+Testlane is an execution workspace. The moment a QA engineer opens it, they should be able to find their assigned cases, see what is failing, and start marking results — without navigating through menus, configuring views, or translating between the tool's model and their actual workflow.
 
 Every UX decision is judged against this principle.
 
@@ -81,7 +81,7 @@ Recent views are shown on open (served from the MySQL `recent_views` table — n
 
 ---
 
-## What Relay is not trying to be
+## What Testlane is not trying to be
 
 - Not a project management tool (no sprints, epics, or issue tracking)
 - Not a defect tracker (linked defects only — lifecycle management is in the existing defect system)

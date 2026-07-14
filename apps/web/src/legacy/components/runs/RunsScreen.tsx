@@ -5,7 +5,7 @@ import {
   createRun,
   fetchRunDetail,
   fetchRunList,
-  RelayApiError,
+  TestlaneApiError,
   updateCaseResult,
 } from '@/lib/relay/api-client'
 import {
@@ -87,7 +87,7 @@ export function RunsScreen() {
       setDetail(data)
     } catch (err) {
       setDetail(null)
-      setError(err instanceof RelayApiError ? err.message : 'Failed to load run detail')
+      setError(err instanceof TestlaneApiError ? err.message : 'Failed to load run detail')
     } finally {
       setDetailLoading(false)
     }
@@ -107,7 +107,7 @@ export function RunsScreen() {
       }
     } catch (err) {
       setRuns([])
-      setError(err instanceof RelayApiError ? err.message : 'Failed to load runs')
+      setError(err instanceof TestlaneApiError ? err.message : 'Failed to load runs')
     } finally {
       setListLoading(false)
     }
@@ -162,7 +162,7 @@ export function RunsScreen() {
       setCreateEnvironment('')
     } catch (err) {
       const message =
-        err instanceof RelayApiError
+        err instanceof TestlaneApiError
           ? `${err.code}: ${err.message}`
           : 'Failed to create run'
       setError(message)
@@ -190,7 +190,7 @@ export function RunsScreen() {
       await refreshAfterCaseUpdate(selectedRunId)
     } catch (err) {
       setError(
-        err instanceof RelayApiError ? err.message : 'Failed to update case result',
+        err instanceof TestlaneApiError ? err.message : 'Failed to update case result',
       )
     } finally {
       setSavingCase(false)

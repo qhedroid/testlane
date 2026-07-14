@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { RelayTopbar } from '@/components/shell/RelayTopbar'
+import { TestlaneTopbar } from '@/components/shell/TestlaneTopbar'
 import { useDemo } from '@/lib/demo/DemoProvider'
 import { DEFECT_NAMES } from '@/lib/demo/seed'
 import { priorityClass, runProgress, runTotal, statusPillClass } from '@/lib/demo/store'
@@ -62,7 +62,7 @@ export function DashboardScreen() {
 
   return (
     <div className="view-screen">
-      <RelayTopbar
+      <TestlaneTopbar
         breadcrumbs={[{ label: 'Dashboard' }]}
         subtitle="Sprint 44 · Release 2.4.1"
         actions={

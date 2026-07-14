@@ -2,7 +2,7 @@
 
 *Branch: `demo/contract-aware-prototype` · June 2026*
 
-This document defines what Relay is building **now**: a contract-labelled front-end prototype that demonstrates the full MVP user journey without requiring backend integration for the primary demo path.
+This document defines what Testlane is building **now**: a contract-labelled front-end prototype that demonstrates the full MVP user journey without requiring backend integration for the primary demo path.
 
 **Full-stack target scope** remains in [`ARCHITECTURE_BASELINE.md`](ARCHITECTURE_BASELINE.md) (backend phase). **What exists today** is in [`AS_BUILT_SNAPSHOT.md`](AS_BUILT_SNAPSHOT.md).
 
@@ -26,7 +26,7 @@ Deliver a **stakeholder-demoable UI** covering the flow:
 |------|-------------|-------------------|
 | **Shell & navigation** | Sidebar, topbar, module switcher, Cmd+K search, `PrototypeBanner` | Client state |
 | **Dashboard** | Metrics, run cards, attention, coverage | FreshProvider (localStorage) |
-| **Test cases** | Folder tree, CRUD, steps, filters, detail panel | localStorage (`relay-demo-v2`) |
+| **Test cases** | Folder tree, CRUD, steps, filters, detail panel | localStorage (`testlane-demo-v2`) |
 | **Test plans** | List, detail tabs, spawn-run navigation | Static seed |
 | **Test runs (demo)** | Shaun v1.2 execution UX at `/runs` — steps, results, defects, shortcuts | localStorage |
 | **Test runs (API)** | Legacy three-pane workspace at `/runs/api` | MySQL (unchanged) |

@@ -1,6 +1,6 @@
 /**
  * ProjectService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Project listing/creation and project-role assignment. Reuses
  * `assertMinProjectRole()` from `../src/rbac/assert-min-role` directly —

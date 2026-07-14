@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { RelayTopbar } from '@/components/shell/RelayTopbar'
+import { TestlaneTopbar } from '@/components/shell/TestlaneTopbar'
 import { statusPillClass } from '@/lib/demo/store'
 
 type AuditFilter = 'all' | 'cases' | 'runs' | 'plans' | 'users'
@@ -26,7 +26,7 @@ export function AuditScreen() {
 
   return (
     <div className="view-screen">
-      <RelayTopbar
+      <TestlaneTopbar
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'TI-Core Platform' },

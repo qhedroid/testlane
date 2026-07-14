@@ -1,6 +1,6 @@
 /**
  * WorkspaceResetService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * "Reset workspace" (Shaun's 2026-07-10 ask): wipe every project under the
  * seed org and re-insert the default baseline — Demo Project (DP, fully

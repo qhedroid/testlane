@@ -1,4 +1,4 @@
-import { listAuditLog } from '@relay/db/services/audit'
+import { listAuditLog } from '@testlane/db/services/audit'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { listAuditLogQuerySchema } from '@/lib/api/schemas'

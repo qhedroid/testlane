@@ -1,6 +1,6 @@
 # Local full-stack launch via Cloudflare Tunnel
 
-How to expose Relay’s local Docker + Next.js stack on a temporary public HTTPS URL for demos.
+How to expose Testlane’s local Docker + Next.js stack on a temporary public HTTPS URL for demos.
 
 **Audience:** Noel / Shaun (or anyone launching on a real Mac with Docker).  
 **Related Cursor prompt:** `docs/cursor-prompts/main/task-02-relaunch-cloudflare-tunnel.md`  

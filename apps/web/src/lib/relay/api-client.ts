@@ -13,13 +13,13 @@ import type {
   RunListItem,
 } from './types'
 
-export class RelayApiError extends Error {
+export class TestlaneApiError extends Error {
   constructor(
     public readonly code: string,
     message: string,
   ) {
     super(message)
-    this.name = 'RelayApiError'
+    this.name = 'TestlaneApiError'
   }
 }
 
@@ -27,7 +27,7 @@ async function parseResponse<T>(res: Response): Promise<T> {
   const json = (await res.json()) as ApiSuccessBody<T> | ApiErrorBody
   if (!res.ok) {
     const err = 'error' in json ? json.error : { code: 'UNKNOWN', message: res.statusText }
-    throw new RelayApiError(err.code, err.message)
+    throw new TestlaneApiError(err.code, err.message)
   }
   return (json as ApiSuccessBody<T>).data
 }

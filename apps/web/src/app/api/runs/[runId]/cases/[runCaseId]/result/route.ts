@@ -1,7 +1,7 @@
-import { updateCaseResult } from '@relay/db/services/execution'
+import { updateCaseResult } from '@testlane/db/services/execution'
 import { resolveActor } from '@/lib/api/auth'
 import { handleRouteError } from '@/lib/api/errors'
-import { getRunProjectId } from '@relay/db'
+import { getRunProjectId } from '@testlane/db'
 import { updateCaseResultBodySchema } from '@/lib/api/schemas'
 import { jsonError, jsonSuccess } from '@/lib/api/response'
 

@@ -1,4 +1,4 @@
-# Relay — Project context
+# Testlane — Project context
 
 *Last updated: June 2026. Branch `demo/contract-aware-prototype`.*
 
@@ -19,7 +19,7 @@ Backend-phase reference (do not treat as current UI scope): [`docs/implementatio
 
 ## 1. Product identity
 
-**Relay** is a QA test execution platform (local-dev prototype). Clinical-trials-style multi-module workspace (CTMS, eTMF, Viewer, etc.).
+**Testlane** is a QA test execution platform (local-dev prototype). Clinical-trials-style multi-module workspace (CTMS, eTMF, Viewer, etc.).
 
 **Not production-ready.** No real authentication. **Contract-aware hybrid UI:** mock prototype screens (primary demo) + isolated API workspace at `/runs/api`.
 
@@ -32,8 +32,8 @@ Backend-phase reference (do not treat as current UI scope): [`docs/implementatio
 | Item | Value |
 |------|-------|
 | **Branch** | `demo/contract-aware-prototype` |
-| **Board** | Relay v0.1 Execution Readiness |
-| **Repo** | https://github.com/qhedroid/Relay |
+| **Board** | Testlane v0.1 Execution Readiness |
+| **Repo** | https://github.com/qhedroid/testlane |
 
 ### REL issues
 
@@ -116,7 +116,7 @@ docs/_authoritative/     # Maintained docs (start here)
 | `fresh/components/PrototypeBanner.tsx` | Mock/API/placeholder labelling |
 | `lib/relay/mock-data.ts` | Centralised mock data |
 | `lib/relay/prototype-contracts.ts` | Route metadata for agents |
-| `fresh/data/FreshProvider.tsx` | localStorage state (`relay-demo-v2`) |
+| `fresh/data/FreshProvider.tsx` | localStorage state (`testlane-demo-v2`) |
 
 ---
 
@@ -191,7 +191,7 @@ pnpm api:validate           # needs dev server + seeded DB
 ## 12. Agent prompt (copy-paste)
 
 ```
-You are working on Relay (branch demo/contract-aware-prototype). Read docs/_authoritative/PROJECT_CONTEXT.md and docs/_authoritative/MVP_FRONTEND_ONLY_SCOPE.md first.
+You are working on Testlane (branch demo/contract-aware-prototype). Read docs/_authoritative/PROJECT_CONTEXT.md and docs/_authoritative/MVP_FRONTEND_ONLY_SCOPE.md first.
 
 Rules: `/runs` = Shaun demo UI (mock); `/runs/api` = API workspace; mock screens labelled; run pnpm build (+ api:validate if APIs touched); do not commit unless asked.
 ```

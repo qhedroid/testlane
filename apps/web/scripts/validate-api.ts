@@ -6,9 +6,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { config as loadEnv } from 'dotenv'
 import { eq } from 'drizzle-orm'
-import { getDb, closeDb } from '@relay/db'
-import { testRuns } from '@relay/db/schema'
-import { ids, runSeed, seedRefs } from '@relay/db/seed'
+import { getDb, closeDb } from '@testlane/db'
+import { testRuns } from '@testlane/db/schema'
+import { ids, runSeed, seedRefs } from '@testlane/db/seed'
 
 const monorepoRoot = path.resolve(process.cwd(), '../..')
 loadEnv({ path: path.join(monorepoRoot, '.env') })

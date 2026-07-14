@@ -1,4 +1,4 @@
-import { listPlans, createPlan } from '@relay/db/services/test-plan'
+import { listPlans, createPlan } from '@testlane/db/services/test-plan'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { createPlanBodySchema } from '@/lib/api/schemas'

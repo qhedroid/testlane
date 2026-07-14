@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useFresh } from '../data/FreshProvider'
 import { normalizeProjectKeyInput, validateProjectKey } from '../lib/project-keys'
 import { projectPath } from '../lib/project-routes'
-import { createRealProject, RelayApiError } from '@/lib/relay/project-client'
+import { createRealProject, TestlaneApiError } from '@/lib/relay/project-client'
 
 interface CreateProjectModalProps {
   open: boolean
@@ -71,7 +71,7 @@ export function CreateProjectModal({ open, onClose, redirectOnCreate = true }: C
       const target = redirectOnCreate ? projectPath(trimmedKey, 'dashboard') : window.location.pathname
       window.location.assign(target)
     } catch (err) {
-      setSubmitError(err instanceof RelayApiError ? err.message : 'Failed to create project.')
+      setSubmitError(err instanceof TestlaneApiError ? err.message : 'Failed to create project.')
       setSubmitting(false)
     }
   }

@@ -1,4 +1,4 @@
-# Relay — Internal API Contracts (Phase 1)
+# Testlane — Internal API Contracts (Phase 1)
 
 **Status:** Health, run read/list, run spawn, and case result update. No product UI, no session auth, no plans/cases library reads yet.
 

@@ -1,4 +1,4 @@
-import { getDashboardSummary } from '@relay/db/services/dashboard'
+import { getDashboardSummary } from '@testlane/db/services/dashboard'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { jsonSuccess } from '@/lib/api/response'

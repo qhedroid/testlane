@@ -143,7 +143,7 @@ export function AdminRolesPageContent() {
   return (
     <AdminPageShell title="Role management">
       <p className="admin-page-desc">
-        Built-in roles mirror Relay&apos;s TI QA capability model. Custom roles are frontend-only for this prototype.
+        Built-in roles mirror Testlane&apos;s TI QA capability model. Custom roles are frontend-only for this prototype.
       </p>
 
       <AdminToolbar

@@ -1984,7 +1984,7 @@
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .modal-hint { font-size: 11px; color: var(--relay-muted); margin: 0 0 8px; }
 
-/* ── NEW mockup parity (Relay Mockup NEW.html) ── */
+/* ── NEW mockup parity (Testlane Mockup NEW.html) ── */
 .module-switcher { position: relative; flex-shrink: 0; }
 .module-btn {
   height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 9px;

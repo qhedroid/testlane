@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
-import { RelayMark } from '../assets/RelayMark'
+import { TestlaneMark } from '../assets/TestlaneMark'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useResizablePanes } from '../hooks/useResizablePanes'
 import { getModuleFromPathname } from '../lib/project-routes'
@@ -62,10 +62,10 @@ export function FreshShell({ children }: { children: ReactNode }) {
       <nav className={`sb${collapsed ? ' collapsed' : ''}`}>
         <div className="sb-logo">
           <div className="sb-mark">
-            <RelayMark />
+            <TestlaneMark />
           </div>
           <div className="sb-name">
-            Relay
+            Testlane
             <small>QA Workspace</small>
           </div>
           <button

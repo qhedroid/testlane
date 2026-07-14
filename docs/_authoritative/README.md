@@ -1,6 +1,6 @@
 # Authoritative documentation
 
-Future Relay development — human or agent — should **start here**, not by scanning all of `docs/`.
+Future Testlane development — human or agent — should **start here**, not by scanning all of `docs/`.
 
 Everything outside this folder is supplementary: onboarding notes, process guides, historical handovers, long-form design references, or one-off prompts. Those files may be useful, stale, or duplicated. **When they conflict with `_authoritative` or the repo, the repo wins** — then update the authoritative doc.
 

@@ -1,4 +1,4 @@
-import { listCases, createCase } from '@relay/db/services/test-case'
+import { listCases, createCase } from '@testlane/db/services/test-case'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { listCasesQuerySchema, createCaseBodySchema } from '@/lib/api/schemas'

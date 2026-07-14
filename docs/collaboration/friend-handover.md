@@ -1,14 +1,14 @@
 > **STALE / SUPERSEDED** — This document is no longer maintained. Use [`docs/_authoritative/AS_BUILT_SNAPSHOT.md`](../_authoritative/AS_BUILT_SNAPSHOT.md) and [`docs/_authoritative/PROJECT_CONTEXT.md`](../_authoritative/PROJECT_CONTEXT.md) instead. For setup steps, see [`getting-started.md`](getting-started.md).
 
-# Handover — Relay for a technical collaborator
+# Handover — Testlane for a technical collaborator
 
 Short context if you are joining to help on execution UX and v0.1 readiness. Read this first, then [`getting-started.md`](getting-started.md).
 
 ---
 
-## What Relay is
+## What Testlane is
 
-Relay is an internal-style QA platform aimed at replacing generic tools (TestRail/Testiny) for teams working across product modules (CTMS, eTMF, Viewer, etc.). The **product vision** lives in `docs/product/` and the **interactive prototype** in `mockup/Relay_Prototype_v1.2.html`.
+Testlane is an internal-style QA platform aimed at replacing generic tools (TestRail/Testiny) for teams working across product modules (CTMS, eTMF, Viewer, etc.). The **product vision** lives in `docs/product/` and the **interactive prototype** in `mockup/Testlane_Prototype_v1.2.html`.
 
 **Right now the repo is a local-dev MVP**, not a deployed product. Auth is fake (seed user IDs in headers). MySQL is real. OpenSearch runs in Docker but the app does not index anything yet.
 
@@ -22,7 +22,7 @@ Relay is an internal-style QA platform aimed at replacing generic tools (TestRai
 - List runs, load run detail with execution cases
 - Update case result status and execution-level comment
 - RBAC enforced in services (viewer cannot mutate; contributor can execute)
-- `/runs` UI: Relay shell + three-pane execution workspace
+- `/runs` UI: Testlane shell + three-pane execution workspace
 - `pnpm build` and `pnpm api:validate`
 
 ---
@@ -53,8 +53,8 @@ Do not assume anything in the HTML prototype exists in Next.js unless you verify
 ## How to run it
 
 ```bash
-git clone https://github.com/qhedroid/Relay.git
-cd Relay
+git clone https://github.com/qhedroid/testlane.git
+cd Testlane
 pnpm install
 cp .env.example .env
 pnpm docker:up

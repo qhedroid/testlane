@@ -1,6 +1,6 @@
-# Relay Branding
+# Testlane Branding
 
-Canonical Relay branding source.
+Canonical Testlane branding source.
 
 Contains:
 - Wordmark

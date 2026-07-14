@@ -1,5 +1,5 @@
 {
-  "name": "@relay/web",
+  "name": "@testlane/web",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "validate:api": "tsx scripts/validate-api.ts"
   },
   "dependencies": {
-    "@relay/db": "workspace:*",
+    "@testlane/db": "workspace:*",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
     "lucide-react": "^0.511.0",

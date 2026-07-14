@@ -1,4 +1,4 @@
-import { setPlanCases } from '@relay/db/services/test-plan'
+import { setPlanCases } from '@testlane/db/services/test-plan'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { setPlanCasesBodySchema } from '@/lib/api/schemas'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { RelayTopbar } from '@/components/shell/RelayTopbar'
+import { TestlaneTopbar } from '@/components/shell/TestlaneTopbar'
 import { useDemo } from '@/lib/demo/DemoProvider'
 import { SUITE_TREE } from '@/lib/demo/seed'
 import { nextId, priorityClass, statusPillClass } from '@/lib/demo/store'
@@ -135,7 +135,7 @@ export function CasesScreen() {
 
   return (
     <div className="view-screen">
-      <RelayTopbar
+      <TestlaneTopbar
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'TI-Core Platform' },

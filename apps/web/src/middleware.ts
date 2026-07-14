@@ -12,7 +12,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/runs') || // later phase moves this off the header hack
     pathname === '/api/health' ||
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/fonts')
+    pathname.startsWith('/fonts') ||
+    pathname.startsWith('/brand') ||
+    pathname === '/icon.svg' ||
+    pathname === '/apple-icon.png'
   ) {
     return NextResponse.next()
   }
@@ -35,5 +38,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api/auth|api/runs|api/health|_next/static|_next/image|favicon.ico|fonts).*)'],
+  matcher: [
+    '/((?!api/auth|api/runs|api/health|_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|fonts|brand).*)',
+  ],
 }

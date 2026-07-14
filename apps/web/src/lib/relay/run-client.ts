@@ -38,14 +38,14 @@
 import type { CaseExecution, DemoRun, ExecStatus, ExecutionLogEntry } from '@/fresh/data/demo-model'
 import { EXEC_TO_LEGACY, LEGACY_TO_EXEC, type ResultStatus } from '@/fresh/data/demo-model'
 import type { ApiErrorBody, ApiSuccessBody } from '@/lib/api/types'
-import { RelayApiError } from './project-client'
+import { TestlaneApiError } from './project-client'
 import { userIdToAssigneeName } from './case-client'
 
 async function parseResponse<T>(res: Response): Promise<T> {
   const json = (await res.json()) as ApiSuccessBody<T> | ApiErrorBody
   if (!res.ok) {
     const err = 'error' in json ? json.error : { code: 'UNKNOWN', message: res.statusText }
-    throw new RelayApiError(err.code, err.message)
+    throw new TestlaneApiError(err.code, err.message)
   }
   return (json as ApiSuccessBody<T>).data
 }

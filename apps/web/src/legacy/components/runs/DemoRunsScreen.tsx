@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RelayTopbar } from '@/components/shell/RelayTopbar'
+import { TestlaneTopbar } from '@/components/shell/TestlaneTopbar'
 import { useDemo } from '@/lib/demo/DemoProvider'
 import { DEFECT_NAMES } from '@/lib/demo/seed'
 import { dotClass, makeSpawnedRun, priorityClass, runTotal, statusPillClass } from '@/lib/demo/store'
@@ -170,7 +170,7 @@ export function DemoRunsScreen() {
 
   return (
     <div className="view-screen">
-      <RelayTopbar
+      <TestlaneTopbar
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'TI-Core Platform' },

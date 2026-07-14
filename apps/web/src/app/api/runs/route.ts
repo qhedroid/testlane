@@ -1,5 +1,5 @@
-import { createRun } from '@relay/db/services/test-run'
-import { listProjectRuns } from '@relay/db/services/run-read'
+import { createRun } from '@testlane/db/services/test-run'
+import { listProjectRuns } from '@testlane/db/services/run-read'
 import { resolveActor } from '@/lib/api/auth'
 import { handleRouteError } from '@/lib/api/errors'
 import { createRunBodySchema, listRunsQuerySchema } from '@/lib/api/schemas'

@@ -12,8 +12,8 @@ const openSans = Open_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Relay — QA Workspace',
-  description: 'Relay — internal QA test management and execution workspace',
+  title: 'Testlane — QA Workspace',
+  description: 'Testlane — internal QA test management and execution workspace',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

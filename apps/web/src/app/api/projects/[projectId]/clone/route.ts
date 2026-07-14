@@ -1,4 +1,4 @@
-import { cloneProject } from '@relay/db/services/project-clone'
+import { cloneProject } from '@testlane/db/services/project-clone'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { cloneProjectBodySchema } from '@/lib/api/schemas'

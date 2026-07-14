@@ -1,6 +1,6 @@
 > **STALE / SUPERSEDED** — This document is no longer maintained. Use [`docs/_authoritative/AS_BUILT_SNAPSHOT.md`](../_authoritative/AS_BUILT_SNAPSHOT.md) instead.
 
-# Relay — Current Implementation State
+# Testlane — Current Implementation State
 
 **Canonical engineering checkpoint.** Use this document to resume implementation work. Architecture philosophy and product intent remain in `docs/architecture/` and `docs/product/` — this file covers what is built, how to run it, and what comes next.
 
@@ -18,7 +18,7 @@
 
 | Area | Status |
 |------|--------|
-| Monorepo bootstrap | pnpm workspaces, `@relay/web`, `@relay/db` |
+| Monorepo bootstrap | pnpm workspaces, `@testlane/web`, `@testlane/db` |
 | Next.js app shell | App Router, `/api/health`, `/runs` three-pane execution workspace |
 | Drizzle schema | 20-table MySQL model in `packages/db/schema.ts` |
 | Migrations | `0000` initial schema, `0001` capability RBAC roles |
@@ -26,10 +26,10 @@
 | DB connection module | `packages/db/src/index.ts` (`getDb`, `pingDatabase`) |
 | Idempotent dev seed | `relay-dev` org, 6 module projects, users, cases, plans, `ref_counters` |
 | RBAC model | Platform roles: `super_admin`, `admin`, `contributor`, `viewer` |
-| TestRunService.create() | Wired to `@relay/db` runtime; validated via `pnpm db:validate-create-run` |
+| TestRunService.create() | Wired to `@testlane/db` runtime; validated via `pnpm db:validate-create-run` |
 | ExecutionService.updateCaseResult() | Wired; validated via `pnpm db:validate-update-case-result` |
 | Internal HTTP API | Health, `GET/POST /api/runs`, `GET /api/runs/:runId`, case result POST; contract in `api-contracts.md`; `pnpm api:validate` |
-| Interactive prototype | `mockup/Relay_Prototype_v1.2.html` (unchanged, no build step) |
+| Interactive prototype | `mockup/Testlane_Prototype_v1.2.html` (unchanged, no build step) |
 
 ### Intentionally deferred
 
@@ -217,7 +217,7 @@ Migration `0001` maps legacy seed enums (`qa_lead` → `admin`, `qa_engineer` �
 Run before marking implementation work complete or opening a PR:
 
 ```bash
-cd /Users/nquadri/Documents/Relay
+cd /Users/nquadri/Documents/Testlane
 
 # 1. Production build
 pnpm build
@@ -264,7 +264,7 @@ docker compose exec mysql mysql -u relay -prelay relay -e \
 **Execution Experience** milestone is committed and pushed to GitHub.
 
 - Commit: `8f84e3a` — *Complete execution experience workspace*
-- Remote: https://github.com/qhedroid/Relay.git
+- Remote: https://github.com/qhedroid/testlane.git
 - Repo is ready for collaborator onboarding once GitHub access is granted (see `docs/collaboration/`).
 
 **Next immediate focus:** collaboration setup, ticket-led delivery, and **v0.1 Execution Readiness** (UX polish, loading/empty states, RBAC clarity—not new product surfaces).
@@ -306,4 +306,4 @@ Dashboard, global search, auth providers, OpenSearch, Test Plans/Cases library U
 | `docs/database/schema-rationale.md` | ULID, refs, snapshot design rationale |
 | `README.md` | Quick local setup commands |
 | `docs/implementation/api-contracts.md` | HTTP API contract for frontend integration |
-| `mockup/Relay_Prototype_v1.2.html` | UX behaviour reference |
+| `mockup/Testlane_Prototype_v1.2.html` | UX behaviour reference |

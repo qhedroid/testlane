@@ -1,4 +1,4 @@
-import { listProjects, createProject } from '@relay/db/services/project'
+import { listProjects, createProject } from '@testlane/db/services/project'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { createProjectBodySchema } from '@/lib/api/schemas'

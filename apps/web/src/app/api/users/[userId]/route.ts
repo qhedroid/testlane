@@ -1,4 +1,4 @@
-import { updateUser } from '@relay/db/services/user'
+import { updateUser } from '@testlane/db/services/user'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { updateUserBodySchema } from '@/lib/api/schemas'

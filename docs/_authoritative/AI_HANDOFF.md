@@ -1,15 +1,15 @@
-# Relay — AI handoff / bootstrap prompt
+# Testlane — AI handoff / bootstrap prompt
 
 *Paste into a new ChatGPT, Claude, or Cursor chat. Repo wins over prose — verify paths in code when unsure.*
 
 ---
 
-# Relay — AI handoff / bootstrap (paste into a new ChatGPT/Claude/Cursor chat)
+# Testlane — AI handoff / bootstrap (paste into a new ChatGPT/Claude/Cursor chat)
 
-You are stepping into an existing repo called **Relay**. Treat the **repo as ground truth**. When unsure, inspect code and cite file paths.
+You are stepping into an existing repo called **Testlane**. Treat the **repo as ground truth**. When unsure, inspect code and cite file paths.
 
 ## 1. Purpose & constraints (non‑negotiable)
-- **Product:** Relay is a QA test execution platform (clinical-trials-style workspace).
+- **Product:** Testlane is a QA test execution platform (clinical-trials-style workspace).
 - **Phase:** **Frontend-only prototype**.
   - Do **not** implement/modify backend, DB/schema, Docker, auth, or API routes unless explicitly asked.
   - Do **not** wire demo screens to real APIs. Persistence is **client-side only** (FreshProvider + localStorage).
@@ -101,14 +101,14 @@ Relations/scoping:
 - Use selectors like `listActiveProject*` (always filter by `activeProjectId`)
 
 ## 5. Persistence & migration (verify values in code)
-- localStorage key: `relay-demo-v2` (verify in FreshProvider)
+- localStorage key: `testlane-demo-v2` (verify in FreshProvider)
 - schemaVersion: `DEMO_SCHEMA_VERSION` (value may be 2/3+; verify)
 - `migrateDemoState()` runs on load:
   - Migrates legacy versions → current schemaVersion
   - Handles legacy `DEMO` key → `DP` key change (if implemented)
   - On migration failure: logs error and falls back to fresh seeded initial state
 - Reset for testing:
-  - `localStorage.removeItem('relay-demo-v2'); location.reload()`
+  - `localStorage.removeItem('testlane-demo-v2'); location.reload()`
 
 ## 6. How to work (required process)
 Before implementing any task:

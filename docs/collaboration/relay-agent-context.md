@@ -1,4 +1,4 @@
-# Relay — Agent source-of-truth context
+# Testlane — Agent source-of-truth context
 
 *Last updated: June 2026. Branch `demo/prototype-parity`.*
 
@@ -19,7 +19,7 @@ Companion docs:
 
 ## 2. Product identity
 
-**Relay** is a QA test execution platform (local-dev prototype). Clinical-trials-style multi-module workspace (CTMS, eTMF, Viewer, etc.).
+**Testlane** is a QA test execution platform (local-dev prototype). Clinical-trials-style multi-module workspace (CTMS, eTMF, Viewer, etc.).
 
 **Not production-ready.** No real authentication. Hybrid UI: **API-backed execution** + **mock prototype screens** with explicit labelling.
 
@@ -30,8 +30,8 @@ Companion docs:
 | Item | Value |
 |------|-------|
 | **Branch** | `demo/prototype-parity` (Shaun's demo branch — do not commit to `main` directly) |
-| **Board** | Relay v0.1 Execution Readiness |
-| **Repo** | https://github.com/qhedroid/Relay |
+| **Board** | Testlane v0.1 Execution Readiness |
+| **Repo** | https://github.com/qhedroid/testlane |
 
 ### REL issues
 
@@ -195,7 +195,7 @@ pnpm api:validate           # needs dev server + seeded DB
 ## 13. Agent prompt (copy-paste)
 
 ```
-You are working on Relay (branch demo/prototype-parity). Read docs/collaboration/relay-agent-context.md and docs/implementation/frontend-contracts.md first.
+You are working on Testlane (branch demo/prototype-parity). Read docs/collaboration/relay-agent-context.md and docs/implementation/frontend-contracts.md first.
 
 Rules: `/runs` = Shaun demo UI; `/runs/api` = API workspace; pull latest branch before editing; mock screens labelled; run pnpm build (+ api:validate if APIs touched); do not commit unless asked.
 ```

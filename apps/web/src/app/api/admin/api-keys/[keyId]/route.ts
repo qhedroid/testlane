@@ -1,4 +1,4 @@
-import { deleteApiKey } from '@relay/db/services/admin-settings'
+import { deleteApiKey } from '@testlane/db/services/admin-settings'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { jsonSuccess } from '@/lib/api/response'

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { RelayTopbar } from '@/components/shell/RelayTopbar'
+import { TestlaneTopbar } from '@/components/shell/TestlaneTopbar'
 import { useDemo } from '@/lib/demo/DemoProvider'
 import { makeSpawnedRun, nextId, statusPillClass } from '@/lib/demo/store'
 import type { TestPlan } from '@/lib/demo/types'
@@ -64,7 +64,7 @@ export function PlansScreen() {
 
   return (
     <div className="view-screen">
-      <RelayTopbar
+      <TestlaneTopbar
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'TI-Core Platform' },

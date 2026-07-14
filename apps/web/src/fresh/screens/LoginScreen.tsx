@@ -41,7 +41,7 @@ export function LoginScreen() {
     <div className="login-screen">
       <div className="login-left">
         <div>
-          <div className="login-wordmark">Relay</div>
+          <div className="login-wordmark">Testlane</div>
           <div className="login-tagline">Test Management</div>
         </div>
         <ul className="login-bullets">
@@ -63,7 +63,7 @@ export function LoginScreen() {
       <div className="login-right">
         <div className="login-form-wrap">
           <h2 className="login-title">Sign In</h2>
-          <p className="login-desc">Use your TransPerfect account to continue to Relay.</p>
+          <p className="login-desc">Use your TransPerfect account to continue to Testlane.</p>
           <form onSubmit={handleSubmit}>
             {error ? <p className="form-error" style={{ marginBottom: 12 }}>{error}</p> : null}
             <label className="login-label" htmlFor="login-email">Email</label>

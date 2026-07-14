@@ -1,4 +1,4 @@
-import { assignProjectRole } from '@relay/db/services/project'
+import { assignProjectRole } from '@testlane/db/services/project'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { assignProjectRoleBodySchema } from '@/lib/api/schemas'

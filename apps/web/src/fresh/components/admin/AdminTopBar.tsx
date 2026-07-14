@@ -13,7 +13,7 @@ export function AdminTopBar() {
     <header className="admin-topbar">
       <Link href="/DP/dashboard" className="admin-back">
         <ArrowLeft size={16} strokeWidth={2} />
-        Back to Relay
+        Back to Testlane
       </Link>
       <div className="admin-topbar-div" />
       <span className="admin-org">Current organisation: {orgName}</span>

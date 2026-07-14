@@ -7,7 +7,7 @@ This document covers the complete design of the run-spawn operation: from input 
 
 ## Overview
 
-`TestRunService.create()` is the most complex single operation in Relay. It spawns a test run from a test plan by:
+`TestRunService.create()` is the most complex single operation in Testlane. It spawns a test run from a test plan by:
 
 1. Validating the actor's project access
 2. Loading the plan and resolving which cases to include

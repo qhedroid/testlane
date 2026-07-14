@@ -22,13 +22,13 @@
 import type { AdminApiKey } from '@/fresh/data/demo-model'
 import { SEED_ADMIN_USER_ID } from '@/fresh/data/admin-initial-settings'
 import type { ApiErrorBody, ApiSuccessBody } from '@/lib/api/types'
-import { RelayApiError } from './project-client'
+import { TestlaneApiError } from './project-client'
 
 async function parseResponse<T>(res: Response): Promise<T> {
   const json = (await res.json()) as ApiSuccessBody<T> | ApiErrorBody
   if (!res.ok) {
     const err = 'error' in json ? json.error : { code: 'UNKNOWN', message: res.statusText }
-    throw new RelayApiError(err.code, err.message)
+    throw new TestlaneApiError(err.code, err.message)
   }
   return (json as ApiSuccessBody<T>).data
 }

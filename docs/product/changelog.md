@@ -17,8 +17,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 ## [1.2.0] — 2026-05 — Final consolidation pass
 
 ### Branding
-- Product renamed to **Relay** — name, mark, wordmark, and page title updated throughout
-- Sidebar mark replaced with Relay SVG mark (chevrons + baton dot)
+- Product renamed to **Testlane** — name, mark, wordmark, and page title updated throughout
+- Sidebar mark replaced with Testlane SVG mark (chevrons + baton dot)
 - Removed workspace subtitle; replaced with "QA Workspace"
 - All internal-only references removed from public-facing files
 
@@ -41,7 +41,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) · Versioning: 
 - PostgreSQL and Meilisearch references removed from all documents
 
 ### Documentation
-- README finalised with Relay branding and current architecture
+- README finalised with Testlane branding and current architecture
 - `design-system.md` created — colour tokens, typography, component patterns
 - `ux-philosophy.md` created — view-by-view rationale and interaction principles
 - Repository prepared for migration to long-term implementation workspace

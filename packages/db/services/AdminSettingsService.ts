@@ -1,6 +1,6 @@
 /**
  * AdminSettingsService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Org-scoped Admin-panel settings: role DEFINITIONS + API keys (new-tables
  * candidate, Phase G). Roles + API keys only this phase — automation stays

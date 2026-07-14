@@ -1,4 +1,4 @@
-import { listUsers, createUser } from '@relay/db/services/user'
+import { listUsers, createUser } from '@testlane/db/services/user'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { createUserBodySchema } from '@/lib/api/schemas'

@@ -1,8 +1,8 @@
 # GitHub setup (manual)
 
-What to configure in GitHub for Relay collaboration. These steps are done in the GitHub UI, not in the repo.
+What to configure in GitHub for Testlane collaboration. These steps are done in the GitHub UI, not in the repo.
 
-**Repository:** https://github.com/qhedroid/Relay.git
+**Repository:** https://github.com/qhedroid/testlane.git
 
 ---
 
@@ -18,7 +18,7 @@ What to configure in GitHub for Relay collaboration. These steps are done in the
 
 Create a project board:
 
-**Name:** Relay v0.1 Execution Readiness
+**Name:** Testlane v0.1 Execution Readiness
 
 **Recommended statuses:**
 

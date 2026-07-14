@@ -1,6 +1,6 @@
 # Working agreement
 
-How two people (or more) work on Relay without stepping on each other or breaking `main`.
+How two people (or more) work on Testlane without stepping on each other or breaking `main`.
 
 ---
 

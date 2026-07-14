@@ -85,7 +85,7 @@ export function AdminApiKeysPageContent() {
         </label>
         <button type="button" className="btn btn-p admin-btn-fit" onClick={handleCreate}>Create</button>
         <p className="admin-desc">
-          You can find the Relay API documentation <a href="#" className="admin-link">here</a>.
+          You can find the Testlane API documentation <a href="#" className="admin-link">here</a>.
         </p>
       </AdminSection>
 

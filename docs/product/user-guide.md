@@ -1,16 +1,16 @@
-# Relay — User Guide
+# Testlane — User Guide
 
 *Living document · Last verified: 13 July 2026 · Branch: `mvp-backend`*
 
-This guide explains how to use Relay from a user perspective, as it works today in the browser against the real backend.
+This guide explains how to use Testlane from a user perspective, as it works today in the browser against the real backend.
 
 **For developers and agents:** When user-visible behaviour changes, update this file together with [`feature-flow.md`](feature-flow.md).
 
 ---
 
-## What Relay is
+## What Testlane is
 
-Relay is a QA test execution platform for clinical-trials-style workspaces. It helps teams organise **test cases**, group them into **test plans**, execute them in **test runs**, track results, and review activity across **projects**.
+Testlane is a QA test execution platform for clinical-trials-style workspaces. It helps teams organise **test cases**, group them into **test plans**, execute them in **test runs**, track results, and review activity across **projects**.
 
 As of `mvp-backend`, the app runs on a **real MySQL backend**: login gates the app, projects come from the database, and cases (with comments), plans (with their query definitions), runs (case + per-step results, run descriptions, execution history), requirements, defects, the audit log, and the admin role/API-key registries all read and write real API routes. The browser's localStorage acts as a cache plus the store for the few remaining fields the database doesn't model yet — chiefly custom fields (a separate `mvp-custom-fields` branch) and admin automation (see "Data sources" below).
 
@@ -32,7 +32,7 @@ As of `mvp-backend`, the app runs on a **real MySQL backend**: login gates the a
 
 Writes **wait for the server**: creates/edits/deletes commit locally only after the API confirms (failures surface as error toasts). The one exception is P/F/B/S result recording, which is optimistic for keyboard speed and rolls back automatically if the server rejects it. There is no localStorage-only fallback project any more — if the API is unreachable, the app shows a connect/retry screen.
 
-**Reset the local cache:** visit any page with `?relay-reset=1` (or `localStorage.removeItem('relay-demo-v2')` in the console). This never touches the database — server data re-syncs on next load.
+**Reset the local cache:** visit any page with `?relay-reset=1` (or `localStorage.removeItem('testlane-demo-v2')` in the console). This never touches the database — server data re-syncs on next load.
 
 **Run locally:** `pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev` → open http://127.0.0.1:3000 — you'll be redirected to `/login`. Sign in with any seed user (see "Login" below), which lands on `/DP/dashboard` — the richly-seeded Demo Project (the real DB project; slug `dp`).
 
@@ -40,7 +40,7 @@ Writes **wait for the server**: creates/edits/deletes commit locally only after 
 
 ## Project switching
 
-Relay is **multi-project**. Each project has its own folders, test cases, and test runs.
+Testlane is **multi-project**. Each project has its own folders, test cases, and test runs.
 
 - **URL pattern:** `/:projectKey/:module` — e.g. `/DP/testcases`, `/CTMS/testruns`.
 - **Project switcher** appears in the top bar on every project screen (left of breadcrumbs).
@@ -349,7 +349,7 @@ Neither connects to a read API yet. Backend writes audit rows on run create and 
 
 **Route:** `/admin` → redirects to `/admin/profile`
 
-**Top bar:** Back to Relay · Current organisation name · **Demo role** switcher
+**Top bar:** Back to Testlane · Current organisation name · **Demo role** switcher
 
 **Sidebar (primary):** My profile, My account, Organisation, Projects, User management, Role management, Audit log
 

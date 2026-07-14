@@ -1,4 +1,4 @@
-import { pingDatabase } from '@relay/db'
+import { pingDatabase } from '@testlane/db'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'

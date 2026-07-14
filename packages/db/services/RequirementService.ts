@@ -1,6 +1,6 @@
 /**
  * RequirementService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Requirements (project-scoped entities) + case<->requirement links
  * (new-tables candidate, Phase D). Greenfield — there was no prior table, so

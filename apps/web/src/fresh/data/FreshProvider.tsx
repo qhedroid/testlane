@@ -113,7 +113,7 @@ import {
   updateRealRun,
 } from '@/lib/relay/run-client'
 
-const STORAGE_KEY = 'relay-demo-v2'
+const STORAGE_KEY = 'testlane-demo-v2'
 const DEMO_RESET_PARAM = 'relay-reset'
 
 function isDemoResetRequested(): boolean {
@@ -170,7 +170,7 @@ function BootGate({ resolved }: { resolved: boolean }) {
           <i className="ti ti-plug-connected-x" style={{ fontSize: 28 }} aria-hidden />
           <div style={{ fontSize: 15, fontWeight: 600 }}>Can&apos;t load projects</div>
           <div style={{ fontSize: 13, maxWidth: 380, textAlign: 'center' }}>
-            The Relay API returned no projects. Check that the server and database are running
+            The Testlane API returned no projects. Check that the server and database are running
             and seeded (<code>pnpm db:seed</code>), then retry.
           </div>
           <button type="button" className="btn btn-p" onClick={() => window.location.reload()}>
@@ -180,7 +180,7 @@ function BootGate({ resolved }: { resolved: boolean }) {
       ) : (
         <>
           <i className="ti ti-loader-2" style={{ fontSize: 26 }} aria-hidden />
-          <div style={{ fontSize: 13 }}>Connecting to Relay…</div>
+          <div style={{ fontSize: 13 }}>Connecting to Testlane…</div>
         </>
       )}
     </div>

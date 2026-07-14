@@ -1,7 +1,7 @@
-# Relay — CLAUDE.md (Cowork / Claude AI Instructions)
+# Testlane — CLAUDE.md (Cowork / Claude AI Instructions)
 
 ## Purpose
-Relay is a QA test execution platform (clinical-trials-style workspace).
+Testlane is a QA test execution platform (clinical-trials-style workspace).
 This file is read automatically by Claude (Cowork) at the start of every session.
 Treat `docs/_authoritative/**` as the only source of truth for requirements and contracts.
 
@@ -11,7 +11,7 @@ All files under `docs/claude/` are for Claude (Cowork) only — not for Cursor a
 - **`docs/claude/handoff.md`** — Read this immediately after CLAUDE.md. Contains: active branch, current schema version, completed task log, key decisions, and known gotchas. Update it at the end of any session where meaningful work was done. Keep it short — a session log and pointer to the files below, not the full detail.
 - **`docs/claude/known-bugs.md`** — Investigation log for bugs that are identified but not yet fully resolved. Read before drafting any bug-fix prompt. Update whenever a bug is partially fixed, deferred, or newly discovered.
 - **`docs/claude/roadmap.md`** — Read this next. The durable backlog: every outstanding feature/improvement Shaun has raised, each tagged `[ ]` not started / `[~draft]` provisional notes exist / `[~in progress]` real task prompts drafted / `[x]` done, with relevant code findings annotated inline as they're discovered. This is the source of truth for "what's next" — treat it as such rather than relying on chat history, which gets summarized/lost. Update it: whenever new roadmap items are raised, whenever a status tag changes (e.g. a branch's prompts get drafted, or a branch merges), and whenever a code investigation turns up a finding relevant to a listed item (annotate inline, don't just mention it in chat).
-- **`docs/claude/testiny-recon-notes.md`** — Reference findings from browsing the live Testiny instance (the tool this project benchmarks UX against), cross-referenced against Relay's actual code. Read before drafting any prompt for a roadmap item that involves matching Testiny's behavior — check here first before re-browsing Testiny. Contains an "open verification items" list of things that couldn't be checked (data limitations, not tool failures) — read that before asking Shaun to make specific data available in Testiny. Append new findings here whenever a future recon pass happens; don't let findings live only in chat.
+- **`docs/claude/testiny-recon-notes.md`** — Reference findings from browsing the live Testiny instance (the tool this project benchmarks UX against), cross-referenced against Testlane's actual code. Read before drafting any prompt for a roadmap item that involves matching Testiny's behavior — check here first before re-browsing Testiny. Contains an "open verification items" list of things that couldn't be checked (data limitations, not tool failures) — read that before asking Shaun to make specific data available in Testiny. Append new findings here whenever a future recon pass happens; don't let findings live only in chat.
 - **`docs/claude/mvp-backend/progress.md`** and **`docs/claude/mvp-backend/plan.md`** — `mvp-backend`-only. Claude implements this branch directly (see "Phase: Backend build" below) instead of drafting Cursor prompts, so these two files are the resumable state for that work across sessions. Read both before doing anything on `mvp-backend`; update `progress.md` at the end of every session touching this branch, even a short one.
 
 ## Claude's role in this project (MANDATORY)
@@ -111,7 +111,7 @@ Never trust the ambient `git config user.name`/`user.email` on this machine as c
 Only use Shaun's identity when a commit is genuinely his work being committed on his behalf — that must be a stated, deliberate choice for that commit, never the silent default.
 
 ## localStorage
-- Key: `relay-demo-v2`
+- Key: `testlane-demo-v2`
 - Always add a migration step in `migrate-demo-state.ts` when bumping the schema version.
 - See `DEMO_SCHEMA_VERSION` in `demo-model.ts` for the current value.
 
@@ -180,7 +180,7 @@ One-paragraph summary of the feature and its UI entry point.
 
 ### Feature Area
 
-**Commit title** ([`398f45a`](https://github.com/qhedroid/Relay/commit/398f45a))
+**Commit title** ([`398f45a`](https://github.com/qhedroid/testlane/commit/398f45a))
 - bullet
 - bullet
 
@@ -207,7 +207,7 @@ Rules:
 - Separate major sections with `---`.
 - Prefer specifics over summaries in every bullet.
 
-When writing for GitHub, link the SHA: `([`398f45a`](https://github.com/qhedroid/Relay/commit/398f45a))`.
+When writing for GitHub, link the SHA: `([`398f45a`](https://github.com/qhedroid/testlane/commit/398f45a))`.
 
 ## When information is missing
 Do not guess. Ask, or add a TODO in the relevant `docs/_authoritative/*` file.

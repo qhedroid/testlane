@@ -1,8 +1,8 @@
-# Relay — Design Review & Wireframe Brief (for Claude Design, Fable 5)
+# Testlane — Design Review & Wireframe Brief (for Claude Design, Fable 5)
 
-## What Relay is
+## What Testlane is
 
-Relay is a CTMS/Testiny-style QA test management tool — test cases, test plans, test runs/execution, requirements, and defects, built around internal Trial Interactive-style workflows. Current build is a frontend-only prototype (Next.js + React), demo data in localStorage, live at **https://relay-qa.netlify.app**. It is not a generic TestRail clone — the audience is QA/test management users in a clinical-trials-adjacent workflow.
+Testlane is a CTMS/Testiny-style QA test management tool — test cases, test plans, test runs/execution, requirements, and defects, built around internal Trial Interactive-style workflows. Current build is a frontend-only prototype (Next.js + React), demo data in localStorage, live at **https://relay-qa.netlify.app**. It is not a generic TestRail clone — the audience is QA/test management users in a clinical-trials-adjacent workflow.
 
 ## What to do
 

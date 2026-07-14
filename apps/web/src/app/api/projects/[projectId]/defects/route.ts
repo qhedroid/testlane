@@ -1,4 +1,4 @@
-import { listDefects, createDefect } from '@relay/db/services/defect'
+import { listDefects, createDefect } from '@testlane/db/services/defect'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { createDefectBodySchema } from '@/lib/api/schemas'

@@ -100,7 +100,7 @@ export function AdminOrganizationPageContent() {
             />
             <AdminInfoIcon />
           </div>
-          <p className="admin-desc">Provides AI-support through access to the Relay API.</p>
+          <p className="admin-desc">Provides AI-support through access to the Testlane API.</p>
         </AdminSection>
 
         <AdminPageFooter>

@@ -18,13 +18,13 @@
 import type { AdminRole } from '@/fresh/data/demo-model'
 import { emptyPermissions, type RolePermissions } from '@/fresh/data/rbac'
 import type { ApiErrorBody, ApiSuccessBody } from '@/lib/api/types'
-import { RelayApiError } from './project-client'
+import { TestlaneApiError } from './project-client'
 
 async function parseResponse<T>(res: Response): Promise<T> {
   const json = (await res.json()) as ApiSuccessBody<T> | ApiErrorBody
   if (!res.ok) {
     const err = 'error' in json ? json.error : { code: 'UNKNOWN', message: res.statusText }
-    throw new RelayApiError(err.code, err.message)
+    throw new TestlaneApiError(err.code, err.message)
   }
   return (json as ApiSuccessBody<T>).data
 }

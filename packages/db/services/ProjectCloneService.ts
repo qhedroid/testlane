@@ -1,6 +1,6 @@
 /**
  * ProjectCloneService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Deep-clones a project's folders/cases/steps/plans/plan-cases/runs/run-cases/
  * step-snapshots/step-results/defect-links/run-assignees/run-case-events into a

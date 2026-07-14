@@ -1,6 +1,6 @@
 /**
  * AuditService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Real audit_log read/write (Phase 6 of mvp-backend). `recordAudit()` is a
  * thin, reusable helper other services call inline (see

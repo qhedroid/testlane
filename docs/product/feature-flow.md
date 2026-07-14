@@ -1,4 +1,4 @@
-# Relay — Feature Flow Map
+# Testlane — Feature Flow Map
 
 *Living document · Last verified: 13 July 2026 · Branch: `mvp-backend`*
 
@@ -110,7 +110,7 @@ pnpm docker:up && pnpm db:migrate && pnpm db:seed
 |-------|-----------|-------|
 | Source of truth | **MySQL via the real API** (`/api/projects/*`, `/api/runs/*`, `/api/users/*`, `/api/admin/*`) | Projects, folders, cases (+ comments + requirement links), plans (+ query definitions + case lists), runs (+ case/step results + descriptions + execution events), requirements, defects, audit log, users, role definitions, API keys |
 | UI state | `FreshProvider` + `useReducer`, **synced from the API** for real projects (`SYNC_REAL_PROJECT_DATA` on project activation; **wait-for-server** write-through on mutations, except optimistic P/F/B/S result recording with rollback) | In-memory React state |
-| Browser persistence | `localStorage` key **`relay-demo-v2`** | Cache of synced data + store for the remaining **local-only fields** (custom-field definitions/values, admin automation, the "Demo User" actor + mock admin roster fallback) |
+| Browser persistence | `localStorage` key **`testlane-demo-v2`** | Cache of synced data + store for the remaining **local-only fields** (custom-field definitions/values, admin automation, the "Demo User" actor + mock admin roster fallback) |
 | DB seed | `packages/db/src/seed/` (`pnpm db:seed`) — 7 projects incl. the richly-seeded **Demo Project** | Real rows; full reset on re-run (wipes clones) |
 | Static mock | `mock-data.ts`, seed arrays | Defects TI-* rows, static shells (My Work, Milestones, Reports, AI Studio) |
 
@@ -122,7 +122,7 @@ pnpm docker:up && pnpm db:migrate && pnpm db:seed
 
 | Field | Value |
 |-------|-------|
-| Key | `relay-demo-v2` |
+| Key | `testlane-demo-v2` |
 | Current version | **`14`** (`DEMO_SCHEMA_VERSION` in `demo-model.ts`) |
 | Migration file | `migrate-demo-state.ts` |
 | On failure | Reset to seed (`buildInitialDemoState()`) |

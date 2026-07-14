@@ -1,4 +1,4 @@
-import { listRequirements, createRequirement } from '@relay/db/services/requirement'
+import { listRequirements, createRequirement } from '@testlane/db/services/requirement'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { createRequirementBodySchema } from '@/lib/api/schemas'

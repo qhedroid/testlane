@@ -1,4 +1,4 @@
-import { listFolders, createFolder } from '@relay/db/services/test-case'
+import { listFolders, createFolder } from '@testlane/db/services/test-case'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { createFolderBodySchema } from '@/lib/api/schemas'

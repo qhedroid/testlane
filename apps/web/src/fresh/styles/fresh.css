@@ -660,7 +660,7 @@ tr:hover .row-ctx-btn{display:inline-flex;align-items:center}
 .tp-tab-pane{display:none}.tp-tab-pane.on{display:flex;flex-direction:column;gap:10px}
 .validation-note{font-size:11.5px;color:var(--text2);line-height:1.45;background:var(--accent-lt);border-top:1px solid rgba(24,95,165,.15);padding:8px 10px}
 
-/* ── Next.js / Relay branding overrides ── */
+/* ── Next.js / Testlane branding overrides ── */
 html,body{height:100%;margin:0;padding:0}
 #app{width:100%;height:100vh;min-height:100vh}
 .sb-mark{background:#193c5f;border:1px solid rgba(255,255,255,0.12)}

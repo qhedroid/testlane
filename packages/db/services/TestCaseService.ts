@@ -1,6 +1,6 @@
 /**
  * TestCaseService.ts
- * Relay — Service layer
+ * Testlane — Service layer
  *
  * Test Cases + Folders (Phase 2 of mvp-backend). Modeled directly on
  * TestRunService.ts's three-phase shape (pre-validation -> transaction ->

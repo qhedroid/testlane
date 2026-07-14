@@ -7,7 +7,7 @@ loadEnv({ path: path.join(monorepoRoot, '.env') })
 loadEnv({ path: path.join(monorepoRoot, '.env.local'), override: true })
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@relay/db'],
+  transpilePackages: ['@testlane/db'],
 }
 
 export default nextConfig

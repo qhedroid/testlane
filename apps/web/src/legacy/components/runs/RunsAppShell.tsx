@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { RelayMark } from './RelayMark'
+import { TestlaneMark } from './TestlaneMark'
 
 interface RunsAppShellProps {
   children: ReactNode
@@ -20,7 +20,7 @@ export function RunsAppShell({ children, topbarActions }: RunsAppShellProps) {
       <nav className="relay-sb" aria-label="Main navigation">
         <div className="relay-sb-logo">
           <div className="relay-sb-mark">
-            <RelayMark />
+            <TestlaneMark />
           </div>
           <div className="relay-sb-name">
             relay

@@ -1,4 +1,4 @@
-/* Test Runs — Relay_Prototype_v1.2.html (scoped to .runs-v12 only) */
+/* Test Runs — Testlane_Prototype_v1.2.html (scoped to .runs-v12 only) */
 
 .runs-v12.tr-lay,
 .runs-v12 .tr-lay {
@@ -722,7 +722,7 @@
   cursor: pointer;
 }
 
-/* Result shortcuts — verbatim from Relay_Prototype_v1.2.html */
+/* Result shortcuts — verbatim from Testlane_Prototype_v1.2.html */
 .runs-v12 .ed-foot{background:var(--surface);border-top:1px solid var(--border);padding:8px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .runs-v12 .ed-rl{font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
 .runs-v12 .ed-rbs{display:flex;gap:6px;flex:1}

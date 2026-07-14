@@ -1,4 +1,4 @@
-import { createApiKey, listApiKeys } from '@relay/db/services/admin-settings'
+import { createApiKey, listApiKeys } from '@testlane/db/services/admin-settings'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { createApiKeyBodySchema } from '@/lib/api/schemas'

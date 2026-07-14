@@ -1,15 +1,15 @@
 > **STALE / SUPERSEDED** — This was a one-off prompt to create agent context. Use [`docs/_authoritative/PROJECT_CONTEXT.md`](../_authoritative/PROJECT_CONTEXT.md) instead.
 
-Relay — Create Agent Source-of-Truth Context File
+Testlane — Create Agent Source-of-Truth Context File
 
 Context:
-I have made changes to the Relay app locally. We need a durable markdown file that future Cursor/ChatGPT sessions must use as the project source of truth.
+I have made changes to the Testlane app locally. We need a durable markdown file that future Cursor/ChatGPT sessions must use as the project source of truth.
 
 This is not a personal handover for Noel.
 This is a product/engineering context file designed to reduce hallucination, repeated token-heavy context dumps, and incorrect assumptions about what exists in the repo.
 
 Goal:
-Create a single, accurate, repo-grounded markdown file that documents the current Relay implementation, constraints, architecture, working areas, non-working areas, and next ticket-led steps.
+Create a single, accurate, repo-grounded markdown file that documents the current Testlane implementation, constraints, architecture, working areas, non-working areas, and next ticket-led steps.
 
 Output file:
 docs/collaboration/relay-agent-context.md
@@ -79,7 +79,7 @@ State that future agents should read this file before planning or coding.
 State that if the repo conflicts with this file, the repo wins and this file must be updated.
 
 2. Current project identity
-Explain what Relay is in plain English.
+Explain what Testlane is in plain English.
 State that it is currently a local-dev QA/test execution prototype/MVP.
 State that it is not production-ready.
 
@@ -255,8 +255,8 @@ Be brutally clear. This is to prevent hallucination.
 
 15. GitHub delivery state
 Include:
-Repo URL: https://github.com/qhedroid/Relay
-Project board: Relay v0.1 Execution Readiness
+Repo URL: https://github.com/qhedroid/testlane
+Project board: Testlane v0.1 Execution Readiness
 Current issues:
 REL-001 Manual UX audit of /runs — issue #1
 REL-002 Resolve duplicate result controls — issue #2
@@ -294,7 +294,7 @@ REL-007 stable tag
 18. Copy-paste prompt for future agents
 Include this prompt at the end:
 
-“You are working on Relay. First read docs/collaboration/relay-agent-context.md and treat it as the current source-of-truth unless the repo contradicts it. Then inspect the selected REL issue and the relevant files before planning. Do not assume unimplemented modules exist. Keep the work ticket-led, narrow, and repo-grounded. Preserve thin API routes and service-layer business logic. Do not commit unless asked.”
+“You are working on Testlane. First read docs/collaboration/relay-agent-context.md and treat it as the current source-of-truth unless the repo contradicts it. Then inspect the selected REL issue and the relevant files before planning. Do not assume unimplemented modules exist. Keep the work ticket-led, narrow, and repo-grounded. Preserve thin API routes and service-layer business logic. Do not commit unless asked.”
 
 19. Final human summary
 Add a short plain-English summary:

@@ -1,4 +1,4 @@
-# Relay — Drizzle Schema: Rationale, Notes, Indexing, and Risks
+# Testlane — Drizzle Schema: Rationale, Notes, Indexing, and Risks
 **Phase 5 · May 2026**
 
 ---
@@ -495,4 +495,4 @@ If `updated_at` timestamps appear incorrect (e.g. offset by several hours), this
 
 ---
 
-*End of Relay Schema Rationale v1.0*
+*End of Testlane Schema Rationale v1.0*

@@ -9,7 +9,7 @@
  *
  * The role names + permission maps here MUST stay aligned with the frontend's
  * apps/web/src/fresh/data/rbac.ts (ADMIN_USER_ROLES / BUILTIN_ROLE_PERMISSIONS /
- * BUILTIN_ROLE_META). @relay/db cannot import from apps/web, so the built-in
+ * BUILTIN_ROLE_META). @testlane/db cannot import from apps/web, so the built-in
  * role data is mirrored here deliberately (same accepted duplication as other
  * frontend-shape couplings on this branch — flagged, not silent). The API key
  * values mirror admin-initial-settings.ts's seedApiKeys().

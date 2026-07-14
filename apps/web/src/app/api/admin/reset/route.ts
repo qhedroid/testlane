@@ -1,4 +1,4 @@
-import { resetWorkspace } from '@relay/db/services/workspace-reset'
+import { resetWorkspace } from '@testlane/db/services/workspace-reset'
 import { resolveSessionActor } from '@/lib/api/session'
 import { handleRouteError } from '@/lib/api/errors'
 import { jsonSuccess } from '@/lib/api/response'

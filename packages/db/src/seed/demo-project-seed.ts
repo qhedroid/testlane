@@ -1,6 +1,6 @@
 /**
  * demo-project-seed.ts
- * Relay — Seed data
+ * Testlane — Seed data
  *
  * The 7th seeded project: a richly-populated, explorable "Demo Project"
  * (Shaun, 2026-07-09 — mvp-backend "wire everything" session). Unlike the
