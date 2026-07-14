@@ -1,22 +1,21 @@
-/** Testlane logo mark — chevrons + baton (teal-on-graphite) */
-export function TestlaneMark() {
+/** Official Testlane brand mark — three rising lanes to a pass (teal on graphite). */
+export function TestlaneMark({ size = 26 }: { size?: number }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-      <polyline
-        points="2,4 8,11 2,18"
-        stroke="rgba(79,184,159,0.45)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <polyline
-        points="7,4 13,11 7,18"
-        stroke="#fff"
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="18" cy="11" r="2.8" fill="#4FB89F" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 1024 1024"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-hidden
+    >
+      <title>Testlane</title>
+      <rect width="1024" height="1024" rx="179.2" fill="#1A1D20" />
+      <g transform="translate(153.6 153.6) scale(0.7)">
+        <rect x="242" y="542" width="140" height="260" rx="45" fill="#3D4045" />
+        <rect x="442" y="382" width="140" height="420" rx="45" fill="#0F6E56" />
+        <rect x="642" y="222" width="140" height="580" rx="45" fill="#4FB89F" />
+      </g>
     </svg>
   )
 }

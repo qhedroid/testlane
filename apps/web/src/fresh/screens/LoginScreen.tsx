@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { TestlaneMark } from '../assets/TestlaneMark'
 import { DEFAULT_PROJECT_KEY, projectPath } from '../lib/project-routes'
 
 export function LoginScreen() {
@@ -41,8 +42,13 @@ export function LoginScreen() {
     <div className="login-screen">
       <div className="login-left">
         <div>
-          <div className="login-wordmark">Testlane</div>
-          <div className="login-tagline">Test Management</div>
+          <div className="login-brand">
+            <TestlaneMark size={44} />
+            <div>
+              <div className="login-wordmark">Testlane</div>
+              <div className="login-tagline">Test Management</div>
+            </div>
+          </div>
         </div>
         <ul className="login-bullets">
           <li>
