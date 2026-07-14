@@ -15,6 +15,16 @@ Claude is a **planning and prompt-drafting assistant**. It does not implement ch
 
 ---
 
+## Session note — 2026-07-14 (post-merge)
+
+`mvp-main` merged into `main` (`7d3d5b1`, on top of PR #20's `mvp-backend` → `mvp-main` merge, `16e5212`) — both Noel and Shaun signed off. `main` is now the full backend build.
+
+**Data loss to flag:** an earlier same-day Claude (Cowork) session produced an architecture audit (`docs/claude/mvp-backend/architecture-verification-2026-07-13.md`), a `known-bugs.md` entry (BUG-03 — `BootGate` doesn't force when the API is down but a real project is cached; root-caused in `FreshProvider.tsx`, fix drafted but not yet applied), an AI Studio/Assistant concept doc + roadmap entries, an outstanding-screens implementation plan (My Work/Milestones/Requirements/Defects/Reports), a local-setup checklist, and four Cursor task prompts. None of these were ever committed (deliberately, per instruction), and the working tree was reset at some point during the `mvp-main`→`main` merge — they no longer exist on disk. The merge itself and the actual code are unaffected; only that session's own planning/audit documentation was lost. Ask Claude to regenerate any of it if needed — the content is not gone from context, just from disk.
+
+**Current focus:** launching the local stack behind a Cloudflare Tunnel for a quick shareable demo (`docs/claude/mvp-backend/cloudflare-tunnel-checklist.md`, `docs/cursor-prompts/main/task-01-cloudflare-tunnel-launch.md`), independent of and prior to the GitLab-migration/Netlify/DB hosting conversation, which is deliberately deferred.
+
+---
+
 ## Active branch
 `mvp-backend` — **COMPLETE, ready for PR to `mvp-main`** (2026-07-10). Every fresh screen reads/writes the real MySQL backend, login gates the app, the seeded Demo Project (`DEMO`) is the default landing project, and Shaun verified everything locally (including the Runs protected-UX regression). PR description: `docs/cursor-prompts/mvp-backend/pr-description-mvp-backend.md`. Live state: `docs/claude/mvp-backend/progress.md`. Original branch framing below.
 

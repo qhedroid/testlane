@@ -19,7 +19,14 @@ export async function middleware(request: NextRequest) {
 
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   if (!token) {
-    const loginUrl = new URL('/login', request.url)
+    // Relative Location so reverse proxies / Cloudflare Tunnel keep the public host.
+    // Absolute redirects via request.url become https://localhost:3000 behind cloudflared
+    // (Host is local, X-Forwarded-Proto is https) and browsers then hit ERR_SSL_PROTOCOL_ERROR.
+    const base =
+      process.env.NEXTAUTH_URL && process.env.NEXTAUTH_URL.length > 0
+        ? process.env.NEXTAUTH_URL
+        : request.url
+    const loginUrl = new URL('/login', base)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
