@@ -40,10 +40,28 @@ module by module onto a real database and API layer.
 ## What's still a work in progress
 
 Built as a portfolio project, so some areas are intentionally further along
-than others: reporting, the AI-assisted test authoring studio, My Work, and
-Milestones are visual shells. The core case/run/plan workflow is real and
-wired to the database; Requirements and Defects have real APIs but retain
-demo fallbacks while their seed data is empty.
+than others. The core case/run/plan workflow is real and wired to the
+database. Requirements and Defects list live project data (empty when none
+exist — no fake fallback rows). Reports Run Summary uses the dashboard API;
+Failure Trends / Flaky Cases / Tester Workload are labelled Roadmap. My Work
+aggregates assignees client-side. Milestones persist in `localStorage` only
+(no DB schema). AI Studio is a Concept preview — no generation backend.
+
+## Known limitations
+
+- **Local demo auth only.** Seeded users share the password
+  `testlane-demo-2026`. That is intentional for a clone-and-run portfolio
+  demo, not a production identity model.
+- **`x-relay-user-id` header bypass on `/api/runs/*`.** Those routes still
+  accept a bare `x-relay-user-id` header without a NextAuth session, using
+  deterministic seed user IDs. This exists for local/demo convenience while
+  wiring run APIs. **It is not suitable for any real deployment.** Production
+  traffic must authenticate exclusively through the session-based path
+  (`resolveSessionActor` / NextAuth JWT). See also
+  [`docs/ops/cloudflare-tunnel-local-launch.md`](docs/ops/cloudflare-tunnel-local-launch.md)
+  (Security section).
+- **Not production hosting.** No SSO, no hardened multi-tenant isolation, and
+  several screens remain local-only or roadmap-labelled as above.
 
 ## Tech stack
 

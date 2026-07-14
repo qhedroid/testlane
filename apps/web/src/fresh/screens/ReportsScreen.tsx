@@ -1,53 +1,68 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FreshTopbar } from '../components/FreshTopbar'
+import { useFresh } from '../data/FreshProvider'
+import { computeDashboardKpis } from '../data/project-selectors'
+import { fetchRealDashboardSummary, type RealDashboardSummary } from '@/lib/relay/dashboard-client'
 
 type ReportTab = 'run' | 'req' | 'failure' | 'flaky' | 'workload'
 
-const REPORT_CHIPS: { id: ReportTab; label: string }[] = [
+const REPORT_CHIPS: { id: ReportTab; label: string; roadmap?: boolean }[] = [
   { id: 'run', label: 'Run Summary' },
   { id: 'req', label: 'Requirements Coverage' },
-  { id: 'failure', label: 'Failure Trends' },
-  { id: 'flaky', label: 'Flaky Cases' },
-  { id: 'workload', label: 'Tester Workload' },
+  { id: 'failure', label: 'Failure Trends', roadmap: true },
+  { id: 'flaky', label: 'Flaky Cases', roadmap: true },
+  { id: 'workload', label: 'Tester Workload', roadmap: true },
 ]
 
-const RUN_CHIPS = ['R-31', 'R-29', 'R-28', 'R-27', 'R-26']
+function RunSummaryPanel({
+  summary,
+  projectName,
+  loading,
+}: {
+  summary: RealDashboardSummary | null
+  projectName: string
+  loading: boolean
+}) {
+  const b = summary?.resultBreakdown
+  const total = b ? b.pass + b.fail + b.blocked + b.skip + b.notRun : 0
+  const executed = b ? total - b.notRun : 0
+  const executedPct = total > 0 ? Math.round((executed / total) * 100) : 0
+  const circ = 2 * Math.PI * 54
+  const passLen = total > 0 && b ? (b.pass / total) * circ : 0
+  const failLen = total > 0 && b ? (b.fail / total) * circ : 0
+  const blockLen = total > 0 && b ? (b.blocked / total) * circ : 0
 
-function RunSummaryPanel() {
   return (
     <>
-      <div className="reports-run-chips">
-        <span className="reports-run-lbl">Run:</span>
-        {RUN_CHIPS.map((id, i) => (
-          <span key={id} className={`chip${i === 0 ? ' on' : ''}`}>
-            {id}
-          </span>
-        ))}
-      </div>
-
       <div className="kpi-strip reports-kpi">
         <div className="kpi-tile kpi-tile-wide">
-          <div className="kpi-lbl">CTMS Regression — Sprint 44</div>
-          <div className="kpi-val">54% executed</div>
-          <div className="reports-kpi-meta">132 cases · UAT · due 12 May</div>
+          <div className="kpi-lbl">{projectName}</div>
+          <div className="kpi-val">
+            {loading && !summary ? 'Loading…' : `${executedPct}% executed`}
+          </div>
+          <div className="reports-kpi-meta">
+            {summary
+              ? `${summary.totalCaseCount} cases · ${summary.activeRunCount} open runs · pass rate ${summary.passRatePct}%`
+              : 'Project-wide summary from the dashboard API'}
+          </div>
         </div>
         <div className="kpi-tile">
           <div className="kpi-lbl">Passed</div>
-          <div className="kpi-val kpi-pass">71</div>
+          <div className="kpi-val kpi-pass">{b?.pass ?? '—'}</div>
         </div>
         <div className="kpi-tile">
           <div className="kpi-lbl">Failed</div>
-          <div className="kpi-val kpi-fail">24</div>
+          <div className="kpi-val kpi-fail">{b?.fail ?? '—'}</div>
         </div>
         <div className="kpi-tile">
           <div className="kpi-lbl">Blocked</div>
-          <div className="kpi-val kpi-warn">7</div>
+          <div className="kpi-val kpi-warn">{b?.blocked ?? '—'}</div>
         </div>
         <div className="kpi-tile">
           <div className="kpi-lbl">Not Run</div>
-          <div className="kpi-val">30</div>
+          <div className="kpi-val">{b?.notRun ?? '—'}</div>
         </div>
       </div>
 
@@ -58,57 +73,93 @@ function RunSummaryPanel() {
             <div className="reports-donut">
               <svg width="120" height="120" viewBox="0 0 140 140" aria-hidden>
                 <circle cx="70" cy="70" r="54" fill="none" stroke="var(--border)" strokeWidth="16" />
-                <circle cx="70" cy="70" r="54" fill="none" stroke="var(--pass)" strokeWidth="16" strokeDasharray="170 339" strokeDashoffset="0" transform="rotate(-90 70 70)" />
-                <circle cx="70" cy="70" r="54" fill="none" stroke="var(--fail)" strokeWidth="16" strokeDasharray="58 339" strokeDashoffset="-170" transform="rotate(-90 70 70)" />
-                <circle cx="70" cy="70" r="54" fill="none" stroke="var(--block)" strokeWidth="16" strokeDasharray="17 339" strokeDashoffset="-228" transform="rotate(-90 70 70)" />
-                <text x="70" y="68" textAnchor="middle" className="reports-donut-pct">54%</text>
-                <text x="70" y="86" textAnchor="middle" className="reports-donut-sub">executed</text>
+                <circle
+                  cx="70"
+                  cy="70"
+                  r="54"
+                  fill="none"
+                  stroke="var(--pass)"
+                  strokeWidth="16"
+                  strokeDasharray={`${passLen} ${circ}`}
+                  strokeDashoffset="0"
+                  transform="rotate(-90 70 70)"
+                />
+                <circle
+                  cx="70"
+                  cy="70"
+                  r="54"
+                  fill="none"
+                  stroke="var(--fail)"
+                  strokeWidth="16"
+                  strokeDasharray={`${failLen} ${circ}`}
+                  strokeDashoffset={-passLen}
+                  transform="rotate(-90 70 70)"
+                />
+                <circle
+                  cx="70"
+                  cy="70"
+                  r="54"
+                  fill="none"
+                  stroke="var(--block)"
+                  strokeWidth="16"
+                  strokeDasharray={`${blockLen} ${circ}`}
+                  strokeDashoffset={-(passLen + failLen)}
+                  transform="rotate(-90 70 70)"
+                />
+                <text x="70" y="68" textAnchor="middle" className="reports-donut-pct">
+                  {executedPct}%
+                </text>
+                <text x="70" y="86" textAnchor="middle" className="reports-donut-sub">
+                  executed
+                </text>
               </svg>
             </div>
             <div className="reports-legend">
-              <div><span className="reports-dot" style={{ background: 'var(--pass)' }} />Passed<b>71</b></div>
-              <div><span className="reports-dot" style={{ background: 'var(--fail)' }} />Failed<b>24</b></div>
-              <div><span className="reports-dot" style={{ background: 'var(--block)' }} />Blocked<b>7</b></div>
-              <div><span className="reports-dot" style={{ background: 'var(--border2)' }} />Not Run<b>30</b></div>
+              <div>
+                <span className="reports-dot" style={{ background: 'var(--pass)' }} />
+                Passed<b>{b?.pass ?? '—'}</b>
+              </div>
+              <div>
+                <span className="reports-dot" style={{ background: 'var(--fail)' }} />
+                Failed<b>{b?.fail ?? '—'}</b>
+              </div>
+              <div>
+                <span className="reports-dot" style={{ background: 'var(--block)' }} />
+                Blocked<b>{b?.blocked ?? '—'}</b>
+              </div>
+              <div>
+                <span className="reports-dot" style={{ background: 'var(--border2)' }} />
+                Not Run<b>{b?.notRun ?? '—'}</b>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="panel">
-          <h3 className="panel-h3">Results by Priority</h3>
+          <h3 className="panel-h3">Open failures</h3>
           <div className="panel-body-pad">
-            {[
-              { label: 'Critical', pass: 8, fail: 4, total: 14 },
-              { label: 'High', pass: 22, fail: 9, total: 38 },
-              { label: 'Medium', pass: 31, fail: 8, total: 52 },
-              { label: 'Low', pass: 10, fail: 3, total: 28 },
-            ].map((row) => (
-              <div key={row.label} className="reports-pri-row">
-                <span className="reports-pri-lbl">{row.label}</span>
-                <div className="reports-pri-bar">
-                  <span style={{ width: `${(row.pass / row.total) * 100}%`, background: 'var(--pass)' }} />
-                  <span style={{ width: `${(row.fail / row.total) * 100}%`, background: 'var(--fail)' }} />
-                </div>
-                <span className="reports-pri-frac">{row.pass}/{row.total}</span>
-              </div>
-            ))}
+            <div className="kpi-tile" style={{ border: 'none', padding: 0 }}>
+              <div className="kpi-lbl">Open failure count</div>
+              <div className="kpi-val kpi-fail">{summary?.openFailureCount ?? '—'}</div>
+            </div>
+            <div className="kpi-tile" style={{ border: 'none', padding: '12px 0 0', marginTop: 8 }}>
+              <div className="kpi-lbl">Unlinked failures</div>
+              <div className="kpi-val">{summary?.unlinkedFailureCount ?? '—'}</div>
+            </div>
+            <p className="reports-placeholder-desc" style={{ marginTop: 12 }}>
+              Live counts from <code>GET /api/projects/:id/dashboard</code>. Per-case failure lists stay on the Dashboard Needs Attention panel.
+            </p>
           </div>
         </div>
 
         <div className="panel">
-          <h3 className="panel-h3">Top Failures</h3>
+          <h3 className="panel-h3">Coverage</h3>
           <div className="panel-body-pad">
-            {[
-              { caseId: 'TC-1006', title: 'Audit trail entry on permission change', run: 'R-31' },
-              { caseId: 'TC-1008', title: 'Export includes skipped rows', run: 'R-27' },
-              { caseId: 'TC-103', title: 'SSO redirect preserves return URL', run: 'R-29' },
-            ].map((item) => (
-              <div key={item.caseId} className="screen-row reports-fail-row">
-                <span className="mono-muted">{item.caseId}</span>
-                <span className="reports-fail-title">{item.title}</span>
-                <span className="chip">{item.run}</span>
-              </div>
-            ))}
+            <div className="kpi-lbl">Run coverage</div>
+            <div className="kpi-val">{summary ? `${summary.runCoveragePct}%` : '—'}</div>
+            <p className="reports-placeholder-desc" style={{ marginTop: 12 }}>
+              Share of cases that have been exercised in at least one run for this project.
+            </p>
           </div>
         </div>
       </div>
@@ -116,16 +167,73 @@ function RunSummaryPanel() {
   )
 }
 
-function PlaceholderReportPanel({ title, desc }: { title: string; desc: string }) {
+function RequirementsCoveragePanel() {
+  const { activeCases, activeRequirements } = useFresh()
+  const rows = useMemo(() => {
+    return activeRequirements
+      .map((req) => {
+        const linked = activeCases.filter((c) => (c.requirementIds ?? []).includes(req.id))
+        const coveragePct = linked.length > 0 ? 100 : 0
+        return {
+          id: req.id,
+          key: req.requirementKey,
+          title: req.title,
+          linkedCaseCount: linked.length,
+          coveragePct,
+        }
+      })
+      .sort((a, b) => a.linkedCaseCount - b.linkedCaseCount)
+  }, [activeCases, activeRequirements])
+
+  const covered = rows.filter((r) => r.linkedCaseCount > 0).length
+
+  return (
+    <div className="panel">
+      <h3 className="panel-h3">Requirements Coverage</h3>
+      <p className="reports-placeholder-desc" style={{ padding: '0 16px' }}>
+        Derived client-side from live requirements and case links — {covered}/{rows.length} requirements have at least one linked case.
+      </p>
+      <div className="panel-body-pad">
+        {rows.length === 0 ? (
+          <p className="page-empty-desc">No requirements to report coverage against.</p>
+        ) : (
+          rows.slice(0, 12).map((row) => (
+            <div key={row.id} className="reports-pri-row">
+              <span className="reports-pri-lbl" title={row.title}>
+                {row.key}
+              </span>
+              <div className="reports-pri-bar">
+                <span
+                  style={{
+                    width: `${row.coveragePct}%`,
+                    background: row.coveragePct === 0 ? 'var(--fail)' : 'var(--pass)',
+                  }}
+                />
+              </div>
+              <span className="reports-pri-frac">
+                {row.linkedCaseCount} cases · {row.coveragePct === 100 ? 'linked' : 'uncovered'}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RoadmapReportPanel({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="panel reports-placeholder">
-      <h3 className="panel-h3">{title}</h3>
+      <h3 className="panel-h3">
+        {title}
+        <span className="roadmap-badge">Roadmap</span>
+      </h3>
       <p className="reports-placeholder-desc">{desc}</p>
       <div className="reports-placeholder-cards">
         {[1, 2, 3].map((n) => (
           <div key={n} className="reports-stat-card">
             <div className="reports-stat-val">—</div>
-            <div className="reports-stat-lbl">Demo metric {n}</div>
+            <div className="reports-stat-lbl">Roadmap metric {n}</div>
           </div>
         ))}
       </div>
@@ -134,7 +242,50 @@ function PlaceholderReportPanel({ title, desc }: { title: string; desc: string }
 }
 
 export function ReportsScreen() {
+  const { activeProject, activeRuns } = useFresh()
   const [tab, setTab] = useState<ReportTab>('run')
+  const [summary, setSummary] = useState<RealDashboardSummary | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setSummary(null)
+    fetchRealDashboardSummary(activeProject.id)
+      .then((data) => {
+        if (!cancelled) setSummary(data)
+      })
+      .catch((err) => {
+        console.warn('[testlane] Reports summary fetch failed — falling back to client KPIs:', err)
+        if (!cancelled) {
+          const local = computeDashboardKpis(activeRuns)
+          setSummary({
+            activeRunCount: local.openRunCount,
+            passRatePct:
+              local.totalExecuted > 0
+                ? Math.round((local.passed / local.totalExecuted) * 100)
+                : 0,
+            openFailureCount: local.failed,
+            unlinkedFailureCount: 0,
+            runCoveragePct: local.executedPct,
+            totalCaseCount: local.totalCases,
+            resultBreakdown: {
+              pass: local.passed,
+              fail: local.failed,
+              blocked: local.blocked,
+              skip: local.skipped,
+              notRun: local.notRun,
+            },
+          })
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeProject.id, activeRuns])
 
   return (
     <div className="view">
@@ -144,10 +295,12 @@ export function ReportsScreen() {
         <div className="page-head">
           <div>
             <h1>Reports &amp; Analytics</h1>
-            <div className="sub">Demo · live views over cases, runs and requirements</div>
+            <div className="sub">
+              Run Summary uses the live dashboard API · other tabs are roadmap unless noted
+            </div>
           </div>
           <div className="actions">
-            <button type="button" className="btn btn-neutral" disabled title="Prototype only">
+            <button type="button" className="btn btn-neutral" disabled title="Not implemented">
               <i className="ti ti-upload" aria-hidden />
               Export
             </button>
@@ -163,33 +316,31 @@ export function ReportsScreen() {
               onClick={() => setTab(chip.id)}
             >
               {chip.label}
+              {chip.roadmap ? ' · Roadmap' : ''}
             </button>
           ))}
         </div>
 
-        {tab === 'run' ? <RunSummaryPanel /> : null}
-        {tab === 'req' ? (
-          <PlaceholderReportPanel
-            title="Requirements Coverage"
-            desc="Coverage heatmap and traceability gaps across approved requirements — demo placeholder."
-          />
+        {tab === 'run' ? (
+          <RunSummaryPanel summary={summary} projectName={activeProject.name} loading={loading} />
         ) : null}
+        {tab === 'req' ? <RequirementsCoveragePanel /> : null}
         {tab === 'failure' ? (
-          <PlaceholderReportPanel
+          <RoadmapReportPanel
             title="Failure Trends"
-            desc="Failure rate over time by module and priority — demo placeholder."
+            desc="Failure rate over time by module and priority is not implemented yet — marked Roadmap rather than shown as live data."
           />
         ) : null}
         {tab === 'flaky' ? (
-          <PlaceholderReportPanel
+          <RoadmapReportPanel
             title="Flaky Cases"
-            desc="Cases with inconsistent pass/fail history across recent runs — demo placeholder."
+            desc="Inconsistent pass/fail history across runs needs dedicated trend storage — Roadmap."
           />
         ) : null}
         {tab === 'workload' ? (
-          <PlaceholderReportPanel
+          <RoadmapReportPanel
             title="Tester Workload"
-            desc="Assigned vs executed cases per tester for active runs — demo placeholder."
+            desc="Assigned vs executed cases per tester as a dedicated report is Roadmap; see My Work for a personal queue derived from live assignees."
           />
         ) : null}
       </div>

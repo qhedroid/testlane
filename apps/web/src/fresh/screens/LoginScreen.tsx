@@ -58,12 +58,12 @@ export function LoginScreen() {
             Reports your auditors will actually read
           </li>
         </ul>
-        <div className="login-copy">© 2026 TransPerfect · Trial Interactive</div>
+        <div className="login-copy">© 2026 Noel Quadri · Testlane portfolio demo</div>
       </div>
       <div className="login-right">
         <div className="login-form-wrap">
           <h2 className="login-title">Sign In</h2>
-          <p className="login-desc">Use your TransPerfect account to continue to Testlane.</p>
+          <p className="login-desc">Use a seeded demo account to continue to Testlane.</p>
           <form onSubmit={handleSubmit}>
             {error ? <p className="form-error" style={{ marginBottom: 12 }}>{error}</p> : null}
             <label className="login-label" htmlFor="login-email">Email</label>
@@ -71,7 +71,7 @@ export function LoginScreen() {
               id="login-email"
               className="inp login-inp"
               type="email"
-              placeholder="you@transperfect.com"
+              placeholder="you@example.com"
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -107,9 +107,9 @@ export function LoginScreen() {
             disabled
           >
             <i className="ti ti-world" aria-hidden />
-            Continue with TransPerfect SSO
+            Continue with SSO
           </button>
-          <p className="login-footnote">Internal tool — access is provisioned by IT.</p>
+          <p className="login-footnote">Local demo — seeded accounts share password <code>testlane-demo-2026</code>.</p>
         </div>
       </div>
     </div>

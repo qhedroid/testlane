@@ -1,47 +1,54 @@
-# Design system — Testlane (Compass reskin)
+# Design system — Testlane (portfolio reskin)
 
-Testlane uses the **Compass (TransPerfect)** visual system. Tokens live in `apps/web/src/fresh/styles/fresh.css` (`:root`). The app is **light-mode only** (`color-scheme: light`).
+Testlane uses Noel Quadri’s portfolio palette (graphite / teal / paper). Tokens live in `apps/web/src/fresh/styles/fresh.css` (`:root`). The app is **light-mode only** (`color-scheme: light`).
 
 ## Brand
 
-**Name:** Testlane (unchanged — product name is not rebranded)
+**Name:** Testlane
 
-**Mark:** Two staggered chevrons with a filled dot (execution handoff). Sidebar wordmark sits on TransPerfect Dark Blue.
+**Mark:** Two staggered chevrons with a filled baton dot (execution handoff). Sidebar wordmark sits on graphite; the baton uses `--nq-teal-on-dark`.
+
+**Functional accent:** Teal (`--nq-teal` / `--nq-teal-on-dark`) for primary buttons, links, focus rings, and selected states.
+
+**Personal identity (off-limits in interactive UI):** Amber (`--nq-amber` / `--nq-amber-bright`) is Noel’s personal colour — do not use on buttons, links, or active states inside the app.
 
 ## Colour tokens
 
 | Token | Value | Use |
 |---|---|---|
-| `--navy` | `#003B71` | Brand / nav text on light surfaces |
-| `--navy-hover` | `#002B53` | Nav hover (reserved) |
-| `--sidebar-bg` | `#003B71` | Sidebar background |
-| `--accent` | `#1976D2` | GlobalLink Blue — links, CTAs, interactive |
-| `--accent-hover` | `#004FAA` | Primary button hover |
-| `--accent-lt` | `#ECF5FF` | Selected rows, active highlights |
-| `--bg` | `#F6F7F9` | App canvas |
+| `--nq-graphite` / `--navy` | `#24272B` | Brand / nav text on light; alias for shell |
+| `--nq-deep` / `--navy-hover` | `#1A1D20` | Darkest surface / mark tile |
+| `--sidebar-bg` | `#24272B` | Sidebar background |
+| `--nq-teal` / `--accent` | `#0F6E56` | Primary accent — links, CTAs, interactive |
+| `--nq-teal-hover` / `--accent-hover` | `#0A5542` | Primary button hover |
+| `--nq-teal-lt` / `--accent-lt` | `#E6F5F0` | Selected rows, active highlights |
+| `--nq-teal-on-dark` / `--accent-on-dark` | `#4FB89F` | Accent on dark surfaces (sidebar wordmark) |
+| `--nq-paper` / `--bg` | `#FAFAF7` | App canvas |
 | `--surface` | `#FFFFFF` | Cards, panels, top bar |
-| `--surface2` | `#FBFBFC` | Table headers, subtle fills, search field |
-| `--border` | `#DBE1E5` | Default borders |
-| `--border2` | `#BAC5CD` | Stronger borders, kbd |
-| `--text` / `--text1` | `#0B1821` | Primary text |
-| `--text2` | `#324553` | Secondary text |
-| `--text3` | `#5C707E` | Muted / metadata |
-| `--hover` | `#F6F7F9` | Row / menu hover |
+| `--nq-card` / `--surface2` | `#F3F3F0` | Table headers, subtle fills |
+| `--nq-hairline` / `--border` | `#E0E0DA` | Default borders |
+| `--nq-hairline-strong` / `--border2` | `#D0D0CA` | Stronger borders |
+| `--text` / `--text1` | `#24272B` | Primary text |
+| `--text2` | `#3D4045` | Secondary text |
+| `--nq-steel` / `--text3` | `#8A8F98` | Muted / metadata |
+| `--hover` | `#F3F3F0` | Row / menu hover |
+
+Semantic status colours (`--pass`, `--fail`, `--block`, `--skip`) are unchanged and must not be replaced by brand teal/amber.
 
 ## Typography
 
 | Role | Family | Notes |
 |---|---|---|
-| Body | **Open Sans** (`--sans`) | Loaded via `next/font/google` in root layout |
-| Display | **Gotham SSm** (`--display`) | Headings ≥20px, metric values; web files live in `public/fonts/gotham-ssm/` (weights 400/500/700, woff2+woff), falls back to Open Sans only if those files are ever removed |
-| Monospace | `--mono` | IDs, counts, timestamps |
+| Body | **Inter** (`--sans`) | Loaded via `next/font/google` (`--font-inter`) |
+| Display | **Space Grotesk** (`--display`) | Headings; `next/font/google` (`--font-space-grotesk`, 500/700) |
+| Monospace | **JetBrains Mono** (`--mono`) | IDs, counts, timestamps; `next/font/google` (`--font-jetbrains-mono`) |
 
 | Role | Size | Weight |
 |---|---|---|
-| Page title | 14px | 600 |
+| Page title | 14px | 600–700 (display) |
 | Section label (sidebar) | 10px | 700, uppercase, 0.12em spacing |
 | Body | 13px | 400 |
-| Nav item | 14px | 400 (600 when active) |
+| Nav item | 14px | 500 (600 when active) |
 | Table row | 12.5px | 400 |
 | Table header | 10.5px | 600, uppercase |
 | Button | 12.5px | 600 |
@@ -59,45 +66,4 @@ Testlane uses the **Compass (TransPerfect)** visual system. Tokens live in `apps
 
 ## Status colours
 
-| Status | Text / fill | Background | Notes |
-|---|---|---|---|
-| Pass | `#108718` (`--pass`) | `#ECFBEE` (`--pass-bg`) | Passed results |
-| Fail | `#C50007` (`--fail`) | `#FFE4E4` (`--fail-bg`) | Failed results, critical |
-| Blocked | `#E4AF03` (`--block`) fill only | `#FFF5D4` (`--block-bg`) | Use `--block-text` (`#8C6A00`) for readable text on light bg |
-| Skip | `#4527A0` (`--skip`) | `#EDE7F6` (`--skip-bg`) | Skipped — deliberately kept purple (not Compass gray) |
-| Not run | `--text3` | `--surface2` | Pending execution |
-| Active | `--accent` | `--accent-lt` | Active runs, plans, chips |
-
-## Priority text
-
-| Level | Token | Value |
-|---|---|---|
-| Critical | `--crit-text` | `#C50007` |
-| High | `--high-text` | `#8C6A00` |
-| Medium | `--med-text` | `#004FAA` |
-
-## Layout principles
-
-**Operational density.** Internal engineering tool — 13px body baseline retained (not mockup 14px globally).
-
-**Split-pane navigation.** Persistent left list + right detail on major views.
-
-**Resizable panels.** Suite tree, plan list, case detail — drag-resizable.
-
-**Keyboard-first execution.** Test Runs: P/F/B/S, J/K, D — unchanged by reskin.
-
-## Component patterns
-
-**Status pills:** `.pill.p-pass` etc. — pill radius, leading dot.
-
-**Buttons:** `.btn` (neutral), `.btn-neutral` (grey secondary), `.btn-p` (primary blue).
-
-**Sidebar active nav:** white rounded chip on dark blue (`#003B71`), navy text/icon.
-
-**Top bar:** 56px — project switcher, ⌘K search, module switcher, actions.
-
-**Tables:** `.tbl` — sticky uppercase headers on `--surface2`, selected row `--accent-lt`.
-
-**Chips:** `.chip.on` — accent tint + border.
-
-**Donut charts:** SVG stroke-dasharray; colours read status tokens.
+Unchanged from the prior Compass-era semantic set — green pass, red fail, amber blocked (result semantics only), purple skipped. Do not remap these to brand teal.

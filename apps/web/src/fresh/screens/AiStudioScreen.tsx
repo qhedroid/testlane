@@ -17,13 +17,13 @@ const DRAFTS = [
 ]
 
 const RECENT = [
-  { icon: 'ti-file-description', title: 'Test cases for REQ-016 notification digests', by: 'Shaun Sevume', when: '2h ago' },
-  { icon: 'ti-chart-bar', title: 'Run summary — CTMS Regression Sprint 44', by: 'Noel Quadri', when: 'Yesterday' },
-  { icon: 'ti-alert-triangle', title: 'Risk scan — Reporting module coverage', by: 'Marcus Webb', when: '3d ago' },
+  { icon: 'ti-file-description', title: 'Test cases for REQ-016 notification digests', by: 'Concept sample', when: '—' },
+  { icon: 'ti-chart-bar', title: 'Run summary — CTMS Regression Sprint 44', by: 'Concept sample', when: '—' },
+  { icon: 'ti-alert-triangle', title: 'Risk scan — Reporting module coverage', by: 'Concept sample', when: '—' },
 ]
 
 export function AiStudioScreen() {
-  const [showDrafts, setShowDrafts] = useState(true)
+  const [showDrafts, setShowDrafts] = useState(false)
 
   return (
     <div className="view">
@@ -35,9 +35,10 @@ export function AiStudioScreen() {
             <h1 className="aistudio-title">
               <i className="ti ti-sparkles aistudio-title-icon" aria-hidden />
               AI Studio
+              <span className="concept-badge">Concept preview</span>
             </h1>
             <div className="sub">
-              Draft test assets, summarize results and spot risk. Drafts are suggestions — nothing is saved without your review.
+              Design exploration only — no AI generation is implemented in this codebase. Controls below are non-functional previews.
             </div>
           </div>
         </div>
@@ -47,11 +48,18 @@ export function AiStudioScreen() {
             <input
               className="inp aistudio-prompt-inp"
               type="text"
-              placeholder='Describe what to generate — e.g. "test cases for REQ-016 notification digests"'
+              placeholder='Concept UI — e.g. "test cases for REQ-016 notification digests"'
+              disabled
+              aria-disabled="true"
             />
-            <button type="button" className="btn aistudio-generate" onClick={() => setShowDrafts(true)}>
+            <button
+              type="button"
+              className="btn aistudio-generate"
+              onClick={() => setShowDrafts(true)}
+              title="Shows static concept drafts only"
+            >
               <i className="ti ti-sparkles" aria-hidden />
-              Generate
+              Preview drafts
             </button>
           </div>
           <div className="aistudio-actions">
@@ -75,7 +83,7 @@ export function AiStudioScreen() {
             <div className="aistudio-draft-hd">
               <h3 className="panel-h3-inline">Draft Preview</h3>
               {showDrafts ? (
-                <span className="aistudio-tag">3 test cases from REQ-016</span>
+                <span className="aistudio-tag">Static concept samples</span>
               ) : null}
             </div>
             <div className="panel-body-pad">
@@ -88,34 +96,44 @@ export function AiStudioScreen() {
                         <div className="aistudio-draft-title">{draft.title}</div>
                         <div className="aistudio-draft-meta">{draft.meta}</div>
                       </div>
-                      <button type="button" className="btn btn-p aistudio-draft-btn">Accept</button>
-                      <button type="button" className="btn btn-neutral aistudio-draft-btn">Edit</button>
-                      <button type="button" className="btn aistudio-draft-btn">Discard</button>
+                      <button type="button" className="btn btn-p aistudio-draft-btn" disabled title="Concept only">
+                        Accept
+                      </button>
+                      <button type="button" className="btn btn-neutral aistudio-draft-btn" disabled title="Concept only">
+                        Edit
+                      </button>
+                      <button type="button" className="btn aistudio-draft-btn" disabled title="Concept only">
+                        Discard
+                      </button>
                     </div>
                   ))}
                   <p className="aistudio-footnote">
-                    Accepted drafts land in the folder you choose, marked as AI-drafted until a reviewer approves them.
+                    These rows are hard-coded mockups for the portfolio concept. Nothing is generated or saved.
                   </p>
                 </>
               ) : (
-                <p className="aistudio-empty">Click Generate or a quick action to preview draft suggestions here.</p>
+                <p className="aistudio-empty">
+                  Click Preview drafts or a quick action to show static concept samples. No model is called.
+                </p>
               )}
             </div>
           </div>
 
           <div className="panel aistudio-recent-panel">
-            <h3 className="panel-h3">Recent Generations</h3>
+            <h3 className="panel-h3">
+              Recent Generations
+              <span className="roadmap-badge">Roadmap</span>
+            </h3>
             <div className="panel-body-pad">
               {RECENT.map((item) => (
                 <div key={item.title} className="screen-row aistudio-recent-row">
                   <i className={`ti ${item.icon} aistudio-recent-icon`} aria-hidden />
                   <div className="aistudio-recent-body">
                     <div className="aistudio-recent-title">{item.title}</div>
-                    <div className="aistudio-recent-meta">{item.by} · {item.when}</div>
+                    <div className="aistudio-recent-meta">
+                      {item.by} · {item.when}
+                    </div>
                   </div>
-                  <button type="button" className="btn aistudio-open-btn" aria-label="Open">
-                    <i className="ti ti-arrow-up-right" aria-hidden />
-                  </button>
                 </div>
               ))}
             </div>

@@ -33,13 +33,39 @@ const PRIORITY_STRIPE: Record<CasePriority, string> = {
   Low: 'low',
 }
 
-const AVATAR_COLORS = ['#1976D2', '#00796B', '#5E35B1', '#C62828', '#EF6C00', '#455A64']
+const AVATAR_COLORS = ['#0F6E56', '#00796B', '#5E35B1', '#C62828', '#EF6C00', '#455A64']
 
-const DASHBOARD_MILESTONES = [
-  { name: 'UAT Sign-Off', meta: '2 linked runs · due 18 Jul', badge: 'In progress', badgeClass: 'pill p-act' },
-  { name: 'Reporting Integration', meta: '1 linked run · due 12 Jul', badge: 'At risk', badgeClass: 'pill p-block' },
-  { name: 'eTMF Workflow Beta', meta: '1 linked run · due 25 Jul', badge: 'On track', badgeClass: 'pill p-pass' },
-]
+const MILESTONE_STORAGE_KEY = 'testlane-milestones-v1'
+
+const MILESTONE_BADGE_CLASS: Record<string, string> = {
+  Planned: 'pill p-notrun',
+  'In progress': 'pill p-act',
+  'On track': 'pill p-pass',
+  'At risk': 'pill p-block',
+  Complete: 'pill p-pass',
+}
+
+interface StoredMilestone {
+  id: string
+  projectId: string
+  name: string
+  status: string
+  dueLabel: string
+  linkedRunIds: string[]
+}
+
+function loadDashboardMilestones(projectId: string): StoredMilestone[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(MILESTONE_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as StoredMilestone[]
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((m) => m.projectId === projectId).slice(0, 3)
+  } catch {
+    return []
+  }
+}
 
 function avatarColor(name: string): string {
   let h = 0
@@ -127,6 +153,10 @@ function DashboardView() {
   const projectHref = useProjectHref()
   const { activeProject, activeRuns, activeCases, activeFolders } = useFresh()
   const [timeWindow, setTimeWindow] = useState<DashboardWindow>(30)
+  const [dashboardMilestones, setDashboardMilestones] = useState<StoredMilestone[]>([])
+  useEffect(() => {
+    setDashboardMilestones(loadDashboardMilestones(activeProject.id))
+  }, [activeProject.id])
 
   // Server-computed summary (data-layer refactor): the KPI strip and donut
   // prefer SQL-aggregated numbers from GET /api/projects/:id/dashboard,
@@ -433,21 +463,29 @@ function DashboardView() {
             <div className="dash-list-hd">
               <h3>Milestones</h3>
               <Link href={projectHref('milestones')} className="dash-list-link">
-                All {DASHBOARD_MILESTONES.length} →
+                Manage →
               </Link>
             </div>
-            {DASHBOARD_MILESTONES.map((m) => (
-              <div key={m.name} className="screen-row dash-milestone-row">
-                <div className="dash-run-body">
-                  <div className="dash-run-title">{m.name}</div>
-                  <div className="dash-run-meta">{m.meta}</div>
-                </div>
-                <span className={m.badgeClass}>
-                  <span className="pill-dot" />
-                  {m.badge}
-                </span>
+            {dashboardMilestones.length === 0 ? (
+              <div className="dash-empty-inline panel-body-pad">
+                No local milestones yet — create them on the Milestones screen (browser-only).
               </div>
-            ))}
+            ) : (
+              dashboardMilestones.map((m) => (
+                <div key={m.id} className="screen-row dash-milestone-row">
+                  <div className="dash-run-body">
+                    <div className="dash-run-title">{m.name}</div>
+                    <div className="dash-run-meta">
+                      {m.linkedRunIds?.length ?? 0} linked runs · {m.dueLabel}
+                    </div>
+                  </div>
+                  <span className={MILESTONE_BADGE_CLASS[m.status] ?? 'pill p-notrun'}>
+                    <span className="pill-dot" />
+                    {m.status}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="panel">
