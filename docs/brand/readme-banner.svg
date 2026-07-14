@@ -2,11 +2,11 @@
 <title>Testlane — QA test management workspace, by Noel Quadri</title>
 <rect width="1280" height="320" fill="#24272B"/>
 <rect x="60" y="65" width="190" height="190" rx="18" fill="#1A1D20"/>
-<g transform="translate(95,100) scale(0.7)">
+<svg x="88.5" y="93.5" width="133" height="133" viewBox="0 0 1024 1024">
 <rect x="242" y="542" width="140" height="260" rx="45" fill="#3D4045"/>
 <rect x="442" y="382" width="140" height="420" rx="45" fill="#0F6E56"/>
 <rect x="642" y="222" width="140" height="580" rx="45" fill="#4FB89F"/>
-</g>
+</svg>
 <rect x="284" y="94" width="40" height="3" fill="#4FB89F"/>
 <text x="284" y="150" font-family="Space Grotesk, Arial, sans-serif" font-size="44" font-weight="700" fill="#FAFAF7" letter-spacing="-1">Testlane</text>
 <text x="284" y="182" font-family="Inter, Helvetica, Arial, sans-serif" font-size="18" fill="#8A8F98">QA test management workspace</text>
