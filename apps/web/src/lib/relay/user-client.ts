@@ -16,7 +16,7 @@
  * role *definitions* remain entirely local for the same reason.
  *
  * Invited users are created server-side with the shared local-dev password
- * ('relay-dev-2026', same as the seed users — see README "Local dev login")
+ * ('testlane-demo-2026', same as the seed users — see README "Local dev login")
  * so they can actually log in. Fine for local dev; obviously not a
  * production pattern.
  */
@@ -48,7 +48,7 @@ export interface RealUser {
 }
 
 /** Shared local-dev password for admin-invited users (matches the seed users). */
-export const DEFAULT_INVITE_PASSWORD = 'relay-dev-2026'
+export const DEFAULT_INVITE_PASSWORD = 'testlane-demo-2026'
 
 /** Granular Admin-panel role -> DB globalRole (lossy compression — see file header). */
 export const ADMIN_ROLE_TO_GLOBAL: Record<AdminUserRole, RealGlobalRole> = {

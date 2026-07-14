@@ -101,7 +101,7 @@ curl -s https://<tunnel-url>/api/health
 ```
 
 1. Open `https://<tunnel-url>/login` (not `https://localhost:3000`)
-2. Sign in: `ssevume@ti.com` / `relay-dev-2026`
+2. Sign in: `ssevume@ti.com` / `testlane-demo-2026`
 3. Confirm `/DP/dashboard` shows real seed data (cases/runs), not an empty shell
 
 If health works via curl but the browser can’t resolve a brand-new `*.trycloudflare.com` name, wait ~30–60s for DNS, or flush DNS cache. New Quick Tunnel hostnames sometimes lag briefly.
@@ -136,7 +136,7 @@ Named tunnel full delete: `cloudflared tunnel delete relay-demo`.
 A public tunnel exposes the **real** local app, including currently known **dev-only** gaps:
 
 1. **`/api/runs/*` header bypass** — accepts bare `x-relay-user-id` without a session (seed user IDs are deterministic).
-2. **Shared seed password** — all seed users use `relay-dev-2026`.
+2. **Shared seed password** — all seed users use `testlane-demo-2026`.
 
 Do **not** share the URL beyond people trusted for this session. Do **not** leave the tunnel running unattended. Closing those gaps is a separate task — launching a tunnel does not fix them.
 

@@ -178,7 +178,7 @@ Legacy `/runs` → redirect to `/:key/testruns` (no `/tr/…` segment).
 
 **Client usage:** `signIn('credentials', { email, password, redirect: false })` / `signOut({ callbackUrl: '/login' })` from `next-auth/react`; `useSession()` for the top-bar `UserMenu`.
 
-**Seed credentials:** all six seed users share one local-dev password, `relay-dev-2026` (see `README.md` "Local dev login"). Hashed with `bcryptjs`, cost factor 12, stored in `users.password_hash`.
+**Seed credentials:** all six seed users share one local-dev password, `testlane-demo-2026` (see `README.md` "Local dev login"). Hashed with `bcryptjs`, cost factor 12, stored in `users.password_hash`.
 
 ---
 

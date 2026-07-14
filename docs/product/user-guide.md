@@ -266,7 +266,7 @@ Demo AI workspace: prompt input, quick-action cards, draft preview with Accept/E
 
 **Route:** `/login` (top-level, not project-prefixed)
 
-Real authentication gate (NextAuth Credentials provider, JWT session). Visiting any app route while logged out redirects here with a `callbackUrl` back to where you were headed. Sign in with a seed user's email and the shared local-dev password (`relay-dev-2026` — see `README.md`'s "Local dev login" section for all eight accounts, e.g. `ssevume@ti.com`) to continue. The "Continue with TransPerfect SSO" button is a visual placeholder only.
+Real authentication gate (NextAuth Credentials provider, JWT session). Visiting any app route while logged out redirects here with a `callbackUrl` back to where you were headed. Sign in with a seed user's email and the shared local-dev password (`testlane-demo-2026` — see `README.md`'s "Local dev login" section for all eight accounts, e.g. `ssevume@ti.com`) to continue. The "Continue with TransPerfect SSO" button is a visual placeholder only.
 
 The old project-prefixed `/:key/login` route now just redirects here — login has no project context until after you're signed in.
 

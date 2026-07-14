@@ -374,7 +374,7 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 - [ ] Full-bleed login layout renders
 - [ ] Logged out: visiting any app route redirects to `/login?callbackUrl=...`
-- [ ] Sign In with a seed user + `relay-dev-2026` redirects to the callback URL (or dashboard)
+- [ ] Sign In with a seed user + `testlane-demo-2026` redirects to the callback URL (or dashboard)
 - [ ] Wrong password shows an inline error, does not redirect
 - [ ] SSO button is a visual placeholder (disabled/"Coming soon"), does not navigate
 - [ ] `/:key/login` redirects to `/login`

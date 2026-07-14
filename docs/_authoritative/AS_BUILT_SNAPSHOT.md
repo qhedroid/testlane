@@ -69,7 +69,7 @@ Two follow-up passes moved the bulk of the remaining local-only data onto the re
 ## What works end-to-end (Docker + seed + login)
 
 1. `pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev`
-2. Log in (`ssevume@ti.com` / `relay-dev-2026` — see README "Local dev login") → `/DP/dashboard`.
+2. Log in (`ssevume@ti.com` / `testlane-demo-2026` — see README "Local dev login") → `/DP/dashboard`.
 3. Cases: browse seeded cases, quick-add/edit/delete — persists to MySQL, audited.
 4. Plans: seeded plans with case lists; create/edit/duplicate/delete; query groups resolve locally and sync to `test_plan_cases`; spawn run creates a real snapshotted run.
 5. Runs: full three-pane execution UX over real runs; P/F/B/S results persist; seal/reopen/archive; duplicate.

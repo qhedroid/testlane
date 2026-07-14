@@ -95,7 +95,7 @@ After `pnpm db:seed`, the app has real NextAuth-backed login (JWT session, Crede
 provider). All eight seed users share one local-dev password:
 
 ```
-relay-dev-2026
+testlane-demo-2026
 ```
 
 The "Admin role" column is the closest equivalent in the Admin panel's separate, more granular
