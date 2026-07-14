@@ -19,7 +19,7 @@ const DRAFTS = [
 const RECENT = [
   { icon: 'ti-file-description', title: 'Test cases for REQ-016 notification digests', by: 'Shaun Sevume', when: '2h ago' },
   { icon: 'ti-chart-bar', title: 'Run summary — CTMS Regression Sprint 44', by: 'Noel Quadri', when: 'Yesterday' },
-  { icon: 'ti-alert-triangle', title: 'Risk scan — Reporting module coverage', by: 'Jamil Khan', when: '3d ago' },
+  { icon: 'ti-alert-triangle', title: 'Risk scan — Reporting module coverage', by: 'Marcus Webb', when: '3d ago' },
 ]
 
 export function AiStudioScreen() {

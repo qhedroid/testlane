@@ -86,7 +86,7 @@ async function main(): Promise<void> {
 
   console.log('[api] POST /api/runs — viewer blocked…')
   const viewerCreate = await request('POST', '/api/runs', {
-    userId: ids.users.viewer,
+    userId: ids.users.sam,
     body: {
       projectId: seedRefs.projectId,
       testPlanId: seedRefs.testPlanId,
@@ -124,13 +124,13 @@ async function main(): Promise<void> {
 
   console.log('[api] GET /api/runs — missing projectId…')
   const listNoProject = await request('GET', '/api/runs', {
-    userId: ids.users.viewer,
+    userId: ids.users.sam,
   })
   assert(listNoProject.status === 400, `expected 400, got ${listNoProject.status}`)
 
   console.log('[api] GET /api/runs — viewer can list…')
   const listRes = await request('GET', '/api/runs', {
-    userId: ids.users.viewer,
+    userId: ids.users.sam,
     query: { projectId: seedRefs.projectId },
   })
   assert(listRes.status === 200, `expected 200, got ${listRes.status}`)
@@ -142,7 +142,7 @@ async function main(): Promise<void> {
 
   console.log('[api] GET /api/runs/:runId — cross-project blocked…')
   const wrongProject = await request('GET', `/api/runs/${run.id}`, {
-    userId: ids.users.viewer,
+    userId: ids.users.sam,
     query: { projectId: ids.projects.etmf },
   })
   assert(wrongProject.status === 404, `expected 404, got ${wrongProject.status}`)
@@ -153,7 +153,7 @@ async function main(): Promise<void> {
 
   console.log('[api] GET /api/runs/:runId — viewer can read detail…')
   const detailRes = await request('GET', `/api/runs/${run.id}`, {
-    userId: ids.users.viewer,
+    userId: ids.users.sam,
     query: { projectId: seedRefs.projectId },
   })
   assert(detailRes.status === 200, `expected 200, got ${detailRes.status}`)
@@ -177,7 +177,7 @@ async function main(): Promise<void> {
     'POST',
     `/api/runs/${run.id}/cases/${runCaseIdFromDetail}/result`,
     {
-      userId: ids.users.priya,
+      userId: ids.users.elena,
       body: { status: 'pass' },
     },
   )
@@ -192,7 +192,7 @@ async function main(): Promise<void> {
     'POST',
     `/api/runs/${run.id}/cases/${cases[1].testRunCaseId}/result`,
     {
-      userId: ids.users.priya,
+      userId: ids.users.elena,
       body: {
         status: 'fail',
         comment: 'API validation failure note',
@@ -206,7 +206,7 @@ async function main(): Promise<void> {
     'GET',
     `/api/runs/${run.id}`,
     {
-      userId: ids.users.priya,
+      userId: ids.users.elena,
       query: { projectId: seedRefs.projectId },
     },
   )
@@ -227,7 +227,7 @@ async function main(): Promise<void> {
     'POST',
     `/api/runs/${run.id}/cases/${runCaseIdFromDetail}/result`,
     {
-      userId: ids.users.viewer,
+      userId: ids.users.sam,
       body: { status: 'blocked' },
     },
   )
@@ -238,7 +238,7 @@ async function main(): Promise<void> {
     'POST',
     `/api/runs/${run.id}/cases/${runCaseIdFromDetail}/result`,
     {
-      userId: ids.users.priya,
+      userId: ids.users.elena,
       body: { status: 'invalid_status' },
     },
   )
@@ -259,7 +259,7 @@ async function main(): Promise<void> {
     'POST',
     `/api/runs/${run.id}/cases/${runCaseIdFromDetail}/result`,
     {
-      userId: ids.users.priya,
+      userId: ids.users.elena,
       body: { status: 'blocked' },
     },
   )

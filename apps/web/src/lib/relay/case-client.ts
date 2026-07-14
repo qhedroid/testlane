@@ -229,7 +229,7 @@ export async function addRealCaseComment(
 // DB models them as users.id FKs. A real name->id lookup endpoint is future
 // work (Admin unification / Phase 7); until then this map covers exactly the
 // seeded roster. IDs are the stable seed ULIDs from packages/db/src/seed/ids.ts
-// (keyed there as noel/shaun/priya/marcus/james/viewer/nadim/syed — the
+// (keyed there as noel/shaun/elena/devon/marcus/sam/priya/tom — the
 // key names predate the 2026-07-09 seed-user rename; the display names below
 // are the *current* names from packages/db/src/seed/insert.ts).
 // ---------------------------------------------------------------------------
@@ -237,12 +237,12 @@ export async function addRealCaseComment(
 export const SEED_USER_NAME_BY_ID: Record<string, string> = {
   '01SEED00000000000000000002': 'Noel Quadri',
   '01SEED00000000000000000003': 'Shaun Sevume',
-  '01SEED00000000000000000004': 'Monica Dayalani',
-  '01SEED00000000000000000005': 'Nasir Dipto',
-  '01SEED00000000000000000006': 'Jamil Khan',
-  '01SEED00000000000000000007': 'Arvindh Chandran',
-  '01SEED00000000000000000008': 'Nadim Sharif',
-  '01SEED00000000000000000009': 'Syed Ahmed',
+  '01SEED00000000000000000004': 'Elena Voss',
+  '01SEED00000000000000000005': 'Devon Reyes',
+  '01SEED00000000000000000006': 'Marcus Webb',
+  '01SEED00000000000000000007': 'Sam Okafor',
+  '01SEED00000000000000000008': 'Priya Malhotra',
+  '01SEED00000000000000000009': 'Tom Bright',
 }
 
 const SEED_USER_ID_BY_NAME: Record<string, string> = Object.fromEntries(

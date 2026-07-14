@@ -107,12 +107,12 @@ four values, so it's a compressed mapping, not a 1:1 match.
 |-------|------|-------------|------------|
 | `nquadri@ti.com` | Noel Quadri | super_admin | Administrator |
 | `ssevume@ti.com` | Shaun Sevume | admin | Administrator |
-| `mdayalani@ti.com` | Monica Dayalani | contributor | Editor |
-| `ndipto@ti.com` | Nasir Dipto | contributor | Run Executor |
-| `jkhan@ti.com` | Jamil Khan | contributor | Run Executor |
-| `achandran@ti.com` | Arvindh Chandran | contributor | Editor |
-| `nsharif@ti.com` | Nadim Sharif | viewer | Viewer |
-| `sahmed@ti.com` | Syed Ahmed | contributor | Run Manager |
+| `elena.voss@testlane.dev` | Elena Voss | contributor | Editor |
+| `devon.reyes@testlane.dev` | Devon Reyes | contributor | Run Executor |
+| `marcus.webb@testlane.dev` | Marcus Webb | contributor | Run Executor |
+| `sam.okafor@testlane.dev` | Sam Okafor | contributor | Editor |
+| `priya.malhotra@testlane.dev` | Priya Malhotra | viewer | Viewer |
+| `tom.bright@testlane.dev` | Tom Bright | contributor | Run Manager |
 
 Visiting any app route while logged out redirects to `/login`. `/api/runs/*` is the one
 exception — it still authenticates via the legacy `x-relay-user-id` dev header pending a

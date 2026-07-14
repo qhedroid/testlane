@@ -2,12 +2,12 @@
 export const TEAM_USERS = [
   'Noel Quadri',
   'Shaun Sevume',
-  'Nasir Dipto',
-  'Monica Dayalani',
-  'Jamil Khan',
-  'Arvindh Chandran',
-  'Nadim Sharif',
-  'Syed Ahmed',
+  'Devon Reyes',
+  'Elena Voss',
+  'Marcus Webb',
+  'Sam Okafor',
+  'Priya Malhotra',
+  'Tom Bright',
 ] as const
 
 export type TeamUser = (typeof TEAM_USERS)[number]
@@ -19,24 +19,34 @@ const LEGACY_ASSIGNEE_MAP: Record<string, TeamUser> = {
   You: 'Shaun Sevume',
   'Noel Q.': 'Noel Quadri',
   'Noel Quinn': 'Noel Quadri',
-  'Aisha Rahman': 'Nadim Sharif',
-  'Aisha R.': 'Nadim Sharif',
-  'Marcus Webb': 'Nasir Dipto',
-  'Marcus W.': 'Nasir Dipto',
-  'Priya Nair': 'Monica Dayalani',
-  'Priya N.': 'Monica Dayalani',
-  "James O'Sullivan": 'Jamil Khan',
-  'James O.': 'Jamil Khan',
-  'Fatima Al-Amin': 'Syed Ahmed',
-  'Fatima A.': 'Syed Ahmed',
-  'Alex Viewer': 'Arvindh Chandran',
-  'Nadim S.': 'Nadim Sharif',
-  'Nasir D.': 'Nasir Dipto',
-  'Monica D.': 'Monica Dayalani',
-  'Jamil K.': 'Jamil Khan',
-  'Syed A.': 'Syed Ahmed',
+  'Aisha Rahman': 'Priya Malhotra',
+  'Aisha R.': 'Priya Malhotra',
+  // Former placeholder that previously mapped to today's Devon Reyes persona.
+  // Not keyed as "Marcus Webb" — that name is now a canonical TEAM_USERS entry.
+  // Old abbreviated key kept for localStorage.
+  'Marcus W.': 'Devon Reyes',
+  'Priya Nair': 'Elena Voss',
+  'Priya N.': 'Elena Voss',
+  "James O'Sullivan": 'Marcus Webb',
+  'James O.': 'Marcus Webb',
+  'Fatima Al-Amin': 'Tom Bright',
+  'Fatima A.': 'Tom Bright',
+  'Alex Viewer': 'Sam Okafor',
+  // Prior abbreviated forms (kept so old localStorage assignee strings still normalize)
+  'Nadim S.': 'Priya Malhotra',
+  'Nasir D.': 'Devon Reyes',
+  'Monica D.': 'Elena Voss',
+  'Jamil K.': 'Marcus Webb',
+  'Syed A.': 'Tom Bright',
+  'Arvindh C.': 'Sam Okafor',
   'Shaun S.': 'Shaun Sevume',
-  'Arvindh C.': 'Arvindh Chandran',
+  // Current abbreviated forms
+  'Devon R.': 'Devon Reyes',
+  'Elena V.': 'Elena Voss',
+  'Marcus K.': 'Marcus Webb',
+  'Sam O.': 'Sam Okafor',
+  'Priya M.': 'Priya Malhotra',
+  'Tom B.': 'Tom Bright',
 }
 
 export function isTeamUserName(name: string): boolean {

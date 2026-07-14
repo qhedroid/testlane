@@ -26,21 +26,21 @@ function ago(ms: number): number {
 
 export const SEED_ADMIN_USER_ID = 'admin-user-demo'
 
-// Real team member IDs — see apps/web/src/fresh/data/team-users.ts for the
+// Demo team member IDs — see apps/web/src/fresh/data/team-users.ts for the
 // canonical 8-name roster shared with the rest of the demo app. Roles below
 // were assigned by Shaun 2026-07-09: Owner (Demo User, unchanged), Administrator
-// (Shaun, Noel), Run Manager (Syed), Run Executor (Jamil, Nasir), Editor (Monica,
-// Arvindh), Viewer (Nadim).
+// (Shaun, Noel), Run Manager (Tom), Run Executor (Marcus, Devon), Editor (Elena,
+// Sam), Viewer (Priya).
 const SEED_USER_IDS = {
   demo: 'admin-user-demo',
   shaun: 'admin-user-shaun',
   noel: 'admin-user-noel',
-  syed: 'admin-user-syed',
-  jamil: 'admin-user-jamil',
-  nasir: 'admin-user-nasir',
-  monica: 'admin-user-monica',
-  arvindh: 'admin-user-arvindh',
-  nadim: 'admin-user-nadim',
+  tom: 'admin-user-tom',
+  marcus: 'admin-user-marcus',
+  devon: 'admin-user-devon',
+  elena: 'admin-user-elena',
+  sam: 'admin-user-sam',
+  priya: 'admin-user-priya',
 } as const
 
 export const SEED_CUSTOM_FIELD_IDS = [
@@ -84,10 +84,10 @@ function seedApiKeys(): AdminApiKey[] {
     { name: 'ci-key', maskedKey: 'Rw4KLM***', project: 'DP', permissions: 'read', expiration: 'No expiration', createdAt: ago(2 * DAY), userId: SEED_ADMIN_USER_ID },
     { name: 'automation-key', maskedKey: 'Xc9NOP***', project: 'All Projects', permissions: 'comment, manage…', expiration: '90 days', createdAt: ago(5 * DAY), userId: 'admin-user-admin' },
     { name: 'noel-dev', maskedKey: 'Qm7PQR***', project: 'CTMS', permissions: 'read, comment', expiration: '30 days', createdAt: ago(7 * DAY), userId: SEED_USER_IDS.noel },
-    { name: 'monica-ci', maskedKey: 'Ty3STU***', project: 'DP', permissions: 'read', expiration: '1 year', createdAt: ago(10 * DAY), userId: SEED_USER_IDS.monica },
-    { name: 'arvindh-sync', maskedKey: 'Uv8VWX***', project: 'All Projects', permissions: 'manage', expiration: 'No expiration', createdAt: ago(12 * DAY), userId: SEED_USER_IDS.arvindh },
+    { name: 'elena-ci', maskedKey: 'Ty3STU***', project: 'DP', permissions: 'read', expiration: '1 year', createdAt: ago(10 * DAY), userId: SEED_USER_IDS.elena },
+    { name: 'sam-sync', maskedKey: 'Uv8VWX***', project: 'All Projects', permissions: 'manage', expiration: 'No expiration', createdAt: ago(12 * DAY), userId: SEED_USER_IDS.sam },
     { name: 'staging-key', maskedKey: 'Za1BCD***', project: 'IAM', permissions: 'read, comment', expiration: '90 days', createdAt: ago(14 * DAY), userId: SEED_ADMIN_USER_ID },
-    { name: 'syed-export', maskedKey: 'Ef5GHI***', project: 'DP1', permissions: 'read', expiration: 'No expiration', createdAt: ago(20 * DAY), userId: SEED_USER_IDS.syed },
+    { name: 'tom-export', maskedKey: 'Ef5GHI***', project: 'DP1', permissions: 'read', expiration: 'No expiration', createdAt: ago(20 * DAY), userId: SEED_USER_IDS.tom },
   ]
   return rows.map((row, i) => ({ ...row, id: `admin-key-seed-${i + 1}` }))
 }
@@ -97,12 +97,12 @@ function seedUsers(): AdminUser[] {
     user(SEED_USER_IDS.demo, 'Demo', 'User', 'demo@relay.app', 'Owner', 'Active', NOW),
     user(SEED_USER_IDS.shaun, 'Shaun', 'Sevume', 'ssevume@ti.com', 'Administrator', 'Active', ago(HOUR)),
     user(SEED_USER_IDS.noel, 'Noel', 'Quadri', 'nquadri@ti.com', 'Administrator', 'Active', ago(3 * HOUR)),
-    user(SEED_USER_IDS.syed, 'Syed', 'Ahmed', 'sahmed@ti.com', 'Run Manager', 'Active', ago(DAY)),
-    user(SEED_USER_IDS.jamil, 'Jamil', 'Khan', 'jkhan@ti.com', 'Run Executor', 'Active', ago(2 * DAY), ['DP', 'CTMS']),
-    user(SEED_USER_IDS.nasir, 'Nasir', 'Dipto', 'ndipto@ti.com', 'Run Executor', 'Active', ago(5 * HOUR), ['DP']),
-    user(SEED_USER_IDS.monica, 'Monica', 'Dayalani', 'mdayalani@ti.com', 'Editor', 'Active', ago(30 * MIN), ['DP', 'CTMS']),
-    user(SEED_USER_IDS.arvindh, 'Arvindh', 'Chandran', 'achandran@ti.com', 'Editor', 'Active', ago(4 * DAY), ['CTMS']),
-    user(SEED_USER_IDS.nadim, 'Nadim', 'Sharif', 'nsharif@ti.com', 'Viewer', 'Active', ago(6 * DAY), ['IAM']),
+    user(SEED_USER_IDS.tom, 'Tom', 'Bright', 'tom.bright@testlane.dev', 'Run Manager', 'Active', ago(DAY)),
+    user(SEED_USER_IDS.marcus, 'Marcus', 'Webb', 'marcus.webb@testlane.dev', 'Run Executor', 'Active', ago(2 * DAY), ['DP', 'CTMS']),
+    user(SEED_USER_IDS.devon, 'Devon', 'Reyes', 'devon.reyes@testlane.dev', 'Run Executor', 'Active', ago(5 * HOUR), ['DP']),
+    user(SEED_USER_IDS.elena, 'Elena', 'Voss', 'elena.voss@testlane.dev', 'Editor', 'Active', ago(30 * MIN), ['DP', 'CTMS']),
+    user(SEED_USER_IDS.sam, 'Sam', 'Okafor', 'sam.okafor@testlane.dev', 'Editor', 'Active', ago(4 * DAY), ['CTMS']),
+    user(SEED_USER_IDS.priya, 'Priya', 'Malhotra', 'priya.malhotra@testlane.dev', 'Viewer', 'Active', ago(6 * DAY), ['IAM']),
   ]
 }
 
@@ -169,13 +169,13 @@ function seedAuditLog(): AuditLogEntry[] {
     { area: 'Data', byUser: 'Noel Quadri', operation: 'Create', details: 'Inserted an attachment' },
     { area: 'Data', byUser: 'Noel Quadri', operation: 'Create', details: 'Inserted an attachment' },
     { area: 'Settings', byUser: 'Demo User', operation: 'Update', details: 'Updated organization settings' },
-    { area: 'Data', byUser: 'Monica Dayalani', operation: 'Create', details: 'Added a comment to test case TC-1003 in test run TR-103' },
+    { area: 'Data', byUser: 'Elena Voss', operation: 'Create', details: 'Added a comment to test case TC-1003 in test run TR-103' },
     { area: 'Data', byUser: 'Automation User', operation: 'Create', details: 'Inserted a comment' },
-    { area: 'Data', byUser: 'Arvindh Chandran', operation: 'Update', details: 'Updated test case TC-1004' },
+    { area: 'Data', byUser: 'Sam Okafor', operation: 'Update', details: 'Updated test case TC-1004' },
     { area: 'Settings', byUser: 'Demo User', operation: 'Create', details: 'Created API key my-api-key' },
     { area: 'Data', byUser: 'Noel Quadri', operation: 'Create', details: 'Added a comment to test case TC-1005' },
-    { area: 'Data', byUser: 'Monica Dayalani', operation: 'Create', details: 'Inserted an attachment' },
-    { area: 'Settings', byUser: 'Demo User', operation: 'Update', details: 'Updated user role for Monica Dayalani' },
+    { area: 'Data', byUser: 'Elena Voss', operation: 'Create', details: 'Inserted an attachment' },
+    { area: 'Settings', byUser: 'Demo User', operation: 'Update', details: 'Updated user role for Elena Voss' },
     { area: 'Data', byUser: 'Demo User', operation: 'Create', details: 'Created test run TR-101' },
   ]
   const offsets = [MIN, MIN, 2 * MIN, 2 * MIN, 5 * MIN, 5 * MIN, 10 * MIN, 15 * MIN, 20 * MIN, 30 * MIN, 45 * MIN, HOUR, 2 * HOUR, 3 * HOUR, DAY]

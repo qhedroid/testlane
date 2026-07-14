@@ -37,7 +37,7 @@ async function main(): Promise<void> {
     await createRun({
       projectId: seedRefs.projectId,
       testPlanId: seedRefs.testPlanId,
-      createdBy: ids.users.priya,
+      createdBy: ids.users.elena,
     })
     throw new Error('Expected INSUFFICIENT_PERMISSIONS for contributor')
   } catch (err) {
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
     projectId: seedRefs.projectId,
     testPlanId: seedRefs.testPlanId,
     createdBy: seedRefs.createdBy,
-    assigneeIds: [ids.users.shaun, ids.users.priya],
+    assigneeIds: [ids.users.shaun, ids.users.elena],
   })
 
   console.log('[validate] Result:', result)

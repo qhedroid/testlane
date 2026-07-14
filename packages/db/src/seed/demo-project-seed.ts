@@ -135,12 +135,12 @@ export async function insertDemoProjectSeed(
   const projectRoleRows: NewProjectRole[] = [
     { id: createId(), projectId, userId: ids.users.noel, role: 'admin', grantedBy: ids.users.noel },
     { id: createId(), projectId, userId: ids.users.shaun, role: 'admin', grantedBy: ids.users.noel },
-    { id: createId(), projectId, userId: ids.users.priya, role: 'contributor', grantedBy: ids.users.noel },
+    { id: createId(), projectId, userId: ids.users.elena, role: 'contributor', grantedBy: ids.users.noel },
+    { id: createId(), projectId, userId: ids.users.devon, role: 'contributor', grantedBy: ids.users.noel },
     { id: createId(), projectId, userId: ids.users.marcus, role: 'contributor', grantedBy: ids.users.noel },
-    { id: createId(), projectId, userId: ids.users.james, role: 'contributor', grantedBy: ids.users.noel },
-    { id: createId(), projectId, userId: ids.users.viewer, role: 'contributor', grantedBy: ids.users.noel },
-    { id: createId(), projectId, userId: ids.users.nadim, role: 'viewer', grantedBy: ids.users.noel },
-    { id: createId(), projectId, userId: ids.users.syed, role: 'contributor', grantedBy: ids.users.noel },
+    { id: createId(), projectId, userId: ids.users.sam, role: 'contributor', grantedBy: ids.users.noel },
+    { id: createId(), projectId, userId: ids.users.priya, role: 'viewer', grantedBy: ids.users.noel },
+    { id: createId(), projectId, userId: ids.users.tom, role: 'contributor', grantedBy: ids.users.noel },
   ]
   await db.insert(projectRoles).values(projectRoleRows)
 
@@ -170,7 +170,7 @@ export async function insertDemoProjectSeed(
       name: 'Password Recovery',
       description: 'Reset-link request, redemption, and expiry',
       position: 0,
-      createdBy: ids.users.priya,
+      createdBy: ids.users.elena,
     },
     {
       id: folderIds.checkout,
@@ -178,7 +178,7 @@ export async function insertDemoProjectSeed(
       name: 'Checkout & Payments',
       description: 'Cart, payment methods, promo codes, tax',
       position: 1,
-      createdBy: ids.users.james,
+      createdBy: ids.users.marcus,
     },
     {
       id: folderIds.search,
@@ -186,7 +186,7 @@ export async function insertDemoProjectSeed(
       name: 'Search & Discovery',
       description: 'Search, filtering, and autocomplete',
       position: 2,
-      createdBy: ids.users.nadim,
+      createdBy: ids.users.priya,
     },
   ]
   await db.insert(folders).values(folderRows)
@@ -215,7 +215,7 @@ export async function insertDemoProjectSeed(
       priority: 'high',
       type: 'security',
       tags: ['auth', 'security'],
-      assignedTo: ids.users.marcus,
+      assignedTo: ids.users.devon,
       steps: [
         { action: 'Attempt login with an incorrect password 5 times', expectedResult: 'Account is locked after the 5th attempt' },
         { action: 'Attempt a 6th login with the correct password', expectedResult: 'Login is rejected with an account-locked message' },
@@ -229,7 +229,7 @@ export async function insertDemoProjectSeed(
       priority: 'high',
       type: 'functional',
       tags: ['auth', 'password-reset'],
-      assignedTo: ids.users.priya,
+      assignedTo: ids.users.elena,
       steps: [
         { action: 'Request a password reset from the login page', expectedResult: 'Reset email is sent to the registered address' },
         { action: 'Open the reset link from the email', expectedResult: 'Reset-password form is displayed' },
@@ -245,7 +245,7 @@ export async function insertDemoProjectSeed(
       priority: 'medium',
       type: 'functional',
       tags: ['auth', 'password-reset'],
-      assignedTo: ids.users.priya,
+      assignedTo: ids.users.elena,
       steps: [
         { action: 'Request a password reset and wait past the expiry window', expectedResult: 'Reset link expires per policy' },
         { action: 'Open the expired reset link', expectedResult: 'User sees an "expired link" message with a resend option' },
@@ -258,7 +258,7 @@ export async function insertDemoProjectSeed(
       priority: 'critical',
       type: 'functional',
       tags: ['checkout', 'payments'],
-      assignedTo: ids.users.james,
+      assignedTo: ids.users.marcus,
       steps: [
         { action: 'Add an item to the cart', expectedResult: 'Cart count increments' },
         { action: 'Proceed to checkout', expectedResult: 'Checkout page loads with shipping details prefilled' },
@@ -275,7 +275,7 @@ export async function insertDemoProjectSeed(
       priority: 'medium',
       type: 'functional',
       tags: ['checkout', 'promotions'],
-      assignedTo: ids.users.james,
+      assignedTo: ids.users.marcus,
       steps: [
         { action: 'Enter a valid promo code at checkout', expectedResult: 'Discount is applied to the order total' },
         { action: 'Remove the promo code', expectedResult: 'Order total reverts to the original amount' },
@@ -288,7 +288,7 @@ export async function insertDemoProjectSeed(
       priority: 'high',
       type: 'functional',
       tags: ['checkout', 'payments'],
-      assignedTo: ids.users.viewer,
+      assignedTo: ids.users.sam,
       steps: [
         { action: 'Select a saved card with a past expiry date', expectedResult: 'Card is flagged as expired in the UI' },
         { action: 'Attempt to place the order with the expired card', expectedResult: 'Checkout is blocked with an expired-card error' },
@@ -302,7 +302,7 @@ export async function insertDemoProjectSeed(
       priority: 'high',
       type: 'regression',
       tags: ['checkout', 'tax', 'regression'],
-      assignedTo: ids.users.syed,
+      assignedTo: ids.users.tom,
       steps: [
         { action: 'Set the shipping address to Region A', expectedResult: 'Tax rate for Region A is displayed at checkout' },
         { action: 'Add a taxable item to the cart', expectedResult: 'Line-item tax matches the Region A rate' },
@@ -321,7 +321,7 @@ export async function insertDemoProjectSeed(
       priority: 'medium',
       type: 'functional',
       tags: ['search'],
-      assignedTo: ids.users.nadim,
+      assignedTo: ids.users.priya,
       steps: [
         { action: 'Enter a partial product name in search', expectedResult: 'Relevant matching products are returned' },
       ],
@@ -333,7 +333,7 @@ export async function insertDemoProjectSeed(
       priority: 'medium',
       type: 'functional',
       tags: ['search', 'filters'],
-      assignedTo: ids.users.nadim,
+      assignedTo: ids.users.priya,
       steps: [
         { action: 'Run a search query', expectedResult: 'Result list is displayed' },
         { action: 'Apply a category filter', expectedResult: 'Results narrow to the selected category' },
@@ -348,7 +348,7 @@ export async function insertDemoProjectSeed(
       priority: 'low',
       type: 'functional',
       tags: ['search'],
-      assignedTo: ids.users.syed,
+      assignedTo: ids.users.tom,
       steps: [
         { action: 'Focus the search box after viewing two products', expectedResult: 'Recently viewed items appear as autocomplete suggestions' },
       ],
@@ -494,7 +494,7 @@ export async function insertDemoProjectSeed(
       environment: 'Staging',
       ownerId: ids.users.shaun,
       createdBy: ids.users.shaun,
-      assigneeIds: [ids.users.shaun, ids.users.james],
+      assigneeIds: [ids.users.shaun, ids.users.marcus],
       queryDefinition: criticalPathQueryDefinition,
     },
     {
@@ -507,7 +507,7 @@ export async function insertDemoProjectSeed(
       environment: 'QA',
       ownerId: ids.users.noel,
       createdBy: ids.users.noel,
-      assigneeIds: [ids.users.noel, ids.users.marcus, ids.users.priya],
+      assigneeIds: [ids.users.noel, ids.users.devon, ids.users.elena],
       queryDefinition: fullRegressionQueryDefinition,
     },
   ]
@@ -723,19 +723,19 @@ export async function insertDemoProjectSeed(
     sealedBy: ids.users.noel,
     environment: 'QA',
     createdBy: ids.users.noel,
-    assignees: [ids.users.noel, ids.users.marcus, ids.users.priya],
+    assignees: [ids.users.noel, ids.users.devon, ids.users.elena],
     caseKeys: fullRegressionCaseKeys,
     executedDaysAfterCreate: 0,
     results: Object.fromEntries(
       fullRegressionCaseKeys.map((key): [string, RunResultDef] => {
         if (key === 'multiRegionTax') {
-          return [key, { status: 'fail', testedBy: ids.users.syed, comment: 'Tax miscalculated for the 3rd-region warehouse item — used origin rate instead of destination rate.' }]
+          return [key, { status: 'fail', testedBy: ids.users.tom, comment: 'Tax miscalculated for the 3rd-region warehouse item — used origin rate instead of destination rate.' }]
         }
         if (key === 'pwResetExpired') {
-          return [key, { status: 'fail', testedBy: ids.users.priya, comment: 'Expired-link message not shown; reset form still submits successfully.' }]
+          return [key, { status: 'fail', testedBy: ids.users.elena, comment: 'Expired-link message not shown; reset form still submits successfully.' }]
         }
         if (key === 'searchAutocomplete') {
-          return [key, { status: 'blocked', testedBy: ids.users.syed, comment: 'Recommendation service was down in this environment — could not verify.' }]
+          return [key, { status: 'blocked', testedBy: ids.users.tom, comment: 'Recommendation service was down in this environment — could not verify.' }]
         }
         return [key, { status: 'pass', testedBy: caseDefByKey(key).assignedTo }]
       }),
@@ -754,13 +754,13 @@ export async function insertDemoProjectSeed(
     sealedBy: ids.users.noel,
     environment: 'QA',
     createdBy: ids.users.noel,
-    assignees: [ids.users.noel, ids.users.marcus, ids.users.priya],
+    assignees: [ids.users.noel, ids.users.devon, ids.users.elena],
     caseKeys: fullRegressionCaseKeys,
     executedDaysAfterCreate: 0,
     results: Object.fromEntries(
       fullRegressionCaseKeys.map((key): [string, RunResultDef] => {
         if (key === 'multiRegionTax') {
-          return [key, { status: 'fail', testedBy: ids.users.syed, comment: 'Still reproduces — same origin-rate bug as Sprint 40, not yet fixed.' }]
+          return [key, { status: 'fail', testedBy: ids.users.tom, comment: 'Still reproduces — same origin-rate bug as Sprint 40, not yet fixed.' }]
         }
         return [key, { status: 'pass', testedBy: caseDefByKey(key).assignedTo }]
       }),
@@ -776,13 +776,13 @@ export async function insertDemoProjectSeed(
     createdAt: daysAgo(2),
     environment: 'Staging',
     createdBy: ids.users.shaun,
-    assignees: [ids.users.shaun, ids.users.james],
+    assignees: [ids.users.shaun, ids.users.marcus],
     caseKeys: criticalPathCaseKeys,
     executedDaysAfterCreate: 0,
     results: {
       login: { status: 'pass', testedBy: ids.users.shaun },
-      lockout: { status: 'pass', testedBy: ids.users.marcus },
-      expiredCard: { status: 'fail', testedBy: ids.users.viewer, comment: 'Expired card is accepted instead of blocked — regression from last release.' },
+      lockout: { status: 'pass', testedBy: ids.users.devon },
+      expiredCard: { status: 'fail', testedBy: ids.users.sam, comment: 'Expired card is accepted instead of blocked — regression from last release.' },
       // pwResetLink, checkoutSavedCard, multiRegionTax intentionally left
       // "not_run" (default) — this run is still in progress.
     },
@@ -797,7 +797,7 @@ export async function insertDemoProjectSeed(
     createdAt: daysAgo(0),
     environment: 'QA',
     createdBy: ids.users.noel,
-    assignees: [ids.users.noel, ids.users.marcus],
+    assignees: [ids.users.noel, ids.users.devon],
     caseKeys: fullRegressionCaseKeys,
     results: {},
   })

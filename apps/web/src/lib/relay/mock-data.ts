@@ -62,7 +62,7 @@ export const MOCK_DEFECTS: MockDefect[] = [
     module: 'Reporting',
     linkedCaseRef: 'TC-1008',
     linkedRunName: 'Reporting Module — Integration Suite',
-    owner: 'Jamil Khan',
+    owner: 'Marcus Webb',
     createdAt: '4d ago',
     updatedAt: '3h ago',
   },
@@ -73,7 +73,7 @@ export const MOCK_DEFECTS: MockDefect[] = [
     status: 'open',
     module: 'Reporting',
     linkedRunName: 'CTMS Regression — Sprint 44',
-    owner: 'Nasir Dipto',
+    owner: 'Devon Reyes',
     createdAt: '3d ago',
     updatedAt: '6h ago',
   },
@@ -85,7 +85,7 @@ export const MOCK_DEFECTS: MockDefect[] = [
     module: 'SSO/IAM',
     linkedCaseRef: 'TC-1012',
     linkedRunName: 'SSO/IAM Role Matrix — Permission Validation',
-    owner: 'Syed Ahmed',
+    owner: 'Tom Bright',
     createdAt: '1w ago',
     updatedAt: '2d ago',
   },
@@ -95,7 +95,7 @@ export const MOCK_DEFECTS: MockDefect[] = [
     severity: 'medium',
     status: 'open',
     module: 'API Gateway',
-    owner: 'Nasir Dipto',
+    owner: 'Devon Reyes',
     createdAt: '5d ago',
     updatedAt: '8h ago',
   },
@@ -112,8 +112,8 @@ export interface MockWorkspaceUser {
 export const MOCK_WORKSPACE_USERS: MockWorkspaceUser[] = [
   { name: 'Noel Quadri', initials: 'NQ', email: 'nquadri@ti.com', role: 'Super Admin', modules: ['All'] },
   { name: 'Shaun Sevume', initials: 'SS', email: 'ssevume@ti.com', role: 'Admin', modules: ['CTMS', 'eTMF'] },
-  { name: 'Monica Dayalani', initials: 'MD', email: 'mdayalani@ti.com', role: 'Contributor', modules: ['CTMS', 'Viewer'] },
-  { name: 'Arvindh Chandran', initials: 'AC', email: 'achandran@ti.com', role: 'Viewer', modules: ['CTMS'] },
+  { name: 'Elena Voss', initials: 'EV', email: 'elena.voss@testlane.dev', role: 'Contributor', modules: ['CTMS', 'Viewer'] },
+  { name: 'Sam Okafor', initials: 'SO', email: 'sam.okafor@testlane.dev', role: 'Viewer', modules: ['CTMS'] },
 ]
 
 export const MOCK_WORKSPACE_MODULES = [

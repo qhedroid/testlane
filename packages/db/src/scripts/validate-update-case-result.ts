@@ -62,7 +62,7 @@ async function main(): Promise<void> {
       projectId: seedRefs.projectId,
       testRunId: run.id,
       testRunCaseId: casePass.id,
-      actorId: ids.users.viewer,
+      actorId: ids.users.sam,
       status: 'pass',
     })
     throw new Error('Expected INSUFFICIENT_PERMISSIONS for viewer')
@@ -80,18 +80,18 @@ async function main(): Promise<void> {
     projectId: seedRefs.projectId,
     testRunId: run.id,
     testRunCaseId: casePass.id,
-    actorId: ids.users.priya,
+    actorId: ids.users.elena,
     status: 'pass',
   })
   assert(passResult.status === 'pass', 'status should be pass')
-  assert(passResult.executedBy === ids.users.priya, 'executed_by set')
+  assert(passResult.executedBy === ids.users.elena, 'executed_by set')
 
   console.log('[validate] Contributor updates case to fail with comment…')
   const failResult = await updateCaseResult({
     projectId: seedRefs.projectId,
     testRunId: run.id,
     testRunCaseId: caseFail.id,
-    actorId: ids.users.priya,
+    actorId: ids.users.elena,
     status: 'fail',
     comment: 'Login button unresponsive after SSO redirect',
   })
@@ -153,7 +153,7 @@ async function main(): Promise<void> {
       projectId: seedRefs.projectId,
       testRunId: run.id,
       testRunCaseId: casePass.id,
-      actorId: ids.users.priya,
+      actorId: ids.users.elena,
       status: 'blocked',
     })
     throw new Error('Expected RUN_NOT_EXECUTABLE on sealed run')
@@ -176,7 +176,7 @@ async function main(): Promise<void> {
     projectId: seedRefs.projectId,
     testRunId: run.id,
     testRunCaseId: cases[2]?.id ?? caseFail.id,
-    actorId: ids.users.priya,
+    actorId: ids.users.elena,
     status: 'skipped',
   })
   assert(skipResult.status === 'skip', 'skipped should map to skip')

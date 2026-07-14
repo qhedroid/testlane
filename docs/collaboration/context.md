@@ -141,7 +141,7 @@ Clarify the current demo route.
 Clarify whether /runs works.
 Clarify whether the visible “Test Cases” tab is the only working tab.
 Clarify which nav/sidebar tabs are placeholders.
-Clarify what Syed should be shown in a demo.
+Clarify what Tom should be shown in a demo.
 
 8. Current /runs or execution workspace behaviour
 If /runs exists and works, describe:
@@ -283,7 +283,7 @@ If uncertain, inspect the repo instead of guessing.
 
 17. Recommended next build sequence
 State the next practical order:
-stabilise demo access if Syed still needs it
+stabilise demo access if Tom still needs it
 REL-001 manual UX audit
 REL-002 duplicate result controls if confirmed as a UX problem
 REL-003 loading/empty/error states

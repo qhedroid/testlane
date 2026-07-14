@@ -150,7 +150,7 @@ function execCaseToCase(c: ExecCase, projectId: string): Case {
     const seedComment =
       c.sr[i] === 'fail' && i === 0 && c.id === 'TC-2041'
         ? {
-            author: 'Nadim Sharif',
+            author: 'Priya Malhotra',
             body: 'Viewer permission is saved on submit but reverts to previous value after profile reload.',
           }
         : undefined
@@ -382,7 +382,7 @@ export function buildDemoProjectEntities(projectId: string): {
       generalComments: [],
       tags: ['ops'],
       updatedAt: NOW,
-      assignee: 'Nasir Dipto',
+      assignee: 'Devon Reyes',
     },
   ]
 

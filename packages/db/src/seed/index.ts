@@ -39,7 +39,7 @@ export async function runSeed(): Promise<void> {
   console.log('[seed] Done.')
   console.log('')
   console.log('Organisation:', SEED_ORG_SLUG)
-  console.log('Users: 8 (Noel, Shaun, Monica, Nasir, Jamil, Arvindh, Nadim, Syed)')
+  console.log('Users: 8 (Noel, Shaun, Elena, Devon, Marcus, Sam, Priya, Tom)')
   console.log('Projects: Demo Project (DP, seeded) + CTMS, eTMF, IAM, eFeasibility, GL (empty)')
   console.log(
     'Demo Project (slug "dp"):',
@@ -56,12 +56,12 @@ export async function runSeed(): Promise<void> {
   console.log(' ', SEED_DEV_PASSWORD)
   console.log('  nquadri@ti.com     (Noel Quadri, super_admin — Administrator)')
   console.log('  ssevume@ti.com    (Shaun Sevume, admin — Administrator)')
-  console.log('  mdayalani@ti.com      (Monica Dayalani, contributor — Editor)')
-  console.log('  ndipto@ti.com     (Nasir Dipto, contributor — Run Executor)')
-  console.log('  jkhan@ti.com (Jamil Khan, contributor — Run Executor)')
-  console.log('  achandran@ti.com          (Arvindh Chandran, contributor — Editor)')
-  console.log('  nsharif@ti.com    (Nadim Sharif, viewer — Viewer)')
-  console.log('  sahmed@ti.com      (Syed Ahmed, contributor — Run Manager)')
+  console.log('  elena.voss@testlane.dev      (Elena Voss, contributor — Editor)')
+  console.log('  devon.reyes@testlane.dev     (Devon Reyes, contributor — Run Executor)')
+  console.log('  marcus.webb@testlane.dev (Marcus Webb, contributor — Run Executor)')
+  console.log('  sam.okafor@testlane.dev          (Sam Okafor, contributor — Editor)')
+  console.log('  priya.malhotra@testlane.dev    (Priya Malhotra, viewer — Viewer)')
+  console.log('  tom.bright@testlane.dev      (Tom Bright, contributor — Run Manager)')
 }
 
 async function main(): Promise<void> {

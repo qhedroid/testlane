@@ -52,19 +52,19 @@ export async function insertSeedData(
       passwordHash: devPasswordHash,
     },
     {
-      id: ids.users.priya,
+      id: ids.users.elena,
       orgId: ids.org,
-      email: 'mdayalani@ti.com',
-      name: 'Monica Dayalani',
+      email: 'elena.voss@testlane.dev',
+      name: 'Elena Voss',
       globalRole: 'contributor',
       isActive: true,
       passwordHash: devPasswordHash,
     },
     {
-      id: ids.users.marcus,
+      id: ids.users.devon,
       orgId: ids.org,
-      email: 'ndipto@ti.com',
-      name: 'Nasir Dipto',
+      email: 'devon.reyes@testlane.dev',
+      name: 'Devon Reyes',
       // Run Executor (frontend admin role) -> contributor. Was 'admin'; downgraded
       // to match the "Run Executor" designation from Shaun's 2026-07-09 role pass.
       globalRole: 'contributor',
@@ -72,19 +72,19 @@ export async function insertSeedData(
       passwordHash: devPasswordHash,
     },
     {
-      id: ids.users.james,
+      id: ids.users.marcus,
       orgId: ids.org,
-      email: 'jkhan@ti.com',
-      name: 'Jamil Khan',
+      email: 'marcus.webb@testlane.dev',
+      name: 'Marcus Webb',
       globalRole: 'contributor', // Run Executor
       isActive: true,
       passwordHash: devPasswordHash,
     },
     {
-      id: ids.users.viewer,
+      id: ids.users.sam,
       orgId: ids.org,
-      email: 'achandran@ti.com',
-      name: 'Arvindh Chandran',
+      email: 'sam.okafor@testlane.dev',
+      name: 'Sam Okafor',
       // Editor (frontend admin role) -> contributor. Was 'viewer'; upgraded to
       // match the "Editor" designation from Shaun's 2026-07-09 role pass.
       globalRole: 'contributor',
@@ -92,19 +92,19 @@ export async function insertSeedData(
       passwordHash: devPasswordHash,
     },
     {
-      id: ids.users.nadim,
+      id: ids.users.priya,
       orgId: ids.org,
-      email: 'nsharif@ti.com',
-      name: 'Nadim Sharif',
+      email: 'priya.malhotra@testlane.dev',
+      name: 'Priya Malhotra',
       globalRole: 'viewer', // Viewer
       isActive: true,
       passwordHash: devPasswordHash,
     },
     {
-      id: ids.users.syed,
+      id: ids.users.tom,
       orgId: ids.org,
-      email: 'sahmed@ti.com',
-      name: 'Syed Ahmed',
+      email: 'tom.bright@testlane.dev',
+      name: 'Tom Bright',
       globalRole: 'contributor', // Run Manager -> contributor (DB has no distinct Run Manager role)
       isActive: true,
       passwordHash: devPasswordHash,
@@ -172,16 +172,16 @@ export async function insertSeedData(
       grantedBy: ids.users.noel,
     },
     {
-      id: ids.projectRoles.priyaCtms,
+      id: ids.projectRoles.elenaCtms,
       projectId: ids.projects.ctms,
-      userId: ids.users.priya,
+      userId: ids.users.elena,
       role: 'contributor',
       grantedBy: ids.users.noel,
     },
     {
-      id: ids.projectRoles.jamesEtmf,
+      id: ids.projectRoles.marcusEtmf,
       projectId: ids.projects.etmf,
-      userId: ids.users.james,
+      userId: ids.users.marcus,
       role: 'contributor',
       grantedBy: ids.users.noel,
     },

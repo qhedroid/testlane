@@ -170,10 +170,10 @@ function demoApiKeys(orgId: string) {
     { id: ids.apiKeys.ciKey, name: 'ci-key', keyMasked: 'Rw4KLM***', project: 'DP', permissions: 'read', expiration: 'No expiration', createdBy: null, createdAt: new Date(now - 2 * DAY) },
     { id: ids.apiKeys.automationKey, name: 'automation-key', keyMasked: 'Xc9NOP***', project: 'All Projects', permissions: 'comment, manage…', expiration: '90 days', createdBy: null, createdAt: new Date(now - 5 * DAY) },
     { id: ids.apiKeys.noelDev, name: 'noel-dev', keyMasked: 'Qm7PQR***', project: 'CTMS', permissions: 'read, comment', expiration: '30 days', createdBy: ids.users.noel, createdAt: new Date(now - 7 * DAY) },
-    { id: ids.apiKeys.monicaCi, name: 'monica-ci', keyMasked: 'Ty3STU***', project: 'DP', permissions: 'read', expiration: '1 year', createdBy: ids.users.priya, createdAt: new Date(now - 10 * DAY) },
-    { id: ids.apiKeys.arvindhSync, name: 'arvindh-sync', keyMasked: 'Uv8VWX***', project: 'All Projects', permissions: 'manage', expiration: 'No expiration', createdBy: ids.users.viewer, createdAt: new Date(now - 12 * DAY) },
+    { id: ids.apiKeys.elenaCi, name: 'elena-ci', keyMasked: 'Ty3STU***', project: 'DP', permissions: 'read', expiration: '1 year', createdBy: ids.users.elena, createdAt: new Date(now - 10 * DAY) },
+    { id: ids.apiKeys.samSync, name: 'sam-sync', keyMasked: 'Uv8VWX***', project: 'All Projects', permissions: 'manage', expiration: 'No expiration', createdBy: ids.users.sam, createdAt: new Date(now - 12 * DAY) },
     { id: ids.apiKeys.stagingKey, name: 'staging-key', keyMasked: 'Za1BCD***', project: 'IAM', permissions: 'read, comment', expiration: '90 days', createdBy: null, createdAt: new Date(now - 14 * DAY) },
-    { id: ids.apiKeys.syedExport, name: 'syed-export', keyMasked: 'Ef5GHI***', project: 'DP1', permissions: 'read', expiration: 'No expiration', createdBy: ids.users.syed, createdAt: new Date(now - 20 * DAY) },
+    { id: ids.apiKeys.tomExport, name: 'tom-export', keyMasked: 'Ef5GHI***', project: 'DP1', permissions: 'read', expiration: 'No expiration', createdBy: ids.users.tom, createdAt: new Date(now - 20 * DAY) },
   ].map((k) => ({ ...k, orgId }))
 }
 

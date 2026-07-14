@@ -1962,13 +1962,13 @@ function CaseDetail({
               <tbody>
                 <tr>
                   <td style={{ color: 'var(--accent)' }}>Sprint 44 Regression</td>
-                  <td style={{ color: 'var(--text2)' }}>Nadim Sharif</td>
+                  <td style={{ color: 'var(--text2)' }}>Priya Malhotra</td>
                   <td style={{ color: 'var(--text3)' }}>2d ago</td>
                   <td style={{ textAlign: 'center' }}><span className="pill pill-pass">Passed</span></td>
                 </tr>
                 <tr>
                   <td style={{ color: 'var(--accent)' }}>Sprint 43 Smoke</td>
-                  <td style={{ color: 'var(--text2)' }}>Jamil Khan</td>
+                  <td style={{ color: 'var(--text2)' }}>Marcus Webb</td>
                   <td style={{ color: 'var(--text3)' }}>15d ago</td>
                   <td style={{ textAlign: 'center' }}><span className="pill pill-fail">Failed</span></td>
                 </tr>
@@ -1978,14 +1978,14 @@ function CaseDetail({
         ) : null}
         {tab === 'history' ? (
           <>
-            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--pass)' }} /><div><div className="hist-label">Passed — CTMS Regression · Sprint 44</div><div className="hist-meta">Nadim Sharif · 2d ago · all steps passed</div></div></div>
-            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--fail)' }} /><div><div className="hist-label">Failed — Sprint 43 Smoke Test</div><div className="hist-meta">Jamil Khan · 15d ago · Step 2 failed · Defect TI-4401</div></div></div>
+            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--pass)' }} /><div><div className="hist-label">Passed — CTMS Regression · Sprint 44</div><div className="hist-meta">Priya Malhotra · 2d ago · all steps passed</div></div></div>
+            <div className="hist-item"><div className="hist-dot" style={{ background: 'var(--fail)' }} /><div><div className="hist-label">Failed — Sprint 43 Smoke Test</div><div className="hist-meta">Marcus Webb · 15d ago · Step 2 failed · Defect TI-4401</div></div></div>
           </>
         ) : null}
         {tab === 'activity' ? (
           <>
-            <div className="act-item"><strong>Nadim Sharif</strong> updated preconditions<span className="act-time">2d ago · 09:14</span></div>
-            <div className="act-item"><strong>Nasir Dipto</strong> added step 4<span className="act-time">5d ago · 14:32</span></div>
+            <div className="act-item"><strong>Priya Malhotra</strong> updated preconditions<span className="act-time">2d ago · 09:14</span></div>
+            <div className="act-item"><strong>Devon Reyes</strong> added step 4<span className="act-time">5d ago · 14:32</span></div>
           </>
         ) : null}
       </div>
