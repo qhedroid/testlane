@@ -8,8 +8,11 @@ Treat `docs/_authoritative/**` as the only source of truth for requirements and 
 ## Claude-specific files (read on every session start)
 All files under `docs/claude/` are for Claude (Cowork) only — not for Cursor agents.
 
-- **`docs/claude/handoff.md`** — Read this immediately after CLAUDE.md. Contains: active branch, current schema version, completed task log, key decisions, and known gotchas. Update it at the end of any session where meaningful work was done.
+- **`docs/claude/handoff.md`** — Read this immediately after CLAUDE.md. Contains: active branch, current schema version, completed task log, key decisions, and known gotchas. Update it at the end of any session where meaningful work was done. Keep it short — a session log and pointer to the files below, not the full detail.
 - **`docs/claude/known-bugs.md`** — Investigation log for bugs that are identified but not yet fully resolved. Read before drafting any bug-fix prompt. Update whenever a bug is partially fixed, deferred, or newly discovered.
+- **`docs/claude/roadmap.md`** — Read this next. The durable backlog: every outstanding feature/improvement Shaun has raised, each tagged `[ ]` not started / `[~draft]` provisional notes exist / `[~in progress]` real task prompts drafted / `[x]` done, with relevant code findings annotated inline as they're discovered. This is the source of truth for "what's next" — treat it as such rather than relying on chat history, which gets summarized/lost. Update it: whenever new roadmap items are raised, whenever a status tag changes (e.g. a branch's prompts get drafted, or a branch merges), and whenever a code investigation turns up a finding relevant to a listed item (annotate inline, don't just mention it in chat).
+- **`docs/claude/testiny-recon-notes.md`** — Reference findings from browsing the live Testiny instance (the tool this project benchmarks UX against), cross-referenced against Relay's actual code. Read before drafting any prompt for a roadmap item that involves matching Testiny's behavior — check here first before re-browsing Testiny. Contains an "open verification items" list of things that couldn't be checked (data limitations, not tool failures) — read that before asking Shaun to make specific data available in Testiny. Append new findings here whenever a future recon pass happens; don't let findings live only in chat.
+- **`docs/claude/mvp-backend/progress.md`** and **`docs/claude/mvp-backend/plan.md`** — `mvp-backend`-only. Claude implements this branch directly (see "Phase: Backend build" below) instead of drafting Cursor prompts, so these two files are the resumable state for that work across sessions. Read both before doing anything on `mvp-backend`; update `progress.md` at the end of every session touching this branch, even a short one.
 
 ## Claude's role in this project (MANDATORY)
 Claude (Cowork) is a **planning and prompt-drafting assistant**, not an implementer.
@@ -33,12 +36,29 @@ docs/cursor-prompts/
 
 When starting work on a new branch, always create a new sub-folder. Never place prompts for one branch inside another branch's folder.
 - If unsure whether to implement or draft, **always ask first**.
+- **Exception: `mvp-backend`.** This branch does not use `docs/cursor-prompts/` for new work — Claude implements it directly (see "Phase: Backend build" below). Its `docs/cursor-prompts/mvp-backend/` files from the initial scoping session are kept as reference spec material only, marked superseded.
 
-## Phase: Frontend-only prototype
+**Provisional / draft prompts.** When a roadmap item (see `docs/claude/roadmap.md`) has been discussed and researched but not yet scoped into real, ready-to-run tasks, capture that work as `docs/cursor-prompts/<likely-branch-name>/draft-notes.md` — not a numbered `task-NN` file. Mark it clearly as a draft, not runnable by Cursor as-is. It should capture: the original ask, relevant findings (code and/or Testiny recon), open questions, and suggested next steps. When the item is actually picked up, flesh `draft-notes.md` into real `task-01-*.md` etc. following the format of a previously-completed task in another folder (state-of-the-art example: `docs/cursor-prompts/mvp-custom-fields/task-01-field-type-parity.md` — Background → per-file changes with exact line references → Verification → Documentation → Out of scope), then update `roadmap.md`'s status tag.
+
+**Cross-cutting planning sessions.** If a session's work spans multiple future feature areas rather than one specific branch (e.g. a broad recon/roadmap-triage session), commit that work on its own planning branch (e.g. `mvp-further-planning`) rather than directly on `mvp-main` or shoehorning it into an unrelated feature branch. `roadmap.md`, `testiny-recon-notes.md`, and any `draft-notes.md` files are the kind of output that belongs there.
+
+## Phase: Frontend-only prototype (default — all branches except `mvp-backend`)
 - Do NOT implement or modify backend, DB/schema, Docker, auth, or API routes.
 - Do NOT wire UI to real APIs. Persistence is client-side only (FreshProvider + localStorage).
 - If a task appears to require backend work, stop and ask for confirmation.
 - Mock/demo data is acceptable.
+
+## Phase: Backend build (`mvp-backend` branch only)
+Started 2026-07-09. Goal: replace the fresh UI's localStorage persistence with the real MySQL/Drizzle backend, module by module, until the whole app runs on it — not a single validation slice.
+
+- Backend/DB/schema/Docker/auth/API route work is **in scope** on this branch. The frontend-only restriction above does not apply here.
+- **Local only.** Docker Compose (MySQL + OpenSearch containers already exist) — no AWS/Terraform/ECS/Aurora provisioning on this branch; that's a separate later phase.
+- **OpenSearch stays a no-op stub for now.** Cmd+K and list search run on plain MySQL queries until a dedicated search-wiring pass.
+- **Admin panel is in scope.** Unify its Users/Roles management onto the real `users`/`project_roles` tables instead of the separate `AdminSettings` localStorage blob.
+- **Custom Fields is explicitly out of scope on this branch** — do not touch `mvp-custom-fields` schema/scope while working here.
+- **Claude's role is reversed on this branch specifically (Shaun, 2026-07-09):** Claude implements the backend build directly — writing to `apps/**`, `packages/db/**`, etc. — instead of drafting Cursor prompts for it. This is a deliberate, stated exception to the global "planning and prompt-drafting assistant" rule above, scoped to `mvp-backend` only; every other branch keeps the default Cursor-prompt-drafting role. Because this work spans many files and will likely span multiple separate Claude (Cowork) sessions, live implementation state is tracked at `docs/claude/mvp-backend/` (not `docs/cursor-prompts/`) — see `docs/claude/mvp-backend/progress.md` for the resumable checklist and `docs/claude/mvp-backend/plan.md` for the full phase sequence. Read both at the start of any `mvp-backend` session, immediately after this file and `handoff.md`. The `docs/cursor-prompts/mvp-backend/` files drafted during the prior scoping session remain as reference spec material (marked superseded) — they are not being handed to Cursor.
+- End state for this branch: every fresh screen (Dashboard/Cases/Plans/Runs/Defects/Audit/Admin) reads and writes the real API; a seeded, explorable demo project exists in the DB (real test cases/plans/runs, not empty tables) so the app is demoable without manual setup; login/session gates the app for the first time.
+- **Verification constraint (Cowork sandbox has no Docker):** Claude's Cowork sandbox can run Node/`pnpm` for install/build/typecheck, but has no Docker — it cannot reach the local MySQL/OpenSearch containers `docker-compose.yml` defines. Claude verifies what it can in-sandbox (install, `pnpm build`, type-check); anything requiring a live DB (`pnpm dev`, real login, seed script, API responses) needs Shaun to run it locally against his own Docker Compose stack and report back. `docs/claude/mvp-backend/progress.md` tracks which verification has actually happened and by whom.
 
 ## Before making any changes
 1. Read relevant `docs/_authoritative/*` files for the feature area.
@@ -65,7 +85,30 @@ When starting work on a new branch, always create a new sub-folder. Never place 
 - Do not create commits unless asked.
 
 ## After editing any markdown files
-Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit. It must also ask the user whether they want Claude to perform the commit directly. If yes, commit with `Co-authored-by: Claude <claude@anthropic.com>` in the message body.
+Whenever Claude edits or creates files in `docs/claude/**` or `docs/cursor-prompts/**`, it must automatically provide a commit title and description (following the commit message format above) at the end of its response, ready to commit. It must also ask the user whether they want Claude to perform the commit directly. If yes, commit with `Co-authored-by: Claude <claude@anthropic.com>` in the message body — **in addition to**, not instead of, the commit identity rule below.
+
+## Git commit identity (MANDATORY — read before any commit)
+Never trust the ambient `git config user.name`/`user.email` on this machine as correct by default. This repo's local config has previously been found pinned to a stale identity (`CrimsonDelta`) left over from earlier setup, which silently misattributed commits and broke Netlify's Git-contributor check on the personal GitHub repo. Before committing:
+
+1. Run `git config user.name && git config user.email` and state the result to the user before committing.
+2. Confirm whose work this actually is. Default assumption for this environment: work done through Noel's Cowork session is Noel's, and should be authored/committed as him, **not** whatever the local config happens to say.
+3. Set identity **per commit only** via env vars — do not persist a new default with `git config`, since that just swaps which identity is wrong by default for the next person/session:
+   ```bash
+   GIT_AUTHOR_NAME='Noel Quadri' GIT_AUTHOR_EMAIL='56097048+qhedroid@users.noreply.github.com' \
+   GIT_COMMITTER_NAME='Noel Quadri' GIT_COMMITTER_EMAIL='56097048+qhedroid@users.noreply.github.com' \
+   git commit -m "..."
+   ```
+4. Verify after committing: `git log -1 --format='author=%an <%ae>%ncommitter=%cn <%ce>'`.
+5. If a commit lands with the wrong identity and hasn't been pushed yet, fix with `git commit --amend --author='Noel Quadri <56097048+qhedroid@users.noreply.github.com>'` plus matching `GIT_COMMITTER_*` env vars on the amend.
+
+**Known identities for this project** (update this table if either person's account changes):
+
+| Person | Name | Email | GitHub login |
+|---|---|---|---|
+| Noel | Noel Quadri | `56097048+qhedroid@users.noreply.github.com` | `qhedroid` |
+| Shaun | (CrimsonDelta account) | `30307439+CrimsonDelta@users.noreply.github.com` | `CrimsonDelta` |
+
+Only use Shaun's identity when a commit is genuinely his work being committed on his behalf — that must be a stated, deliberate choice for that commit, never the silent default.
 
 ## localStorage
 - Key: `relay-demo-v2`

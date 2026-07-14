@@ -42,14 +42,25 @@ export type AdminAction =
   | { type: 'admin/saveAccount'; payload: Partial<AdminSettings['account']> }
   | { type: 'admin/toggle2FA'; payload: { method: string } }
   | { type: 'admin/saveOrganization'; payload: Partial<AdminSettings['organization']> }
-  | { type: 'admin/createApiKey'; payload: Omit<AdminApiKey, 'id' | 'createdAt' | 'maskedKey' | 'userId'> }
+  | {
+      type: 'admin/createApiKey'
+      payload: Omit<AdminApiKey, 'id' | 'createdAt' | 'maskedKey' | 'userId'>
+      /** Present on real-backend creates: adopt the server-authoritative id +
+       * masked value + createdAt + creator, so local and server never diverge. */
+      server?: { id: string; maskedKey: string; createdAt: number; userId: string }
+    }
   | { type: 'admin/deleteApiKey'; payload: { id: string } }
   | { type: 'admin/inviteUser'; payload: InviteUserPayload }
   | { type: 'admin/updateUser'; payload: UpdateUserPayload }
   | { type: 'admin/disableUser'; payload: { id: string } }
   | { type: 'admin/reactivateUser'; payload: { id: string } }
   | { type: 'admin/updateUserRole'; payload: { id: string; role: AdminUser['role'] } }
-  | { type: 'admin/createRole'; payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions } }
+  | {
+      type: 'admin/createRole'
+      payload: { name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions }
+      /** Present on real-backend creates: adopt the server-authoritative id. */
+      server?: { id: string }
+    }
   | { type: 'admin/updateRole'; payload: { id: string; name: string; description: string; isProjectLevel: boolean; permissions: RolePermissions } }
   | { type: 'admin/deleteRole'; payload: { id: string } }
   | { type: 'admin/addCustomField'; payload: Omit<AdminCustomField, 'id'> }
@@ -136,10 +147,10 @@ export function reduceAdminState(state: DemoState, action: AdminAction): DemoSta
     case 'admin/createApiKey': {
       const key: AdminApiKey = {
         ...action.payload,
-        id: newId('apikey'),
-        maskedKey: generateMaskedApiKey(),
-        createdAt: Date.now(),
-        userId: state.currentActorUserId ?? SEED_ADMIN_USER_ID,
+        id: action.server?.id ?? newId('apikey'),
+        maskedKey: action.server?.maskedKey ?? generateMaskedApiKey(),
+        createdAt: action.server?.createdAt ?? Date.now(),
+        userId: action.server?.userId ?? state.currentActorUserId ?? SEED_ADMIN_USER_ID,
       }
       settings = appendAuditEntry(settings, {
         area: 'Settings',
@@ -279,7 +290,7 @@ export function reduceAdminState(state: DemoState, action: AdminAction): DemoSta
 
     case 'admin/createRole': {
       const role: AdminRole = {
-        id: newId('role'),
+        id: action.server?.id ?? newId('role'),
         name: action.payload.name,
         description: action.payload.description,
         userCount: 0,

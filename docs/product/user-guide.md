@@ -1,8 +1,8 @@
 # Relay — User Guide
 
-*Living document · Last verified: June 2026 · Branch: `mvp-requirements-defects-slice`*
+*Living document · Last verified: 13 July 2026 · Branch: `mvp-backend`*
 
-This guide explains how to use Relay from a user perspective. It describes the **frontend prototype** as it works today in the browser.
+This guide explains how to use Relay from a user perspective, as it works today in the browser against the real backend.
 
 **For developers and agents:** When user-visible behaviour changes, update this file together with [`feature-flow.md`](feature-flow.md).
 
@@ -12,28 +12,29 @@ This guide explains how to use Relay from a user perspective. It describes the *
 
 Relay is a QA test execution platform for clinical-trials-style workspaces. It helps teams organise **test cases**, group them into **test plans**, execute them in **test runs**, track results, and review activity across **projects**.
 
-The current app is a **frontend prototype**: most data lives in your browser (demo seed + localStorage). A separate API-backed workspace exists at `/runs/api` for backend validation but is not the primary demo experience.
+As of `mvp-backend`, the app runs on a **real MySQL backend**: login gates the app, projects come from the database, and cases (with comments), plans (with their query definitions), runs (case + per-step results, run descriptions, execution history), requirements, defects, the audit log, and the admin role/API-key registries all read and write real API routes. The browser's localStorage acts as a cache plus the store for the few remaining fields the database doesn't model yet — chiefly custom fields (a separate `mvp-custom-fields` branch) and admin automation (see "Data sources" below).
 
 ---
 
-## Frontend prototype caveat
+## Data sources
 
-| What works | What is simulated |
+| Real (MySQL, via API) | Local-only (browser localStorage) |
 |------------|-------------------|
-| Full UI walkthrough without Docker | No real login or SSO |
-| Create/edit cases and runs in the browser | Data is not shared across users or machines |
-| Step-level execution, sealing, project switching | Legacy seed TI-* defect refs on some runs; no real Jira sync |
-| Admin panel forms persist in localStorage | **Demo RBAC** on user/role admin screens via actor switcher |
-| `/runs/api` persists to MySQL when Docker is running | Demo test runs UI is not wired to MySQL |
+| Login/session (NextAuth, seed users), project list, project cloning | Custom-field definitions and values (separate `mvp-custom-fields` branch) |
+| Test cases + folders (full CRUD, `TC-<n>` refs, archived on delete) | Admin **automation** settings (still mock) |
+| Case comments — general **and** per-step | The "Demo User" admin actor + the mock admin roster shown to non-global-admin sessions |
+| Test plans (`PLAN-<nnn>` refs), their **query definitions**, and resolved case lists | Reports content (static demo shells) |
+| Test runs — plan-spawned AND ad-hoc — case results (P/F/B/S + notes), **per-step results**, **run descriptions**, seal/reopen, archive, `RUN-<nnnn>` refs | |
+| Run **execution history / trends** (per-case event log driving the dashboard's week-over-week deltas and trend charts) | |
+| Requirements (`REQ-*`) + case links | |
+| Defect entities (`DEF-*`) + run↔defect links | |
+| Audit log; Admin user list/invite/role/disable, **role definitions**, and **API keys** (global admins) | |
 
-**Reset demo data** (browser console):
+Writes **wait for the server**: creates/edits/deletes commit locally only after the API confirms (failures surface as error toasts). The one exception is P/F/B/S result recording, which is optimistic for keyboard speed and rolls back automatically if the server rejects it. There is no localStorage-only fallback project any more — if the API is unreachable, the app shows a connect/retry screen.
 
-```javascript
-localStorage.removeItem('relay-demo-v2')
-location.reload()
-```
+**Reset the local cache:** visit any page with `?relay-reset=1` (or `localStorage.removeItem('relay-demo-v2')` in the console). This never touches the database — server data re-syncs on next load.
 
-**Run locally:** `pnpm install && pnpm dev` → open http://127.0.0.1:3000 (redirects to `/DP/dashboard`).
+**Run locally:** `pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev` → open http://127.0.0.1:3000 — you'll be redirected to `/login`. Sign in with any seed user (see "Login" below), which lands on `/DP/dashboard` — the richly-seeded Demo Project (the real DB project; slug `dp`).
 
 ---
 
@@ -42,7 +43,7 @@ location.reload()
 Relay is **multi-project**. Each project has its own folders, test cases, and test runs.
 
 - **URL pattern:** `/:projectKey/:module` — e.g. `/DP/testcases`, `/CTMS/testruns`.
-- **Project switcher** appears in the top bar on Test Cases and Test Runs. It shows the active project name.
+- **Project switcher** appears in the top bar on every project screen (left of breadcrumbs).
 - **Switch project:** pick another project from the dropdown. The URL rewrites to the same module under the new key (run/case selection is cleared when switching projects).
 - **Create project:** *Create project…* — enter name, key (uppercase, unique), optional description. You land on the new project's dashboard (blank metrics unless you add a demo project).
 - **Add demo project:** clones a full demo dataset with key `DP1`, `DP2`, … — useful for isolated walkthroughs.
@@ -52,17 +53,59 @@ Relay is **multi-project**. Each project has its own folders, test cases, and te
 
 ---
 
+## Navigation
+
+### Sidebar
+
+The left sidebar is the primary module navigator. Order (top to bottom):
+
+1. **Dashboard**, **My Work**
+2. **Testing** section — Test Cases, Test Plans, Test Runs, Milestones
+3. **Traceability** section — Requirements, Defects, Reports, Audit History, AI Studio
+4. **Project Settings** (bottom, above the user card) — opens the organisation admin area at `/admin` (sidebar swaps to the admin sub-nav, same behaviour as before)
+
+**Removed in Phase 2:** the old *Pinned Modules* block (eTMF Module, API Gateway, Add shortcut) and the separate *Integrations* sidebar entry. The route `/:key/integrations` still exists as a placeholder page but is not linked from the sidebar.
+
+### Global top bar
+
+On every project screen, `FreshTopbar` renders a shared action cluster (in addition to screen-specific breadcrumbs and optional local actions):
+
+| Control | Behaviour |
+|---------|-----------|
+| **Search** (⌘K) | In-memory search over the active project's cases and runs |
+| **New test case** | Opens the New case modal |
+| **New test run** | Opens the Create run modal |
+| **AI Studio** (sparkles icon) | Navigates to `/:key/aistudio` |
+| **Notifications** (bell icon) | Visual only — no real notifications |
+| **Help** (?) | Opens keyboard-shortcuts overlay |
+
+Screen-specific actions live elsewhere when the mockup moved them out of the shared bar — e.g. Test Cases keeps Create test run / Import / Quick create / New case in the **case-list pane toolbar**; Test Runs keeps **Close test run**, **Edit**, **Report**, and **More…** in its own **page-head** below the top bar, not in the global cluster.
+
+---
+
 ## Dashboard
 
 **Route:** `/DP/dashboard` (replace `DP` with your project key)
 
-The dashboard is a briefing screen: what needs attention and how runs are progressing.
+The dashboard is a briefing screen built from the Phase 2 Compass layout. All metrics are computed from live `FreshProvider` data (active unsealed, unarchived runs and project cases) — not the mockup's static demo numbers.
 
-**Demo projects** (`seedTemplate: 'demo'`): metric cards, expandable run cards (Overview / Assignees / Defects tabs), needs-attention list, module coverage bars.
+**KPI strip** (top row): Executed %, Passed, Failed, Blocked, Open runs, and a 30-day pass-trend sparkline. Week-over-week delta labels appear when `executionLog` has dated history; otherwise Passed/Failed show **"As of today"** and the results-over-time chart notes a snapshot with no dated history in seed data.
 
-**Other projects:** summary cards with zeros and a “Dashboard coming soon” placeholder.
+**Completion panel:** Donut chart (Passed / Failed / Blocked / Not run) with legend, plus **Lowest coverage by folder** rows when folder data exists.
 
-**Actions:** expand/collapse run cards; open Test Runs via *New Run* or attention links. Export buttons are visual only.
+**Results over time:** Line chart with **7d / 30d / 90d** chips; cumulative passed and failed lines from live selectors.
+
+**Results by assignee:** Horizontal stacked bars per assignee (pass / fail / blocked) for executed cases in open runs.
+
+**Open test runs:** Clickable list with run key, name, assignee avatar, mini result bar, and executed/total fraction — each row links to that run in Test Runs.
+
+**Milestones:** Static placeholder slice (three demo milestones with status badges) linking to **All →** `/milestones`. Not computed from live run state.
+
+**Needs attention:** Unlinked failures (failed executions with no linked defect), sorted most-recent first; *Link defect* rows navigate to Test Runs.
+
+**Brand-new project (zero test cases):** Centered “Add your first test cases” empty state with link to Test Cases — not a wall of zero metrics.
+
+**Actions:** Top-bar *Export* is visual only; *New Run* opens Test Runs. No expandable run cards or Critical filter chips (removed in Phase 2 rebuild).
 
 ---
 
@@ -75,7 +118,9 @@ The dashboard is a briefing screen: what needs attention and how runs are progre
 
 Three-pane layout: **folder tree** (left) → **case table** (centre) → **detail panel** (right, opens on row select).
 
-**Browse:** expand/collapse folders; use folder search; filter by status chips; keyword search in the toolbar.
+**Case-list toolbar** (centre pane header): folder title plus **Create test run** ▾, **Import**, **Quick create**, **New case**, and a contextual **Details** button when one row is selected. These actions moved here from the global top bar in Phase 2 — behaviour unchanged.
+
+**Browse:** expand/collapse folders; use folder search; filter by status chips; keyword search in the toolbar row below the pane header.
 
 **Create cases:**
 - *Quick create* — paste titles, press Enter to add multiple cases quickly.
@@ -83,7 +128,7 @@ Three-pane layout: **folder tree** (left) → **case table** (centre) → **deta
 
 **Case detail:** metadata (assignee, template, priority, custom fields), tabs (Details, Attachments, Defects, Requirements, Runs, History, Activity), ← → arrows to move between cases. Deep link: `/DP/testcases/tc/<caseKey>` (URL omits the `TC-` prefix).
 
-**Requirements tab (create/link):** From the selected case, open *Requirements*. Create a local demo requirement (title + optional description) — it is saved to localStorage and linked to the case automatically. Use *Link existing…* to attach another project requirement. Requirements use keys like `REQ-00001`. No external Jira or integration sync.
+**Requirements tab (create/link):** From the selected case, open *Requirements*. Create a requirement (title + optional description) — it is saved to the database (`requirements` table) and linked to the case automatically. Use *Link existing…* to attach another project requirement. Requirements use keys like `REQ-00001`. No external Jira or integration sync.
 
 **Defects tab (view-only):** Shows defects linked to this case from test run executions (including legacy seed `TI-*` references). You cannot create or link defects here — use Test Runs when a case fails or is blocked.
 
@@ -91,9 +136,9 @@ Three-pane layout: **folder tree** (left) → **case table** (centre) → **deta
 
 **Bulk actions:** select rows → bulk bar for batch operations.
 
-**Create test run from cases:** toolbar *Create test run* — scope to current folder or all cases; name the run; navigates to Test Runs.
+**Create test run from cases:** case-list toolbar *Create test run* ▾ — scope to current folder or all cases; name the run; navigates to Test Runs.
 
-User-created cases **persist** in localStorage per project.
+User-created cases **persist to MySQL** per project (real projects), along with their comments and requirement links. Only custom-field values stay browser-local (a separate branch).
 
 ---
 
@@ -116,7 +161,7 @@ Test plans organise test cases into named groups (queries) and let you spawn a t
 - *Folder* — all cases inside a selected folder (descendants included).
 - *Static* — an explicit hand-picked list of cases.
 
-The right panel shows a live preview of all resolved cases across all query groups (deduplicated).
+The right panel shows a live preview of all resolved cases across all query groups (deduplicated). Query **definitions** now persist to the database (`test_plans.query_definition`) — reopen the plan in another browser and the authored query groups come back, not just their last resolved result. Cases still resolve client-side; the resolved list is pushed to the server (`test_plan_cases`) so spawned runs stay correct.
 
 **Spawn run:** Click *Spawn run* to open the spawn modal. It pre-fills a run title and shows the case count in scope. Confirming creates a new run (stamped with this plan's ID) and navigates directly to Test Runs.
 
@@ -132,7 +177,9 @@ Plan export and version history are not available in the prototype.
 
 Primary execution workspace. Run keys are five-digit, per-project (`00001`, `00002`, …).
 
-**Run picker:** search and switch runs in the top bar. Archived runs are hidden from the default list.
+**Page head** (below the global top bar): *Test runs* title and subline, plus run-specific actions — **Close test run** / **Re-open**, **Edit**, **Report** (visual), and **More…** (duplicate, delete, export placeholders, etc.). These are no longer in the shared top bar.
+
+**Run picker:** search and switch runs in the queue pane. Archived runs are hidden from the default list.
 
 **Create run:** *Create run* modal — name required, optional description. Empty runs are supported. After create, the app navigates to the new run URL.
 
@@ -153,13 +200,15 @@ Open a run at `/DP/testruns/tr/<runKey>`.
 **Select a case:** execution panel shows Details (with steps), History, Comments, Defects, and related tabs. Deep link: `/DP/testruns/tr/<runKey>/tc/<caseKey>`.
 
 **Mark results:**
-- Step buttons: Pass / Fail / Blocked / Skip
+- Step buttons: Pass / Fail / Blocked / Skip — **per-step results now persist to the database** (`run_step_results`) and survive reload
 - Footer case result buttons and keyboard shortcuts (`P` `F` `B` `S`)
 - Arrow keys navigate between cases (↑↓ in current build)
 
-**Seal run:** *Close test run* in the top bar locks mutations — results and steps become read-only. *Re-open* reverses this (prototype has no role check).
+Recording a case result also appends to the run's **execution history** (`run_case_events`), which drives the dashboard's week-over-week deltas and trend charts for real synced runs.
 
-**Defect linking (Failed/Blocked only):** On the execution panel *Defects* tab, create a local demo defect (`DEF-00001`, …) or link an existing one — only when the case result is **Failed** or **Blocked** and the run is not sealed. Passed, Skipped, and Not run disable create/link with helper text. Defects persist in localStorage and appear on the case Defects tab (view-only) and Defects module list.
+**Seal run:** *Close test run* in the screen's page-head (or More… menu) locks mutations — results and steps become read-only. *Re-open* reverses this (prototype has no role check).
+
+**Defect linking (Failed/Blocked only):** On the execution panel *Defects* tab, create a defect (`DEF-00001`, …) or link an existing one — only when the case result is **Failed** or **Blocked** and the run is not sealed. Passed, Skipped, and Not run disable create/link with helper text. Defect entities persist to the database (`defects` table) with real `run↔defect` links, and appear on the case Defects tab (view-only) and Defects module list. External free-text (Jira-style) refs can still be linked without creating an internal defect.
 
 **Requirements (view-only in runs):** The execution panel *Requirements* tab shows requirements linked to the underlying test case. Manage requirements from Test Cases — no create/link controls in Test Runs.
 
@@ -171,9 +220,57 @@ Open a run at `/DP/testruns/tr/<runKey>`.
 
 **Route:** `/DP/defects`
 
-Mock defect table (ID, title, severity, status, module, owner) with search and filters. Detail panel shows linked case/run. Locally created demo defects (`DEF-*` from failed/blocked executions) appear at the top of the list for the active project alongside static `TI-*` mock rows.
+Table-first layout with a toolbar (**All defects**, shown count, search, severity filter, status chips, and a **Details** toggle). The table uses shared Compass styling (ID, Defect, Severity, Status, Assignee with avatar, Case, Run, Opened). Click a row to open the right **detail panel** (close with X; reopen via Details when hidden).
 
-**New defect** button remains disabled — create defects from Test Runs during execution instead. No Jira sync.
+Locally created demo defects (`DEF-*` from failed/blocked executions) appear alongside static `TI-*` mock rows for the active project. Search and status/severity filters work as before.
+
+**New defect** in the top bar remains disabled — create defects from Test Runs during execution instead. No Jira sync. No page-level title block (consistent with Dashboard / Test Cases / Test Plans).
+
+---
+
+## My Work
+
+**Route:** `/DP/mywork`
+
+Personal work queue with KPI tiles (assigned cases, not run yet, blocked, defects to verify), a **Your Test Queue** panel grouped by run, and **Defects Involving You**. Static demo content only — no real assignment or notification wiring.
+
+---
+
+## Milestones
+
+**Route:** `/DP/milestones`
+
+Milestone cards with status, target date, aggregate progress, and linked test runs. Static demo content — not computed from live run state.
+
+---
+
+## Requirements (list view)
+
+**Route:** `/DP/requirements`
+
+Read-only table of project requirements with coverage status and linked case counts. Uses live `requirementsById` data when you have created requirements in Test Cases; otherwise shows a static demo list matching `REQ-*` key format.
+
+Create and link requirements from **Test Cases** (Requirements tab) or view them read-only during **Test Runs** execution — this page does not add new create/edit flows.
+
+---
+
+## AI Studio
+
+**Route:** `/DP/aistudio`
+
+Demo AI workspace: prompt input, quick-action cards, draft preview with Accept/Edit/Discard, and recent generations list. **No real AI calls** — Generate and action buttons are visual only.
+
+---
+
+## Login
+
+**Route:** `/login` (top-level, not project-prefixed)
+
+Real authentication gate (NextAuth Credentials provider, JWT session). Visiting any app route while logged out redirects here with a `callbackUrl` back to where you were headed. Sign in with a seed user's email and the shared local-dev password (`relay-dev-2026` — see `README.md`'s "Local dev login" section for all eight accounts, e.g. `ssevume@ti.com`) to continue. The "Continue with TransPerfect SSO" button is a visual placeholder only.
+
+The old project-prefixed `/:key/login` route now just redirects here — login has no project context until after you're signed in.
+
+A small user menu in the top bar (next to the project switcher) shows your name/email/role and has a **Sign Out** action.
 
 ---
 
@@ -181,17 +278,19 @@ Mock defect table (ID, title, severity, status, module, owner) with search and f
 
 **Route:** `/DP/reports`
 
-Placeholder screen — planned module message only. No report generation.
+Reports and analytics demo with report-type chips (Run Summary, Requirements Coverage, Failure Trends, Flaky Cases, Tester Workload). Run Summary shows static execution metrics; other tabs show placeholder panels. Export is disabled — no report generation.
 
 ---
 
-## Settings
+## Settings (project route)
 
 **Route:** `/DP/settings`
 
-Project settings preview with a link to the organisation **Relay settings area** (`/admin`). Shows a live summary of users from `adminSettings` (first five rows) and module list.
+This route is a **server redirect to `/admin`** — there is no standalone project settings screen anymore.
 
-For user/role management, profile, organisation, and audit log, use `/admin/*`.
+Use the sidebar's single **Project Settings** entry (bottom of the main nav) to open the organisation admin area. That swaps the sidebar to the admin sub-nav (profile, account, organisation, projects, users, roles, audit log, etc.) — the same global `/admin/*` behaviour as before, now with Compass visual polish from Phase 2.
+
+For user/role management, profile, organisation settings, and the live admin audit log, use `/admin/*` directly.
 
 ---
 
@@ -225,6 +324,8 @@ Built-in roles: Owner, Administrator, Project Administrator, Editor, Run Manager
 - **View** built-in roles — read-only permission matrix
 - **Create / edit / delete** custom roles with permission checkboxes
 
+**Persistence:** for global-admin sessions, role **definitions** persist to the database (`role_definitions` table) and survive reload; built-in roles are seeded and guarded from edit/delete. Non-admin sessions fall back to the local mock roster.
+
 **Prototype RBAC:** enforced on admin user/role actions only (via demo actor switcher). Project screens (`/DP/testruns`, etc.) are not gated yet.
 
 Future backend will enforce RBAC at API and service layers per [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHITECTURE_BASELINE.md).
@@ -237,7 +338,7 @@ Future backend will enforce RBAC at API and service layers per [`docs/_authorita
 
 | Location | Data |
 |----------|------|
-| `/DP/audit` | Static seed timeline — filter chips, export button (visual only) |
+| `/DP/audit` | Live project audit log — fetches the real `audit_log` via `GET /api/projects/:id/audit` for real projects (case/plan/run/defect/requirement/admin mutations), rendered through an HTML-escaped display adapter: **page header** (title, subtitle, Export CSV), filter chips (All events / Test Cases / Test Runs / Test Plans / Users), circular icon chips per event type, timestamps, and ref links in descriptions. Export is visual only. |
 | `/admin/audit-log` | Live append-only log — user invite/silent create, edit, disable/reactivate, role CRUD, actor switch, org/API/custom-field mutations |
 
 Neither connects to a read API yet. Backend writes audit rows on run create and case result update (`/runs/api` path only).
@@ -252,7 +353,9 @@ Neither connects to a read API yet. Backend writes audit rows on run create and 
 
 **Sidebar (primary):** My profile, My account, Organisation, Projects, User management, Role management, Audit log
 
-**More (planned placeholders):** API keys, Integrations, Custom fields, Automation
+**API keys:** for global-admin sessions, the API-key registry persists to the database (`api_keys` table) — create/delete survive reload. (Real secret management — hashing, one-time reveal — is out of scope; the stored value is the same masked display string the UI shows.)
+
+**More (planned placeholders):** Integrations, Custom fields, Automation
 
 **Projects admin** (`/admin/projects`): manage custom field activation per project.
 
@@ -260,42 +363,41 @@ Neither connects to a read API yet. Backend writes audit rows on run create and 
 
 ## Known limitations
 
-- No authentication — demo assumes a single local user
-- No multi-user collaboration or server sync for the prototype UI
-- Test plans are not editable and do not drive run creation automatically
+- Real login/session now gates the app (see "Login" above), but `/api/runs/*` still uses the legacy `x-relay-user-id` header pending a later wiring phase
+- No real SSO — the SSO button on `/login` is a visual placeholder
+- Multi-user collaboration works at the database level (shared MySQL), but there is no live push — another user's changes appear after a reload/project switch
 - `/DP/cases` bookmark slug is obsolete (404)
-- Project settings menu item in switcher is disabled (“coming soon”)
+- `/:key/integrations` is a placeholder route only — not linked from the sidebar
 - Final Owner/Administrator cannot be disabled when they are the only effective admin remaining
 - Reactivating a disabled user always sets status to **Active** (prior invite status is not preserved)
 - Export, report generation, and most Integrations flows are visual placeholders
 - CasesScreen may show brief flicker on project switch (known bug; RunsScreen fixed)
-- Dashboard metrics only for demo-template projects
+- Dashboard “Link defect” in needs-attention panel links to Test Runs only (no inline defect-link action)
 
 See also [`docs/claude/known-bugs.md`](../claude/known-bugs.md) for active investigations.
 
 ---
 
-## Mock / frontend-only behaviours
+## Local-only behaviours (documented gaps)
 
-- All prototype modules show a **Frontend prototype** banner (yellow) except `/runs/api` (blue, API-backed)
-- Cmd+K search queries active project's cases and runs in-memory
-- Spawn-from-plan navigates only — no API call
-- Sealing does not check admin role
-- Duplicate run copies case order and resets executions; does not copy historical results
+- Cmd+K search queries the active project's cases and runs in-memory (no OpenSearch yet)
+- Custom-field definitions and values remain browser-local (the separate `mvp-custom-fields` branch owns the backend)
+- Admin **automation** settings are still mock/localStorage
+- Duplicate run: the server copy snapshots the plan's *current* case list; the local copy freezes the source's case order — they can differ slightly
+- Sealing does not check admin role in the UI (the API enforces contributor+)
+- Non-global-admin sessions see a local mock roster in the Admin panel (users/roles/API keys fall back when the server returns 403)
 
 ---
 
 ## Future backend behaviours
 
-When the demo UI is wired to APIs (planned, not started for `/DP/testruns`):
+Remaining for later phases:
 
-- Login and session; RBAC enforced per action
-- Test cases, plans, runs, and results persisted in MySQL
-- Plan spawn creates a run via `POST /api/runs` with case snapshots
-- Audit log read API for project and admin views
-- Defects CRUD and external tracker integration
-- Reports and exports generated server-side
-- OpenSearch-backed global search
+- Real SSO (IAM) replacing the credentials provider
+- External defect-tracker (Jira) integration and richer requirements modeling
+- Custom fields backend (separate `mvp-custom-fields` branch)
+- Admin automation backend
+- Reports and exports generated server-side; OpenSearch-backed global search
 
 Technical contracts: [`docs/_authoritative/FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACTS.md).
 
@@ -310,7 +412,7 @@ Technical contracts: [`docs/_authoritative/FRONTEND_CONTRACTS.md`](../_authorita
 | Test plans | `/:key/plans` | `/plans`, `/test-plans` |
 | Test runs | `/:key/testruns` | `/runs` |
 | Defects | `/:key/defects` | `/defects` |
-| Settings | `/:key/settings` | `/settings` |
+| Settings | `/:key/settings` → redirects to `/admin` | `/settings` |
 | Reports | `/:key/reports` | `/reports` |
 | Audit | `/:key/audit` | `/audit` |
 | Admin | `/admin/*` | — |

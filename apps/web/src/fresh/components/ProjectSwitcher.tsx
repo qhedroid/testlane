@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useFresh } from '../data/FreshProvider'
 import { CreateProjectModal } from './CreateProjectModal'
 import { DEFAULT_PROJECT_KEY, projectPath, switchProjectPath } from '../lib/project-routes'
+import { cloneRealProject, DEMO_PROJECT_SLUG, RelayApiError, resetRealWorkspace } from '@/lib/relay/project-client'
 
 export function ProjectSwitcher() {
   const {
@@ -13,7 +14,6 @@ export function ProjectSwitcher() {
     setActiveProject,
     updateProject,
     deleteProject,
-    addDemoProject,
   } = useFresh()
   const router = useRouter()
   const pathname = usePathname()
@@ -21,8 +21,12 @@ export function ProjectSwitcher() {
   const [createOpen, setCreateOpen] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [cloning, setCloning] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const demoProject = projects.find((p) => p.source === 'real' && p.key === DEMO_PROJECT_SLUG.toUpperCase())
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -84,19 +88,55 @@ export function ProjectSwitcher() {
     setDraftName(currentName)
   }
 
-  function handleAddDemoProject() {
-    const { key } = addDemoProject()
+  // "Add demo project" (clone-current-project, client-only) is gone — real
+  // projects replaced the old client-only demo-project model, and the
+  // data-layer refactor removed `addDemoProject()`/the local fallback
+  // entirely. "Create Demo Project" deep-clones the real seeded DP project
+  // via POST /api/projects/:id/clone (see ProjectCloneService.ts).
+  async function handleResetWorkspace() {
+    if (resetting) return
+    const confirmed = window.confirm(
+      'Reset the workspace to its default state?\n\nThis permanently deletes ALL projects and their data (including clones and anything you created), then restores: Demo Project (with demo data) + CTMS, eTMF, IAM, eFeasibility, GL (empty).\n\nThis cannot be undone.',
+    )
+    if (!confirmed) return
+    setResetting(true)
     close()
-    router.push(projectPath(key, 'dashboard'))
+    try {
+      await resetRealWorkspace()
+      // Clear the local cache too (local-only fields reference deleted rows),
+      // then reload from scratch.
+      try {
+        localStorage.removeItem('relay-demo-v2')
+      } catch {
+        /* ignore */
+      }
+      window.location.assign('/')
+    } catch (err) {
+      window.alert(err instanceof RelayApiError ? err.message : 'Failed to reset the workspace.')
+      setResetting(false)
+    }
+  }
+
+  async function handleCloneDemoProject() {
+    if (!demoProject || cloning) return
+    setCloning(true)
+    close()
+    try {
+      const cloned = await cloneRealProject(demoProject.id)
+      window.location.assign(projectPath(cloned.slug.toUpperCase(), 'dashboard'))
+    } catch (err) {
+      window.alert(err instanceof RelayApiError ? err.message : 'Failed to create demo project copy.')
+      setCloning(false)
+    }
   }
 
   return (
     <>
       <div className="proj-switcher" ref={ref}>
         <button type="button" className="proj-btn" onClick={() => setOpen((v) => !v)}>
-          <i className="ti ti-apps" style={{ fontSize: 14, color: 'var(--accent)' }} />
+          <i className="ti ti-folder" style={{ fontSize: 15, color: 'var(--text3)' }} />
           <span className="pn">{activeProject?.name ?? 'Project'}</span>
-          <i className="ti ti-chevron-down" style={{ fontSize: 10, opacity: 0.5 }} />
+          <i className="ti ti-chevron-down" />
         </button>
         {open ? (
           <div className="proj-dd open">
@@ -130,24 +170,26 @@ export function ProjectSwitcher() {
                       <i className={`ti ${project.id === activeProject?.id ? 'ti-check' : 'ti-square'}`} />
                       <span className="proj-item-name">{project.name}</span>
                     </button>
-                    <div className="proj-row-actions">
-                      <button
-                        type="button"
-                        className="proj-icon-btn"
-                        title="Rename project"
-                        onClick={(e) => { e.stopPropagation(); startRename(project.id, project.name) }}
-                      >
-                        <i className="ti ti-pencil" />
-                      </button>
-                      <button
-                        type="button"
-                        className="proj-icon-btn danger"
-                        title="Delete project"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(project.id, project.name) }}
-                      >
-                        <i className="ti ti-trash" />
-                      </button>
-                    </div>
+                    {project.source === 'real' ? null : (
+                      <div className="proj-row-actions">
+                        <button
+                          type="button"
+                          className="proj-icon-btn"
+                          title="Rename project"
+                          onClick={(e) => { e.stopPropagation(); startRename(project.id, project.name) }}
+                        >
+                          <i className="ti ti-pencil" />
+                        </button>
+                        <button
+                          type="button"
+                          className="proj-icon-btn danger"
+                          title="Delete project"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(project.id, project.name) }}
+                        >
+                          <i className="ti ti-trash" />
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -161,13 +203,31 @@ export function ProjectSwitcher() {
               <i className="ti ti-plus" />
               Create project…
             </button>
-            <button type="button" className="proj-action" onClick={handleAddDemoProject}>
-              <i className="ti ti-copy" />
-              Add demo project
-            </button>
+            {demoProject ? (
+              <button
+                type="button"
+                className="proj-action"
+                onClick={handleCloneDemoProject}
+                disabled={cloning}
+                title="Get a fresh copy of the Demo Project — folders, cases, plans, and runs included"
+              >
+                <i className="ti ti-copy" />
+                {cloning ? 'Creating…' : 'Create Demo Project'}
+              </button>
+            ) : null}
             <button type="button" className="proj-action muted" disabled title="Coming soon">
               <i className="ti ti-settings" />
               Project settings
+            </button>
+            <button
+              type="button"
+              className="proj-action"
+              onClick={handleResetWorkspace}
+              disabled={resetting}
+              title="Delete ALL projects and restore the default workspace (Demo Project + empty CTMS/eTMF/IAM/eFeasibility/GL). Global admins only."
+            >
+              <i className="ti ti-restore" />
+              {resetting ? 'Resetting…' : 'Reset workspace…'}
             </button>
           </div>
         ) : null}

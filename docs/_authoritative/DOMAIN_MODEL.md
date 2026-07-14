@@ -103,7 +103,7 @@ State shape: `DemoState` in `demo-model.ts`, persisted via `FreshProvider` (`rel
 4. **Run URL routing** — selected run reflected at `/:projectKey/testruns/tr/:runKey` (5-digit `runKey`). No segment when no run selected. Invalid key → redirect to `/:projectKey/testruns`.
 5. **Project keys** — unique across `projectsById`; stored uppercase; validated on create (`[A-Z0-9_-]`).
 6. **Project delete** — **cascade delete**: removing a project deletes its folders, cases, and runs. If the active project is deleted, the store activates another project or creates `"Demo Project"` / `DP` when none remain.
-7. **Dashboard scoping** — dashboard metrics (`RUN_CARDS`, attention/coverage panels) render only when `activeProject.seedTemplate === 'demo'`. Blank/user-created projects show a placeholder dashboard (zeroed summary cards + “Dashboard coming soon”).
+7. **Dashboard scoping** — dashboard metrics compute from `FreshProvider` state for every project. Projects with **zero test cases** show an onboarding empty state (“Add your first test cases”) instead of metric cards. Projects with cases but no active runs show real zero-state metrics (0 active runs, `—` pass rate, empty panels). Active runs = unsealed and not archived.
 8. **Demo template cloning** — “Add demo project” clones from an **immutable in-code template** (`demo-template.ts`), never from live store state. Keys are incremental: `DP1`, `DP2`, … (base seed remains `DP`). All cloned entity ids are remapped for full project isolation.
 9. **Run case order** — `caseOrder[]` defines list order; executions map must align by case id.
 10. **Run keys** — `runKey` assigned incrementally per project (`nextRunNumByProject`, starting at `00001`). Seeded R1–R6 → `00001`–`00006`.

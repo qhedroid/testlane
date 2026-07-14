@@ -139,6 +139,13 @@ function migrateProjectProperties(state: DemoState): DemoState {
   const projectsById: Record<string, Project> = {}
 
   for (const [id, project] of Object.entries(state.projectsById)) {
+    // Real backend projects are canonical as-is — the legacy demo-key/name
+    // normalisation below must never rewrite them (the seeded DB project is
+    // itself named "Demo Project" with key DP as of the data-layer refactor).
+    if (project.source === 'real') {
+      projectsById[id] = project
+      continue
+    }
     const isInitialSeed =
       id === DEFAULT_SEED_PROJECT_ID ||
       project.name === 'TI-Core Platform' ||

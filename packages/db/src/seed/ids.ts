@@ -12,6 +12,8 @@ export const ids = {
     marcus: '01SEED00000000000000000005',
     james: '01SEED00000000000000000006',
     viewer: '01SEED00000000000000000007',
+    nadim: '01SEED00000000000000000008',
+    syed: '01SEED00000000000000000009',
   },
 
   projects: {
@@ -21,6 +23,12 @@ export const ids = {
     ssoIam: '01SEED00000000000000000013',
     reporting: '01SEED00000000000000000014',
     apiGateway: '01SEED00000000000000000015',
+    /** 7th project — richly-seeded explorable demo (folders/cases/plans/runs at
+     * every lifecycle stage). See demo-project-seed.ts. Default landing project
+     * for the fresh app and the "Create Demo Project" clone-source. */
+    demo: '01SEED00000000000000000016',
+    efeasibility: '01SEED00000000000000000017',
+    gl: '01SEED00000000000000000018',
   },
 
   folders: {
@@ -71,6 +79,9 @@ export const ids = {
   plans: {
     ctmsRegression: '01SEED00000000000000000400',
     etmfSmoke: '01SEED00000000000000000401',
+    /** Demo Project plans — stable so validate scripts can target them. */
+    demoCriticalPath: '01SEED00000000000000000410',
+    demoFullRegression: '01SEED00000000000000000411',
   },
 
   planCases: {
@@ -87,11 +98,38 @@ export const ids = {
     priyaCtms: '01SEED00000000000000000601',
     jamesEtmf: '01SEED00000000000000000602',
   },
+
+  /** Admin-panel built-in role definitions (Phase G). Matched to the frontend
+   * by NAME on sync, so these ids are internal-only; names must stay aligned
+   * with rbac.ts's ADMIN_USER_ROLES. */
+  roleDefinitions: {
+    owner: '01SEED00000000000000000700',
+    administrator: '01SEED00000000000000000701',
+    projectAdmin: '01SEED00000000000000000702',
+    editor: '01SEED00000000000000000703',
+    runManager: '01SEED00000000000000000704',
+    runExecutor: '01SEED00000000000000000705',
+    viewer: '01SEED00000000000000000706',
+  },
+
+  /** Admin-panel demo API keys (Phase G). */
+  apiKeys: {
+    myApiKey: '01SEED00000000000000000710',
+    ciKey: '01SEED00000000000000000711',
+    automationKey: '01SEED00000000000000000712',
+    noelDev: '01SEED00000000000000000713',
+    monicaCi: '01SEED00000000000000000714',
+    arvindhSync: '01SEED00000000000000000715',
+    stagingKey: '01SEED00000000000000000716',
+    syedExport: '01SEED00000000000000000717',
+  },
 } as const
 
 /** Primary IDs for TestRunService.create() manual testing */
 export const seedRefs = {
-  projectId: ids.projects.ctms,
-  testPlanId: ids.plans.ctmsRegression,
+  // Default-roster change: only the Demo Project carries seeded plans/cases
+  // now, so validation scripts target it instead of CTMS.
+  projectId: ids.projects.demo,
+  testPlanId: ids.plans.demoCriticalPath,
   createdBy: ids.users.shaun,
 } as const

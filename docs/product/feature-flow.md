@@ -1,6 +1,6 @@
 # Relay — Feature Flow Map
 
-*Living document · Last verified: June 2026 · Branch: `mvp-requirements-defects-slice`*
+*Living document · Last verified: 13 July 2026 · Branch: `mvp-backend`*
 
 Product and implementation flow map for the team. Complements authoritative contracts in `docs/_authoritative/**` with journey-oriented status and test checklists.
 
@@ -14,21 +14,28 @@ Product and implementation flow map for the team. Complements authoritative cont
 
 | Module | Slug | Screen component | Route(s) | Data state |
 |--------|------|------------------|----------|------------|
-| Dashboard | `dashboard` | `DashboardScreen` | `/:key/dashboard` | Mock seed (demo template only) |
-| Test cases | `testcases` | `CasesScreen` | `/:key/testcases`, `/:key/testcases/tc/:caseKey` | Mock + localStorage |
-| Test plans | `plans` | `PlansScreen` | `/:key/plans` | Mock seed |
-| Test runs | `testruns` | `RunsScreen` | `/:key/testruns`, `/:key/testruns/tr/:runKey`, `/:key/testruns/tr/:runKey/tc/:caseKey` | Mock + localStorage |
-| Defects | `defects` | `DefectsScreen` | `/:key/defects` | Mock + localStorage (local DEF-*) |
-| Settings | `settings` | `SettingsScreen` | `/:key/settings` | Static mock (read-only) |
-| Reports | `reports` | `PlaceholderScreen` | `/:key/reports` | Placeholder |
+| Dashboard | `dashboard` | `DashboardScreen` | `/:key/dashboard` | Computed client-side from **API-synced** FreshProvider state |
+| My Work | `mywork` | `MyWorkScreen` | `/:key/mywork` | Static demo content |
+| Test cases | `testcases` | `CasesScreen` | `/:key/testcases`, `/:key/testcases/tc/:caseKey` | **API / MySQL** — incl. comments (general + per-step) and requirement links (+ local-only: custom fields) |
+| Test plans | `plans` | `PlansScreen` | `/:key/plans` | **API / MySQL** — incl. query definitions (`test_plans.query_definition`) + resolved case lists |
+| Test runs | `testruns` | `RunsScreen` | `/:key/testruns`, `/:key/testruns/tr/:runKey`, `/:key/testruns/tr/:runKey/tc/:caseKey` | **API / MySQL** — incl. per-step results, run descriptions, execution history; plan-spawned AND ad-hoc runs |
+| Milestones | `milestones` | `MilestonesScreen` | `/:key/milestones` | Static demo content |
+| Requirements | `requirements` | `RequirementsScreen` | `/:key/requirements` | **API / MySQL** (`requirements` table); static demo list fallback when none seeded |
+| Defects | `defects` | `DefectsScreen` | `/:key/defects` | **API / MySQL** (`defects` table + run↔defect links); static mock fallback when none seeded |
+| Reports | `reports` | `ReportsScreen` | `/:key/reports` | Static demo content |
+| AI Studio | `aistudio` | `AiStudioScreen` | `/:key/aistudio` | Static demo content (no real AI) |
+| Settings | `settings` | redirect → `/admin` | `/:key/settings` | Redirect only (legacy route) |
 | Integrations | `integrations` | `PlaceholderScreen` | `/:key/integrations` | Placeholder |
-| Audit | `audit` | `AuditScreen` | `/:key/audit` | Static seed |
-| Admin | — | `AdminShell` + page content | `/admin`, `/admin/profile` … `/admin/audit-log` | Mock + localStorage |
+| Audit | `audit` | `AuditScreen` | `/:key/audit` | **API / MySQL** for real projects (screen-level fetch); static seed for local |
+| Login | — | `LoginScreen` | `/login` (top-level; `/:key/login` redirects here) | **Real auth gate** — NextAuth Credentials, JWT session |
+| Admin | — | `AdminShell` + page content | `/admin`, `/admin/profile` … `/admin/audit-log` | Users, role definitions, API keys: **API / MySQL** (global-admin sessions); automation + custom fields mock + localStorage |
 | API runs | — | `ApiRunsWorkspace` | `/runs/api` | **API / MySQL** |
 
 **Legacy unprefixed redirects** (`LegacyRouteRedirect`): `/dashboard`, `/cases`, `/runs`, `/plans`, etc. → `/:activeProjectKey/<module>`.
 
-**Root:** `/` → `/DP/dashboard`.
+**Auth gate:** `apps/web/src/middleware.ts` requires a valid NextAuth session for every route except `/login`, `/api/auth/*`, `/api/runs/*`, `/api/health`, `/_next/*`, `/fonts/*`. Logged-out visits redirect to `/login?callbackUrl=<original path>`.
+
+**Root:** `/` → default project dashboard (`/DP/dashboard` once real projects register; the richly-seeded Demo Project, slug `dp`, is the default landing project).
 
 **Exceptions:** `/runs/api`, `/api/*` — not project-prefixed.
 
@@ -79,8 +86,9 @@ ProjectSwitcher → select / create / add demo project
 
 ```
 /admin/projects → select project → activate custom fields
-/admin/custom-fields → define fields globally
-/admin/users → invite user (localStorage)
+/admin/custom-fields → define fields globally (localStorage)
+/admin/users → invite user (MySQL, global-admin sessions)
+/admin/roles → create/edit role definitions (MySQL, global-admin sessions)
 Changes append to /admin/audit-log
 ```
 
@@ -92,7 +100,7 @@ pnpm docker:up && pnpm db:migrate && pnpm db:seed
 → pnpm api:validate
 ```
 
-Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring slice.
+`/DP/testruns` and `/runs/api` both run against the real backend now; `/runs/api` keeps its `x-relay-user-id` dev-header fallback (session wins when logged in) so `pnpm api:validate` still works.
 
 ---
 
@@ -100,15 +108,13 @@ Demo `/DP/testruns` and `/runs/api` are **intentionally separate** until wiring 
 
 | Layer | Mechanism | Scope |
 |-------|-----------|-------|
-| Prototype UI | `FreshProvider` + `useReducer` | In-memory React state |
-| Browser persistence | `localStorage` key **`relay-demo-v2`** | Survives refresh; per browser |
-| Demo seed | `buildInitialDemoState()`, `demo-template.ts`, `seed.ts` | Initial load + “Add demo project” clone |
-| API workspace | MySQL via `/api/runs/*` | `/runs/api` only |
-| Static mock | `mock-data.ts`, seed arrays | Defects, settings preview, plan list, project audit |
+| Source of truth | **MySQL via the real API** (`/api/projects/*`, `/api/runs/*`, `/api/users/*`, `/api/admin/*`) | Projects, folders, cases (+ comments + requirement links), plans (+ query definitions + case lists), runs (+ case/step results + descriptions + execution events), requirements, defects, audit log, users, role definitions, API keys |
+| UI state | `FreshProvider` + `useReducer`, **synced from the API** for real projects (`SYNC_REAL_PROJECT_DATA` on project activation; **wait-for-server** write-through on mutations, except optimistic P/F/B/S result recording with rollback) | In-memory React state |
+| Browser persistence | `localStorage` key **`relay-demo-v2`** | Cache of synced data + store for the remaining **local-only fields** (custom-field definitions/values, admin automation, the "Demo User" actor + mock admin roster fallback) |
+| DB seed | `packages/db/src/seed/` (`pnpm db:seed`) — 7 projects incl. the richly-seeded **Demo Project** | Real rows; full reset on re-run (wipes clones) |
+| Static mock | `mock-data.ts`, seed arrays | Defects TI-* rows, static shells (My Work, Milestones, Reports, AI Studio) |
 
-**Not persisted in prototype:** test plans (seed only), project-level audit timeline, defects module data, reports/integrations placeholders.
-
-**Active project sync:** `ProjectRouteSync` reads URL project key → `setActiveProject`. Switcher writes URL + state together.
+**Active project sync:** `ProjectRouteSync` reads URL project key → `setActiveProject` (held until real projects register, avoiding redirect flicker). Switcher writes URL + state together.
 
 ---
 
@@ -162,14 +168,15 @@ Project-level override: `MAX(global_role, project_role)`.
 
 Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHITECTURE_BASELINE.md) § RBAC.
 
-### Prototype today
+### Today (`mvp-backend`)
 
 | Area | Behaviour |
 |------|-----------|
-| Admin users/roles UI | Seed + CRUD in localStorage; audit log on mutations |
-| Demo screens | **No role checks** — all actions available |
-| Seal / reopen run | UI toggle only; no admin gate |
-| `/runs/api` | Dev header `x-relay-user-id` / `NEXT_PUBLIC_RELAY_USER_ID`; service-layer RBAC on mutations |
+| All `/api/projects/*`, `/api/users/*` routes | **Real session auth** (`resolveSessionActor`) + real RBAC (`assertMinProjectRole()` / global-admin checks) enforced server-side on every read and write |
+| `/api/runs/*` | **Session-first** auth with `x-relay-user-id` dev-header fallback (kept for `pnpm api:validate`); service-layer RBAC on mutations |
+| Admin users UI | Wired to `/api/users/*` for global-admin sessions (list/invite/role/disable); viewer sessions get a 403 and fall back to the local mock roster. Granular roles compress onto `globalRole` on writes |
+| Screens (UI layer) | No client-side role gates — the server rejects unauthorized writes (403); writes wait for the server and surface failures as dismissible error toasts (P/F/B/S is the one optimistic path, with rollback) |
+| Seal / reopen run | UI toggle; server enforces contributor+ |
 
 ---
 
@@ -177,41 +184,37 @@ Source: [`docs/_authoritative/ARCHITECTURE_BASELINE.md`](../_authoritative/ARCHI
 
 | Module / feature | Status | Persistence | Notes |
 |------------------|--------|-------------|-------|
-| Shell & navigation | **Implemented** | Client | Sidebar, module switcher, Cmd+K |
-| Project switcher & CRUD | **Implemented** | localStorage | URL sync; cascade delete |
-| Dashboard (demo template) | **Implemented** | Seed | Metrics for `seedTemplate: 'demo'` only |
-| Dashboard (other projects) | **Placeholder** | — | “Coming soon” |
-| Test cases — tree & table | **Implemented** | localStorage | Filters, pagination, search |
-| Test cases — detail & CRUD | **Implemented** | localStorage | Tabs, custom fields, context menu |
+| Login / session gate | **Implemented** | MySQL (`users.password_hash`) + JWT cookie | NextAuth Credentials provider, JWT session strategy; `middleware.ts` gates all pages/most API routes; sign-out via top-bar `UserMenu` |
+| User + Project API (`/api/users/*`, `/api/projects/*`) | **Implemented** | MySQL | `UserService`/`ProjectService`; real RBAC; called by the project picker + Admin users |
+| Shell & navigation | **Implemented** | Client | Sidebar (Testing/Traceability groups), global top bar (New test case/run, AI Studio, Notifications, Help), Cmd+K |
+| Project switcher | **Implemented** | MySQL | Real DB projects; "Create Demo Project" deep-clones the seeded Demo Project via API; rename/delete hidden for real projects |
+| Dashboard | **Implemented** | MySQL (`GET /api/projects/:id/dashboard` KPIs; richer widgets computed client-side) | KPI strip, donut, trend chart, assignee bars, open runs, needs attention; week-over-week deltas + trends now driven by real `run_case_events` for synced runs |
+| Test cases — tree & table & CRUD | **Implemented** | MySQL | Full CRUD wired; `TC-<n>` refs; delete = archive; comments + requirement links MySQL too; only custom fields local-only |
+| Test cases — comments (general + per-step) | **Implemented** | MySQL (`case_comments`) | Write-through on add; author = session actor |
 | Test cases — URL sync | **Implemented** | — | `/testcases/tc/:caseKey` |
-| Test plans — list & detail | **Implemented** | localStorage | URL routing; CRUD modals; Overview + Test cases tabs |
-| Test plans — test case query groups | **Implemented** | localStorage | Condition/folder/static; live resolved-case preview |
-| Test plans — spawn run | **Implemented** | localStorage | Modal pre-fills title + count; stamps planId on run |
-| Test runs — list & picker | **Implemented** | localStorage | Search, archive hide |
-| Test runs — create / edit / duplicate / delete | **Implemented** | localStorage | |
-| Test runs — add cases to run | **Implemented** | localStorage | `AddCasesToRunModal` |
-| Test runs — empty state | **Implemented** | — | Testiny-style |
-| Test runs — execution UX | **Implemented** | localStorage | Steps, results, shortcuts |
-| Test runs — seal / reopen | **Implemented** | localStorage | No RBAC gate |
+| Test plans — list & detail & CRUD | **Implemented** | MySQL | `PLAN-<nnn>` refs; delete = archive |
+| Test plans — query groups | **Implemented** | MySQL | Query **definitions** persist to `test_plans.query_definition` (GAP-01 resolved); resolution stays client-side and pushes the resolved list to `test_plan_cases` |
+| Test plans — spawn run | **Implemented** | MySQL | Creates a real snapshotted run via `POST /api/runs` |
+| Test runs — list & picker | **Implemented** | MySQL | `RUN-<nnnn>` refs; archived hidden |
+| Test runs — execution UX | **Implemented** | MySQL (case **and** per-step results) | P/F/B/S + notes persist via the result endpoint; per-step results via `run_step_results`; results append `run_case_events` |
+| Test runs — descriptions | **Implemented** | MySQL (`test_runs.description`) | Editable via the run edit flow |
+| Test runs — seal / reopen / archive / delete | **Implemented** | MySQL | `PATCH /api/runs/:runId`; delete = archive server-side |
+| Test runs — create (ad-hoc) / duplicate | **Implemented** | MySQL | `createRun` takes an optional `testPlanId`; ad-hoc runs snapshot from supplied live case ids |
+| Test runs — add cases to run | **Partial** | Local-only | No server route for post-spawn case additions yet |
 | Test runs — URL sync | **Implemented** | — | `/tr/:runKey`, `/tc/:caseKey` |
-| Test cases — requirements create/link | **Implemented** | localStorage | Requirements tab; REQ-* keys |
-| Test cases — defects view-only | **Implemented** | localStorage | Derived from run execution links |
-| Test runs — requirements view-only | **Implemented** | localStorage | From linked case requirements |
-| Defects module screen | **Partial** | Mock + localStorage | Static TI-* + local DEF-*; create disabled |
-| Defects in-run create/link | **Implemented** | localStorage | Failed/Blocked + unsealed only |
-| Reports | **Placeholder** | — | |
-| Integrations (project) | **Placeholder** | — | |
-| Settings (project) | **Partial** | Static mock | Read-only |
-| Audit (project) | **Partial** | Static seed | |
-| Admin panel (all sections) | **Implemented** | localStorage | 11 routes under `/admin` |
-| Admin — user management | **Implemented** | localStorage | Invite, silent invite, edit, disable/reactivate, project access |
-| Admin — role management | **Implemented** | localStorage | Built-in + custom roles, permission matrix |
-| Admin — demo actor / RBAC | **Partial** | localStorage | Enforced on admin user/role actions only |
-| RBAC enforcement (project UI) | **Missing** | — | Test runs / cases not gated |
-| Demo UI → MySQL wiring | **Missing** | — | Use `/runs/api` separately |
+| Requirements create/link on cases | **Implemented** | MySQL (`requirements` + `case_requirements`) | `REQ-*` refs; link is idempotent; no unlink UI |
+| Defects module screen | **Implemented** | MySQL (`defects` + `run_defect_links`) | Internal `DEF-*` entities are first-class rows; external free-text refs still supported; static mock fallback when none seeded |
+| Defects in-run create/link | **Implemented** | MySQL (`defects` + `run_defect_links.defect_id`) | Failed/Blocked + unsealed only |
+| Reports / Integrations / My Work / Milestones / AI Studio | **Placeholder** | — | Static shells |
+| Settings (project) | **Redirect** | — | `/:key/settings` → `/admin` |
+| Audit (project) | **Implemented** | MySQL | Live `audit_log` (screen-level fetch); every case/plan/run mutation audited |
+| Admin — user management | **Implemented** | MySQL (global-admin sessions) | List/invite/role/disable wired; role compression; viewer sessions fall back to mock |
+| Admin — role definitions | **Implemented** | MySQL (`role_definitions`, global-admin sessions) | Create/edit/delete persist; built-in roles seeded + guarded; falls back to mock for non-admins |
+| Admin — API keys | **Implemented** | MySQL (`api_keys`, global-admin sessions) | Create/delete persist; masked display string only (no real secret management) |
+| Admin — automation + custom fields | **Implemented (local)** | localStorage | Automation mock; custom fields owned by the `mvp-custom-fields` branch |
+| RBAC enforcement | **Implemented (server-side)** | — | 403s on unauthorized writes; UI has no client-side gates. Writes wait for the server and surface failures as dismissible error toasts (P/F/B/S is the one optimistic path, with rollback) |
 | Global search (OpenSearch) | **Missing** | — | Cmd+K is in-memory |
 | Export PDF/CSV | **Missing** | — | Buttons are visual |
-| Requirements / traceability | **Partial** | localStorage | Local create/link on cases; no coverage dashboards |
 
 ---
 
@@ -234,7 +237,7 @@ flowchart LR
 | Admin → Test cases | `activeCustomFieldIds` controls which custom fields render |
 | Test cases → Test runs | Cases referenced in `run.caseOrder`; create-run from cases toolbar |
 | Test plans → Test runs | Spawn run creates a run with `planId`/`planName` stamped; plan's query groups resolve case list for scope display |
-| Test runs → Dashboard | Run cards read seed metrics, not live run state |
+| Test runs → Dashboard | Run cards, metrics, attention, and coverage derive from active run/case state |
 | Project scope | All case/run/folder selectors filter by `activeProjectId` |
 | Schema migrations | Any model change affects all modules using `FreshProvider` |
 
@@ -242,11 +245,10 @@ flowchart LR
 
 ## Known limitations
 
-- Frontend-only phase — no demo UI API wiring ([`MVP_FRONTEND_ONLY_SCOPE.md`](../_authoritative/MVP_FRONTEND_ONLY_SCOPE.md))
+- Every fresh screen is now wired to the real API (this branch supersedes the old frontend-only scope in [`MVP_FRONTEND_ONLY_SCOPE.md`](../_authoritative/MVP_FRONTEND_ONLY_SCOPE.md)); custom fields + admin automation remain the only local-only areas
 - `/DP/cases` 404; use `/DP/testcases`
-- Run spawn does not snapshot case steps immutably (edits to cases after spawn affect the same case objects in a run)
 - Run spawn does not snapshot case steps immutably (edits affect same case objects)
-- Project settings in switcher disabled
+- `/:key/integrations` placeholder not in sidebar
 - CasesScreen project-switch flicker (BUG-02) — deferred
 - Authoritative docs may lag code ([`AS_BUILT_SNAPSHOT.md`](../_authoritative/AS_BUILT_SNAPSHOT.md) still references `/cases` slug in places)
 
@@ -256,16 +258,19 @@ flowchart LR
 
 | Module | Expected APIs (minimum) |
 |--------|-------------------------|
-| Auth | Session, SSO, user context |
-| Projects | CRUD, membership, role assignment |
-| Test cases | CRUD, folders, steps, bulk import |
-| Test plans | CRUD, spawn run |
-| Test runs | CRUD, seal, snapshot cases, case/step results |
-| Defects | CRUD, case/run linking, external refs |
-| Audit | Read paginated log; existing write path |
-| Dashboard | Aggregates from runs + defects |
-| Reports | Generation + export |
-| Search | OpenSearch fan-out (cases, runs, plans) |
+| Auth | ~~Session, user context~~ — **done** (`/api/auth/[...nextauth]`, NextAuth JWT); SSO still outstanding |
+| Projects | ~~CRUD, membership, role assignment~~ — **done** (`/api/projects/*`, `/api/projects/:id/roles`, `/api/projects/:id/clone`); wired to the project picker + Admin |
+| Test cases | ~~CRUD, folders, steps~~ — **done** (`/api/projects/:id/cases/*`, `/api/projects/:id/folders/*`, `.../cases/:caseId/comments`); bulk import still outstanding |
+| Test plans | ~~CRUD, query definitions, spawn run~~ — **done** (`/api/projects/:id/plans/*`, `.../plans/:planId/cases`; spawn via `/api/runs`) |
+| Test runs | ~~CRUD, seal, snapshot cases, case/step results~~ — **done** (`/api/runs/*`, `.../cases/:runCaseId/result`, `.../cases/:runCaseId/steps/:stepSnapshotId/result`) |
+| Requirements | ~~CRUD, case linking~~ — **done** (`/api/projects/:id/requirements`, `.../cases/:caseId/requirements`); external refs outstanding |
+| Defects | ~~CRUD, case/run linking, external refs~~ — **done** (`/api/projects/:id/defects`, `/api/runs/:runId/cases/:runCaseId/defects`); external tracker sync outstanding |
+| Audit | ~~Read paginated log; write path~~ — **done** (`/api/projects/:id/audit`; every case/plan/run mutation audited) |
+| Dashboard | ~~Aggregates from runs + defects~~ — **done** (`/api/projects/:id/dashboard`; trends off `run_case_events`) |
+| Admin roles / API keys | ~~Role definitions, API-key registry~~ — **done** (`/api/admin/roles[/:id]`, `/api/admin/api-keys[/:id]`, global-admin) |
+| Reports | Generation + export — **outstanding** |
+| Search | OpenSearch fan-out (cases, runs, plans) — **outstanding** |
+| Custom fields | Backend owned by the separate `mvp-custom-fields` branch — **outstanding** |
 
 Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACTS.md).
 
@@ -275,19 +280,28 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Dashboard — `/:key/dashboard`
 
-- [ ] Demo project shows run cards and attention list
-- [ ] Non-demo project shows placeholder
-- [ ] *New Run* / attention links open testruns
+- [ ] KPI strip shows Executed %, Passed, Failed, Blocked, Open runs, pass-trend sparkline from live data
+- [ ] Completion donut + legend; lowest-coverage-by-folder rows when applicable
+- [ ] Results-over-time chart renders; 7d / 30d / 90d chips switch window
+- [ ] Results-by-assignee bars populate for executed cases
+- [ ] Open test runs list links through to `/testruns/tr/:runKey`
+- [ ] Milestones slice renders static placeholders with link to `/milestones`
+- [ ] Needs attention lists unlinked failures; rows link to test runs
+- [ ] New blank project (zero cases) shows “Add your first test cases” empty state
+- [ ] Trend/delta panels show flat “as of today” / snapshot note when seed has no dated `executionLog`
 - [ ] No console errors on load
 
 ### Test cases — `/:key/testcases`
 
 - [ ] Folder expand/collapse and folder search
+- [ ] Case-list pane toolbar shows Create test run, Import, Quick create, New case (not in global top bar)
 - [ ] Quick create and New case modal persist after refresh
 - [ ] Row ⋯ menu: duplicate, edit, delete
 - [ ] Detail panel ← → navigation and URL `/tc/:caseKey`
 - [ ] Filter panel and keyword search
-- [ ] Create test run from toolbar
+- [ ] Create test run from case-list toolbar
+- [ ] Add a general and a per-step comment → survive reload (in `case_comments`)
+- [ ] Create + link a requirement (Requirements tab) → survives reload (in `requirements`/`case_requirements`)
 - [ ] Project switch → cases scoped to new project
 - [ ] Legacy `/cases` redirects to `/:key/testcases`
 
@@ -305,10 +319,15 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Test runs — `/:key/testruns`
 
+- [ ] Global top bar shows New test case, New test run, AI Studio, Notifications, Help on this screen too
+- [ ] Page-head shows Close/Re-open, Edit, Report, More… (not in global top bar)
 - [ ] Create run modal → navigates to `/tr/:runKey`
 - [ ] Empty run shows empty state; Add cases modal works
 - [ ] Run picker search and switch updates URL
 - [ ] Step and case result buttons; sealed run blocks edits
+- [ ] Per-step result ticks survive reload (in `run_step_results`); case results append `run_case_events`
+- [ ] Run description saved via Edit survives reload
+- [ ] Create an ad-hoc (plan-less) run → real server run, appears after reload
 - [ ] Duplicate and delete run
 - [ ] Deep link `/tr/:runKey/tc/:caseKey`
 - [ ] Project switch strips run selection; no flicker (RunsScreen)
@@ -316,20 +335,56 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 
 ### Defects — `/:key/defects`
 
-- [ ] Table and detail panel render
+- [ ] Toolbar: All defects, shown count, search, severity filter, status chips, Details toggle
+- [ ] Table rows select defect; detail panel opens/closes
+- [ ] A defect created from a Failed/Blocked run-case execution appears here and survives reload (in `defects` + `run_defect_links.defect_id`)
+- [ ] External free-text (Jira-style) ref linking still works without creating an internal defect
 - [ ] New defect button disabled
 
 ### Settings — `/:key/settings`
 
-- [ ] Read-only fields display
+- [ ] Visiting `/:key/settings` redirects to `/admin`
+- [ ] Sidebar shows single **Project Settings** entry (not separate Settings + Admin links)
 
 ### Reports / Integrations — `/:key/reports`, `/:key/integrations`
 
-- [ ] Placeholder banner and message
+- [ ] Reports: chip tabs render (Run Summary default); Export disabled
+- [ ] Integrations: placeholder banner and message
+
+### My Work — `/:key/mywork`
+
+- [ ] KPI strip and test queue / defects panels render
+- [ ] Continue/Run links navigate to test runs (no real assignment logic)
+
+### Milestones — `/:key/milestones`
+
+- [ ] Milestone cards with progress bars and linked runs render
+
+### Requirements (list view) — `/:key/requirements`
+
+- [ ] Table lists requirements (live data or static fallback)
+- [ ] Read-only — no create/edit on this page
+
+### AI Studio — `/:key/aistudio`
+
+- [ ] Prompt row, quick actions, draft preview render
+- [ ] Generate/Accept/Edit/Discard are non-functional demo controls
+
+### Login — `/login`
+
+- [ ] Full-bleed login layout renders
+- [ ] Logged out: visiting any app route redirects to `/login?callbackUrl=...`
+- [ ] Sign In with a seed user + `relay-dev-2026` redirects to the callback URL (or dashboard)
+- [ ] Wrong password shows an inline error, does not redirect
+- [ ] SSO button is a visual placeholder (disabled/"Coming soon"), does not navigate
+- [ ] `/:key/login` redirects to `/login`
+- [ ] Top-bar user menu shows name/email/role; Sign Out returns to `/login`
 
 ### Audit — `/:key/audit`
 
-- [ ] Timeline renders; filter chips toggle (client-side)
+- [ ] Page header (title, subtitle, Export CSV) renders
+- [ ] Filter chips toggle client-side (All events / Test Cases / Test Runs / Test Plans / Users)
+- [ ] Event rows show icon chips, descriptions with ref links, timestamps
 
 ### Admin — `/admin/users`, `/admin/roles`
 
@@ -338,7 +393,9 @@ Per-screen detail: [`FRONTEND_CONTRACTS.md`](../_authoritative/FRONTEND_CONTRACT
 - [ ] Switch to Viewer — user management page read-only/denied
 - [ ] Silent invite creates **Silent created** status; normal invite → **Pending invite**
 - [ ] Role view shows built-in permission matrix (read-only)
-- [ ] Create custom role with permissions; edit and delete
+- [ ] Create custom role with permissions; edit and delete → survive reload (in `role_definitions`, global-admin session)
+- [ ] Create + delete an API key → survive reload (in `api_keys`, global-admin session)
+- [ ] Non-global-admin session falls back to the mock roster (console warn, no crash)
 - [ ] Audit log records invite, edit, disable, role CRUD, actor switch
 
 ### API workspace — `/runs/api` (optional)

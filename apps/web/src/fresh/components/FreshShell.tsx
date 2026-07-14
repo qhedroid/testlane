@@ -2,25 +2,50 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ShieldCheck } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { RelayMark } from '../assets/RelayMark'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useResizablePanes } from '../hooks/useResizablePanes'
-import { useFresh } from '../data/FreshProvider'
 import { getModuleFromPathname } from '../lib/project-routes'
 import type { ModuleSlug } from '../lib/project-routes'
 
-const PLATFORM_NAV: { module: ModuleSlug; label: string; icon: string }[] = [
+const TESTING_NAV: { module: ModuleSlug; label: string; icon: string }[] = [
   { module: 'cases', label: 'Test Cases', icon: 'ti-file-description' },
   { module: 'plans', label: 'Test Plans', icon: 'ti-clipboard-list' },
   { module: 'testruns', label: 'Test Runs', icon: 'ti-player-play' },
+  { module: 'milestones', label: 'Milestones', icon: 'ti-flag' },
 ]
+
+const TRACEABILITY_NAV: { module: ModuleSlug; label: string; icon: string }[] = [
+  { module: 'requirements', label: 'Requirements', icon: 'ti-list-details' },
+  { module: 'defects', label: 'Defects', icon: 'ti-bug' },
+  { module: 'reports', label: 'Reports', icon: 'ti-chart-bar' },
+  { module: 'audit', label: 'Audit History', icon: 'ti-history' },
+  { module: 'aistudio', label: 'AI Studio', icon: 'ti-sparkles' },
+]
+
+function NavItem({
+  href,
+  active,
+  icon,
+  label,
+}: {
+  href: string
+  active: boolean
+  icon: string
+  label: string
+}) {
+  return (
+    <Link href={href} className={`sbi${active ? ' on' : ''}`} title={label}>
+      <i className={`ti ${icon}`} />
+      <span className="sbi-text"> {label}</span>
+    </Link>
+  )
+}
 
 export function FreshShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const projectHref = useProjectHref()
-  const { activeProject } = useFresh()
   const [collapsed, setCollapsed] = useState(false)
   useResizablePanes()
 
@@ -54,70 +79,53 @@ export function FreshShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="sb-sec">
-          <div className="sb-lbl">Workspace</div>
-          <Link href={projectHref('dashboard')} className={`sbi${isOn('dashboard') ? ' on' : ''}`} title="Dashboard">
-            <i className="ti ti-layout-dashboard" />
-            <span className="sbi-text"> Dashboard</span>
-          </Link>
+          <NavItem
+            href={projectHref('dashboard')}
+            active={isOn('dashboard')}
+            icon="ti-layout-dashboard"
+            label="Dashboard"
+          />
+          <NavItem
+            href={projectHref('mywork')}
+            active={isOn('mywork')}
+            icon="ti-user-check"
+            label="My Work"
+          />
         </div>
 
         <div className="sb-sec">
-          <div className="sb-lbl">{activeProject.name}</div>
-          {PLATFORM_NAV.map((item) => (
-            <Link key={item.module} href={projectHref(item.module)} className={`sbi${isOn(item.module) ? ' on' : ''}`} title={item.label}>
-              <i className={`ti ${item.icon}`} />
-              <span className="sbi-text"> {item.label}</span>
-            </Link>
+          <div className="sb-lbl">Testing</div>
+          {TESTING_NAV.map((item) => (
+            <NavItem
+              key={item.module}
+              href={projectHref(item.module)}
+              active={isOn(item.module)}
+              icon={item.icon}
+              label={item.label}
+            />
           ))}
-          <Link href={projectHref('reports')} className={`sbi${isOn('reports') ? ' on' : ''}`} title="Reports (planned)">
-            <i className="ti ti-chart-bar" />
-            <span className="sbi-text"> Reports</span>
-            <span className="soon">Planned</span>
-          </Link>
         </div>
 
         <div className="sb-sec">
-          <div className="sb-lbl">Pinned Modules</div>
-          <div className="sb-sub" title="eTMF Module">
-            <span className="sb-dot" />
-            <span className="sbi-text">eTMF Module</span>
-          </div>
-          <div className="sb-sub" title="API Gateway">
-            <span className="sb-dot" />
-            <span className="sbi-text">API Gateway</span>
-          </div>
-          <div className="sb-sub" title="Add shortcut" style={{ color: 'rgba(168,196,224,.3)' }}>
-            <i className="ti ti-plus" style={{ fontSize: 10 }} />
-            <span className="sbi-text">Add shortcut</span>
-          </div>
+          <div className="sb-lbl">Traceability</div>
+          {TRACEABILITY_NAV.map((item) => (
+            <NavItem
+              key={item.module}
+              href={projectHref(item.module)}
+              active={isOn(item.module)}
+              icon={item.icon}
+              label={item.label}
+            />
+          ))}
         </div>
 
         <div className="sb-sp" />
         <div className="sb-div" />
 
         <div className="sb-sec" style={{ paddingBottom: 0 }}>
-          <Link href={projectHref('audit')} className={`sbi${isOn('audit') ? ' on' : ''}`} title="Audit History">
-            <i className="ti ti-history" />
-            <span className="sbi-text"> Audit History</span>
-          </Link>
-          <Link href={projectHref('defects')} className={`sbi${isOn('defects') ? ' on' : ''}`} title="Defects">
-            <i className="ti ti-bug" />
-            <span className="sbi-text"> Defects</span>
-          </Link>
-          <Link href={projectHref('integrations')} className={`sbi${isOn('integrations') ? ' on' : ''}`} title="Integrations (planned)">
-            <i className="ti ti-plug" />
-            <span className="sbi-text"> Integrations</span>
-            <span className="soon">Planned</span>
-          </Link>
-          <Link href={projectHref('settings')} className={`sbi${isOn('settings') ? ' on' : ''}`} title="Settings">
+          <Link href="/admin" className={`sbi${isAdmin ? ' on' : ''}`} title="Project Settings">
             <i className="ti ti-settings" />
-            <span className="sbi-text"> Settings</span>
-          </Link>
-          <Link href="/admin" className={`sbi${isAdmin ? ' on' : ''}`} title="Admin">
-            <span className="sbi-icon-lucide">
-              <ShieldCheck size={15} strokeWidth={2} />
-            </span>
-            <span className="sbi-text"> Admin</span>
+            <span className="sbi-text"> Project Settings</span>
           </Link>
         </div>
 

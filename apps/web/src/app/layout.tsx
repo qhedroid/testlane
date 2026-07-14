@@ -1,6 +1,15 @@
 import type { Metadata } from 'next'
+import { Open_Sans } from 'next/font/google'
 import type { ReactNode } from 'react'
+import { Providers } from './providers'
 import './globals.css'
+
+const openSans = Open_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-open-sans',
+})
 
 export const metadata: Metadata = {
   title: 'Relay — QA Workspace',
@@ -9,14 +18,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={openSans.variable}>
       <head>
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"
         />
       </head>
-      <body>{children}</body>
+      <body className={openSans.className}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }

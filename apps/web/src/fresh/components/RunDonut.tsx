@@ -22,7 +22,7 @@ export function RunDonut({
   size = 80,
   showCompleteLabel = true,
   interactive = false,
-  notrunColor = '#C5D1DE',
+  notrunColor = '#BAC5CD',
 }: {
   pass: number
   fail: number
@@ -54,9 +54,9 @@ export function RunDonut({
     const sL = (skipped / total) * C
     const nL = (notrun / total) * C
     const segments: Segment[] = [
-      { key: 'pass', count: pass, color: '#2E7D32', label: 'Passed', cumStart: 0, len: pL },
-      { key: 'fail', count: fail, color: '#C62828', label: 'Failed', cumStart: pL, len: fL },
-      { key: 'blocked', count: blocked, color: '#E65100', label: 'Blocked', cumStart: pL + fL, len: bL },
+      { key: 'pass', count: pass, color: '#108718', label: 'Passed', cumStart: 0, len: pL },
+      { key: 'fail', count: fail, color: '#C50007', label: 'Failed', cumStart: pL, len: fL },
+      { key: 'blocked', count: blocked, color: '#E4AF03', label: 'Blocked', cumStart: pL + fL, len: bL },
       { key: 'skipped', count: skipped, color: '#4527A0', label: 'Skipped', cumStart: pL + fL + bL, len: sL },
       { key: 'notrun', count: notrun, color: notrunColor, label: 'Not run', cumStart: pL + fL + bL + sL, len: nL },
     ].filter((s) => s.len > 0)
@@ -110,7 +110,7 @@ export function RunDonut({
   return (
     <div className={`donut-wrap${interactive ? ' interactive' : ''}`} style={{ position: 'relative', flexShrink: 0 }}>
       <svg viewBox={`0 0 ${vb} ${vb}`} width={size} height={size} style={{ display: 'block' }} className="rct-donut">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#E5EBF2" strokeWidth={stroke} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#DBE1E5" strokeWidth={stroke} />
         {segments.map((s) => segEl(s))}
         {interactive ? segments.map((s) => segEl(s, true)) : null}
         <text
@@ -120,7 +120,7 @@ export function RunDonut({
           dominantBaseline="middle"
           fontSize={pctSize}
           fontWeight={800}
-          fill="#0F1C2E"
+          fill="#0B1821"
           fontFamily="ui-monospace,'SF Mono',monospace"
           style={{ pointerEvents: 'none' }}
         >
@@ -133,7 +133,7 @@ export function RunDonut({
             textAnchor="middle"
             fontSize={labelSize}
             fontWeight={600}
-            fill="#7A92AB"
+            fill="#5C707E"
             fontFamily="-apple-system,system-ui,sans-serif"
             letterSpacing="0.06em"
             style={{ pointerEvents: 'none' }}

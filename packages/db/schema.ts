@@ -349,6 +349,168 @@ export const testCaseSteps = mysqlTable(
 )
 
 // ---------------------------------------------------------------------------
+// 7b. case_comments
+//     Comments on a test-case DEFINITION (new-tables candidate, Phase C).
+//     One table for both step-level and general/case-level comments:
+//       test_case_step_id NULL      => a general (case-level) comment
+//       test_case_step_id non-NULL  => a comment on that specific step
+//     (single-table-with-nullable-step-FK, per the resolved candidate-1 design).
+//
+//     This is deliberately DISTINCT from run_execution_comments (16), which are
+//     execution-context comments attached to the run INSTANCE of a case — these
+//     hang off the live case/step definition instead. Author is a users FK
+//     (SET NULL so a removed user preserves the comment). Cascade-deleted with
+//     the case; the step FK SET NULLs to a general comment if the live step is
+//     later removed, so the comment content survives.
+// ---------------------------------------------------------------------------
+
+export const caseComments = mysqlTable(
+  'case_comments',
+  {
+    id: id(),
+    testCaseId: varchar('test_case_id', { length: 26 })
+      .notNull()
+      .references(() => testCases.id, { onDelete: 'cascade' }),
+    /** NULL => general/case-level comment; non-NULL => step comment. */
+    testCaseStepId: varchar('test_case_step_id', { length: 26 }).references(
+      () => testCaseSteps.id,
+      { onDelete: 'set null' },
+    ),
+    authorId: varchar('author_id', { length: 26 }).references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (t) => ({
+    testCaseIdIdx: index('cc_test_case_id_idx').on(t.testCaseId),
+    testCaseStepIdIdx: index('cc_test_case_step_id_idx').on(t.testCaseStepId),
+  }),
+)
+
+// ---------------------------------------------------------------------------
+// 7c. requirements
+//     Project-scoped requirement entities (new-tables candidate, Phase D).
+//     Greenfield — no prior table. requirement_ref is a human-readable id
+//     unique per project (e.g. REQ-1), minted by the service layer via the
+//     ref_counters pattern (same as case_ref / run_ref).
+//
+//     The frontend Requirement model (demo-model.ts) is display-only with a
+//     `source: 'Local'` marker and a Capitalized status
+//     (Draft/Approved/Implemented/Obsolete); the DB stores the closed lowercase
+//     enum below and requirement-client.ts converts between the two. Cases link
+//     to requirements many-to-many via case_requirements (7d).
+// ---------------------------------------------------------------------------
+
+export const requirements = mysqlTable(
+  'requirements',
+  {
+    id: id(),
+    /** e.g. "REQ-1" — unique within the project. */
+    requirementRef: varchar('requirement_ref', { length: 20 }).notNull(),
+    projectId: varchar('project_id', { length: 26 })
+      .notNull()
+      .references(() => projects.id, { onDelete: 'restrict' }),
+    title: varchar('title', { length: 500 }).notNull(),
+    description: text('description'),
+    status: mysqlEnum('status', [
+      'draft',
+      'approved',
+      'implemented',
+      'obsolete',
+    ])
+      .notNull()
+      .default('draft'),
+    createdBy: varchar('created_by', { length: 26 }).references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    ...timestamps,
+  },
+  (t) => ({
+    projectRefUnique: unique('req_project_ref_unique').on(t.projectId, t.requirementRef),
+    projectIdIdx: index('req_project_id_idx').on(t.projectId),
+  }),
+)
+
+// ---------------------------------------------------------------------------
+// 7d. case_requirements
+//     Many-to-many link between test cases and requirements (new-tables
+//     candidate, Phase D). Cascade-deleted from both sides — a link is pure
+//     relationship data with no content of its own. UNIQUE(test_case_id,
+//     requirement_id) so an upsert-safe (idempotent) link is possible.
+// ---------------------------------------------------------------------------
+
+export const caseRequirements = mysqlTable(
+  'case_requirements',
+  {
+    id: id(),
+    testCaseId: varchar('test_case_id', { length: 26 })
+      .notNull()
+      .references(() => testCases.id, { onDelete: 'cascade' }),
+    requirementId: varchar('requirement_id', { length: 26 })
+      .notNull()
+      .references(() => requirements.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (t) => ({
+    caseReqUnique: unique('cr_case_req_unique').on(t.testCaseId, t.requirementId),
+    testCaseIdIdx: index('cr_test_case_id_idx').on(t.testCaseId),
+    requirementIdIdx: index('cr_requirement_id_idx').on(t.requirementId),
+  }),
+)
+
+// ---------------------------------------------------------------------------
+// 7e. defects
+//     Project-scoped defect entities (new-tables candidate, Phase E).
+//     Greenfield — no prior table for the *entity*. defect_ref is a
+//     human-readable id unique per project (e.g. DEF-1), minted by the service
+//     layer via the ref_counters pattern (same as case_ref / requirement_ref).
+//
+//     Distinct from run_defect_links (section 15): that table records a *link*
+//     between a run-case execution and a defect ref. An internal ("Local")
+//     defect is now a first-class row here, and run_defect_links.defect_id
+//     (nullable FK, added below) points at it while defect_ref carries the
+//     DEF-<n> key. External defect refs (e.g. a Jira key) keep defect_id NULL
+//     and only fill defect_ref — external linking is untouched by this phase.
+//
+//     The frontend Defect model (demo-model.ts) is display-only with a
+//     `source: 'Local'` marker and a Capitalized status
+//     (Open/In progress/Resolved/Closed); the DB stores the closed lowercase
+//     enum below and defect-client.ts converts between the two. There is no
+//     severity field on either side — deliberately not invented.
+// ---------------------------------------------------------------------------
+
+export const defects = mysqlTable(
+  'defects',
+  {
+    id: id(),
+    /** e.g. "DEF-1" — unique within the project. */
+    defectRef: varchar('defect_ref', { length: 20 }).notNull(),
+    projectId: varchar('project_id', { length: 26 })
+      .notNull()
+      .references(() => projects.id, { onDelete: 'restrict' }),
+    title: varchar('title', { length: 500 }).notNull(),
+    description: text('description'),
+    status: mysqlEnum('status', [
+      'open',
+      'in_progress',
+      'resolved',
+      'closed',
+    ])
+      .notNull()
+      .default('open'),
+    createdBy: varchar('created_by', { length: 26 }).references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    ...timestamps,
+  },
+  (t) => ({
+    projectRefUnique: unique('def_project_ref_unique').on(t.projectId, t.defectRef),
+    projectIdIdx: index('def_project_id_idx').on(t.projectId),
+  }),
+)
+
+// ---------------------------------------------------------------------------
 // 8. test_plans
 //    Meta-objects that spawn runs. A plan is never executed directly.
 //    Plans reference individual test cases (via test_plan_cases), not folders.
@@ -357,6 +519,44 @@ export const testCaseSteps = mysqlTable(
 //    assignee_ids is a JSON array of user ID strings for MVP simplicity.
 //    Phase 2: normalise to a test_plan_assignees table.
 // ---------------------------------------------------------------------------
+
+/**
+ * Server-side mirror of the frontend TestQuery authoring model
+ * (apps/web/src/fresh/data/demo-model.ts — TestQuery / QueryCondition). This is
+ * a DELIBERATE, documented coupling to the frontend query model, and the
+ * accepted tradeoff of GAP-01's Option (a): plan query DEFINITIONS are
+ * persisted verbatim here so authored dynamic queries survive a fresh
+ * browser/device and a reseed, but query RESOLUTION stays client-side (the
+ * resolved case list is still written to test_plan_cases, which remains the
+ * run-spawn source of truth). The server never interprets these — it stores and
+ * returns them faithfully. Keep these shapes in sync with demo-model.ts if that
+ * query model changes.
+ */
+export type TestQueryDefinitionType = 'condition' | 'folder' | 'static'
+export type TestQueryConditionField =
+  | 'title'
+  | 'priority'
+  | 'type'
+  | 'assignee'
+  | 'tags'
+  | 'caseKey'
+export type TestQueryConditionOperator = 'contains' | 'not_contains' | 'equals' | 'not_equals'
+export interface TestQueryConditionDefinition {
+  field: TestQueryConditionField
+  operator: TestQueryConditionOperator
+  value: string
+}
+export interface TestQueryDefinition {
+  id: string
+  title: string
+  type: TestQueryDefinitionType
+  /** type='condition' — all conditions AND together. */
+  conditions?: TestQueryConditionDefinition[]
+  /** type='folder' — folder ids (descendants included); '__unfiled__' allowed. */
+  folderIds?: string[]
+  /** type='static' — explicit case ids. */
+  caseIds?: string[]
+}
 
 export const testPlans = mysqlTable(
   'test_plans',
@@ -384,6 +584,13 @@ export const testPlans = mysqlTable(
      * Phase 2: normalise to test_plan_assignees table.
      */
     assigneeIds: json('assignee_ids').$type<string[]>().default([]),
+    /**
+     * GAP-01 (Option a): the authored TestQuery[] definition (condition/folder/
+     * static groups). NULL = no stored definition — the frontend then falls
+     * back to a synthesized static group from test_plan_cases. Definitions are
+     * durable here; the resolved case list still lives in test_plan_cases.
+     */
+    queryDefinition: json('query_definition').$type<TestQueryDefinition[]>(),
     /** NULL = not yet indexed. */
     indexedAt: datetime('indexed_at', { mode: 'date' }),
     ...timestamps,
@@ -457,6 +664,8 @@ export const testRuns = mysqlTable(
       { onDelete: 'set null' },
     ),
     title: varchar('title', { length: 500 }).notNull(),
+    /** Free-text run description. Added in the new-tables candidate (Phase A). */
+    description: text('description'),
     status: mysqlEnum('status', ['active', 'stalled', 'sealed', 'archived'])
       .notNull()
       .default('active'),
@@ -705,6 +914,62 @@ export const runStepResults = mysqlTable(
 )
 
 // ---------------------------------------------------------------------------
+// 13b. run_case_events
+//     Append-only per-case execution transition log (new-tables candidate,
+//     Phase B). One 'created' row per case at run spawn, plus one 'result' row
+//     per real status transition thereafter.
+//
+//     This is the durable source of truth behind the dashboard's
+//     week-over-week transition counts (passedThisWeek/failedThisWeek) and
+//     per-case history, which are computed client-side from
+//     DemoRun.executionLog — that array is now populated from these synced
+//     events (see run-client.ts realRunToLocal). Built so trend aggregation
+//     can later move server-side without a schema change.
+//
+//     Never updated or deleted — a run's execution history is immutable
+//     (mirrors run_case_step_snapshots' append-only / no-updated_at shape).
+// ---------------------------------------------------------------------------
+
+export const runCaseEvents = mysqlTable(
+  'run_case_events',
+  {
+    id: id(),
+    testRunCaseId: varchar('test_run_case_id', { length: 26 })
+      .notNull()
+      .references(() => testRunCases.id, { onDelete: 'cascade' }),
+    /** Nullable — the actor may be deleted later; the event is preserved. */
+    actorId: varchar('actor_id', { length: 26 }).references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    event: mysqlEnum('event', ['created', 'result']).notNull(),
+    /** Both nullable: 'created' events carry no transition (from/to are null). */
+    fromStatus: mysqlEnum('from_status', [
+      'not_run',
+      'pass',
+      'fail',
+      'blocked',
+      'skip',
+    ]),
+    toStatus: mysqlEnum('to_status', [
+      'not_run',
+      'pass',
+      'fail',
+      'blocked',
+      'skip',
+    ]),
+    /**
+     * When the event occurred. Backdated for seeded historical runs, so the
+     * dashboard trend is genuine. No created_at/updated_at — this row is
+     * immutable and `at` is the only timestamp that matters.
+     */
+    at: datetime('at', { mode: 'date' }).notNull(),
+  },
+  (t) => ({
+    testRunCaseIdIdx: index('rce_test_run_case_id_idx').on(t.testRunCaseId),
+  }),
+)
+
+// ---------------------------------------------------------------------------
 // 14. run_assignees
 //     Run-level team assignments. Different from case-level assignment
 //     (test_run_cases.assigned_to).
@@ -752,8 +1017,21 @@ export const runDefectLinks = mysqlTable(
     testRunCaseId: varchar('test_run_case_id', { length: 26 })
       .notNull()
       .references(() => testRunCases.id, { onDelete: 'cascade' }),
-    /** External defect reference. e.g. "TI-4419". No FK — external system. */
+    /**
+     * External defect reference. e.g. "TI-4419". For an *internal* ("Local")
+     * defect this holds the defects.defect_ref key (e.g. "DEF-5"); for an
+     * external ref it holds the free-text external key as-is.
+     */
     defectRef: varchar('defect_ref', { length: 100 }).notNull(),
+    /**
+     * Internal defect FK (new-tables candidate, Phase E). NULL for external
+     * refs (defect_ref is a free-text external key with no backing row); set to
+     * a defects.id for internal defects, alongside defect_ref = that defect's
+     * DEF-<n> key. Additive/nullable — external linking is unchanged.
+     */
+    defectId: varchar('defect_id', { length: 26 }).references(() => defects.id, {
+      onDelete: 'set null',
+    }),
     /** Optional deep link into the external defect system. */
     defectUrl: varchar('defect_url', { length: 500 }),
     linkedBy: varchar('linked_by', { length: 26 }).references(() => users.id, {
@@ -1049,6 +1327,90 @@ export const attachmentsMetadata = mysqlTable(
   }),
 )
 
+// ---------------------------------------------------------------------------
+// 21. role_definitions
+//     Org-scoped Admin-panel role DEFINITIONS (new-tables candidate, Phase G).
+//     The Admin panel is global/org-level (not project-scoped), so these are
+//     scoped to `organisations`, mirroring `users`. Backs the frontend
+//     AdminRole model (demo-model.ts): name/description/isProjectLevel/isBuiltIn
+//     + a structured permissions map.
+//
+//     `permissions` is a JSON boolean map keyed by the frontend's PermissionKey
+//     union (apps/web/src/fresh/data/rbac.ts — 16 keys like 'viewTestCases').
+//     Stored as Record<string, boolean> here to avoid coupling @relay/db to the
+//     web package's type; admin-role-client.ts casts it back to RolePermissions.
+//     This is the same accepted frontend-shape coupling tradeoff as Phase F's
+//     test_plans.query_definition. AdminRole.userCount is intentionally NOT
+//     stored — it's derived client-side (syncRoleUserCounts) from the user list.
+//
+//     Built-in roles (isBuiltIn=true) are guarded against update/delete in the
+//     service, matching admin-reducer.ts's built-in guard.
+// ---------------------------------------------------------------------------
+
+/** Frontend RolePermissions shape (rbac.ts) — a boolean map keyed by PermissionKey. */
+export type RolePermissionMap = Record<string, boolean>
+
+export const roleDefinitions = mysqlTable(
+  'role_definitions',
+  {
+    id: id(),
+    orgId: varchar('org_id', { length: 26 })
+      .notNull()
+      .references(() => organisations.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    isProjectLevel: boolean('is_project_level').notNull().default(false),
+    isBuiltIn: boolean('is_built_in').notNull().default(false),
+    permissions: json('permissions').$type<RolePermissionMap>(),
+    ...timestamps,
+  },
+  (t) => ({
+    orgNameUnique: unique('role_def_org_name_unique').on(t.orgId, t.name),
+    orgIdIdx: index('role_def_org_id_idx').on(t.orgId),
+  }),
+)
+
+// ---------------------------------------------------------------------------
+// 22. api_keys
+//     Org-scoped Admin-panel API keys (new-tables candidate, Phase G). Backs
+//     the frontend AdminApiKey model (demo-model.ts) faithfully:
+//       name, maskedKey (-> key_masked), project (display string e.g.
+//       'All Projects'/'DP'), permissions (display string e.g. 'read'),
+//       expiration (display string e.g. 'No expiration'/'90 days'),
+//       createdAt, userId (-> created_by, the creating user).
+//
+//     Real API-key SECRET management (hashing, one-time reveal, revocation) is
+//     OUT of scope for this branch — this table stores the same already-masked
+//     display value the frontend shows (generateMaskedApiKey), not a real
+//     secret. See admin-api-key-client.ts.
+// ---------------------------------------------------------------------------
+
+export const apiKeys = mysqlTable(
+  'api_keys',
+  {
+    id: id(),
+    orgId: varchar('org_id', { length: 26 })
+      .notNull()
+      .references(() => organisations.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    /** Already-masked display value (e.g. 'Ab2XYZ***') — NOT a real secret. */
+    keyMasked: varchar('key_masked', { length: 255 }).notNull(),
+    /** Display string of the key's project scope (e.g. 'All Projects', 'DP'). */
+    project: varchar('project', { length: 255 }).notNull(),
+    /** Display string of the key's permission scope (e.g. 'read', 'comment, manage…'). */
+    permissions: varchar('permissions', { length: 255 }).notNull(),
+    /** Display string of the key's expiration (e.g. 'No expiration', '90 days'). */
+    expiration: varchar('expiration', { length: 100 }).notNull(),
+    createdBy: varchar('created_by', { length: 26 }).references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (t) => ({
+    orgIdIdx: index('api_key_org_id_idx').on(t.orgId),
+  }),
+)
+
 // ===========================================================================
 // RELATIONS
 // Drizzle relations are type-level only — they do not affect the DB schema.
@@ -1058,6 +1420,27 @@ export const attachmentsMetadata = mysqlTable(
 export const organisationsRelations = relations(organisations, ({ many }) => ({
   users: many(users),
   projects: many(projects),
+  roleDefinitions: many(roleDefinitions),
+  apiKeys: many(apiKeys),
+}))
+
+export const roleDefinitionsRelations = relations(roleDefinitions, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [roleDefinitions.orgId],
+    references: [organisations.id],
+  }),
+}))
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [apiKeys.orgId],
+    references: [organisations.id],
+  }),
+  createdBy: one(users, {
+    fields: [apiKeys.createdBy],
+    references: [users.id],
+    relationName: 'createdApiKeys',
+  }),
 }))
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -1083,6 +1466,8 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   projectRoles: many(projectRoles),
   folders: many(folders),
   testCases: many(testCases),
+  requirements: many(requirements),
+  defects: many(defects),
   testPlans: many(testPlans),
   testRuns: many(testRuns),
 }))
@@ -1141,15 +1526,70 @@ export const testCasesRelations = relations(testCases, ({ one, many }) => ({
     relationName: 'createdCases',
   }),
   steps: many(testCaseSteps),
+  comments: many(caseComments),
+  requirementLinks: many(caseRequirements),
   planInclusions: many(testPlanCases),
   runInstances: many(testRunCases),
 }))
 
-export const testCaseStepsRelations = relations(testCaseSteps, ({ one }) => ({
+export const testCaseStepsRelations = relations(testCaseSteps, ({ one, many }) => ({
   testCase: one(testCases, {
     fields: [testCaseSteps.testCaseId],
     references: [testCases.id],
   }),
+  comments: many(caseComments),
+}))
+
+export const caseCommentsRelations = relations(caseComments, ({ one }) => ({
+  testCase: one(testCases, {
+    fields: [caseComments.testCaseId],
+    references: [testCases.id],
+  }),
+  testCaseStep: one(testCaseSteps, {
+    fields: [caseComments.testCaseStepId],
+    references: [testCaseSteps.id],
+  }),
+  author: one(users, {
+    fields: [caseComments.authorId],
+    references: [users.id],
+  }),
+}))
+
+export const requirementsRelations = relations(requirements, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [requirements.projectId],
+    references: [projects.id],
+  }),
+  createdBy: one(users, {
+    fields: [requirements.createdBy],
+    references: [users.id],
+    relationName: 'createdRequirements',
+  }),
+  caseLinks: many(caseRequirements),
+}))
+
+export const caseRequirementsRelations = relations(caseRequirements, ({ one }) => ({
+  testCase: one(testCases, {
+    fields: [caseRequirements.testCaseId],
+    references: [testCases.id],
+  }),
+  requirement: one(requirements, {
+    fields: [caseRequirements.requirementId],
+    references: [requirements.id],
+  }),
+}))
+
+export const defectsRelations = relations(defects, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [defects.projectId],
+    references: [projects.id],
+  }),
+  createdBy: one(users, {
+    fields: [defects.createdBy],
+    references: [users.id],
+    relationName: 'createdDefects',
+  }),
+  links: many(runDefectLinks),
 }))
 
 export const testPlansRelations = relations(testPlans, ({ one, many }) => ({
@@ -1226,6 +1666,7 @@ export const testRunCasesRelations = relations(testRunCases, ({ one, many }) => 
   }),
   stepSnapshots: many(runCaseStepSnapshots),
   stepResults: many(runStepResults),
+  caseEvents: many(runCaseEvents),
   defectLinks: many(runDefectLinks),
   comments: many(runExecutionComments),
 }))
@@ -1256,6 +1697,17 @@ export const runStepResultsRelations = relations(runStepResults, ({ one }) => ({
   }),
 }))
 
+export const runCaseEventsRelations = relations(runCaseEvents, ({ one }) => ({
+  testRunCase: one(testRunCases, {
+    fields: [runCaseEvents.testRunCaseId],
+    references: [testRunCases.id],
+  }),
+  actor: one(users, {
+    fields: [runCaseEvents.actorId],
+    references: [users.id],
+  }),
+}))
+
 export const runAssigneesRelations = relations(runAssignees, ({ one }) => ({
   testRun: one(testRuns, {
     fields: [runAssignees.testRunId],
@@ -1271,6 +1723,10 @@ export const runDefectLinksRelations = relations(runDefectLinks, ({ one }) => ({
   testRunCase: one(testRunCases, {
     fields: [runDefectLinks.testRunCaseId],
     references: [testRunCases.id],
+  }),
+  defect: one(defects, {
+    fields: [runDefectLinks.defectId],
+    references: [defects.id],
   }),
   linkedBy: one(users, {
     fields: [runDefectLinks.linkedBy],
@@ -1341,6 +1797,18 @@ export type NewTestCase = typeof testCases.$inferInsert
 export type TestCaseStep = typeof testCaseSteps.$inferSelect
 export type NewTestCaseStep = typeof testCaseSteps.$inferInsert
 
+export type CaseComment = typeof caseComments.$inferSelect
+export type NewCaseComment = typeof caseComments.$inferInsert
+
+export type Requirement = typeof requirements.$inferSelect
+export type NewRequirement = typeof requirements.$inferInsert
+
+export type Defect = typeof defects.$inferSelect
+export type NewDefect = typeof defects.$inferInsert
+
+export type CaseRequirement = typeof caseRequirements.$inferSelect
+export type NewCaseRequirement = typeof caseRequirements.$inferInsert
+
 export type TestPlan = typeof testPlans.$inferSelect
 export type NewTestPlan = typeof testPlans.$inferInsert
 
@@ -1358,6 +1826,9 @@ export type NewRunCaseStepSnapshot = typeof runCaseStepSnapshots.$inferInsert
 
 export type RunStepResult = typeof runStepResults.$inferSelect
 export type NewRunStepResult = typeof runStepResults.$inferInsert
+
+export type RunCaseEvent = typeof runCaseEvents.$inferSelect
+export type NewRunCaseEvent = typeof runCaseEvents.$inferInsert
 
 export type RunAssignee = typeof runAssignees.$inferSelect
 export type NewRunAssignee = typeof runAssignees.$inferInsert
@@ -1379,3 +1850,9 @@ export type NewSavedFilter = typeof savedFilters.$inferInsert
 
 export type AttachmentMetadata = typeof attachmentsMetadata.$inferSelect
 export type NewAttachmentMetadata = typeof attachmentsMetadata.$inferInsert
+
+export type RoleDefinition = typeof roleDefinitions.$inferSelect
+export type NewRoleDefinition = typeof roleDefinitions.$inferInsert
+
+export type ApiKey = typeof apiKeys.$inferSelect
+export type NewApiKey = typeof apiKeys.$inferInsert

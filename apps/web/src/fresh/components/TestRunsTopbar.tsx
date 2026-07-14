@@ -62,39 +62,40 @@ export function TestRunsTopbar({
   }
 
   return (
-    <div className="ta tr-topbar-actions">
+    <div className="tr-topbar-actions">
       <button
         type="button"
-        className="btn tr-seal-btn"
+        className="btn btn-neutral btn-sm tr-seal-btn"
         disabled={!hasRun}
         onClick={onSealToggle}
       >
-        <i className={`ti ${sealed ? 'ti-lock-open' : 'ti-lock'}`} style={{ fontSize: 12 }} />
+        <i className={`ti ${sealed ? 'ti-lock-open' : 'ti-lock'}`} style={{ fontSize: 14 }} />
         {sealed ? 'Re-open test run' : 'Close test run'}
       </button>
       <button
         type="button"
-        className="btn tr-icon-btn"
+        className="btn btn-neutral btn-sm tr-icon-btn"
         disabled={!hasRun}
         title="Edit test run"
         aria-label="Edit test run"
         onClick={handleEdit}
       >
-        <i className="ti ti-pencil" style={{ fontSize: 13 }} />
+        <i className="ti ti-pencil" style={{ fontSize: 14 }} />
+        Edit
       </button>
       <button
         type="button"
-        className="btn tr-icon-btn"
+        className="btn btn-neutral btn-sm tr-icon-btn"
         disabled={!hasRun}
         title="Create report"
         aria-label="Create report"
       >
-        <i className="ti ti-report-analytics" style={{ fontSize: 13 }} />
+        <i className="ti ti-report-analytics" style={{ fontSize: 14 }} />
       </button>
       <div className="tr-more-wrap" ref={moreRef}>
         <button
           type="button"
-          className="btn"
+          className="btn btn-neutral btn-sm"
           onClick={() => setMoreOpen((v) => !v)}
         >
           More…

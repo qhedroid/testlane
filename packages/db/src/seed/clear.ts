@@ -1,10 +1,12 @@
 import { eq, inArray, sql } from 'drizzle-orm'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import {
+  apiKeys,
   auditLog,
   folders,
   organisations,
   projectRoles,
+  roleDefinitions,
   projects,
   runAssignees,
   runCaseStepSnapshots,
@@ -111,6 +113,11 @@ export async function clearSeedData(
   }
 
   await db.delete(projects).where(inArray(projects.id, projectIds))
+  // Admin-panel org-scoped data (Phase G) — delete before users/org so the
+  // reseed doesn't hit the role_definitions unique(org_id, name) constraint.
+  // (Both also cascade on the org delete, but explicit matches the pattern.)
+  await db.delete(apiKeys).where(eq(apiKeys.orgId, org.id))
+  await db.delete(roleDefinitions).where(eq(roleDefinitions.orgId, org.id))
   await db.delete(users).where(eq(users.orgId, org.id))
   await db.delete(organisations).where(eq(organisations.id, org.id))
 }

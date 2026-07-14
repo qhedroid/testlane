@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { FreshTopbar } from '../components/FreshTopbar'
 import { MOCK_WORKSPACE_MODULES } from '@/lib/relay/mock-data'
 import { useFresh } from '../data/FreshProvider'
@@ -21,7 +20,6 @@ export function SettingsScreen() {
         ]}
         showSearch={false}
       />
-      <PrototypeBanner />
 
       <div className="settings-wrap">
         <section className="panel settings-section">
@@ -71,7 +69,7 @@ export function SettingsScreen() {
             </Link>
           </div>
           <div className="pnl-body settings-table-wrap">
-            <table className="defects-table">
+            <table className="tbl">
               <thead>
                 <tr>
                   <th>User</th>

@@ -57,7 +57,7 @@ export function CreateCaseModal() {
         expected: s.expected.trim() || 'Expected result documented',
         comments: [],
       }))
-    addCase({
+    void addCase({
       title: trimmed,
       folderId: folderId || null,
       priority: pri,

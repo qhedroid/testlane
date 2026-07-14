@@ -1,33 +1,98 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
-import { RunStatusInfographic } from '../components/RunStatusInfographic'
-import { DONUT_CHART_SIZE } from '../data/ui-utils'
+import { useEffect, useMemo, useState } from 'react'
+import { RunDonut } from '../components/RunDonut'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFresh } from '../data/FreshProvider'
-import { projectHasDemoDashboard } from '../data/demo-project-utils'
-import { ATTENTION_ITEMS, COVERAGE_ITEMS, DEFECT_NAMES, RUN_CARDS } from '../data/seed'
-import type { RunCard } from '../data/types'
+import type { CasePriority } from '../data/demo-model'
+import { formatRelativeTime, PRIORITY_TO_LEGACY } from '../data/demo-model'
+import { fetchRealDashboardSummary, type RealDashboardSummary } from '@/lib/relay/dashboard-client'
+import {
+  collectDashboardUnlinkedFailures,
+  computeDashboardAssigneeBars,
+  computeDashboardCoverageRows,
+  computeDashboardKpis,
+  computeDashboardOpenRuns,
+  computeDashboardPassTrend,
+  computeDashboardTimeSeries,
+  dashboardCoverageColor,
+  type DashboardWindow,
+} from '../data/project-selectors'
+import { displayAssigneeName } from '../data/team-users'
+import { testRunPath } from '../lib/project-routes'
 import { PRI_MAP } from '../data/ui-utils'
 
-type CardFilter = 'all' | 'critical' | 'stalled'
-type CardTab = 'overview' | 'assignees' | 'defects'
+const ATTENTION_CAP = 3
 
-export function DashboardScreen() {
-  const { activeProject } = useFresh()
-  const showDemoDashboard = projectHasDemoDashboard(activeProject)
-
-  if (!showDemoDashboard) {
-    return <DashboardPlaceholder projectName={activeProject?.name ?? 'Project'} />
-  }
-
-  return <DemoDashboardView />
+const PRIORITY_STRIPE: Record<CasePriority, string> = {
+  Critical: 'crit',
+  High: 'high',
+  Medium: 'med',
+  Low: 'low',
 }
 
-function DashboardPlaceholder({ projectName }: { projectName: string }) {
+const AVATAR_COLORS = ['#1976D2', '#00796B', '#5E35B1', '#C62828', '#EF6C00', '#455A64']
+
+const DASHBOARD_MILESTONES = [
+  { name: 'UAT Sign-Off', meta: '2 linked runs · due 18 Jul', badge: 'In progress', badgeClass: 'pill p-act' },
+  { name: 'Reporting Integration', meta: '1 linked run · due 12 Jul', badge: 'At risk', badgeClass: 'pill p-block' },
+  { name: 'eTMF Workflow Beta', meta: '1 linked run · due 25 Jul', badge: 'On track', badgeClass: 'pill p-pass' },
+]
+
+function avatarColor(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) | 0
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
+}
+
+function avatarInitials(name: string): string {
+  return displayAssigneeName(name)
+    .split(' ')
+    .map((x) => x[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function formatRunId(runKey: string): string {
+  const n = parseInt(runKey, 10)
+  return Number.isNaN(n) ? runKey : String(n)
+}
+
+function sparklinePoints(values: number[], width: number, height: number): string {
+  if (values.length === 0) return ''
+  const max = Math.max(...values, 1)
+  const min = Math.min(...values, 0)
+  const range = Math.max(max - min, 1)
+  const step = values.length > 1 ? width / (values.length - 1) : 0
+  return values
+    .map((v, i) => {
+      const x = i * step
+      const y = height - 6 - ((v - min) / range) * (height - 12)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+}
+
+function areaPoints(linePoints: string, width: number, height: number): string {
+  const first = linePoints.split(' ')[0] ?? `0,${height}`
+  const last = linePoints.split(' ').slice(-1)[0] ?? `${width},${height}`
+  return `0,${height} ${first} ${linePoints} ${last} ${width},${height}`
+}
+
+export function DashboardScreen() {
+  const { activeProject, activeCases } = useFresh()
+
+  if (activeCases.length === 0) {
+    return <DashboardEmptyCases projectName={activeProject?.name ?? 'Project'} />
+  }
+
+  return <DashboardView />
+}
+
+function DashboardEmptyCases({ projectName }: { projectName: string }) {
   const projectHref = useProjectHref()
 
   return (
@@ -37,367 +102,385 @@ function DashboardPlaceholder({ projectName }: { projectName: string }) {
         subtitle={projectName}
         searchPlaceholder="Search everything…"
         actions={
-          <Link href={projectHref('testruns')} className="btn btn-p">
-            <i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run
+          <Link href={projectHref('cases')} className="btn btn-p">
+            <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add test cases
           </Link>
         }
       />
-      <PrototypeBanner />
       <div className="dash-wrap">
-        <div className="met-row">
-          <div className="mc c-blue">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: 'var(--accent)' }}>0</div><div className="ml">Active Runs</div></div>
-              <div className="mc-ic"><i className="ti ti-player-play" /></div>
-            </div>
-            <div className="mt">No active runs yet</div>
+        <div className="panel dash-empty-panel">
+          <i className="ti ti-layout-dashboard dash-empty-icon" />
+          <div className="dash-empty-title">Add your first test cases</div>
+          <div className="dash-empty-desc">
+            Metrics and run insights for {projectName} will appear here once you add test cases and start runs.
           </div>
-          <div className="mc c-green">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#2E7D32' }}>—</div><div className="ml">Pass Rate</div></div>
-              <div className="mc-ic"><i className="ti ti-trending-up" /></div>
-            </div>
-            <div className="mt">No execution data</div>
-          </div>
-          <div className="mc c-red">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#C62828' }}>0</div><div className="ml">Open Failures</div></div>
-              <div className="mc-ic"><i className="ti ti-alert-circle" /></div>
-            </div>
-            <div className="mt">No failures recorded</div>
-          </div>
-          <div className="mc c-amber">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#E65100' }}>0</div><div className="ml">Blocked Cases</div></div>
-              <div className="mc-ic"><i className="ti ti-ban" /></div>
-            </div>
-            <div className="mt">No blocked cases</div>
-          </div>
-          <div className="mc c-grey">
-            <div className="mc-head">
-              <div><div className="mv">0%</div><div className="ml">Run Coverage</div></div>
-              <div className="mc-ic"><i className="ti ti-chart-donut" /></div>
-            </div>
-            <div className="mt">0 cases executed</div>
-          </div>
-        </div>
-
-        <div
-          className="panel"
-          style={{
-            marginTop: 16,
-            padding: '48px 24px',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <i className="ti ti-layout-dashboard" style={{ fontSize: 32, color: 'var(--text3)', opacity: 0.6 }} />
-          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Dashboard coming soon</div>
-          <div style={{ fontSize: 12.5, color: 'var(--text3)', maxWidth: 360 }}>
-            Metrics and run insights for {projectName} will appear here once dashboard features are available.
-          </div>
+          <Link href={projectHref('cases')} className="btn btn-p" style={{ marginTop: 8 }}>
+            Go to Test Cases
+          </Link>
         </div>
       </div>
     </div>
   )
 }
 
-function DemoDashboardView() {
+function DashboardView() {
   const projectHref = useProjectHref()
-  const [cardFilter, setCardFilter] = useState<CardFilter>('all')
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
-  const [cardTabs, setCardTabs] = useState<Record<string, CardTab>>({})
+  const { activeProject, activeRuns, activeCases, activeFolders } = useFresh()
+  const [timeWindow, setTimeWindow] = useState<DashboardWindow>(30)
 
-  const filteredRuns = useMemo(() => {
-    if (cardFilter === 'stalled') return RUN_CARDS.filter((r) => r.stalled)
-    if (cardFilter === 'critical') return RUN_CARDS.filter((r) => r.fail > 10)
-    return RUN_CARDS
-  }, [cardFilter])
+  // Server-computed summary (data-layer refactor): the KPI strip and donut
+  // prefer SQL-aggregated numbers from GET /api/projects/:id/dashboard,
+  // falling back to the client-side computation until the fetch resolves.
+  // The richer widgets below still derive from synced reducer state.
+  const [serverSummary, setServerSummary] = useState<RealDashboardSummary | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setServerSummary(null)
+    fetchRealDashboardSummary(activeProject.id)
+      .then((summary) => {
+        if (!cancelled) setServerSummary(summary)
+      })
+      .catch((err) => {
+        console.warn('[relay] Dashboard summary fetch failed — using client-side numbers:', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeProject.id])
 
-  const [leftRuns, rightRuns] = useMemo(() => {
-    const left: RunCard[] = []
-    const right: RunCard[] = []
-    filteredRuns.forEach((run, i) => {
-      if (i % 2 === 0) left.push(run)
-      else right.push(run)
+  const kpis = useMemo(() => {
+    const local = computeDashboardKpis(activeRuns)
+    if (!serverSummary) return local
+    const b = serverSummary.resultBreakdown
+    const total = b.pass + b.fail + b.blocked + b.skip + b.notRun
+    const executed = total - b.notRun
+    return {
+      ...local,
+      executedPct: total > 0 ? Math.round((executed / total) * 100) : 0,
+      totalExecuted: executed,
+      totalCases: total,
+      passed: b.pass,
+      failed: b.fail,
+      blocked: b.blocked,
+      skipped: b.skip,
+      notRun: b.notRun,
+      openRunCount: serverSummary.activeRunCount,
+    }
+  }, [activeRuns, serverSummary])
+  const openRuns = useMemo(
+    () => computeDashboardOpenRuns(activeRuns, activeCases),
+    [activeRuns, activeCases],
+  )
+  const assigneeBars = useMemo(
+    () => computeDashboardAssigneeBars(activeRuns, activeCases),
+    [activeRuns, activeCases],
+  )
+  const unlinkedFailures = useMemo(
+    () => collectDashboardUnlinkedFailures(activeRuns, activeCases),
+    [activeRuns, activeCases],
+  )
+  const coverageRows = useMemo(
+    () => computeDashboardCoverageRows(activeCases, activeFolders, activeRuns),
+    [activeCases, activeFolders, activeRuns],
+  )
+  const timeSeries = useMemo(
+    () => computeDashboardTimeSeries(activeRuns, timeWindow),
+    [activeRuns, timeWindow],
+  )
+  const passTrend = useMemo(() => computeDashboardPassTrend(activeRuns), [activeRuns])
+
+  const lowCoverage = coverageRows.slice(0, 3)
+  const visibleAttention = unlinkedFailures.slice(0, ATTENTION_CAP)
+
+  const chartMax = Math.max(...timeSeries.map((p) => Math.max(p.passed, p.failed)), 1)
+  const chartW = 640
+  const chartH = 170
+  const chartPadL = 36
+
+  const passedLine = timeSeries
+    .map((p, i) => {
+      const x = chartPadL + (i / Math.max(timeSeries.length - 1, 1)) * (chartW - chartPadL)
+      const y = 145 - (p.passed / chartMax) * 120
+      return `${x.toFixed(1)},${y.toFixed(1)}`
     })
-    return [left, right]
-  }, [filteredRuns])
+    .join(' ')
 
-  function toggleCard(id: string, e?: React.MouseEvent) {
-    e?.stopPropagation()
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
+  const failedLine = timeSeries
+    .map((p, i) => {
+      const x = chartPadL + (i / Math.max(timeSeries.length - 1, 1)) * (chartW - chartPadL)
+      const y = 145 - (p.failed / chartMax) * 120
+      return `${x.toFixed(1)},${y.toFixed(1)}`
     })
-  }
+    .join(' ')
+
+  const sparkW = 200
+  const sparkH = 44
+  const sparkLine = sparklinePoints(passTrend.values, sparkW, sparkH)
 
   return (
     <div className="view">
       <FreshTopbar
         breadcrumbs={[{ label: 'Dashboard' }]}
-        subtitle="Sprint 44 · Release 2.4.1"
+        subtitle={activeProject?.name ?? 'Project'}
         searchPlaceholder="Search everything…"
         actions={
           <>
-            <button type="button" className="btn"><i className="ti ti-download" style={{ fontSize: 12 }} /> Export</button>
-            <Link href={projectHref('testruns')} className="btn btn-p"><i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run</Link>
+            <button type="button" className="btn btn-neutral">
+              <i className="ti ti-download" style={{ fontSize: 12 }} /> Export
+            </button>
+            <Link href={projectHref('testruns')} className="btn btn-p">
+              <i className="ti ti-plus" style={{ fontSize: 12 }} /> New Run
+            </Link>
           </>
         }
       />
-      <PrototypeBanner />
       <div className="dash-wrap">
-        <div className="met-row">
-          <div className="mc c-blue">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: 'var(--accent)' }}>8</div><div className="ml">Active Runs</div></div>
-              <div className="mc-ic"><i className="ti ti-player-play" /></div>
+        <div className="kpi-strip dash-kpi-strip">
+          <div className="kpi-tile">
+            <div className="kpi-lbl">Executed</div>
+            <div className="kpi-val dash-kpi-val">{kpis.executedPct}%</div>
+            <div className="dash-kpi-meta">
+              {kpis.totalExecuted} of {kpis.totalCases} in open runs
             </div>
-            <div className="mt">3 critical path &nbsp;·&nbsp; 1 stalled</div>
           </div>
-          <div className="mc c-green">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#2E7D32' }}>74.2%</div><div className="ml">Pass Rate</div></div>
-              <div className="mc-ic"><i className="ti ti-trending-up" /></div>
+          <div className="kpi-tile">
+            <div className="kpi-lbl">Passed</div>
+            <div className="kpi-val dash-kpi-val kpi-pass">{kpis.passed}</div>
+            <div className={`dash-kpi-delta${kpis.passedThisWeek != null && kpis.passedThisWeek > 0 ? ' dash-kpi-delta-up' : ''}`}>
+              {kpis.passedThisWeek != null ? `+${kpis.passedThisWeek} this week` : 'As of today'}
             </div>
-            <div className="mt mt-up">↑ 6.1 pp vs Sprint 43</div>
           </div>
-          <div className="mc c-red">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#C62828' }}>23</div><div className="ml">Open Failures</div></div>
-              <div className="mc-ic"><i className="ti ti-alert-circle" /></div>
+          <div className="kpi-tile">
+            <div className="kpi-lbl">Failed</div>
+            <div className="kpi-val dash-kpi-val kpi-fail">{kpis.failed}</div>
+            <div className={`dash-kpi-delta${kpis.failedThisWeek != null && kpis.failedThisWeek > 0 ? ' dash-kpi-delta-dn' : ''}`}>
+              {kpis.failedThisWeek != null ? `+${kpis.failedThisWeek} this week` : 'As of today'}
             </div>
-            <div className="mt mt-dn">↑ 4 unlinked since yesterday</div>
           </div>
-          <div className="mc c-amber">
-            <div className="mc-head">
-              <div><div className="mv" style={{ color: '#E65100' }}>7</div><div className="ml">Blocked Cases</div></div>
-              <div className="mc-ic"><i className="ti ti-ban" /></div>
+          <div className="kpi-tile">
+            <div className="kpi-lbl">Blocked</div>
+            <div className="kpi-val dash-kpi-val kpi-warn">{kpis.blocked}</div>
+            <div className="dash-kpi-meta">
+              {kpis.blockedWithDefects} waiting on defects
             </div>
-            <div className="mt">2 without defect &nbsp;·&nbsp; action needed</div>
           </div>
-          <div className="mc c-grey">
-            <div className="mc-head">
-              <div><div className="mv">68%</div><div className="ml">Run Coverage</div></div>
-              <div className="mc-ic"><i className="ti ti-chart-donut" /></div>
+          <div className="kpi-tile">
+            <div className="kpi-lbl">Open runs</div>
+            <div className="kpi-val dash-kpi-val">{kpis.openRunCount}</div>
+            <div className="dash-kpi-meta">
+              {kpis.runsDueThisWeek > 0
+                ? `${kpis.runsDueThisWeek} close this week`
+                : 'No runs due this week'}
             </div>
-            <div className="mt mt-up">312 of 458 cases executed</div>
+          </div>
+          <div className="kpi-tile kpi-tile-wide">
+            <div className="kpi-lbl">Pass trend · 30 days</div>
+            <svg viewBox={`0 0 ${sparkW} ${sparkH}`} preserveAspectRatio="none" className="dash-sparkline" aria-hidden>
+              {sparkLine ? (
+                <>
+                  <polyline points={sparkLine} fill="none" stroke="var(--pass)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                  <polyline points={areaPoints(sparkLine, sparkW, sparkH)} fill="var(--pass)" fillOpacity="0.08" stroke="none" />
+                </>
+              ) : null}
+            </svg>
+            {passTrend.isFlatFallback && !kpis.hasExecutionHistory ? (
+              <div className="dash-kpi-meta">Current pass rate (no history yet)</div>
+            ) : null}
           </div>
         </div>
 
-        <div className="dash-body" style={{ minHeight: 0, overflow: 'hidden' }}>
-          <div className="runs-col">
-            <div className="runs-col-hd">
-              <i className="ti ti-player-play" style={{ fontSize: 13, color: 'var(--accent)' }} />
-              <span className="runs-col-ttl">Active runs</span>
-              <span className="pnl-ct">8</span>
-              <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
-                {(['all', 'critical', 'stalled'] as CardFilter[]).map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    className={`chip${cardFilter === f ? ' on' : ''}`}
-                    onClick={() => setCardFilter(f)}
-                  >
-                    {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <Link href={projectHref('testruns')} className="btn" style={{ fontSize: 10.5, padding: '2px 7px', marginLeft: 'auto' }}>
-                All runs <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
-              </Link>
-            </div>
-            <div className="run-cards-cols">
-              <div className="run-cards-col">
-                {leftRuns.map((run) => (
-                  <RunCardItem
-                    key={run.id}
-                    run={run}
-                    expanded={expanded.has(run.id)}
-                    tab={cardTabs[run.id] ?? 'overview'}
-                    onToggle={(e) => toggleCard(run.id, e)}
-                    onTab={(t) => setCardTabs((prev) => ({ ...prev, [run.id]: t }))}
-                  />
-                ))}
-              </div>
-              <div className="run-cards-col">
-                {rightRuns.map((run) => (
-                  <RunCardItem
-                    key={run.id}
-                    run={run}
-                    expanded={expanded.has(run.id)}
-                    tab={cardTabs[run.id] ?? 'overview'}
-                    onToggle={(e) => toggleCard(run.id, e)}
-                    onTab={(t) => setCardTabs((prev) => ({ ...prev, [run.id]: t }))}
-                  />
-                ))}
+        <div className="dash-charts-grid">
+          <div className="panel">
+            <h3 className="panel-h3">Completion</h3>
+            <div className="dash-completion-wrap">
+              <RunDonut
+                pass={kpis.passed}
+                fail={kpis.failed}
+                blocked={kpis.blocked}
+                notrun={kpis.notRun}
+                skipped={kpis.skipped}
+                size={128}
+                interactive
+              />
+              <div className="dash-legend">
+                <div><span className="dash-dot" style={{ background: 'var(--pass)' }} />Passed<b>{kpis.passed}</b></div>
+                <div><span className="dash-dot" style={{ background: 'var(--fail)' }} />Failed<b>{kpis.failed}</b></div>
+                <div><span className="dash-dot" style={{ background: 'var(--block)' }} />Blocked<b>{kpis.blocked}</b></div>
+                <div><span className="dash-dot" style={{ background: 'var(--border2)' }} />Not run<b>{kpis.notRun}</b></div>
               </div>
             </div>
-          </div>
-
-          <div className="dash-right">
-            <div className="panel" style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <div className="pnl-hd">
-                <i className="ti ti-alert-triangle" style={{ fontSize: 13, color: 'var(--fail)' }} />
-                <span className="pnl-ttl">Needs attention</span>
-                <span className="pnl-ct" style={{ background: 'var(--fail-bg)', color: 'var(--fail)', borderColor: 'rgba(198,40,40,.2)' }}>11</span>
-                <span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 'auto' }}>unlinked failures</span>
-              </div>
-              <div className="pnl-body" style={{ flex: 1 }}>
-                {ATTENTION_ITEMS.map((item) => (
-                  <Link key={item.title} href={projectHref('testruns')} className="att-item">
-                    <div className={`att-item-stripe ${item.stripe}`} />
-                    <div className="att-item-body">
-                      <div className="att-title">{item.title}</div>
-                      <div className="att-meta">
-                        <span className={`pri ${PRI_MAP[item.pri]}`}>{item.pri}</span>
-                        <span className="att-run">{item.run}</span>
-                        <span className="att-actor">{item.actor}</span>
-                      </div>
+            {lowCoverage.length > 0 ? (
+              <div className="dash-coverage-note">
+                <div style={{ fontWeight: 600, color: 'var(--text2)', marginBottom: 4 }}>Lowest coverage by folder</div>
+                {lowCoverage.map((row) => (
+                  <div key={row.label} className="dash-coverage-row">
+                    <span className="dash-coverage-lbl">{row.label}</span>
+                    <div className="dash-coverage-bar">
+                      <div className="dash-coverage-fill" style={{ width: `${row.pct}%`, background: dashboardCoverageColor(row.pct) }} />
                     </div>
-                    <div className="att-item-right">
-                      {item.defectId ? (
-                        <span className="defect-tag-sm"><i className="ti ti-bug" style={{ fontSize: 9 }} />{item.defectId}</span>
-                      ) : (
-                        <span className="no-defect-tag"><i className="ti ti-link-off" style={{ fontSize: 9 }} /> Link defect</span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-              <div className="att-footer"><Link href={projectHref('testruns')}>View all 11 failures →</Link></div>
-            </div>
-
-            <div className="panel" style={{ flexShrink: 0 }}>
-              <div className="pnl-hd">
-                <i className="ti ti-chart-donut" style={{ fontSize: 13, color: 'var(--accent)' }} />
-                <span className="pnl-ttl">Coverage — Sprint 44</span>
-                <span style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>68% overall</span>
-              </div>
-              <div className="cov-grid">
-                {COVERAGE_ITEMS.map((c) => (
-                  <div key={c.label}>
-                    <div className="cov-lbl">{c.label}</div>
-                    <div className="cov-bar">
-                      <div className="cov-fill" style={{ width: `${c.pct}%`, background: c.color ?? 'var(--accent)' }} />
-                    </div>
-                    <div className="cov-pct">{c.pct}%</div>
+                    <span className="mono-muted">{row.pct}%</span>
                   </div>
                 ))}
               </div>
+            ) : null}
+          </div>
+
+          <div className="panel dash-chart-panel">
+            <div className="dash-panel-hd">
+              <h3 className="panel-h3-inline">Results over time</h3>
+              <div className="chip-row">
+                {([7, 30, 90] as DashboardWindow[]).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={`chip${timeWindow === d ? ' on' : ''}`}
+                    onClick={() => setTimeWindow(d)}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+            <svg viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" className="dash-line-chart" aria-hidden>
+              {[10, 55, 100, 145].map((y) => (
+                <line key={y} x1={chartPadL} y1={y} x2={chartW} y2={y} stroke="var(--border)" strokeWidth="1" />
+              ))}
+              <text x={30} y={14} textAnchor="end" className="dash-chart-axis">{Math.round(chartMax)}</text>
+              <text x={30} y={59} textAnchor="end" className="dash-chart-axis">{Math.round(chartMax * 0.67)}</text>
+              <text x={30} y={104} textAnchor="end" className="dash-chart-axis">{Math.round(chartMax * 0.33)}</text>
+              <text x={30} y={149} textAnchor="end" className="dash-chart-axis">0</text>
+              {passedLine ? (
+                <polyline points={passedLine} fill="none" stroke="var(--pass)" strokeWidth="2" strokeLinejoin="round" />
+              ) : null}
+              {failedLine ? (
+                <polyline points={failedLine} fill="none" stroke="var(--fail)" strokeWidth="2" strokeLinejoin="round" />
+              ) : null}
+            </svg>
+            <div className="dash-chart-legend">
+              <span><span className="dash-legend-line dash-legend-pass" />Passed (cumulative)</span>
+              <span><span className="dash-legend-line dash-legend-fail" />Failed (cumulative)</span>
+              {!kpis.hasExecutionHistory ? (
+                <span style={{ marginLeft: 'auto' }}>Snapshot — no dated execution history in seed data</span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3 className="panel-h3">Results by assignee</h3>
+            <div className="dash-assignee-block">
+              {assigneeBars.length === 0 ? (
+                <div className="dash-empty-inline">No executed cases with assignees yet.</div>
+              ) : (
+                assigneeBars.map((bar) => (
+                  <div key={bar.name}>
+                    <div className="dash-assignee-hd">
+                      <span className="dash-assignee-name">{displayAssigneeName(bar.name)}</span>
+                      <span className="dash-assignee-total">{bar.total}</span>
+                    </div>
+                    <div className="dash-assignee-bar">
+                      <span style={{ width: `${bar.total > 0 ? (bar.passed / bar.total) * 100 : 0}%`, background: 'var(--pass)' }} />
+                      <span style={{ width: `${bar.total > 0 ? (bar.failed / bar.total) * 100 : 0}%`, background: 'var(--fail)' }} />
+                      <span style={{ width: `${bar.total > 0 ? (bar.blocked / bar.total) * 100 : 0}%`, background: 'var(--block)' }} />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
 
-function RunCardItem({
-  run,
-  expanded,
-  tab,
-  onToggle,
-  onTab,
-}: {
-  run: RunCard
-  expanded: boolean
-  tab: CardTab
-  onToggle: (e?: React.MouseEvent) => void
-  onTab: (t: CardTab) => void
-}) {
-  const passP = (run.pass / run.total) * 100
-  const failP = (run.fail / run.total) * 100
-  const blkP = (run.blocked / run.total) * 100
-
-  return (
-    <div className={`run-card${run.stalled ? ' stalled' : ''}`}>
-      <div className="rct" onClick={() => onToggle()}>
-        <RunStatusInfographic pass={run.pass} fail={run.fail} blocked={run.blocked} notrun={run.notrun} size={DONUT_CHART_SIZE} compact />
-        <div className="rct-info">
-          <div className="rct-name">{run.name}</div>
-          <div className="rct-ctx">{run.plan} &nbsp;·&nbsp; {run.env}</div>
-        </div>
-        <div className="rct-right">
-          <span className={`pill ${run.stalled ? 'p-block' : 'p-act'}`} style={{ fontSize: 9.5, padding: '1px 5px' }}>
-            <span className="pill-dot" />
-            {run.stalled ? 'Stalled' : 'Active'}
-          </span>
-          <button
-            type="button"
-            className={`expand-btn${expanded ? ' open' : ''}`}
-            onClick={(e) => { e.stopPropagation(); onToggle(e) }}
-            title={expanded ? 'Collapse' : 'Expand'}
-          >
-            <i className="ti ti-chevron-down" />
-          </button>
-        </div>
-      </div>
-      <div className={`rcd${expanded ? ' open' : ''}`}>
-        <div className="rcd-tabs">
-          {(['overview', 'assignees', 'defects'] as CardTab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={`rcd-tab${tab === t ? ' on' : ''}`}
-              onClick={(e) => { e.stopPropagation(); onTab(t) }}
-            >
-              {t === 'overview' ? 'Overview' : t === 'assignees' ? `Assignees (${run.assignees.length})` : `Defects${run.defects.length ? ` (${run.defects.length})` : ''}`}
-            </button>
-          ))}
-        </div>
-        <div className="rcd-body">
-          <div className={`rcd-pane${tab === 'overview' ? ' on' : ''}`}>
-            <div style={{ marginBottom: 9 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text3)' }}>Execution progress</span>
-                <span style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{run.pass + run.fail + run.blocked} / {run.total}</span>
-              </div>
-              <div className="prog" style={{ height: 6, marginBottom: 5 }}>
-                <div className="pg-p" style={{ width: `${passP}%` }} />
-                <div className="pg-f" style={{ width: `${failP}%` }} />
-                {run.blocked > 0 ? <div className="pg-b" style={{ width: `${blkP}%` }} /> : null}
-              </div>
-              <div style={{ display: 'flex', gap: 10, fontSize: 10.5 }}>
-                <span style={{ color: 'var(--pass)' }}>✓ {run.pass} passed</span>
-                <span style={{ color: 'var(--fail)' }}>✗ {run.fail} failed</span>
-                {run.blocked > 0 ? <span style={{ color: 'var(--block)' }}>⊘ {run.blocked} blocked</span> : null}
-                <span style={{ color: 'var(--text3)' }}>○ {run.notrun} not run</span>
-              </div>
+        <div className="dash-lists-grid">
+          <div className="panel">
+            <div className="dash-list-hd">
+              <h3>Open test runs</h3>
+              <Link href={projectHref('testruns')} className="dash-list-link">
+                See all {kpis.openRunCount} →
+              </Link>
             </div>
-            <div className="rcd-grid">
-              <div className="rcd-grid-item"><div className="rcd-lbl">Due</div><div className="rcd-val">{run.due}</div></div>
-              <div className="rcd-grid-item"><div className="rcd-lbl">Environment</div><div className="rcd-val">{run.env}</div></div>
-              <div className="rcd-grid-item" style={{ gridColumn: 'span 2' }}><div className="rcd-lbl">Test plan</div><div className="rcd-val">{run.plan}</div></div>
-            </div>
-          </div>
-          <div className={`rcd-pane${tab === 'assignees' ? ' on' : ''}`}>
-            {run.assignees.length > 0 ? run.assignees.map((a) => (
-              <div key={a.n} className="assignee-row">
-                <div className="av-mini">{a.n.split(' ').map((x) => x[0]).join('').slice(0, 2)}</div>
-                <span style={{ color: 'var(--text)', fontWeight: 500 }}>{a.n}</span>
-                <span style={{ color: 'var(--text3)', fontSize: 10.5, marginLeft: 'auto' }}>QA Team</span>
-              </div>
-            )) : (
-              <div className="rcd-empty">No data — no assignees on this run.</div>
+            {openRuns.length === 0 ? (
+              <div className="dash-empty-inline panel-body-pad">No active runs</div>
+            ) : (
+              openRuns.map((run) => (
+                <Link
+                  key={run.runId}
+                  href={testRunPath(activeProject.key, run.runKey)}
+                  className="screen-row dash-open-run"
+                >
+                  <span className="dash-run-id">{formatRunId(run.runKey)}</span>
+                  <div className="dash-run-body">
+                    <div className="dash-run-title">{run.name}</div>
+                    <div className="dash-run-meta">{run.meta}</div>
+                  </div>
+                  <div
+                    className="dash-avatar"
+                    style={{ background: avatarColor(run.assignee) }}
+                    title={displayAssigneeName(run.assignee)}
+                  >
+                    {avatarInitials(run.assignee)}
+                  </div>
+                  <div className="dash-run-bar">
+                    <span style={{ width: `${run.total > 0 ? (run.pass / run.total) * 100 : 0}%`, background: 'var(--pass)' }} />
+                    <span style={{ width: `${run.total > 0 ? (run.fail / run.total) * 100 : 0}%`, background: 'var(--fail)' }} />
+                    <span style={{ width: `${run.total > 0 ? (run.blocked / run.total) * 100 : 0}%`, background: 'var(--block)' }} />
+                  </div>
+                  <span className="dash-run-frac">{run.executed}/{run.total}</span>
+                </Link>
+              ))
             )}
           </div>
-          <div className={`rcd-pane${tab === 'defects' ? ' on' : ''}`}>
-            {run.defects.length ? run.defects.map((d) => (
-              <div key={d} className="defect-row">
-                <span className="ed-dtag" style={{ fontSize: 10, padding: '1px 5px' }}><i className="ti ti-bug" style={{ fontSize: 9 }} />{d}</span>
-                <span style={{ color: 'var(--text2)', fontSize: 11 }}>{DEFECT_NAMES[d] ?? 'Open defect'}</span>
+
+          <div className="panel">
+            <div className="dash-list-hd">
+              <h3>Milestones</h3>
+              <Link href={projectHref('milestones')} className="dash-list-link">
+                All {DASHBOARD_MILESTONES.length} →
+              </Link>
+            </div>
+            {DASHBOARD_MILESTONES.map((m) => (
+              <div key={m.name} className="screen-row dash-milestone-row">
+                <div className="dash-run-body">
+                  <div className="dash-run-title">{m.name}</div>
+                  <div className="dash-run-meta">{m.meta}</div>
+                </div>
+                <span className={m.badgeClass}>
+                  <span className="pill-dot" />
+                  {m.badge}
+                </span>
               </div>
-            )) : (
-              <div style={{ padding: '10px 0', textAlign: 'center', color: 'var(--text3)', fontSize: 11.5 }}>
-                <i className="ti ti-check" style={{ display: 'block', fontSize: 18, marginBottom: 4, color: 'var(--pass)' }} />
-                No defects linked to this run
-              </div>
+            ))}
+          </div>
+
+          <div className="panel">
+            <div className="dash-list-hd">
+              <h3>Needs attention</h3>
+              {unlinkedFailures.length > 0 ? (
+                <span className="dash-att-count">{unlinkedFailures.length} unlinked</span>
+              ) : null}
+              <Link href={projectHref('testruns')} className="dash-list-link">
+                {unlinkedFailures.length > ATTENTION_CAP ? `View all ${unlinkedFailures.length} →` : 'Open runs →'}
+              </Link>
+            </div>
+            {unlinkedFailures.length === 0 ? (
+              <div className="dash-empty-inline panel-body-pad">No unlinked failures — nice work.</div>
+            ) : (
+              visibleAttention.map((item) => (
+                <Link key={item.key} href={projectHref('testruns')} className="screen-row dash-att-row">
+                  <div className={`att-item-stripe ${PRIORITY_STRIPE[item.priority]}`} />
+                  <div className="dash-run-body">
+                    <div className="dash-run-title">{item.title}</div>
+                    <div className="dash-run-meta">
+                      <span className={`pri ${PRI_MAP[PRIORITY_TO_LEGACY[item.priority]]}`}>{item.priority}</span>
+                      {' · '}
+                      {item.runName}
+                      {item.testedBy ? ` · ${displayAssigneeName(item.testedBy)}` : ''}
+                      {item.testedAt ? ` · ${formatRelativeTime(item.testedAt)}` : ''}
+                    </div>
+                  </div>
+                  <span className="dash-att-tag">
+                    <i className="ti ti-link-off" style={{ fontSize: 10 }} /> Link defect
+                  </span>
+                </Link>
+              ))
             )}
           </div>
         </div>

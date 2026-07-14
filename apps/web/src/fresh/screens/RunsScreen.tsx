@@ -11,13 +11,12 @@ import { RunStatusInfographic } from '../components/RunStatusInfographic'
 import { CreateRunModal } from '../components/CreateRunModal'
 import { AddCasesToRunModal } from '../components/AddCasesToRunModal'
 import { EditRunModal } from '../components/EditRunModal'
+import { FreshTopbar } from '../components/FreshTopbar'
 import { TestRunsTopbar } from '../components/TestRunsTopbar'
 import { DEFECT_NAMES, RUN_PICKER_LIST } from '../data/seed'
 import { PRIORITY_TO_LEGACY } from '../data/demo-model'
 import { EXEC_DOT_MAP, EXEC_PILL_LABEL, EXEC_PILL_MAP, PRI_MAP } from '../data/ui-utils'
 import { displayAssigneeName, normalizeAssigneeName, TEAM_USERS } from '../data/team-users'
-import { ProjectSwitcher } from '../components/ProjectSwitcher'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useProjectHref } from '../hooks/useProjectHref'
 import { useFreshUI } from '../hooks/useFreshUI'
 import { parseTestRunCaseKey, parseTestRunKey, slugToCaseKey, testCasePath, testRunCasePath, testRunPath } from '../lib/project-routes'
@@ -37,6 +36,13 @@ const RMB_LABEL: Record<Exclude<ExecStatus, 'Not run'>, string> = {
   Failed: 'Fail',
   Blocked: 'Blocked',
   Skipped: 'Skipped',
+}
+
+const RMB_ICON: Record<Exclude<ExecStatus, 'Not run'>, string> = {
+  Passed: 'ti-circle-check',
+  Failed: 'ti-circle-x',
+  Blocked: 'ti-hand-stop',
+  Skipped: 'ti-player-skip-forward',
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -181,8 +187,9 @@ export function RunsScreen() {
 
   const handleDuplicate = useCallback(() => {
     if (!currentRun) return
-    const result = duplicateRun(currentRun.id)
-    if (result) router.push(testRunPath(activeProject.key, result.runKey))
+    void duplicateRun(currentRun.id).then((result) => {
+      if (result) router.push(testRunPath(activeProject.key, result.runKey))
+    })
   }, [currentRun, duplicateRun, activeProject.key, router])
 
   const handleDelete = useCallback(() => {
@@ -479,28 +486,43 @@ export function RunsScreen() {
     return () => window.removeEventListener('keydown', onKey)
   }, [navCase, openShortcuts, setResult, isRunSealed, canMutateDefects])
 
-  const prototypeBanner = (
-    <PrototypeBanner>
-      <strong>Frontend prototype.</strong> Shaun&apos;s v1.2 execution UI — in-memory demo data
-      (resets on reload). MySQL-backed workspace:{' '}
-      <Link href="/runs/api" className="bc-link">/runs/api</Link>.
-    </PrototypeBanner>
+  const runsSubline = `${activeProject.name} · ${activeRuns.length} test run${activeRuns.length === 1 ? '' : 's'}${
+    currentRun ? ` · ${currentRun.runKey}` : ''
+  }`
+
+  const testRunsTopbar = (
+    <TestRunsTopbar
+      currentRun={currentRun}
+      onSealToggle={handleSealToggle}
+      onDuplicate={handleDuplicate}
+      onDelete={handleDelete}
+      onCreateRun={() => setCreateOpen(true)}
+      onEdit={() => setEditOpen(true)}
+      hasCases={hasCases}
+    />
   )
 
-  const breadcrumb = (
-    <div className="bc">
-      <Link href={projectHref('dashboard')} className="bc-link">Dashboard</Link>
-      <span className="sep">/</span>
-      <span style={{ color: 'var(--accent)', fontSize: 11.5 }}>{activeProject.name}</span>
-      <span className="sep">/</span>
-      <span className="cur">Test runs</span>
-      {currentRun ? (
-        <>
-          <span className="sep">/</span>
-          <span className="cur">{currentRun.runKey}</span>
-        </>
-      ) : null}
+  const runsPageHead = (
+    <div className="page-head tr-page-head">
+      <div>
+        <h1>Test runs</h1>
+        <div className="sub">{runsSubline}</div>
+      </div>
+      <div className="actions">{testRunsTopbar}</div>
     </div>
+  )
+
+  const runsFreshTopbar = (
+    <FreshTopbar
+      breadcrumbs={[
+        { label: 'Dashboard', href: projectHref('dashboard') },
+        { label: activeProject.name },
+        { label: 'Test runs' },
+        ...(currentRun ? [{ label: currentRun.runKey }] : []),
+      ]}
+      searchPlaceholder="Search runs…"
+      searchWidth={200}
+    />
   )
 
   const runPicker = (
@@ -547,36 +569,25 @@ export function RunsScreen() {
   if (activeRuns.length === 0) {
     return (
       <div className="view runs-v12">
-        {prototypeBanner}
-        <div className="topbar">
-          <ProjectSwitcher />
-          <div className="proj-sep" />
-          {breadcrumb}
-          <TestRunsTopbar
-            currentRun={undefined}
-            onSealToggle={handleSealToggle}
-            onDuplicate={handleDuplicate}
-            onDelete={handleDelete}
-            onCreateRun={() => setCreateOpen(true)}
-            onEdit={() => setEditOpen(true)}
-            hasCases={hasCases}
-          />
-        </div>
-        <div className="empty-state on">
-          <div className="empty-card">
-            <i className="ti ti-player-play" />
-            <div className="empty-title">No runs in this project</div>
-            <div className="empty-copy">Create a test run to start executing cases in this project.</div>
-            <button
-              type="button"
-              className="btn btn-p"
-              style={{ marginTop: 12 }}
-              disabled={!hasCases}
-              title={!hasCases ? 'Add test cases to this project before creating a run' : undefined}
-              onClick={() => setCreateOpen(true)}
-            >
-              <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
-            </button>
+        {runsFreshTopbar}
+        <div className="screen-wrap tr-screen-wrap">
+          {runsPageHead}
+          <div className="empty-state on">
+            <div className="empty-card">
+              <i className="ti ti-player-play" />
+              <div className="empty-title">No runs in this project</div>
+              <div className="empty-copy">Create a test run to start executing cases in this project.</div>
+              <button
+                type="button"
+                className="btn btn-p"
+                style={{ marginTop: 12 }}
+                disabled={!hasCases}
+                title={!hasCases ? 'Add test cases to this project before creating a run' : undefined}
+                onClick={() => setCreateOpen(true)}
+              >
+                <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
+              </button>
+            </div>
           </div>
         </div>
         <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
@@ -587,39 +598,30 @@ export function RunsScreen() {
   if (!currentRun) {
     return (
       <div className="view runs-v12">
-        {prototypeBanner}
-        <div className="topbar">
-          <ProjectSwitcher />
-          <div className="proj-sep" />
-          {breadcrumb}
-          <TestRunsTopbar
-            currentRun={undefined}
-            onSealToggle={handleSealToggle}
-            onDuplicate={handleDuplicate}
-            onDelete={handleDelete}
-            onCreateRun={() => setCreateOpen(true)}
-            onEdit={() => setEditOpen(true)}
-            hasCases={hasCases}
-          />
-        </div>
-        <div className="tr-lay tr-lay-select">
-          <div className="ec-pane">
-            {runPicker}
-            <div className="empty-state on" style={{ position: 'relative', flex: 1 }}>
-              <div className="empty-card">
-                <i className="ti ti-list-check" />
-                <div className="empty-title">Select a test run</div>
-                <div className="empty-copy">Choose a run from the picker above, or create a new one.</div>
-                <button
-                  type="button"
-                  className="btn btn-p"
-                  style={{ marginTop: 12 }}
-                  disabled={!hasCases}
-                  title={!hasCases ? 'Add test cases to this project before creating a run' : undefined}
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
-                </button>
+        {runsFreshTopbar}
+        <div className="screen-wrap tr-screen-wrap">
+          {runsPageHead}
+          <div className="tr-workspace">
+            <div className="tr-lay tr-lay-select">
+              <div className="ec-pane tr-queue panel">
+                {runPicker}
+                <div className="empty-state on" style={{ position: 'relative', flex: 1 }}>
+                  <div className="empty-card">
+                    <i className="ti ti-list-check" />
+                    <div className="empty-title">Select a test run</div>
+                    <div className="empty-copy">Choose a run from the picker above, or create a new one.</div>
+                    <button
+                      type="button"
+                      className="btn btn-p"
+                      style={{ marginTop: 12 }}
+                      disabled={!hasCases}
+                      title={!hasCases ? 'Add test cases to this project before creating a run' : undefined}
+                      onClick={() => setCreateOpen(true)}
+                    >
+                      <i className="ti ti-plus" style={{ fontSize: 12 }} /> Create test run
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -632,37 +634,28 @@ export function RunsScreen() {
   if (currentRun.caseOrder.length === 0) {
     return (
       <div className="view runs-v12">
-        {prototypeBanner}
-        <div className="topbar">
-          <ProjectSwitcher />
-          <div className="proj-sep" />
-          {breadcrumb}
-          <TestRunsTopbar
-            currentRun={currentRun}
-            onSealToggle={handleSealToggle}
-            onDuplicate={handleDuplicate}
-            onDelete={handleDelete}
-            onCreateRun={() => setCreateOpen(true)}
-            onEdit={() => setEditOpen(true)}
-            hasCases={hasCases}
-          />
-        </div>
-        <div className="tr-lay tr-lay-select">
-          <div className="ec-pane">
-            {runPicker}
-            <div className="empty-state on" style={{ position: 'relative', flex: 1 }}>
-              <div className="empty-card">
-                <i className="ti ti-clipboard-plus" style={{ fontSize: 36, color: 'var(--accent)', marginBottom: 10 }} />
-                <div className="empty-title">Add test case to test run</div>
-                <div className="empty-copy">Test runs contain test cases to be executed on your test target.</div>
-                <button
-                  type="button"
-                  className="btn btn-p"
-                  style={{ marginTop: 12 }}
-                  onClick={() => setAddCasesOpen(true)}
-                >
-                  <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add to test run
-                </button>
+        {runsFreshTopbar}
+        <div className="screen-wrap tr-screen-wrap">
+          {runsPageHead}
+          <div className="tr-workspace">
+            <div className="tr-lay tr-lay-select">
+              <div className="ec-pane tr-queue panel">
+                {runPicker}
+                <div className="empty-state on" style={{ position: 'relative', flex: 1 }}>
+                  <div className="empty-card">
+                    <i className="ti ti-clipboard-plus" style={{ fontSize: 36, color: 'var(--accent)', marginBottom: 10 }} />
+                    <div className="empty-title">Add test case to test run</div>
+                    <div className="empty-copy">Test runs contain test cases to be executed on your test target.</div>
+                    <button
+                      type="button"
+                      className="btn btn-p"
+                      style={{ marginTop: 12 }}
+                      onClick={() => setAddCasesOpen(true)}
+                    >
+                      <i className="ti ti-plus" style={{ fontSize: 12 }} /> Add to test run
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -683,24 +676,12 @@ export function RunsScreen() {
 
   return (
     <div className="view runs-v12">
-      {prototypeBanner}
-      <div className="topbar">
-        <ProjectSwitcher />
-        <div className="proj-sep" />
-        {breadcrumb}
-        <TestRunsTopbar
-          currentRun={currentRun}
-          onSealToggle={handleSealToggle}
-          onDuplicate={handleDuplicate}
-          onDelete={handleDelete}
-          onCreateRun={() => setCreateOpen(true)}
-          onEdit={() => setEditOpen(true)}
-          hasCases={hasCases}
-        />
-      </div>
-
-      <div className="tr-lay">
-        <div className="ec-pane">
+      {runsFreshTopbar}
+      <div className="screen-wrap tr-screen-wrap">
+        {runsPageHead}
+        <div className="tr-workspace">
+          <div className="tr-lay">
+            <div className="ec-pane tr-queue panel">
           {runPicker}
 
           <div className="ec-run-hd">
@@ -829,8 +810,8 @@ export function RunsScreen() {
             {!isRunSealed ? (
               <button
                 type="button"
-                className="btn btn-p"
-                style={{ fontSize: 11, padding: '3px 8px', flexShrink: 0 }}
+                className="btn btn-p btn-sm"
+                style={{ flexShrink: 0 }}
                 onClick={() => setAddCasesOpen(true)}
               >
                 <i className="ti ti-plus" style={{ fontSize: 11 }} /> Add cases
@@ -928,10 +909,10 @@ export function RunsScreen() {
                 const collapsed = collapsedFolders.has(group.folderId)
                 return (
                   <div key={group.folderId ?? '__unfiled__'} className="ec-folder-group">
-                    <div className="ec-folder-hd" onClick={() => toggleFolder(group.folderId)}>
-                      <i className={`ti ${collapsed ? 'ti-chevron-right' : 'ti-chevron-down'}`} style={{ fontSize: 10, opacity: 0.5 }} />
+                    <div className="ec-fold" onClick={() => toggleFolder(group.folderId)}>
+                      <i className={`ti ${collapsed ? 'ti-chevron-right' : 'ti-chevron-down'}`} style={{ fontSize: 14, opacity: 0.55 }} />
                       <span className="ec-folder-name">{group.folderName}</span>
-                      <span className="ec-folder-count">{group.rows.length}</span>
+                      <span className="cpill">{group.rows.length}</span>
                     </div>
                     {!collapsed && group.rows.map((row) => (
                       <div
@@ -941,20 +922,22 @@ export function RunsScreen() {
                       >
                         <div className={`ec-dot ${EXEC_DOT_MAP[row.status]}`} />
                         <div className="ec-info">
-                          <div
-                            className="ec-cid"
-                            onMouseEnter={(e) => {
-                              if (caseIdHideTimer.current) clearTimeout(caseIdHideTimer.current)
-                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                              setCaseIdTooltip({ caseId: row.caseId, x: rect.left, y: rect.bottom + 6 })
-                            }}
-                            onMouseLeave={() => {
-                              caseIdHideTimer.current = setTimeout(() => setCaseIdTooltip(null), 300)
-                            }}
-                          >
-                            {row.case.caseKey ?? row.case.id}
+                          <div className="ec-case-title-row">
+                            <div
+                              className="ec-cid"
+                              onMouseEnter={(e) => {
+                                if (caseIdHideTimer.current) clearTimeout(caseIdHideTimer.current)
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                setCaseIdTooltip({ caseId: row.caseId, x: rect.left, y: rect.bottom + 6 })
+                              }}
+                              onMouseLeave={() => {
+                                caseIdHideTimer.current = setTimeout(() => setCaseIdTooltip(null), 300)
+                              }}
+                            >
+                              {row.case.caseKey ?? row.case.id}
+                            </div>
+                            <div className="ec-cnm">{row.case.title}</div>
                           </div>
-                          <div className="ec-cnm">{row.case.title}</div>
                           <div className="ec-cby">{row.assignee}</div>
                         </div>
                         <div className="ec-case-right">
@@ -975,7 +958,7 @@ export function RunsScreen() {
         <div className="resizer-v" data-resize="run-list" data-min="475" data-max-half="true" />
 
         {edVisible ? (
-          <div className={`ed-pane${edFullscreen ? ' fs' : ''}`}>
+          <div className={`ed-pane tr-detail panel${edFullscreen ? ' fs' : ''}`}>
             <ExecDetailPane
               caseData={active}
               execution={activeEx}
@@ -1004,6 +987,8 @@ export function RunsScreen() {
             />
           </div>
         ) : null}
+          </div>
+        </div>
       </div>
       <CreateRunModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditRunModal open={editOpen} run={currentRun} onClose={() => setEditOpen(false)} />
@@ -1190,11 +1175,11 @@ function ExecDetailPane({
             <div className="ed-ttl">{caseData.title}</div>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8, alignItems: 'center' }}>
-            <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 7px' }} onClick={() => onNav(-1)}>
-              <i className="ti ti-arrow-left" style={{ fontSize: 11 }} /> Prev
+            <button type="button" className="btn btn-neutral btn-xs" onClick={() => onNav(-1)}>
+              <i className="ti ti-arrow-up" style={{ fontSize: 11 }} /> Prev
             </button>
-            <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 7px' }} onClick={() => onNav(1)}>
-              Next <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
+            <button type="button" className="btn btn-neutral btn-xs" onClick={() => onNav(1)}>
+              Next <i className="ti ti-arrow-down" style={{ fontSize: 11 }} />
             </button>
             <button type="button" className="ed-fs-btn" onClick={onToggleFs} title="Toggle fullscreen">
               <i className={`ti ${fullscreen ? 'ti-minimize' : 'ti-maximize'}`} />
@@ -1555,12 +1540,15 @@ function ExecDetailPane({
               className={`rmb ${RMB_CLASS[r]}${status === r ? ' on' : ''}${sealed ? ' disabled' : ''}`}
               onClick={() => !sealed && onResult(r)}
             >
+              <i className={`ti ${RMB_ICON[r]}`} style={{ fontSize: 14 }} />
               {RMB_LABEL[r]}
             </div>
           ))}
         </div>
         {!sealed ? (
-          <button type="button" onClick={onClear} className="ed-clear-btn" title="Reset to Not run">↩ Clear</button>
+          <button type="button" onClick={onClear} className="btn btn-ghost btn-sm ed-clear-btn" title="Reset to Not run">
+            Clear
+          </button>
         ) : null}
       </div>
       <div className="sc-bar">

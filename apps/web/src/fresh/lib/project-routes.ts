@@ -2,18 +2,31 @@
 
 import { planKeyToSlug, slugToPlanKey } from '../data/demo-model'
 
+// Real backend default (mvp-backend "wire everything" session — real project
+// picker replaced the old client-only 'DP' demo project). Matches the
+// seeded "Demo Project" (slug 'demo') from
+// packages/db/src/seed/demo-project-seed.ts — the richly-populated,
+// explorable project every account should land on by default. Only used as
+// an ultimate fallback before/if the real project list hasn't loaded yet —
+// see ProjectRouteSync.tsx and FreshProvider.tsx's REGISTER_REAL_PROJECTS
+// mount effect (which also actively prefers the Demo Project when choosing
+// the default active project, not just this string fallback).
 export const DEFAULT_PROJECT_KEY = 'DP'
 
 export const MODULE_SLUGS = {
   dashboard: 'dashboard',
+  mywork: 'mywork',
   cases: 'testcases',
   testruns: 'testruns',
   plans: 'plans',
+  milestones: 'milestones',
+  requirements: 'requirements',
   audit: 'audit',
   defects: 'defects',
   settings: 'settings',
   reports: 'reports',
   integrations: 'integrations',
+  aistudio: 'aistudio',
 } as const
 
 export type ModuleSlug = keyof typeof MODULE_SLUGS
@@ -25,16 +38,22 @@ const SLUG_TO_MODULE: Record<string, ModuleSlug> = Object.fromEntries(
 /** Legacy unprefixed paths → module slug */
 export const LEGACY_PATH_TO_MODULE: Record<string, ModuleSlug> = {
   '/dashboard': 'dashboard',
+  '/my-work': 'mywork',
+  '/mywork': 'mywork',
   '/cases': 'cases',
   '/test-cases': 'cases',
   '/runs': 'testruns',
   '/plans': 'plans',
   '/test-plans': 'plans',
+  '/milestones': 'milestones',
+  '/requirements': 'requirements',
   '/audit': 'audit',
   '/defects': 'defects',
   '/settings': 'settings',
   '/reports': 'reports',
   '/integrations': 'integrations',
+  '/aistudio': 'aistudio',
+  '/ai-studio': 'aistudio',
   '/testcases': 'cases',
 }
 

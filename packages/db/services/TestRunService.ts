@@ -4,10 +4,10 @@
  *
  * Responsible for:
  *   - Spawning test runs from test plans (createRun)
- *   - Run sealing and reopen (separate methods, not implemented here)
- *   - Run metadata updates (separate methods, not implemented here)
- *
- * Only createRun() is fully implemented in this phase.
+ *   - Run sealing / reopen / archive + metadata updates (updateRun — added
+ *     in Phase 4 screen-wiring; a deliberately small status/title/due patch,
+ *     not a general-purpose editor. Case membership is immutable after spawn
+ *     by design — see test_run_cases snapshot invariants in schema.ts.)
  *
  * Dependencies (monorepo @relay/db package):
  *   db             — packages/db/src/index.ts
@@ -23,6 +23,7 @@ import {
   projectRoles,
   recentViews,
   runAssignees,
+  runCaseEvents,
   runCaseStepSnapshots,
   testCaseSteps,
   testCases,
@@ -33,13 +34,16 @@ import {
   users,
   type NewAuditLog,
   type NewRunAssignee,
+  type NewRunCaseEvent,
   type NewRunCaseStepSnapshot,
   type NewTestRunCase,
 } from '../schema'
 import { db } from '../src/index'
 import { logger } from '../src/logger'
 import { opensearchClient } from '../src/opensearch/client'
+import { assertMinProjectRole } from '../src/rbac/assert-min-role'
 import { createId } from '../src/utils/id'
+import { recordAudit } from './AuditService'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,14 +52,18 @@ import { createId } from '../src/utils/id'
 export interface CreateRunInput {
   /** ULID of the target project. */
   projectId: string
-  /** ULID of the source test plan. */
-  testPlanId: string
+  /** ULID of the source test plan. Optional since the ad-hoc-runs change:
+   * when omitted, `caseIds` is required and the run snapshots directly from
+   * the live test cases (same snapshot mechanics, different source). */
+  testPlanId?: string | null
   /** ULID of the user triggering the spawn. */
   createdBy: string
   /** Optional run title. Defaults to '{plan title} — {formatted date}'. */
   name?: string
   /** Optional environment override. Defaults to plan.environment. */
   environment?: string
+  /** Optional free-text run description (new-tables candidate, Phase A). */
+  description?: string | null
   /** Run-level assignee user IDs. Defaults to []. */
   assigneeIds?: string[]
   /**
@@ -74,7 +82,7 @@ export interface CreateRunResult {
   stepCount: number
   environment: string | null
   createdAt: Date
-  testPlanId: string
+  testPlanId: string | null
   projectId: string
 }
 
@@ -350,14 +358,13 @@ function buildAuditRow(
   runRef: string,
   projectId: string,
   actorId: string,
-  plan: PlanRow,
+  plan: PlanRow | null,
   resolvedTitle: string,
   resolvedEnvironment: string | null,
   orderedCases: CaseWithFolder[],
   totalStepCount: number,
   assigneeIds: string[],
-  allPlanCaseIds: string[],
-  selectedCaseIds: string[],
+  isPartialSelection: boolean,
 ): NewAuditLog {
   return {
     id: createId(),
@@ -370,7 +377,7 @@ function buildAuditRow(
     newValue: {
       runRef,
       title: resolvedTitle,
-      testPlanId: plan.id,
+      testPlanId: plan?.id ?? null,
       environment: resolvedEnvironment,
       caseCount: orderedCases.length,
       stepCount: totalStepCount,
@@ -378,10 +385,9 @@ function buildAuditRow(
       status: 'active',
     },
     metadata: {
-      planRef: plan.planRef,
-      planTitle: plan.title,
-      isPartialSelection:
-        selectedCaseIds.length < allPlanCaseIds.length,
+      planRef: plan?.planRef ?? null,
+      planTitle: plan?.title ?? null,
+      isPartialSelection,
       selectedCaseRefs: orderedCases.map((c) => c.caseRef),
     },
   }
@@ -403,17 +409,19 @@ async function indexRunDocument(
   title: string,
   environment: string | null,
   projectId: string,
-  testPlanId: string,
-  planTitle: string,
-  planRef: string,
+  testPlanId: string | null,
+  planTitle: string | null,
+  planRef: string | null,
   createdBy: string,
 ): Promise<void> {
   // Resolve denormalised names for the document.
-  const [projectRow] = await db
-    .select({ name: testPlans.title })
-    .from(testPlans)
-    .where(eq(testPlans.id, testPlanId))
-    .limit(1)
+  const [projectRow] = testPlanId
+    ? await db
+        .select({ name: testPlans.title })
+        .from(testPlans)
+        .where(eq(testPlans.id, testPlanId))
+        .limit(1)
+    : [undefined]
 
   const [projectMeta] = await db
     .select({ name: users.name })
@@ -428,8 +436,8 @@ async function indexRunDocument(
     status: 'active',
     environment: environment ?? null,
     project_id: projectId,
-    plan_title: planTitle,
-    plan_ref: planRef,
+    plan_title: planTitle ?? '',
+    plan_ref: planRef ?? '',
     created_by_name: projectMeta?.name ?? '',
     updated_at: new Date().toISOString(),
   }
@@ -575,77 +583,94 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
 
   await assertSpawnAccess(createdBy, projectId)
 
-  // ── 1b. Load and validate test plan ──────────────────────────────────────
+  // ── 1b. Load and validate test plan (skipped for ad-hoc runs) ────────────
+  // Ad-hoc runs change: `testPlanId` is optional. Without a plan, `caseIds`
+  // is required and the run snapshots directly from the live test cases —
+  // same snapshot mechanics, just a different source for the case list.
 
-  const [plan] = await db
-    .select({
-      id: testPlans.id,
-      planRef: testPlans.planRef,
-      title: testPlans.title,
-      status: testPlans.status,
-      environment: testPlans.environment,
-      projectId: testPlans.projectId,
-    })
-    .from(testPlans)
-    .where(
-      and(eq(testPlans.id, testPlanId), eq(testPlans.projectId, projectId)),
-    )
-    .limit(1)
-
-  if (!plan) {
-    throw new RunCreationError(
-      `Test plan not found: ${testPlanId}`,
-      'PLAN_NOT_FOUND',
-    )
-  }
-
-  if (plan.status === 'archived') {
-    throw new RunCreationError(
-      `Cannot spawn a run from an archived plan: ${plan.planRef}`,
-      'PLAN_ARCHIVED',
-    )
-  }
-
-  // Note: 'draft' plans CAN spawn runs. The plan status is not automatically
-  // promoted by this operation.
-
-  // ── 1c. Load plan case list and resolve selected cases ───────────────────
-
-  const planCaseRows = await db
-    .select({
-      testCaseId: testPlanCases.testCaseId,
-      position: testPlanCases.position,
-    })
-    .from(testPlanCases)
-    .where(eq(testPlanCases.testPlanId, testPlanId))
-    .orderBy(testPlanCases.position)
-
-  if (planCaseRows.length === 0) {
-    throw new RunCreationError(
-      `Test plan has no cases linked: ${plan.planRef}`,
-      'PLAN_EMPTY',
-    )
-  }
-
-  const allPlanCaseIds = planCaseRows.map((r) => r.testCaseId)
-
-  // Resolve which cases to include in the run.
+  let plan: PlanRow | null = null
   let selectedCaseIds: string[]
+  let wasPartialSelection = false
 
-  if (caseIds && caseIds.length > 0) {
-    // Validate every requested case ID is actually in the plan.
-    const planCaseSet = new Set(allPlanCaseIds)
-    const invalidIds = caseIds.filter((id) => !planCaseSet.has(id))
-    if (invalidIds.length > 0) {
+  if (testPlanId) {
+    const [planRow] = await db
+      .select({
+        id: testPlans.id,
+        planRef: testPlans.planRef,
+        title: testPlans.title,
+        status: testPlans.status,
+        environment: testPlans.environment,
+        projectId: testPlans.projectId,
+      })
+      .from(testPlans)
+      .where(
+        and(eq(testPlans.id, testPlanId), eq(testPlans.projectId, projectId)),
+      )
+      .limit(1)
+
+    if (!planRow) {
       throw new RunCreationError(
-        `Case IDs not in plan ${plan.planRef}: ${invalidIds.join(', ')}`,
-        'CASES_NOT_IN_PLAN',
+        `Test plan not found: ${testPlanId}`,
+        'PLAN_NOT_FOUND',
+      )
+    }
+
+    if (planRow.status === 'archived') {
+      throw new RunCreationError(
+        `Cannot spawn a run from an archived plan: ${planRow.planRef}`,
+        'PLAN_ARCHIVED',
+      )
+    }
+
+    // Note: 'draft' plans CAN spawn runs. The plan status is not
+    // automatically promoted by this operation.
+    plan = planRow
+
+    // ── 1c. Load plan case list and resolve selected cases ─────────────────
+
+    const planCaseRows = await db
+      .select({
+        testCaseId: testPlanCases.testCaseId,
+        position: testPlanCases.position,
+      })
+      .from(testPlanCases)
+      .where(eq(testPlanCases.testPlanId, testPlanId))
+      .orderBy(testPlanCases.position)
+
+    if (planCaseRows.length === 0) {
+      throw new RunCreationError(
+        `Test plan has no cases linked: ${planRow.planRef}`,
+        'PLAN_EMPTY',
+      )
+    }
+
+    const allPlanCaseIds = planCaseRows.map((r) => r.testCaseId)
+
+    if (caseIds && caseIds.length > 0) {
+      wasPartialSelection = caseIds.length < allPlanCaseIds.length
+      // Validate every requested case ID is actually in the plan.
+      const planCaseSet = new Set(allPlanCaseIds)
+      const invalidIds = caseIds.filter((id) => !planCaseSet.has(id))
+      if (invalidIds.length > 0) {
+        throw new RunCreationError(
+          `Case IDs not in plan ${planRow.planRef}: ${invalidIds.join(', ')}`,
+          'CASES_NOT_IN_PLAN',
+        )
+      }
+      selectedCaseIds = caseIds
+    } else {
+      // Include all plan cases.
+      selectedCaseIds = allPlanCaseIds
+    }
+  } else {
+    // Ad-hoc run — the explicit case list IS the run's contents.
+    if (!caseIds || caseIds.length === 0) {
+      throw new RunCreationError(
+        'An ad-hoc run (no test plan) requires a non-empty caseIds list.',
+        'PLAN_EMPTY',
       )
     }
     selectedCaseIds = caseIds
-  } else {
-    // Include all plan cases.
-    selectedCaseIds = allPlanCaseIds
   }
 
   // ── 1d. Load cases (with folder names) and steps ─────────────────────────
@@ -671,6 +696,7 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
     .where(
       and(
         inArray(testCases.id, selectedCaseIds),
+        eq(testCases.projectId, projectId),
         eq(testCases.isArchived, false),
       ),
     )
@@ -734,14 +760,19 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
 
   const resolvedTitle =
     input.name?.trim() ||
-    `${plan.title} — ${formatRunDate(spawnedAt)}`
+    (plan
+      ? `${plan.title} — ${formatRunDate(spawnedAt)}`
+      : `Ad-hoc run — ${formatRunDate(spawnedAt)}`)
 
   const resolvedEnvironment: string | null =
-    input.environment?.trim() || plan.environment || null
+    input.environment?.trim() || plan?.environment || null
 
-  // Sort cases by plan position. planPositionMap enables O(1) lookup.
+  const resolvedDescription: string | null = input.description?.trim() || null
+
+  // Sort cases by plan position (for ad-hoc runs, by the order the case ids
+  // were supplied — selectedCaseIds preserves both). O(1) lookup map.
   const planPositionMap = new Map(
-    planCaseRows.map((r) => [r.testCaseId, r.position]),
+    selectedCaseIds.map((id, i) => [id, i]),
   )
   const orderedCases: CaseWithFolder[] = [...(cases as CaseWithFolder[])].sort(
     (a, b) =>
@@ -778,8 +809,9 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
         id: newRunId,
         runRef,
         projectId,
-        testPlanId,
+        testPlanId: testPlanId ?? null,
         title: resolvedTitle,
+        description: resolvedDescription,
         status: 'active',
         environment: resolvedEnvironment,
         isStalled: false,
@@ -802,6 +834,26 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
       const runCaseIdMap = new Map<string, string>(
         runCaseRows.map((r) => [r.testCaseId as string, r.id as string]),
       )
+
+      // ── 2c-bis. Insert run_case_events ('created' per case) ──────────────
+      //
+      // Append-only transition log (new-tables candidate, Phase B). One
+      // 'created' event per run case at spawn, mirroring the local prototype's
+      // ADD_CASES_TO_RUN log entries (from/to = 'not_run'). Result transitions
+      // are appended later by ExecutionService.updateCaseResult().
+      const runCaseEventRows: NewRunCaseEvent[] = runCaseRows.map((rc) => ({
+        id: createId(),
+        testRunCaseId: rc.id as string,
+        actorId: createdBy,
+        event: 'created' as const,
+        fromStatus: 'not_run' as const,
+        toStatus: 'not_run' as const,
+        at: spawnedAt,
+      }))
+
+      for (const chunk of chunkArray(runCaseEventRows, 100)) {
+        await tx.insert(runCaseEvents).values(chunk)
+      }
 
       // ── 2d. Insert run_case_step_snapshots ──────────────────────────────
 
@@ -842,14 +894,13 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
         runRef,
         projectId,
         createdBy,
-        plan as PlanRow,
+        plan,
         resolvedTitle,
         resolvedEnvironment,
         orderedCases,
         stepSnapshotRows.length,
         assigneeIds,
-        allPlanCaseIds,
-        selectedCaseIds,
+        wasPartialSelection,
       )
 
       await tx.insert(auditLog).values(auditRow)
@@ -914,9 +965,9 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
     resolvedTitle,
     resolvedEnvironment,
     projectId,
-    testPlanId,
-    plan.title,
-    plan.planRef,
+    testPlanId ?? null,
+    plan?.title ?? null,
+    plan?.planRef ?? null,
     createdBy,
   ).catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err)
@@ -956,8 +1007,183 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
     stepCount,
     environment: resolvedEnvironment,
     createdAt: spawnedAt,
-    testPlanId,
+    testPlanId: testPlanId ?? null,
     projectId,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// updateRun — run lifecycle (seal / reopen / archive) + small metadata patch
+// ---------------------------------------------------------------------------
+
+export type RunUpdateErrorCode = 'RUN_NOT_FOUND' | 'TRANSACTION_FAILED'
+
+export class RunUpdateError extends Error {
+  constructor(
+    message: string,
+    public readonly code: RunUpdateErrorCode,
+  ) {
+    super(message)
+    this.name = 'RunUpdateError'
+  }
+}
+
+export interface UpdateRunInput {
+  projectId: string
+  runId: string
+  actorId: string
+  /**
+   * Lifecycle transition. 'sealed' stamps sealedAt/sealedBy; 'active'
+   * clears them (reopen); 'archived' hides the run from default lists
+   * (the archive/"delete" path — runs are never hard-deleted, matching the
+   * schema's soft-delete invariants). No transition-graph validation beyond
+   * that: this is a demo-scale admin operation.
+   */
+  status?: 'active' | 'sealed' | 'archived'
+  title?: string
+  description?: string | null
+  dueDate?: Date | null
+}
+
+export interface UpdateRunResult {
+  id: string
+  runRef: string
+  projectId: string
+  status: 'active' | 'stalled' | 'sealed' | 'archived'
+  title: string
+  description: string | null
+  dueDate: Date | null
+  sealedAt: Date | null
+  sealedBy: string | null
+}
+
+/**
+ * Patch a run's lifecycle status and/or small metadata fields.
+ *
+ * RBAC: admin or above (same level as spawning — run lifecycle management),
+ * via the shared assertMinProjectRole() (InsufficientPermissionsError is
+ * handled generically by the route error mapper). Audit action is
+ * 'run.sealed' / 'run.reopened' / 'run.archived' for transitions,
+ * 'run.updated' for metadata-only patches — recorded in the same
+ * transaction as the update.
+ */
+export async function updateRun(input: UpdateRunInput): Promise<UpdateRunResult> {
+  const { projectId, runId, actorId } = input
+
+  await assertMinProjectRole(actorId, projectId, 'admin')
+
+  const [run] = await db
+    .select({
+      id: testRuns.id,
+      runRef: testRuns.runRef,
+      status: testRuns.status,
+      title: testRuns.title,
+      description: testRuns.description,
+      dueDate: testRuns.dueDate,
+      sealedAt: testRuns.sealedAt,
+      sealedBy: testRuns.sealedBy,
+    })
+    .from(testRuns)
+    .where(and(eq(testRuns.id, runId), eq(testRuns.projectId, projectId)))
+    .limit(1)
+
+  if (!run) {
+    throw new RunUpdateError(`Test run not found: ${runId}`, 'RUN_NOT_FOUND')
+  }
+
+  const set: Partial<{
+    status: 'active' | 'stalled' | 'sealed' | 'archived'
+    title: string
+    description: string | null
+    dueDate: Date | null
+    sealedAt: Date | null
+    sealedBy: string | null
+  }> = {}
+
+  if (input.title !== undefined && input.title !== run.title) set.title = input.title
+  if (input.description !== undefined && input.description !== run.description)
+    set.description = input.description
+  if (input.dueDate !== undefined) set.dueDate = input.dueDate
+
+  let auditAction = 'run.updated'
+  if (input.status !== undefined && input.status !== run.status) {
+    set.status = input.status
+    if (input.status === 'sealed') {
+      set.sealedAt = new Date()
+      set.sealedBy = actorId
+      auditAction = 'run.sealed'
+    } else if (input.status === 'active') {
+      set.sealedAt = null
+      set.sealedBy = null
+      auditAction = run.status === 'sealed' ? 'run.reopened' : 'run.updated'
+    } else {
+      auditAction = 'run.archived'
+    }
+  }
+
+  if (Object.keys(set).length === 0) {
+    // Nothing to change — return current state, no write, no audit noise.
+    return {
+      id: run.id,
+      runRef: run.runRef,
+      projectId,
+      status: run.status,
+      title: run.title,
+      description: run.description ?? null,
+      dueDate: run.dueDate ?? null,
+      sealedAt: run.sealedAt ?? null,
+      sealedBy: run.sealedBy ?? null,
+    }
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx.update(testRuns).set(set).where(eq(testRuns.id, runId))
+
+      await recordAudit(
+        {
+          projectId,
+          entityType: 'test_run',
+          entityId: runId,
+          action: auditAction,
+          actorId,
+          oldValue: {
+            status: run.status,
+            title: run.title,
+            dueDate: run.dueDate ?? null,
+          },
+          newValue: {
+            status: set.status ?? run.status,
+            title: set.title ?? run.title,
+            dueDate: set.dueDate !== undefined ? set.dueDate : (run.dueDate ?? null),
+          },
+          metadata: { runRef: run.runRef },
+        },
+        tx,
+      )
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error('[TestRunService] updateRun transaction failed', {
+      projectId,
+      runId,
+      actorId,
+      error: message,
+    })
+    throw new RunUpdateError(`Run update transaction failed: ${message}`, 'TRANSACTION_FAILED')
+  }
+
+  return {
+    id: run.id,
+    runRef: run.runRef,
+    projectId,
+    status: set.status ?? run.status,
+    title: set.title ?? run.title,
+    description:
+      set.description !== undefined ? set.description : (run.description ?? null),
+    dueDate: set.dueDate !== undefined ? set.dueDate : (run.dueDate ?? null),
+    sealedAt: set.sealedAt !== undefined ? set.sealedAt : (run.sealedAt ?? null),
+    sealedBy: set.sealedBy !== undefined ? set.sealedBy : (run.sealedBy ?? null),
   }
 }
 

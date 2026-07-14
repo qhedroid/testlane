@@ -4,8 +4,18 @@ import * as schema from '../schema'
 
 export * from '../schema'
 
-let pool: mysql.Pool | null = null
-let dbInstance: MySql2Database<typeof schema> | null = null
+/**
+ * The mysql2 pool + Drizzle client are stashed on globalThis so they survive
+ * Next.js dev hot-reloads. Without this, every HMR re-evaluation of this module
+ * would call mysql.createPool() again and leak the previous pool's open
+ * connections, eventually exhausting MySQL's max_connections ("Too many
+ * connections"). In production the module is evaluated once, so the global is
+ * just a single shared instance.
+ */
+const globalForDb = globalThis as unknown as {
+  __relayPool?: mysql.Pool
+  __relayDb?: MySql2Database<typeof schema>
+}
 
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL
@@ -15,13 +25,14 @@ function getDatabaseUrl(): string {
   return url
 }
 
-/** Lazily initialised Drizzle client backed by a mysql2 connection pool. */
+/** Lazily initialised Drizzle client backed by a single shared mysql2 pool. */
 export function getDb(): MySql2Database<typeof schema> {
-  if (!dbInstance) {
-    pool = mysql.createPool(getDatabaseUrl())
-    dbInstance = drizzle(pool, { schema, mode: 'default' })
+  if (!globalForDb.__relayDb) {
+    const pool = mysql.createPool(getDatabaseUrl())
+    globalForDb.__relayPool = pool
+    globalForDb.__relayDb = drizzle(pool, { schema, mode: 'default' })
   }
-  return dbInstance
+  return globalForDb.__relayDb
 }
 
 /** Convenience export used by application code. */
@@ -54,9 +65,9 @@ export {
 } from './runs/read'
 
 export async function closeDb(): Promise<void> {
-  if (pool) {
-    await pool.end()
-    pool = null
-    dbInstance = null
+  if (globalForDb.__relayPool) {
+    await globalForDb.__relayPool.end()
+    globalForDb.__relayPool = undefined
+    globalForDb.__relayDb = undefined
   }
 }

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { FreshTopbar } from '../components/FreshTopbar'
-import { PrototypeBanner } from '../components/PrototypeBanner'
 import { useFresh } from '../data/FreshProvider'
 import type { AdminCustomField, Case, CaseExecution, CasePriority, CaseStep, DemoRun, ExecStatus, Folder } from '../data/demo-model'
 import {
@@ -40,7 +39,7 @@ const EXEC_COLOR: Record<ExecStatus, string> = {
   Passed:  'var(--pass)',
   Failed:  'var(--fail)',
   Blocked: 'var(--block)',
-  Skipped: 'var(--text3)',
+  Skipped: 'var(--skip)',
   'Not run': 'var(--text3)',
 }
 
@@ -180,14 +179,9 @@ function FolderTreeNode({
         ) : (
           <span className="st-tog" style={{ visibility: 'hidden' }}>▶</span>
         )}
-        {isRoot ? (
-          <i
-            className="ti ti-folder"
-            style={{ fontSize: 12, color: selectedFolderId === folder.id ? 'var(--accent)' : 'var(--text2)' }}
-          />
-        ) : null}
+        <i className="ti ti-folder st-folder-icon" />
         {folder.name}
-        <span className="st-ct" style={isRoot ? undefined : { marginLeft: 'auto' }}>
+        <span className="st-ct">
           {casesInFolder(cases, folders, folder.id).length}
         </span>
       </div>
@@ -488,7 +482,7 @@ export function CasesScreen() {
   function addQuickCase(title: string) {
     const trimmed = title.trim()
     if (!trimmed) return
-    addCase({
+    void addCase({
       title: trimmed,
       folderId: targetFolderId,
       priority: 'Medium',
@@ -538,7 +532,9 @@ export function CasesScreen() {
       return
     }
     const parentId = newFolderDraft.parentId
-    const id = addFolder(trimmed, parentId)
+    void addFolder(trimmed, parentId).then((id) => {
+      if (id) selectFolder(id)
+    })
     setNewFolderDraft(null)
     if (parentId) {
       const ancestors = folderAncestorIds(activeFolders, parentId)
@@ -549,7 +545,6 @@ export function CasesScreen() {
         return next
       })
     }
-    selectFolder(id)
   }
 
   function cancelNewFolder() {
@@ -557,6 +552,10 @@ export function CasesScreen() {
   }
 
   const unfiledCount = activeCases.filter((c) => !c.folderId).length
+
+  const selectedFolderTitle = selectedFolderId === '__unfiled__'
+    ? 'Unfiled'
+    : (activeFolders.find((f) => f.id === selectedFolderId)?.name ?? 'Folder')
 
   function openCreateRunModal(scope: 'folder' | 'all') {
     setCreateRunMenuOpen(false)
@@ -570,9 +569,10 @@ export function CasesScreen() {
       createRunModal.scope === 'folder'
         ? folderCases.map((c) => c.id)
         : undefined
-    const { runKey } = createRun({ name: createRunModal.name.trim(), caseIds })
+    void createRun({ name: createRunModal.name.trim(), caseIds }).then((result) => {
+      if (result) router.push(testRunPath(activeProject.key, result.runKey))
+    })
     setCreateRunModal(null)
-    router.push(testRunPath(activeProject.key, runKey))
   }
 
   return (
@@ -583,84 +583,22 @@ export function CasesScreen() {
           { label: activeProject.name },
           { label: 'Test cases' },
         ]}
-        searchPlaceholder="Search cases…"
-        searchWidth={200}
-        actions={
-          <>
-            <div style={{ position: 'relative' }} ref={createRunMenuRef}>
-              <button
-                type="button"
-                className="btn btn-p"
-                disabled={activeCases.length === 0}
-                title={activeCases.length === 0 ? 'Add test cases before creating a run' : undefined}
-                onClick={() => setCreateRunMenuOpen((v) => !v)}
-              >
-                <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
-                <i className="ti ti-chevron-down" style={{ fontSize: 10, marginLeft: 3 }} />
-              </button>
-              {createRunMenuOpen ? (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: 4,
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    boxShadow: '0 4px 16px rgba(0,0,0,.18)',
-                    zIndex: 200,
-                    minWidth: 220,
-                    padding: 4,
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="ctx-item"
-                    onClick={() => openCreateRunModal('folder')}
-                  >
-                    <i className="ti ti-folder" /> Cases in current folder ({folderCases.length})
-                  </button>
-                  <button
-                    type="button"
-                    className="ctx-item"
-                    onClick={() => openCreateRunModal('all')}
-                  >
-                    <i className="ti ti-stack" /> All project cases ({activeCases.length})
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            <button type="button" className="btn" onClick={() => selectFolder('f-import')}><i className="ti ti-upload" style={{ fontSize: 12 }} /> Import</button>
-            <button type="button" className="btn" onClick={() => setQuickOpen((v) => !v)}><i className="ti ti-bolt" style={{ fontSize: 12 }} /> Quick create</button>
-            <button type="button" className="btn btn-p" onClick={() => openCreateCase(targetFolderId)}><i className="ti ti-plus" style={{ fontSize: 12 }} /> New case</button>
-          </>
-        }
       />
-      <PrototypeBanner />
       <div className={`tc-lay${detailMaximized ? ' dp-maximized' : ''}`}>
         <div className="suite-tree">
           <div className="st-hd">
-            <i className="ti ti-folder" style={{ fontSize: 13, color: 'var(--text2)' }} />
+            <i className="ti ti-folder" style={{ fontSize: 17, color: 'var(--text3)' }} />
             <span className="st-ttl">Folders</span>
-            <button type="button" className="btn" style={{ padding: '2px 5px', fontSize: 13, lineHeight: 1 }} onClick={startCreateFolder} title="Add folder"><i className="ti ti-plus" /></button>
+            <button type="button" className="st-iconbtn" onClick={startCreateFolder} title="Add folder" aria-label="Add folder">
+              <i className="ti ti-plus" style={{ fontSize: 16 }} />
+            </button>
           </div>
-          <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--border)' }}>
+          <div className="st-filter-wrap">
             <input
               type="text"
               placeholder="Filter folders…"
               value={folderSearch}
               onChange={(e) => setFolderSearch(e.target.value)}
-              style={{
-                width: '100%',
-                fontSize: 12,
-                padding: '3px 7px',
-                borderRadius: 4,
-                border: '1px solid var(--border)',
-                background: 'var(--surface)',
-                color: 'var(--text1)',
-                boxSizing: 'border-box',
-              }}
             />
           </div>
           <div className="st-body">
@@ -669,8 +607,10 @@ export function CasesScreen() {
               style={{ marginBottom: 4 }}
               onClick={() => selectFolder('__unfiled__')}
             >
+              <span className="st-tog" style={{ visibility: 'hidden' }}>▶</span>
+              <i className="ti ti-folder-off st-folder-icon" />
               Unfiled
-              <span className="st-ct" style={{ marginLeft: 'auto' }}>{unfiledCount}</span>
+              <span className="st-ct">{unfiledCount}</span>
             </div>
             {rootFolders.map((folder) => (
               <FolderTreeNode
@@ -704,6 +644,73 @@ export function CasesScreen() {
         <div className="resizer-v" data-resize="suite-tree" data-min="160" data-max="360" />
 
         <div className="tc-main">
+          <div className="tc-toolbar">
+            <h3 className="tc-toolbar-title">{selectedFolderTitle}</h3>
+            <div className="tc-toolbar-actions">
+              <div style={{ position: 'relative' }} ref={createRunMenuRef}>
+                <button
+                  type="button"
+                  className="btn btn-neutral btn-sm"
+                  disabled={activeCases.length === 0}
+                  title={activeCases.length === 0 ? 'Add test cases before creating a run' : undefined}
+                  onClick={() => setCreateRunMenuOpen((v) => !v)}
+                >
+                  <i className="ti ti-player-play" style={{ fontSize: 12 }} /> Create test run
+                  <i className="ti ti-chevron-down" style={{ fontSize: 10, marginLeft: 2 }} />
+                </button>
+                {createRunMenuOpen ? (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: 4,
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      boxShadow: '0 4px 16px rgba(0,0,0,.18)',
+                      zIndex: 200,
+                      minWidth: 220,
+                      padding: 4,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="ctx-item"
+                      onClick={() => openCreateRunModal('folder')}
+                    >
+                      <i className="ti ti-folder" /> Cases in current folder ({folderCases.length})
+                    </button>
+                    <button
+                      type="button"
+                      className="ctx-item"
+                      onClick={() => openCreateRunModal('all')}
+                    >
+                      <i className="ti ti-stack" /> All project cases ({activeCases.length})
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <button type="button" className="btn btn-neutral btn-sm" onClick={() => selectFolder('f-import')}>
+                <i className="ti ti-upload" style={{ fontSize: 12 }} /> Import
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setQuickOpen((v) => !v)}>
+                <i className="ti ti-bolt" style={{ fontSize: 12 }} /> Quick create
+              </button>
+              <button type="button" className="btn btn-p btn-sm" onClick={() => openCreateCase(targetFolderId)}>
+                <i className="ti ti-plus" style={{ fontSize: 12 }} /> New case
+              </button>
+              {!detail && selectedIds.size === 1 ? (
+                <button
+                  type="button"
+                  className="btn btn-neutral btn-sm"
+                  onClick={() => setDetailCaseId(Array.from(selectedIds)[0])}
+                >
+                  <i className="ti ti-layout-sidebar-right" style={{ fontSize: 12 }} /> Details
+                </button>
+              ) : null}
+            </div>
+          </div>
           <div className="tc-bar">
             {STATUS_CHIPS.map(({ label, value }) => (
               <span
@@ -842,32 +849,17 @@ export function CasesScreen() {
               ) : null}
             </div>
 
-            <div style={{ position: 'relative', marginLeft: 'auto' }}>
-              <i
-                className="ti ti-search"
-                style={{
-                  position: 'absolute', left: 7, top: '50%',
-                  transform: 'translateY(-50%)',
-                  fontSize: 12, color: 'var(--text3)', pointerEvents: 'none',
-                }}
-              />
+            <div className="tc-search-wrap">
+              <i className="ti ti-search tc-search-icon" />
               <input
                 type="text"
+                className="tc-search-input"
                 placeholder="Search cases…"
                 value={keywordSearch}
                 onChange={(e) => setKeywordSearch(e.target.value)}
-                style={{
-                  fontSize: 12,
-                  padding: '3px 7px 3px 24px',
-                  borderRadius: 4,
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  color: 'var(--text1)',
-                  width: 180,
-                }}
               />
             </div>
-            <span style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>
               {displayedCases.length} cases
             </span>
           </div>
@@ -878,7 +870,7 @@ export function CasesScreen() {
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Clone</button>
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Move</button>
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px' }}>Assign</button>
-            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', color: 'var(--fail)', borderColor: 'rgba(198,40,40,.3)' }}>Archive</button>
+            <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', color: 'var(--fail)', borderColor: 'color-mix(in srgb, var(--fail) 30%, transparent)' }}>Archive</button>
             <button type="button" className="btn" style={{ fontSize: 10.5, padding: '2px 7px', marginLeft: 'auto' }} onClick={() => setSelectedIds(new Set())}>
               <i className="ti ti-x" style={{ fontSize: 11 }} /> Clear
             </button>
@@ -976,7 +968,7 @@ export function CasesScreen() {
                                           borderRadius: 1,
                                           background: s ? EXEC_COLOR[s] : 'var(--border)',
                                           opacity: s ? 1 : 0.4,
-                                          outline: sparkTooltip?.caseId === c.id && sparkTooltip?.barIndex === i ? '1.5px solid #000' : 'none',
+                                          outline: sparkTooltip?.caseId === c.id && sparkTooltip?.barIndex === i ? '1.5px solid var(--text1)' : 'none',
                                         }}
                                         onMouseEnter={s ? (e) => {
                                           if (sparkHideTimer.current) clearTimeout(sparkHideTimer.current)
@@ -1122,8 +1114,9 @@ export function CasesScreen() {
           >
             <button type="button" className="ctx-item" onClick={() => {
               const { id: _id, updatedAt: _updatedAt, projectId: _projectId, ...copyData } = menuCase
-              const copyId = addCase(copyData)
-              setDetailCaseId(copyId)
+              void addCase(copyData).then((copyId) => {
+                if (copyId) setDetailCaseId(copyId)
+              })
               setContextMenu(null)
             }}>
               <i className="ti ti-copy" /> Duplicate
