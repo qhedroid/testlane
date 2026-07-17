@@ -5,8 +5,8 @@
 **Purpose:** Single reference for continuing Testlane development without verbal handover. Paste or attach this file when working with ChatGPT, Cursor, or a new collaborator.
 
 **Last updated:** May 2026
-**Repo:** https://github.com/qhedroid/testlane
-**Owner:** qhedroid
+**Repo:** https://github.com/noel-q/testlane
+**Owner:** noel-q
 
 ---
 
@@ -146,7 +146,7 @@ Header for API calls: `x-relay-user-id: <ULID>`
 ## 8. Local setup and validation
 
 ```bash
-git clone https://github.com/qhedroid/testlane.git
+git clone https://github.com/noel-q/testlane.git
 cd Testlane
 pnpm install
 cp .env.example .env
@@ -200,13 +200,13 @@ pnpm db:validate-update-case-result
 
 | Issue | Title | Priority | Status |
 |-------|-------|----------|--------|
-| [#1](https://github.com/qhedroid/testlane/issues/1) | REL-001 Manual UX audit of /runs | p0 | Open |
-| [#2](https://github.com/qhedroid/testlane/issues/2) | REL-002 Resolve duplicate result controls | p0 | Open |
-| [#3](https://github.com/qhedroid/testlane/issues/3) | REL-003 Improve loading, empty, and error states | p0 | Open |
-| [#4](https://github.com/qhedroid/testlane/issues/4) | REL-004 Confirm RBAC/viewer mode UX | p0 | Open |
-| [#5](https://github.com/qhedroid/testlane/issues/5) | REL-005 README and collaborator setup | p1 | **Closed** (done in `ae9c068`) |
-| [#6](https://github.com/qhedroid/testlane/issues/6) | REL-006 Add v0.1 readiness checklist | p1 | Open |
-| [#7](https://github.com/qhedroid/testlane/issues/7) | REL-007 Tag execution checkpoint | p1 | Open |
+| [#1](https://github.com/noel-q/testlane/issues/1) | REL-001 Manual UX audit of /runs | p0 | Open |
+| [#2](https://github.com/noel-q/testlane/issues/2) | REL-002 Resolve duplicate result controls | p0 | Open |
+| [#3](https://github.com/noel-q/testlane/issues/3) | REL-003 Improve loading, empty, and error states | p0 | Open |
+| [#4](https://github.com/noel-q/testlane/issues/4) | REL-004 Confirm RBAC/viewer mode UX | p0 | Open |
+| [#5](https://github.com/noel-q/testlane/issues/5) | REL-005 README and collaborator setup | p1 | **Closed** (done in `ae9c068`) |
+| [#6](https://github.com/noel-q/testlane/issues/6) | REL-006 Add v0.1 readiness checklist | p1 | Open |
+| [#7](https://github.com/noel-q/testlane/issues/7) | REL-007 Tag execution checkpoint | p1 | Open |
 
 **Labels:** `p0`, `p1`, `p2`, `bug`, `feature`, `ux`, `docs`, `chore`, `v0.1`
 
@@ -245,7 +245,7 @@ pnpm db:validate-update-case-result
 ```
 You are helping build Testlane, a local-dev QA execution platform (Next.js 15 + Drizzle + MySQL).
 
-Repo: https://github.com/qhedroid/testlane
+Repo: https://github.com/noel-q/testlane
 Current focus: v0.1 Execution Readiness — polish /runs, not new product surfaces.
 
 Rules:
@@ -258,7 +258,7 @@ Rules:
 What exists: three-pane /runs (run list | case list with filters | case detail with status + comments).
 Latest commits: 8f84e3a (execution workspace), ae9c068 (onboarding docs).
 
-Open tickets: GitHub issues REL-001 through REL-007 on qhedroid/testlane.
+Open tickets: GitHub issues REL-001 through REL-007 on noel-q/testlane.
 Refer to docs/collaboration/relay-build-context.md and docs/implementation/api-contracts.md for detail.
 ```
 

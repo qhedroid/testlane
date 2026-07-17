@@ -53,7 +53,7 @@ Do not assume anything in the HTML prototype exists in Next.js unless you verify
 ## How to run it
 
 ```bash
-git clone https://github.com/qhedroid/testlane.git
+git clone https://github.com/noel-q/testlane.git
 cd Testlane
 pnpm install
 cp .env.example .env

@@ -7,7 +7,7 @@ Practical steps to clone Testlane, run it locally, and confirm everything works 
 ## 1. Clone and install
 
 ```bash
-git clone https://github.com/qhedroid/testlane.git
+git clone https://github.com/noel-q/testlane.git
 cd Testlane
 pnpm install
 ```

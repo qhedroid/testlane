@@ -255,7 +255,7 @@ Be brutally clear. This is to prevent hallucination.
 
 15. GitHub delivery state
 Include:
-Repo URL: https://github.com/qhedroid/testlane
+Repo URL: https://github.com/noel-q/testlane
 Project board: Testlane v0.1 Execution Readiness
 Current issues:
 REL-001 Manual UX audit of /runs — issue #1

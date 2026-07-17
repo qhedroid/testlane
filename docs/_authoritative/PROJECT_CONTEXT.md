@@ -33,7 +33,7 @@ Backend-phase reference (do not treat as current UI scope): [`docs/implementatio
 |------|-------|
 | **Branch** | `demo/contract-aware-prototype` |
 | **Board** | Testlane v0.1 Execution Readiness |
-| **Repo** | https://github.com/qhedroid/testlane |
+| **Repo** | https://github.com/noel-q/testlane |
 
 ### REL issues
 

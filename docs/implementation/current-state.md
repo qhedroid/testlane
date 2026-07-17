@@ -264,7 +264,7 @@ docker compose exec mysql mysql -u relay -prelay relay -e \
 **Execution Experience** milestone is committed and pushed to GitHub.
 
 - Commit: `8f84e3a` — *Complete execution experience workspace*
-- Remote: https://github.com/qhedroid/testlane.git
+- Remote: https://github.com/noel-q/testlane.git
 - Repo is ready for collaborator onboarding once GitHub access is granted (see `docs/collaboration/`).
 
 **Next immediate focus:** collaboration setup, ticket-led delivery, and **v0.1 Execution Readiness** (UX polish, loading/empty states, RBAC clarity—not new product surfaces).

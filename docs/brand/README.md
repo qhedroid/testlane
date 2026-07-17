@@ -68,8 +68,8 @@ value, not meant for anything beyond local exploration).
 
 ## Author
 
-Built by **Noel Quadri** ([@qhedroid](https://github.com/qhedroid)) —
+Built by **Noel Quadri** ([@noel-q](https://github.com/noel-q)) —
 Solutions Engineer, Cloud & DevOps, London, UK.
 
 [LinkedIn](https://www.linkedin.com/in/noelquadri2001) ·
-[GitHub](https://github.com/qhedroid)
+[GitHub](https://github.com/noel-q)

@@ -2,7 +2,7 @@
 
 What to configure in GitHub for Testlane collaboration. These steps are done in the GitHub UI, not in the repo.
 
-**Repository:** https://github.com/qhedroid/testlane.git
+**Repository:** https://github.com/noel-q/testlane.git
 
 ---
 

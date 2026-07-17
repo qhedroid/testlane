@@ -94,18 +94,18 @@ Never trust the ambient `git config user.name`/`user.email` on this machine as c
 2. Confirm whose work this actually is. Default assumption for this environment: work done through Noel's Cowork session is Noel's, and should be authored/committed as him, **not** whatever the local config happens to say.
 3. Set identity **per commit only** via env vars — do not persist a new default with `git config`, since that just swaps which identity is wrong by default for the next person/session:
    ```bash
-   GIT_AUTHOR_NAME='Noel Quadri' GIT_AUTHOR_EMAIL='56097048+qhedroid@users.noreply.github.com' \
-   GIT_COMMITTER_NAME='Noel Quadri' GIT_COMMITTER_EMAIL='56097048+qhedroid@users.noreply.github.com' \
+   GIT_AUTHOR_NAME='Noel Quadri' GIT_AUTHOR_EMAIL='56097048+noel-q@users.noreply.github.com' \
+   GIT_COMMITTER_NAME='Noel Quadri' GIT_COMMITTER_EMAIL='56097048+noel-q@users.noreply.github.com' \
    git commit -m "..."
    ```
 4. Verify after committing: `git log -1 --format='author=%an <%ae>%ncommitter=%cn <%ce>'`.
-5. If a commit lands with the wrong identity and hasn't been pushed yet, fix with `git commit --amend --author='Noel Quadri <56097048+qhedroid@users.noreply.github.com>'` plus matching `GIT_COMMITTER_*` env vars on the amend.
+5. If a commit lands with the wrong identity and hasn't been pushed yet, fix with `git commit --amend --author='Noel Quadri <56097048+noel-q@users.noreply.github.com>'` plus matching `GIT_COMMITTER_*` env vars on the amend.
 
 **Known identities for this project** (update this table if either person's account changes):
 
 | Person | Name | Email | GitHub login |
 |---|---|---|---|
-| Noel | Noel Quadri | `56097048+qhedroid@users.noreply.github.com` | `qhedroid` |
+| Noel | Noel Quadri | `56097048+noel-q@users.noreply.github.com` | `noel-q` |
 | Shaun | (CrimsonDelta account) | `30307439+CrimsonDelta@users.noreply.github.com` | `CrimsonDelta` |
 
 Only use Shaun's identity when a commit is genuinely his work being committed on his behalf — that must be a stated, deliberate choice for that commit, never the silent default.
@@ -180,7 +180,7 @@ One-paragraph summary of the feature and its UI entry point.
 
 ### Feature Area
 
-**Commit title** ([`398f45a`](https://github.com/qhedroid/testlane/commit/398f45a))
+**Commit title** ([`398f45a`](https://github.com/noel-q/testlane/commit/398f45a))
 - bullet
 - bullet
 
@@ -207,7 +207,7 @@ Rules:
 - Separate major sections with `---`.
 - Prefer specifics over summaries in every bullet.
 
-When writing for GitHub, link the SHA: `([`398f45a`](https://github.com/qhedroid/testlane/commit/398f45a))`.
+When writing for GitHub, link the SHA: `([`398f45a`](https://github.com/noel-q/testlane/commit/398f45a))`.
 
 ## When information is missing
 Do not guess. Ask, or add a TODO in the relevant `docs/_authoritative/*` file.

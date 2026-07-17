@@ -31,7 +31,7 @@ Companion docs:
 |------|-------|
 | **Branch** | `demo/prototype-parity` (Shaun's demo branch — do not commit to `main` directly) |
 | **Board** | Testlane v0.1 Execution Readiness |
-| **Repo** | https://github.com/qhedroid/testlane |
+| **Repo** | https://github.com/noel-q/testlane |
 
 ### REL issues
 
