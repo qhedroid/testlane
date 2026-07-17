@@ -75,7 +75,7 @@ aggregates assignees client-side. Milestones persist in `localStorage` only
 Requirements: Node.js 20+, pnpm 9+, Docker Desktop, and Git.
 
 ```bash
-git clone https://github.com/qhedroid/testlane.git
+git clone https://github.com/noel-q/testlane.git
 cd testlane
 pnpm install
 cp .env.example .env
@@ -96,13 +96,18 @@ pnpm build
 pnpm api:validate   # requires the database and dev server
 ```
 
+## Case study
+
+This project is documented with honest readiness signals (tests, docs, CI)
+at [noel-q.dev](https://noel-q.dev/projects/testlane).
+
 ## Author
 
-Built by **Noel Quadri** ([@qhedroid](https://github.com/qhedroid)) —
+Built by **Noel Quadri** ([@noel-q](https://github.com/noel-q)) —
 Solutions Engineer, Cloud & DevOps, London, UK.
 
 [LinkedIn](https://www.linkedin.com/in/noelquadri2001) ·
-[GitHub](https://github.com/qhedroid)
+[GitHub](https://github.com/noel-q)
 
 ## License
 
